@@ -22,6 +22,7 @@
 
 #include "MockTypedNode.h"
 
+#include "Aql/ExecutionNodeId.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;
@@ -29,7 +30,7 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-MockTypedNode::MockTypedNode(::arangodb::aql::ExecutionPlan* plan, size_t id, NodeType type)
+MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType type)
     : ExecutionNode(plan, id), _mockedType(type) {}
 
 ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -54,3 +55,7 @@ void MockTypedNode::toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned 
 }
 
 ExecutionNode::NodeType MockTypedNode::getType() const { return _mockedType; }
+
+auto MockTypedNode::getOutputVariables() const -> ::arangodb::aql::VariableIdSet {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

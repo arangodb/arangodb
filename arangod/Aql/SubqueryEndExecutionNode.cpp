@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
@@ -56,7 +57,7 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slic
       _isModificationSubquery(basics::VelocyPackHelper::getBooleanValue(
           base, "isModificationSubquery", false)) {}
 
-SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
                                  Variable const* outVariable, bool isModificationSubquery)
     : ExecutionNode(plan, id),
       _inVariable(inVariable),
@@ -165,4 +166,8 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
 
 bool SubqueryEndNode::isModificationNode() const {
   return _isModificationSubquery;
+}
+
+VariableIdSet SubqueryEndNode::getOutputVariables() const {
+    return {_outVariable->id};
 }

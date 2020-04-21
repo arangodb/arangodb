@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DistributeConsumerNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -41,7 +42,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
@@ -63,8 +64,9 @@ class RemoteNode final : public DistributeConsumerNode {
   enum class Api { GET_SOME = 0, EXECUTE = 1 };
 
   /// @brief constructor with an id
-  RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             std::string server, std::string const& ownName, std::string queryId, Api = Api::EXECUTE)
+  RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+             std::string server, std::string const& ownName,
+             std::string queryId, Api = Api::EXECUTE)
       : DistributeConsumerNode(plan, id, ownName),
         _vocbase(vocbase),
         _server(std::move(server)),
@@ -144,7 +146,7 @@ class ScatterNode : public ExecutionNode {
   enum ScatterType { SERVER = 0, SHARD = 1 };
 
   /// @brief constructor with an id
-  ScatterNode(ExecutionPlan* plan, size_t id, ScatterType type)
+  ScatterNode(ExecutionPlan* plan, ExecutionNodeId id, ScatterType type)
       : ExecutionNode(plan, id), _type(type) {}
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -197,6 +199,7 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -219,10 +222,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, size_t id, ScatterNode::ScatterType type,
-                 Collection const* collection, Variable const* variable,
-                 Variable const* alternativeVariable, bool createKeys,
-                 bool allowKeyConversionToObject)
+  DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
+                 ScatterNode::ScatterType type, Collection const* collection,
+                 Variable const* variable, Variable const* alternativeVariable,
+                 bool createKeys, bool allowKeyConversionToObject)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
@@ -248,9 +251,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(), _collection,
-                                              _variable, _alternativeVariable,
-                                              _createKeys, _allowKeyConversionToObject);
+    auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
+                                              collection(), _variable,
+                                              _alternativeVariable, _createKeys,
+                                              _allowKeyConversionToObject);
     c->copyClients(clients());
     CollectionAccessingNode::cloneInto(*c);
 
@@ -258,7 +262,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -317,8 +321,10 @@ class GatherNode final : public ExecutionNode {
   static SortMode evaluateSortMode(size_t numberOfShards,
                                    size_t shardsRequiredForHeapMerge = 5) noexcept;
 
+  static Parallelism evaluateParallelism(Collection const& collection) noexcept;
+
   /// @brief constructor with an id
-  GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, 
+  GatherNode(ExecutionPlan* plan, ExecutionNodeId id, SortMode sortMode,
              Parallelism parallelism = Parallelism::Undefined) noexcept;
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
@@ -348,11 +354,7 @@ class GatherNode final : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
-    for (auto const& p : _elements) {
-      vars.emplace(p.var);
-    }
-  }
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief get Variables used here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
@@ -368,12 +370,13 @@ class GatherNode final : public ExecutionNode {
   size_t constrainedSortLimit() const noexcept;
 
   bool isSortingGather() const noexcept;
-  
+
   void setParallelism(Parallelism value);
-  
+
   /// no modification nodes, ScatterNodes etc
   bool isParallelizable() const;
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
@@ -384,7 +387,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
-  
+
   /// @brief parallelism
   Parallelism _parallelism;
 
@@ -400,7 +403,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
-  SingleRemoteOperationNode(ExecutionPlan* plan, size_t id, NodeType mode,
+  SingleRemoteOperationNode(ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
                             bool replaceIndexNode, std::string const& key,
                             aql::Collection const* collection,
                             ModificationOptions const& options,
@@ -441,33 +444,17 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
-    if (_inVariable) {
-      vars.emplace(_inVariable);
-    }
-  }
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief getVariablesSetHere
-  virtual std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vec;
-
-    if (_outVariable) {
-      vec.push_back(_outVariable);
-    }
-    if (_outVariableNew) {
-      vec.push_back(_outVariableNew);
-    }
-    if (_outVariableOld) {
-      vec.push_back(_outVariableOld);
-    }
-
-    return vec;
-  }
+  virtual std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
+
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   // whether we replaced an index node

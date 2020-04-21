@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,7 +37,7 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
                   Variable const* outVariable, bool isModificationSubquery);
 
   CostEstimate estimateCost() const override final;
@@ -71,6 +72,8 @@ class SubqueryEndNode : public ExecutionNode {
 
   void replaceOutVariable(Variable const* var);
   bool isModificationNode() const override;
+
+  VariableIdSet getOutputVariables() const final;
 
  private:
   Variable const* _inVariable;

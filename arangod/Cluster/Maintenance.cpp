@@ -55,7 +55,7 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::vector<std::string> const cmp{JOURNAL_SIZE, WAIT_FOR_SYNC,
-                                          DO_COMPACT, VALIDATION, CACHE_ENABLED};
+                                          DO_COMPACT, SCHEMA, CACHE_ENABLED};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
@@ -259,6 +259,16 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     // be the leader and now somebody else is the leader. However, it does
     // not handle the case of a controlled leadership resignation, see below
     // in handleLocalShard for this.
+    if (shouldResign && !leading) {
+      // This case is a special one which is triggered if a server
+      // restarts, has `NOT_YET_TOUCHED` in its local shard as theLeader
+      // and finds a resignation sign. In that case, it should first officially
+      // take over leadership. In the following round it will then resign.
+      // This enables cleanOutServer jobs to continue to work in case of
+      // a leader restart.
+      shouldBeLeading = true;
+      shouldResign = false;
+    }
     if (leading != shouldBeLeading && !shouldResign) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname

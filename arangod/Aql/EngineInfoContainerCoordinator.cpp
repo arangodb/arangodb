@@ -42,17 +42,12 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id, size_t idOfRemoteNode)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id, ExecutionNodeId idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());
 }
 
-EngineInfoContainerCoordinator::EngineInfo::~EngineInfo() {
-  // This container is not responsible for nodes, they are managed by the AST
-  // somewhere else
-}
-
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineInfo const&& other)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
     : _id(other._id),
       _nodes(std::move(other._nodes)),
       _idOfRemoteNode(other._idOfRemoteNode) {}
@@ -113,7 +108,7 @@ QueryId EngineInfoContainerCoordinator::EngineInfo::queryId() const { return _id
 
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   // We always start with an empty coordinator snippet
-  _engines.emplace_back(0, 0);
+  _engines.emplace_back(QueryId{0}, ExecutionNodeId{0});
   _engineStack.emplace(0);
 }
 
@@ -129,7 +124,7 @@ void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   _engines[idx].addNode(node);
 }
 
-void EngineInfoContainerCoordinator::openSnippet(size_t idOfRemoteNode) {
+void EngineInfoContainerCoordinator::openSnippet(ExecutionNodeId idOfRemoteNode) {
   _engineStack.emplace(_engines.size());  // Insert next id
   QueryId id = TRI_NewTickServer();
   _engines.emplace_back(id, idOfRemoteNode);

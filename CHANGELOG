@@ -1,9 +1,44 @@
 devel
 -----
+* Fix a bug in the optimizer which handled combinations of smart joins with
+  query components that had to run on a coordinator wrong.
 
-* Improve continuation behavior of AQL queries. We post the continuation handler
-  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
-  of LOW.
+* Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
+  integrated into scatter-in-cluster.
+
+* Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base` and 
+  `--rocksdb.target-file-size-multiplier` to make them configurable.
+
+* Allow STARTS_WITH function to process several prefixes with min match count parameter.
+
+* Added collection property changes into auditing.
+
+* Fix creation of example graphs when `--cluster.min-replication-factor` is set
+  and no replication factor was specified for a graph. In this case, the new
+  graph will use the configured minimum replication factor.
+
+* Show some index details in index overview of the web interface, e.g. the 
+  `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
+  TTL indexes.
+
+* Added startup option `--server.validate-utf8-strings`.
+
+  This option controls whether strings in incoming JSON or VPack requests are
+  validated for UTF-8 conformity. If set to `true` (which is the default value),
+  all strings are validated, and requests containing invalid UTF-8 data will be
+  rejected. Setting the option to `false` will turn off the UTF-8 string
+  validation for incoming requests. This mode should only be used for
+  deployments that are known to already contain invalid UTF-8 data and to keep
+  them operational until the wrong string encoding is fixed in the data.
+
+* Updated OpenSSL to 1.1.1f.
+
+* Fixed a bug which occurred if a dbserver was shut down exactly
+  when it was supposed to resign from its leadership for a shard.
+
+* Improve continuation behavior of AQL queries. We post the continuation
+  handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
+  prio instead of LOW.
   
 * When relaying requests to other coordinators in a load-balanced setup, don't
   forward the "http/1.1" HTTP header from the remote response. Forwarding that
@@ -245,11 +280,11 @@ devel
         RETURN { doc, sub1, sub2 }
 
 * Added JSON-Schema (draft-4) document validation. The validation can be
-  specified by providing the new `validation` collection property when creating a
+  specified by providing the new `schema` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
       db.mycollection.properties({
-        validation: {
+        schema: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
         }

@@ -26,6 +26,7 @@
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 
 #include <cstdint>
 #include <functional>
@@ -50,7 +51,7 @@ class CollectNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  CollectNode(ExecutionPlan* plan, size_t id, CollectOptions const& options,
+  CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
               std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
               std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
               Variable const* expressionVariable, Variable const* outVariable,
@@ -185,6 +186,8 @@ class CollectNode : public ExecutionNode {
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;
+
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief options for the aggregation

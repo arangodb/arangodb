@@ -2630,7 +2630,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.add(StaticStrings::UsesRevisionsAsDocumentIds,
            VPackValue(info->usesRevisionsAsDocumentIds()));
   temp.add(StaticStrings::SyncByRevision, VPackValue(info->syncByRevision()));
-  temp.add(VPackValue(StaticStrings::Validation));
+  temp.add(VPackValue(StaticStrings::Schema));
   info->validatorsToVelocyPack(temp);
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
@@ -2946,7 +2946,7 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
     iid = IndexId{arangodb::basics::StringUtils::uint64(idSlice.copyString())};
   }
 
-  if (iid.isNone()) {  // no id set, create a new one!
+  if (iid.empty()) {  // no id set, create a new one!
     iid = IndexId{uniqid()};
   }
 

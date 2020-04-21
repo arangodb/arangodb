@@ -27,6 +27,7 @@
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/Query.h"
@@ -688,7 +689,7 @@ CostEstimate CollectNode::estimateCost() const {
 }
 
 CollectNode::CollectNode(
-    ExecutionPlan* plan, size_t id, CollectOptions const& options,
+    ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
     std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
     std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
     Variable const* expressionVariable, Variable const* outVariable,
@@ -813,4 +814,28 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
     v.emplace_back(_outVariable);
   }
   return v;
+}
+
+VariableIdSet CollectNode::getOutputVariables() const {
+  VariableIdSet vars;
+
+  for (auto const& p : groupVariables()) {
+    // p is std::pair<Variable const*,Variable const*>
+    // and the first is the to be assigned output variable
+    // for which we need to create a register in the current
+    // frame:
+    vars.insert(p.first->id);
+  }
+  for (auto const& p : aggregateVariables()) {
+    // p is std::pair<Variable const*,Variable const*>
+    // and the first is the to be assigned output variable
+    // for which we need to create a register in the current
+    // frame:
+    vars.insert(p.first->id);
+  }
+  if (hasOutVariable()) {
+    vars.insert(outVariable()->id);
+  }
+
+  return vars;
 }

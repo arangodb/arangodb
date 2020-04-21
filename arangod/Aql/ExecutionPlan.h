@@ -28,6 +28,7 @@
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -87,14 +88,14 @@ class ExecutionPlan {
   inline bool empty() const { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
-  void addAppliedRule(int level); 
-  
+  void addAppliedRule(int level);
+
   /// @brief check if a specific optimizer rule was applied
   bool hasAppliedRule(int level) const;
-  
+
   /// @brief check if a specific rule is disabled
   bool isDisabledRule(int rule) const;
-  
+
   /// @brief enable a specific rule
   void enableRule(int rule);
 
@@ -102,10 +103,12 @@ class ExecutionPlan {
   void disableRule(int rule);
 
   /// @brief return the next value for a node id
-  inline size_t nextId() { return ++_nextId; }
+  ExecutionNodeId nextId();
 
   /// @brief get a node by its id
-  ExecutionNode* getNodeById(size_t id) const;
+  ExecutionNode* getNodeById(ExecutionNodeId id) const;
+
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& getNodesById() const;
 
   /// @brief check if the node is the root node
   inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
@@ -133,6 +136,9 @@ class ExecutionPlan {
   /// @brief get the estimated cost . . .
   CostEstimate getCost() {
     TRI_ASSERT(_root != nullptr);
+    // Costs are only valid if the traversal options are prepared
+    // if they already are this is a noop.
+    prepareTraversalOptions();
     return _root->getCost();
   }
 
@@ -214,7 +220,7 @@ class ExecutionPlan {
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
 
-  template<typename Node, typename... Args>
+  template <typename Node, typename... Args>
   Node* createNode(Args&&...);
 
   /// @brief add a subquery to the plan, will call registerNode internally
@@ -349,7 +355,7 @@ class ExecutionPlan {
 
  private:
   /// @brief map from node id to the actual node
-  std::unordered_map<size_t, ExecutionNode*> _ids;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> _ids;
 
   /// @brief root node of the plan
   ExecutionNode* _root;
@@ -359,7 +365,7 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
-  
+
   /// @brief which optimizer rules were disabled for a plan
   ::arangodb::containers::HashSet<int> _disabledRules;
 
@@ -375,7 +381,7 @@ class ExecutionPlan {
   int _nestingLevel;
 
   /// @brief auto-increment sequence for node ids
-  size_t _nextId;
+  ExecutionNodeId _nextId;
 
   /// @brief the ast
   Ast* _ast;
