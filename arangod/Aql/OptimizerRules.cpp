@@ -3903,6 +3903,72 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
+auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
+    -> DistributeNode* {
+  CollectionAccessingNode* access = dynamic_cast<CollectionAccessingNode*>(node);
+  auto const* collection = access->collection();
+
+  auto& server = collection->vocbase()->server();
+  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  auto collInfo = ci.getCollection(collection->vocbase()->name(), collection->name());
+
+  Variable const* inputVariable;
+  Variable const* alternativeVariable;
+
+  auto createKeys = bool{false};
+  auto allowSpecifiedKeys = bool{false};
+
+  switch (node->getType()) {
+    case ExecutionNode::INSERT: {
+      inputVariable = ExecutionNode::castTo<InsertNode const*>(node)->inVariable();
+      alternativeVariable = inputVariable;
+      createKeys = true;
+      allowSpecifiedKeys = true;
+    } break;
+    case ExecutionNode::REMOVE: {
+      inputVariable = ExecutionNode::castTo<RemoveNode const*>(node)->inVariable();
+      alternativeVariable = inputVariable;
+      createKeys = false;
+      allowSpecifiedKeys = true;
+    } break;
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REPLACE: {
+      auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(node);
+      if (updateReplaceNode->inKeyVariable() != nullptr) {
+        inputVariable = updateReplaceNode->inKeyVariable();
+        // This is the _inKeyVariable! This works, since we use default
+        // sharding!
+        allowSpecifiedKeys = true;
+
+      } else {
+        inputVariable = updateReplaceNode->inDocVariable();
+        allowSpecifiedKeys = false;
+      }
+      alternativeVariable = inputVariable;
+      createKeys = false;
+    } break;
+    case ExecutionNode::UPSERT: {
+      // an UPSERT node has two input variables!
+      auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
+      inputVariable = upsertNode->inDocVariable();
+      alternativeVariable = upsertNode->insertVariable();
+      allowSpecifiedKeys = true;
+      createKeys = true;
+    } break;
+    default: {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+    } break;
+  }
+
+  auto distNode =
+      plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
+                                      collection, inputVariable, alternativeVariable,
+                                      createKeys, allowSpecifiedKeys);
+  TRI_ASSERT(distNode != nullptr);
+  return distNode;
+}
+
 /// @brief distribute operations in cluster
 ///
 /// this rule inserts distribute, remote nodes so operations on sharded
