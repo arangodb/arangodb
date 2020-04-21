@@ -464,11 +464,9 @@ ExecutionState QueryStreamCursor::prepareDump() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-#warning FIXME
-#if 0
-  transaction::Methods* trx = _query->trx();
-  if (trx && _stateChangeCb) {
-    trx->removeStatusChangeCallback(&_stateChangeCb);
+  transaction::Methods trx(_ctx);
+  TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
+  if (_stateChangeCb) {
+    trx.removeStatusChangeCallback(&_stateChangeCb);
   }
-#endif
 }

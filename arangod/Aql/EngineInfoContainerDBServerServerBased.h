@@ -69,6 +69,11 @@ class EngineInfoContainerDBServerServerBased {
     void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
 
     bool hasShard() const { return _hasShard; }
+    
+    /// inaccessible edge and verte collection names
+    std::set<CollectionID> inaccessibleCollNames() const {
+      return _inaccessible;
+    }
 
    private:
     std::vector<ShardID> getAllLocalShards(std::unordered_map<ShardID, ServerID> const& shardMapping,
@@ -94,7 +99,7 @@ class EngineInfoContainerDBServerServerBased {
     std::unordered_map<std::string, std::vector<ShardID>> _vertexCollections;
 
 #ifdef USE_ENTERPRISE
-    std::set<ShardID> _inaccessibleShards;
+    std::set<CollectionID> _inaccessible;
 #endif
   };
 

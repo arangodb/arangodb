@@ -128,18 +128,18 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto [filtering, sorting] = condition->findIndexes(node, usedIndexes, sortCondition.get());
 
-      if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
+      if (filtering || sorting) {
         bool descending = false;
-        if (canUseIndex.second && sortCondition->isUnidirectional()) {
+        if (sorting && sortCondition->isUnidirectional()) {
           descending = sortCondition->isDescending();
         }
 
-        if (!canUseIndex.first) {
+        if (!filtering) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
-          TRI_ASSERT(canUseIndex.second);
+          TRI_ASSERT(sorting);
           condition.reset(new Condition(_plan->getAst()));
           condition->normalize(_plan);
         }

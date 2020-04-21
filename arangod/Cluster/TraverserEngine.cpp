@@ -134,40 +134,16 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
   }
 
-#warning TODO make it happen
-  // FIXME: in the future this needs to be replaced with cluster wide transactions
-  transaction::Options trxOpts;
-
-//#ifdef USE_ENTERPRISE
-//  VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
-//  if (inaccessSlice.isArray()) {
-//    trxOpts.skipInaccessibleCollections = true;
-//    std::unordered_set<ShardID> inaccessible;
-//    for (VPackSlice const& shard : VPackArrayIterator(inaccessSlice)) {
-//      TRI_ASSERT(shard.isString());
-//      inaccessible.insert(shard.copyString());
-//    }
-//    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
-//                                      std::move(inaccessible));
-//  } else {
-//    trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts);
-//  }
-//#else
 #ifdef USE_ENTERPRISE
-  _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), trxOpts);
+  if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
+      _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+  } else {
+    _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+  }
 #else
-  _trx = new transaction::Methods(_query.newTrxContext());
+  _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
 #endif
   
-  // true here as last argument is crucial: it leads to the fact that the
-  // created transaction is considered a "MAIN" part and will not switch
-  // off collection locking completely!
-//  auto params = std::make_shared<VPackBuilder>();
-//  auto opts = std::make_shared<VPackBuilder>();
-//  _query = new aql::Query(ctx, aql::QueryString(), params, opts);
-//  _trx = trx.get();
-//  _query->injectTransaction(std::move(trx));
-
 #if 0
 #warning TODO this might be unneccessary
   VPackSlice variablesSlice = info.get(VARIABLES);
