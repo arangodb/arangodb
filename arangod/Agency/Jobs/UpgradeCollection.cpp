@@ -166,7 +166,7 @@ bool UpgradeCollection::start(bool& aborts) {
 
       // and add the upgrade flag
       trx.add(collectionPath + "/" + maintenance::UPGRADE_STATUS,
-              stateToValue(::UpgradeState::Upgrade));
+              stateToValue(::UpgradeState::Prepare));
 
       // make sure we don't try to rewrite history
       addIncreasePlanVersion(trx);

@@ -760,6 +760,87 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   return ret;
 }
 
+namespace {
+std::string const PlanCollections = "/Plan/Collections";
+
+bool jobNotDone(Node const& snapshot, std::string jobId) {
+  std::string pending = "/Target/Pending/" + jobId;
+  if (snapshot.hasAsNode(pending).second) {
+    return true;
+  }
+
+  std::string todo = "/Target/ToDo/" + jobId;
+  return snapshot.hasAsNode(pending).second;
+}
+
+query_t removeLocksTransactionBuilder(std::vector<std::pair<std::string, std::string>> const& toDelete) {
+  query_t del = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(del.get());
+    {
+      VPackArrayBuilder trx(del.get());
+      {
+        VPackObjectBuilder server(del.get());
+        for (auto const& pair : toDelete) {
+          del->add(VPackValue(PlanCollections + "/" + pair.first + "/" + pair.second + "/Lock"));
+          {
+            VPackObjectBuilder oper(del.get());
+            del->add("op", VPackValue("delete"));
+          }
+        }
+      }
+    }
+  }
+  return del;
+}
+}  // namespace
+
+void Supervision::checkCollectionLocks() {
+  // Dead lock detection
+  _lock.assertLockedByCurrentThread();
+
+  std::vector<std::pair<std::string, std::string>> toDelete;
+  std::pair<velocypack::Slice, bool> collections = snapshot().hasAsSlice(::PlanCollections);
+  if (collections.second) {
+    if (!collections.first.isObject()) {
+      LOG_TOPIC("38f8a", WARN, Logger::SUPERVISION)
+          << "Encountered unexpected Plan format while checking collection "
+             "locks";
+      return;
+    }
+    for (velocypack::ObjectIteratorPair dbPair :
+         velocypack::ObjectIterator(collections.first)) {
+      if (!dbPair.value.isObject()) {
+        LOG_TOPIC("38f9a", WARN, Logger::SUPERVISION)
+            << "Encountered unexpected Plan format while checking collection "
+               "locks";
+        continue;
+      }
+      for (velocypack::ObjectIteratorPair cPair :
+           velocypack::ObjectIterator(dbPair.value)) {
+        velocypack::Slice lock = cPair.value.isObject()
+                                     ? cPair.value.get("Lock")
+                                     : velocypack::Slice::noneSlice();
+        if (!lock.isNone()) {
+          if (!lock.isString()) {
+            LOG_TOPIC("38faa", WARN, Logger::SUPERVISION)
+                << "Encountered unexpected Plan format while checking "
+                   "collection locks";
+            continue;
+          }
+          if (!::jobNotDone(snapshot(), lock.copyString())) {
+            toDelete.emplace_back(dbPair.key.copyString(), cPair.key.copyString());
+          }
+        }
+      }
+    }
+  }
+
+  if (!toDelete.empty()) {
+    _agent->write(removeLocksTransactionBuilder(toDelete));
+  }
+}
+
 bool Supervision::earlyBird() const {
   std::vector<std::string> tpath{"Sync", "ServerStates"};
   std::vector<std::string> pdbpath{"Plan", "DBServers"};
@@ -874,6 +955,9 @@ bool Supervision::doChecks() {
       << "Checking single servers (active failover)...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   LOG_TOPIC("aaded", DEBUG, Logger::SUPERVISION) << "Server checks done.";
+  checkCollectionLocks();
+  LOG_TOPIC("aadee", DEBUG, Logger::SUPERVISION)
+      << "Collection lock checks done.";
 
   return true;
 }

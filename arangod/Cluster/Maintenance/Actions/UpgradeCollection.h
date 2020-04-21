@@ -27,6 +27,9 @@
 
 #include "Cluster/Maintenance/ActionBase.h"
 #include "Cluster/Maintenance/ActionDescription.h"
+#include "Network/Methods.h"
+#include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::maintenance {
 
@@ -37,6 +40,23 @@ class UpgradeCollection : public ActionBase {
   virtual ~UpgradeCollection();
 
   virtual bool first() override final;
+
+  virtual bool next() override final;
+
+ private:
+  bool hasMore() const;
+
+  futures::Future<Result> sendRequest(LogicalCollection&, std::string const&,
+                                      LogicalCollection::UpgradeStatus::State);
+
+  std::function<Result(network::Response&&)> handleResponse(std::string const&,
+                                                            LogicalCollection::UpgradeStatus::State);
+
+ private:
+  std::shared_ptr<velocypack::Builder> _planStatus;
+  std::unique_ptr<transaction::Methods> _trx;
+  std::unordered_map<std::string, futures::Future<Result>> _futures;
+  mutable std::size_t _iteration = 0;
 };
 
 }  // namespace arangodb::maintenance

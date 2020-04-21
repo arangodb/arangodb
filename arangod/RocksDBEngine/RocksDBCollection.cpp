@@ -120,10 +120,13 @@ std::pair<std::uint64_t, std::uint64_t> clearTemporaryObjectId(std::uint64_t obj
   return {objectId, 0};
 }
 
-void handlePropertiesEntryForObjectIdUpdate(
-    arangodb::LogicalCollection& collection, arangodb::velocypack::Builder& builder,
-    ::ObjectIdTransformer idFunc, bool setUpgradedProperties, ::IndicesMap& indicesMap,
-    arangodb::velocypack::Slice key, arangodb::velocypack::Slice value) {
+void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collection,
+                                            arangodb::velocypack::Builder& builder,
+                                            ::ObjectIdTransformer idFunc,
+                                            bool toggleUpgradedProperties,
+                                            ::IndicesMap& indicesMap,
+                                            arangodb::velocypack::Slice key,
+                                            arangodb::velocypack::Slice value) {
   using arangodb::StaticStrings;
   using arangodb::basics::VelocyPackHelper;
 
@@ -163,16 +166,20 @@ void handlePropertiesEntryForObjectIdUpdate(
     return;
   }
 
-  if (setUpgradedProperties && key.isEqualString(StaticStrings::Version)) {
+  if (toggleUpgradedProperties && key.isEqualString(StaticStrings::Version)) {
+    arangodb::LogicalCollection::Version targetVersion =
+        collection.version() == arangodb::LogicalCollection::Version::v37
+            ? arangodb::LogicalCollection::Version::v34
+            : arangodb::LogicalCollection::Version::v37;
     builder.add(StaticStrings::Version,
-                arangodb::velocypack::Value(static_cast<std::uint32_t>(
-                    arangodb::LogicalCollection::Version::v37)));
-  } else if (setUpgradedProperties && key.isEqualString(StaticStrings::SyncByRevision)) {
-    builder.add(StaticStrings::SyncByRevision, arangodb::velocypack::Value(true));
-  } else if (setUpgradedProperties &&
+                arangodb::velocypack::Value(static_cast<std::uint32_t>(targetVersion)));
+  } else if (toggleUpgradedProperties && key.isEqualString(StaticStrings::SyncByRevision)) {
+    builder.add(StaticStrings::SyncByRevision,
+                arangodb::velocypack::Value(!collection.syncByRevision()));
+  } else if (toggleUpgradedProperties &&
              key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
     builder.add(StaticStrings::UsesRevisionsAsDocumentIds,
-                arangodb::velocypack::Value(true));
+                arangodb::velocypack::Value(!collection.usesRevisionsAsDocumentIds()));
   } else {
     builder.add(key);
     builder.add(value);
@@ -201,16 +208,20 @@ arangodb::Result setObjectIdsForCollection(arangodb::LogicalCollection& collecti
   return res;
 }
 
-void setUpgradedPropertiesForCollection(arangodb::LogicalCollection& collection) {
-  collection.setVersion(arangodb::LogicalCollection::Version::v37);
-  collection.setUsesRevisionsAsDocumentIds(true);
-  collection.setSyncByRevision(true);
+void toggleUpgradedPropertiesForCollection(arangodb::LogicalCollection& collection) {
+  arangodb::LogicalCollection::Version targetVersion =
+      collection.version() == arangodb::LogicalCollection::Version::v37
+          ? arangodb::LogicalCollection::Version::v34
+          : arangodb::LogicalCollection::Version::v37;
+  collection.setVersion(targetVersion);
+  collection.setUsesRevisionsAsDocumentIds(!collection.usesRevisionsAsDocumentIds());
+  collection.setSyncByRevision(!collection.syncByRevision());
 }
 
 arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
                                               arangodb::LogicalCollection& collection,
                                               ::ObjectIdTransformer idFunc,
-                                              bool setUpgradedProperties) {
+                                              bool toggleUpgradedProperties) {
   using arangodb::StaticStrings;
   using arangodb::basics::VelocyPackHelper;
 
@@ -242,7 +253,7 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
         VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
     outputPair = idFunc(objectId, tempObjectId);
     for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
-      ::handlePropertiesEntryForObjectIdUpdate(collection, builder, idFunc, setUpgradedProperties,
+      ::handlePropertiesEntryForObjectIdUpdate(collection, builder, idFunc, toggleUpgradedProperties,
                                                indicesMap, pair.key, pair.value);
     }
     builder.add(StaticStrings::ObjectId,
@@ -268,7 +279,9 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
   if (res.fail()) {
     return res;
   }
-  ::setUpgradedPropertiesForCollection(collection);
+  if (toggleUpgradedProperties) {
+    ::toggleUpgradedPropertiesForCollection(collection);
+  }
 
   cleanup.cancel();  // succeeded, no cleanup needed
 
@@ -1722,7 +1735,7 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
   meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);
 }
 
-Result RocksDBCollection::upgrade() {
+Result RocksDBCollection::prepareUpgrade() {
   Result res{};
   if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
     return res;
@@ -1732,9 +1745,6 @@ Result RocksDBCollection::upgrade() {
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
-  auto cleanupGuard = arangodb::scopeGuard(
-      [this]() -> void { [[maybe_unused]] Result res = cleanupAfterUpgrade(); });
-
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
                                        ::injectNewTemporaryObjectId, false);
   if (res.fail()) {
@@ -1742,15 +1752,6 @@ Result RocksDBCollection::upgrade() {
   }
 
   {
-    // start an exclusive transaction to block access to the collection
-    std::shared_ptr<transaction::Context> context =
-        transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-    SingleCollectionTransaction trx(context, _logicalCollection, AccessMode::Type::EXCLUSIVE);
-    res = trx.begin();
-    if (res.fail()) {
-      return res;
-    }
-
     res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
     if (res.fail()) {
       return res;
@@ -1763,16 +1764,65 @@ Result RocksDBCollection::upgrade() {
         return res;
       }
     }
-
-    res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                         ::swapObjectIds, true);
-    if (res.fail()) {
-      return res;
-    }
   }
 
-  cleanupGuard.cancel();
-  return cleanupAfterUpgrade();
+  return res;
+}
+
+Result RocksDBCollection::finalizeUpgrade() {
+  Result res{};
+  if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
+    return res;
+  }
+
+  auto& server = _logicalCollection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+
+  res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                       ::swapObjectIds, true);
+  if (res.fail()) {
+    return res;
+  }
+
+  return res;
+}
+
+Result RocksDBCollection::rollbackUpgrade() {
+  Result res{};
+  if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
+    return res;
+  }
+
+  // TODO handle any missed updates in old ID-space
+
+  auto& server = _logicalCollection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+
+  res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                       ::swapObjectIds, true);
+  if (res.fail()) {
+    return res;
+  }
+
+  return res;
+}
+
+Result RocksDBCollection::cleanupUpgrade() {
+  auto& server = _logicalCollection.vocbase().server();
+  auto& selector = server.getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+
+  auto& rcoll =
+      static_cast<arangodb::RocksDBMetaCollection&>(*_logicalCollection.getPhysical());
+  Result res = ::cleanupOldIdSpaces(*engine.db(), rcoll);
+  if (res.fail()) {
+    return res;
+  }
+
+  return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                        ::clearTemporaryObjectId, false);
 }
 
 bool RocksDBCollection::didPartialUpgrade() {
@@ -1787,22 +1837,6 @@ bool RocksDBCollection::didPartialUpgrade() {
   }
 
   return false;
-}
-
-Result RocksDBCollection::cleanupAfterUpgrade() {
-  auto& server = _logicalCollection.vocbase().server();
-  auto& selector = server.getFeature<EngineSelectorFeature>();
-  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
-
-  auto& rcoll =
-      static_cast<arangodb::RocksDBMetaCollection&>(*_logicalCollection.getPhysical());
-  Result res = ::cleanupOldIdSpaces(*engine.db(), rcoll);
-  if (res.fail()) {
-    return res;
-  }
-
-  return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                        ::clearTemporaryObjectId, false);
 }
 
 /// @brief return engine-specific figures

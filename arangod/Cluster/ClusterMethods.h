@@ -79,6 +79,14 @@ futures::Future<Result> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
                                              LogicalCollection const& collection);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrades a collection in the cluster
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<Result> upgradeOnDBServer(TRI_vocbase_t& vocbase,
+                                          LogicalCollection const& collection,
+                                          LogicalCollection::UpgradeStatus::State phase);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 

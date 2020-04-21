@@ -25,12 +25,12 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -893,7 +894,8 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 }
 
 futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& coll) {
+                                             LogicalCollection const& coll,
+                                             LogicalCollection::UpgradeStatus::State phase) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
@@ -901,6 +903,10 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     return upgradeOnCoordinator(vocbase, coll);
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    return upgradeOnDBServer(vocbase, coll, phase);
   }
 
   if (!ServerState::instance()->isSingleServer()) {
@@ -915,7 +921,32 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
     res.reset(TRI_ERROR_INTERNAL, "collection not found");
     return futures::makeFuture(res);
   }
-  res = physical->upgrade();
+
+  // start an exclusive transaction to block access to the collection
+  std::shared_ptr<transaction::Context> context =
+      transaction::StandaloneContext::Create(vocbase);
+  SingleCollectionTransaction trx(context, coll, AccessMode::Type::EXCLUSIVE);
+  res = trx.begin();
+  if (res.fail()) {
+    return res;
+  }
+
+  auto cleanupGuard = arangodb::scopeGuard([physical]() -> void {
+    [[maybe_unused]] Result res = physical->cleanupUpgrade();
+  });
+
+  res = physical->prepareUpgrade();
+  if (res.fail()) {
+    return res;
+  }
+
+  res = physical->finalizeUpgrade();
+  if (res.fail()) {
+    return res;
+  }
+
+  cleanupGuard.cancel();
+  res = physical->cleanupUpgrade();
 
   return futures::makeFuture(res);
 }

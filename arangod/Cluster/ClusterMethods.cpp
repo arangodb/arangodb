@@ -49,6 +49,7 @@
 #include "Rest/Version.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -907,6 +908,40 @@ futures::Future<Result> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
   }
 
   return futures::makeFuture(Result());
+}
+
+futures::Future<Result> upgradeOnDBServer(TRI_vocbase_t& vocbase,
+                                          LogicalCollection const& collection,
+                                          LogicalCollection::UpgradeStatus::State phase) {
+  Result res{TRI_ERROR_BAD_PARAMETER, "expecting valid upgrade phase"};  // default for fallthrough
+  PhysicalCollection* physical = collection.getPhysical();
+  if (!physical) {
+    res.reset(TRI_ERROR_INTERNAL,
+              "could not get physical collection for upgrade");
+    return futures::makeFuture(res);
+  }
+  using UpgradeState = LogicalCollection::UpgradeStatus::State;
+  switch (phase) {
+    case UpgradeState::Prepare: {
+      res = physical->prepareUpgrade();
+      break;
+    }
+    case UpgradeState::Finalize: {
+      res = physical->finalizeUpgrade();
+      break;
+    }
+    case UpgradeState::Rollback: {
+      res = physical->rollbackUpgrade();
+      break;
+    }
+    case UpgradeState::Cleanup: {
+      res = physical->cleanupUpgrade();
+      break;
+    }
+    default:
+      break;
+  }
+  return futures::makeFuture(res);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

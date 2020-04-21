@@ -27,6 +27,7 @@
 #include "Futures/Future.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -37,7 +38,6 @@
 
 namespace arangodb {
 class ClusterFeature;
-class LogicalCollection;
 struct CollectionCreationInfo;
 
 namespace transaction {
@@ -125,7 +125,8 @@ struct Collections {
                                         LogicalCollection const& coll);
 
   static futures::Future<Result> upgrade(TRI_vocbase_t& vocbase,
-                                         LogicalCollection const& coll);
+                                         LogicalCollection const& coll,
+                                         LogicalCollection::UpgradeStatus::State phase);
 
   static futures::Future<OperationResult> revisionId(Context& ctxt);
 

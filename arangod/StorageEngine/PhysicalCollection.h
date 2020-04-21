@@ -218,9 +218,11 @@ class PhysicalCollection {
 
   TRI_voc_rid_t newRevisionId() const;
 
-  virtual Result upgrade();
+  virtual Result prepareUpgrade();
+  virtual Result finalizeUpgrade();
+  virtual Result rollbackUpgrade();
+  virtual Result cleanupUpgrade();
   virtual bool didPartialUpgrade();
-  virtual Result cleanupAfterUpgrade();
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

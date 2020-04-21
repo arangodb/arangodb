@@ -291,12 +291,14 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
 
     if (shouldBeLeading) {
       if (!cprops.get(UPGRADE_STATUS).isNone()) { // active upgrade job
-        actions.emplace_back(
-            ActionDescription(std::map<std::string, std::string>{{NAME, UPGRADE_COLLECTION},
-                                                                {DATABASE, dbname},
-                                                                {COLLECTION, colname},
-                                                                {SHARD, shname}},
-                              LEADER_PRIORITY, properties));
+        actions.emplace_back(ActionDescription(
+            std::map<std::string, std::string>{{NAME, UPGRADE_COLLECTION},
+                                               {DATABASE, dbname},
+                                               {COLLECTION, colname},
+                                               {SHARD, shname},
+                                               {UPGRADE_STATUS,
+                                                cprops.get(UPGRADE_STATUS).toJson()}},
+            LEADER_PRIORITY, properties));
       } else {
         try {
           DatabaseGuard guard(dbname);
@@ -807,6 +809,14 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
           collection->followers()->injectFollowerInfo(ret);
       shardInSync = planServers.length() == numFollowers + 1;
       shardReplicated = numFollowers > 0;
+
+      {
+        READ_LOCKER(lock, collection->upgradeStatusLock());
+        auto& upgradeStatus = collection->upgradeStatus();
+        if (!upgradeStatus.map().empty()) {
+          upgradeStatus.toVelocyPack(ret, true);
+        }
+      }
     }
     return {ret, shardInSync, shardReplicated};
   } catch (std::exception const& e) {
@@ -1188,6 +1198,10 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
     auto const& dbname = pdb.key.copyString();
     if (local.hasKey(dbname) && cdbs.hasKey(dbname)) {
       for (auto const& pcol : VPackObjectIterator(pdb.value)) {
+        if (!pcol.value.get(UPGRADE_STATUS).isNone()) {
+          // there is an upgrade in progress, do not synchronize right now
+          continue;
+        }
         auto const& colname = pcol.key.copyString();
         if (cdbs.get(dbname).hasKey(colname)) {
           for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {

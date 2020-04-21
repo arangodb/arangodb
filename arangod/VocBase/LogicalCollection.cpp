@@ -28,12 +28,13 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/Maintenance/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -52,6 +53,10 @@
 #include <velocypack/Collection.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+using UpgradeState = arangodb::LogicalCollection::UpgradeStatus::State;
+}
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -262,11 +267,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
 
-  if (_physical->didPartialUpgrade()) {
-    _physical->cleanupAfterUpgrade();
-  }
-
   prepareIndexes(info.get("indexes"));
+
+  if (_physical->didPartialUpgrade()) {
+    _physical->cleanupUpgrade();
+  }
 }
 
 /*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
@@ -304,9 +309,23 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
 
 LogicalCollection::~LogicalCollection() = default;
 
+LogicalCollection::UpgradeStatus::UpgradeStatus(UpgradeStatus const& other)
+    : _collection(other._collection), _map(other._map) {}
+
+LogicalCollection::UpgradeStatus::UpgradeStatus(UpgradeStatus&& other)
+    : _collection(other._collection), _map(std::move(other._map)) {}
+
 LogicalCollection::UpgradeStatus::UpgradeStatus(LogicalCollection& c) : _collection(c) {}
 
 LogicalCollection::UpgradeStatus::UpgradeStatus(LogicalCollection& c, Map const& m) : _collection(c), _map(m) {}
+
+LogicalCollection::UpgradeStatus& LogicalCollection::UpgradeStatus::operator=(UpgradeStatus&& other) {
+  if (other._collection.id() != _collection.id()) {
+    throw std::invalid_argument("expecting collections to match");
+  }
+  _map = std::move(other._map);
+  return *this;
+}
 
 LogicalCollection::UpgradeStatus::Map const& LogicalCollection::UpgradeStatus::map() const {
   return _map;
@@ -323,10 +342,53 @@ void LogicalCollection::UpgradeStatus::remove(Map::key_type const& key) {
   }
 }
 
+void LogicalCollection::UpgradeStatus::clear() { _map.clear(); }
+
+void LogicalCollection::UpgradeStatus::toVelocyPack(velocypack::Builder& builder,
+                                                    bool openSubObject) const {
+  TRI_ASSERT(builder.isOpenObject());
+  if (openSubObject) {
+    velocypack::ObjectBuilder status(&builder, maintenance::UPGRADE_STATUS);
+    for (auto const& pair : _map) {
+      builder.add(pair.first, UpgradeStatus::stateToValue(pair.second));
+    }
+  } else {
+    for (auto const& pair : _map) {
+      builder.add(pair.first, UpgradeStatus::stateToValue(pair.second));
+    }
+  }
+}
+
 LogicalCollection::UpgradeStatus LogicalCollection::UpgradeStatus::fetch(LogicalCollection& collection) {
   auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
   auto& ci = feature.clusterInfo();
   return ci.getCurrentShardUpgradeStatus(collection);
+}
+
+::UpgradeState LogicalCollection::UpgradeStatus::stateFromSlice(velocypack::Slice stateSlice) {
+  if (!stateSlice.isInteger()) {
+    return UpgradeState::ToDo;
+  }
+
+  using RawType = std::underlying_type<UpgradeState>::type;
+  RawType raw = stateSlice.getNumber<RawType>();
+  switch (raw) {
+    case static_cast<RawType>(UpgradeState::Prepare):
+      return UpgradeState::Prepare;
+    case static_cast<RawType>(UpgradeState::Finalize):
+      return UpgradeState::Finalize;
+    case static_cast<RawType>(UpgradeState::Rollback):
+      return UpgradeState::Rollback;
+    case static_cast<RawType>(UpgradeState::Cleanup):
+      return UpgradeState::Cleanup;
+    case static_cast<RawType>(UpgradeState::ToDo):
+    default:
+      return UpgradeState::ToDo;
+  }
+}
+
+arangodb::velocypack::Value LogicalCollection::UpgradeStatus::stateToValue(::UpgradeState state) {
+  return velocypack::Value(static_cast<std::underlying_type<::UpgradeState>::type>(state));
 }
 
 // SECTION: sharding
@@ -511,9 +573,7 @@ bool LogicalCollection::usesRevisionsAsDocumentIds() const {
 }
 
 void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
-  if (!_usesRevisionsAsDocumentIds.load() && usesRevisions && _version >= Version::v37) {
-    _usesRevisionsAsDocumentIds.store(true);
-  }
+  _usesRevisionsAsDocumentIds.store(usesRevisions);
 }
 
 TRI_voc_rid_t LogicalCollection::minRevision() const {
@@ -529,9 +589,7 @@ bool LogicalCollection::syncByRevision() const {
 }
 
 void LogicalCollection::setSyncByRevision(bool usesRevisions) {
-  if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
-    _syncByRevision.store(true);
-  }
+  _syncByRevision.store(usesRevisions);
 }
 
 bool LogicalCollection::determineSyncByRevision() const {
@@ -1076,6 +1134,10 @@ void LogicalCollection::persistPhysicalCollection() {
 
 basics::ReadWriteLock& LogicalCollection::statusLock() {
   return _statusLock;
+}
+
+basics::ReadWriteLock& LogicalCollection::upgradeStatusLock() {
+  return _upgradeStatusLock;
 }
 
 /// @brief Defer a callback to be executed when the collection

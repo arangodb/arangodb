@@ -91,23 +91,33 @@ class LogicalCollection : public LogicalDataSource {
 
   class UpgradeStatus {
     public:
-      enum class State : std::uint8_t {
-        ToDo = 0,
-        Upgrade = 1,
-        Cleanup = 2
-      };
-      using Map = std::unordered_map<std::string, State>;
+     enum class State : std::uint8_t {
+       ToDo = 0,
+       Prepare = 1,
+       Finalize = 2,
+       Rollback = 3,
+       Cleanup = 4
+     };
+     using Map = std::unordered_map<std::string, State>;
 
     public:
+     UpgradeStatus(UpgradeStatus const&);
+     UpgradeStatus(UpgradeStatus&&);
      explicit UpgradeStatus(LogicalCollection&);
      UpgradeStatus(LogicalCollection&, Map const&);
+     UpgradeStatus& operator=(UpgradeStatus&&);
 
      Map const& map() const;
      void set(Map::key_type const&, Map::mapped_type const&);
      void remove(Map::key_type const&);
+     void clear();
+
+     void toVelocyPack(velocypack::Builder&, bool) const;
 
     public:
      static UpgradeStatus fetch(LogicalCollection&);
+     static State stateFromSlice(velocypack::Slice);
+     static velocypack::Value stateToValue(State);
 
     private:
      LogicalCollection& _collection;
@@ -335,6 +345,9 @@ class LogicalCollection : public LogicalDataSource {
   /// lock protecting the status and name
   basics::ReadWriteLock& statusLock();
 
+  /// lock protecting the upgrade status
+  basics::ReadWriteLock& upgradeStatusLock();
+
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
   ///        the collection and it is guaranteed that no one is using
@@ -380,6 +393,9 @@ class LogicalCollection : public LogicalDataSource {
 
   /// lock protecting the status and name
   mutable basics::ReadWriteLock _statusLock;
+
+  /// lock protecting the upgrade status
+  mutable basics::ReadWriteLock _upgradeStatusLock;
 
   /// @brief collection format version
   Version _version;

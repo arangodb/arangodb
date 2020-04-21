@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/Maintenance/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -617,8 +618,11 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         }));
 
   } else if (sub == "upgrade") {
+    using UpgradeState = LogicalCollection::UpgradeStatus::State;
+    velocypack::Slice stateSlice = body.get(maintenance::UPGRADE_STATUS);
+    UpgradeState phase = LogicalCollection::UpgradeStatus::stateFromSlice(stateSlice);
     return waitForFuture(
-        methods::Collections::upgrade(_vocbase, *coll).thenValue([this, coll](Result&& res) {
+        methods::Collections::upgrade(_vocbase, *coll, phase).thenValue([this, coll](Result&& res) {
           if (res.fail()) {
             generateTransactionError(coll->name(), res, "");
             return;
@@ -635,10 +639,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
   res = handleExtraCommandPut(*coll, sub, _builder);
   if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
-    res.reset(
-        TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the actions 'load', 'unload', 'truncate',"
-        " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
+    res.reset(TRI_ERROR_HTTP_NOT_FOUND,
+              "expecting one of the actions 'load', 'unload', 'truncate',"
+              " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory', "
+              "'upgrade'");
     generateError(res);
   } else if (res.fail()) {
     generateError(res);

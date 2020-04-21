@@ -4378,7 +4378,7 @@ LogicalCollection::UpgradeStatus ClusterInfo::getCurrentShardUpgradeStatus(Logic
   using state_t = std::underlying_type<LogicalCollection::UpgradeStatus::State>::type;
   if (statusSlice.isObject()) {
     for (velocypack::ObjectIteratorPair pair : velocypack::ObjectIterator(statusSlice)) {
-      if (!pair.key.isString() || !pair.value.isString()) {
+      if (!pair.key.isString() || !pair.value.isInteger()) {
         LOG_TOPIC("dc3f5", WARN, Logger::CLUSTER) << badFormat;
       }
       std::string server = pair.key.copyString();

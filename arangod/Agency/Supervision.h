@@ -181,6 +181,9 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Check machines in agency
   std::vector<check_t> check(std::string const&);
 
+  /// @brief Check for and remove any lingering collection locks
+  void checkCollectionLocks();
+
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
