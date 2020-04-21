@@ -99,26 +99,24 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         // collection(),
         // fakedQuery(server.createFakeQuery(false, "return 1")),
-        ast(fakedQuery.get()),
-        outVariable("name", 1),
+        ast(*fakedQuery.get()),
+        outVariable("name", 1, false),
         varUsedLater(false),
-        engine(fakedQuery->engine()),
+        engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-<<<<<<< HEAD
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
-              engine.getQuery(), &abc, &outVariable, varUsedLater, nullptr, projections,
-              useRawPointers, random),
-=======
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
-              &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
-<<<<<<< HEAD
-              coveringIndexAttributePositions, useRawPointers, random),
->>>>>>> 3b922bcb6582dd67bc93e16c459c109f176cc6ec
-=======
-              coveringIndexAttributePositions, random),
->>>>>>> bce6f8fb3786392b809a7588e6f1658593fd51ca
-        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
+        infos(static_cast<RegisterId>(0) /*outReg*/, static_cast<RegisterId>(1) /*nrIn*/, static_cast<RegisterId>(1) /*nrOut*/,
+              regToClear, regToKeep,
+              dynamic_cast<QueryContext&>(*fakedQuery),
+              &aqlCollection,
+              &outVariable,
+              true,
+              static_cast<Expression*>(nullptr),
+              projections,
+              coveringIndexAttributePositions,
+              random),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2))
+    {
     try {
       collection = vocbase.createCollection(json->slice());
     } catch (std::exception const& e) {
@@ -286,14 +284,22 @@ class EnumerateCollectionExecutorTestProduce
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
-        ast(fakedQuery.get()),
-        outVariable("name", 1),
+        ast(*fakedQuery.get()),
+        outVariable("name", 1, false),
         varUsedLater(true),
-        engine(fakedQuery.get()->engine()),
+        engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-              projections, coveringIndexAttributePositions, random) {}
+        infos(static_cast<RegisterId>(1) /*outReg*/, static_cast<RegisterId>(1) /*nrIn*/, static_cast<RegisterId>(2) /*nrOut*/,
+              {}, {},
+              dynamic_cast<QueryContext&>(*fakedQuery),
+              &aqlCollection,
+              &outVariable,
+              true,
+              static_cast<Expression*>(nullptr),
+              projections,
+              coveringIndexAttributePositions,
+              random) {}
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
                  RegisterId nrOutputRegister = 1,
@@ -302,8 +308,8 @@ class EnumerateCollectionExecutorTestProduce
       -> EnumerateCollectionExecutorInfos {
     EnumerateCollectionExecutorInfos infos{
         outputRegister, nrInputRegister, nrOutputRegister,
-        regToClear,     regToKeep,       engine,
-        &aqlCollection, &outVariable,    varUsedLater,
+        regToClear,     regToKeep,       dynamic_cast<QueryContext&>(*fakedQuery),
+        &aqlCollection, &outVariable,    true,
         nullptr,        projections,     coveringIndexAttributePositions,
         random};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
@@ -355,10 +361,11 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
   uint64_t numberOfDocumentsToInsert = 10;
   std::vector<std::string> queryResults;
   std::ignore = insertDocuments(numberOfDocumentsToInsert, queryResults);
+  /* TODO: protected _trx
   EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
-                ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
+            ->numberDocuments(&(*fakedQuery->_trx), transaction::CountType::Normal),
             numberOfDocumentsToInsert);  // validate that our document inserts worked
-
+  */
   makeExecutorTestHelper<1, 1>()
       .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)

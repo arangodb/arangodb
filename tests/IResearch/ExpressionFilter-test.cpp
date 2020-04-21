@@ -65,7 +65,6 @@
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -254,8 +253,6 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
                               system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
-                          false);  // must be before AqlFeature
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);

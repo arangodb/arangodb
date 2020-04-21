@@ -61,6 +61,7 @@ class AqlExecutorTestCase : public ::testing::Test {
   AqlExecutorTestCase();
   virtual ~AqlExecutorTestCase();
 
+  auto manager() const -> AqlItemBlockManager&;
   /**
    * @brief Creates and manages a ExecutionNode.
    *        These nodes can be used to create the Executors
@@ -70,7 +71,6 @@ class AqlExecutorTestCase : public ::testing::Test {
    */
   auto generateNodeDummy() -> ExecutionNode*;
 
-  auto manager() const -> AqlItemBlockManager&;
 
   template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
   auto makeExecutorTestHelper() -> ExecutorTestHelper<inputColumns, outputColumns> {

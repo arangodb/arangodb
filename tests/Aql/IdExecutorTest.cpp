@@ -266,7 +266,7 @@ class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
   IdExecutorInfos infos{1, {0}, {}, false};
-  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       std::move(infos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
@@ -308,7 +308,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
   IdExecutorInfos infos{1, {0}, {}, false};
-  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       std::move(infos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
@@ -348,7 +348,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
   IdExecutorInfos infos{1, {0}, {}, false};
-  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       std::move(infos)};
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
@@ -410,7 +410,7 @@ class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
  protected:
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
     IdExecutorInfos infos{1, {0}, {}, false};
-    return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->engine(),
+    return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->rootEngine(),
                                                         generateNodeDummy(),
                                                         std::move(infos)};
   }

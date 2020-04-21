@@ -43,6 +43,7 @@
 #include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
 
@@ -59,7 +60,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
 
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
-  arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> const regToClear;
   std::unordered_set<RegisterId> const regToKeep;
@@ -88,7 +88,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   SortedCollectExecutorTestNoRowsUpstream()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
-        trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         collectRegister(RegisterPlan::MaxRegisterId),
         expressionRegister(RegisterPlan::MaxRegisterId),
@@ -98,9 +97,15 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         writeableOutputRegisters{1},
         infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::move(groupRegisters), collectRegister, expressionRegister,
-              expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count),
+              std::move(groupRegisters),
+              collectRegister,
+              expressionRegister,
+              expressionVariable,
+              std::move(aggregateTypes),
+              std::move(variables),
+              std::move(aggregateRegisters),
+              &VPackOptions::Defaults,
+              count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
@@ -148,7 +153,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
 
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
-  arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> regToClear;
   std::unordered_set<RegisterId> regToKeep;
@@ -179,7 +183,6 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   SortedCollectExecutorTestRowsUpstream()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
-        trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
         collectRegister(2),
@@ -192,7 +195,8 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count),
+              std::move(variables), std::move(aggregateRegisters),
+              &VPackOptions::Defaults, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -395,7 +399,6 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-  arangodb::transaction::Methods* trx = fakedQuery->trx();
 
   std::unordered_set<RegisterId> regToClear = {};
   std::unordered_set<RegisterId> regToKeep = {};
@@ -421,7 +424,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
                                    std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
                                    std::move(aggregateTypes), std::move(variables),
-                                   std::move(aggregateRegisters), trx, false);
+                                   std::move(aggregateRegisters),
+                                   &VPackOptions::Defaults, false);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -481,7 +485,6 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
-  arangodb::transaction::Methods* trx = fakedQuery->trx();
 
   std::unordered_set<RegisterId> regToClear;
   std::unordered_set<RegisterId> regToKeep;
@@ -514,7 +517,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
                                    std::move(groupRegisters), collectRegister,
                                    expressionRegister, expressionVariable,
                                    std::move(aggregateTypes), std::move(variables),
-                                   std::move(aggregateRegisters), trx, false);
+                                   std::move(aggregateRegisters),
+                                   &VPackOptions::Defaults, false);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
@@ -593,7 +597,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
 
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
-  arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> regToClear;
   std::unordered_set<RegisterId> regToKeep;
@@ -624,7 +627,6 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   SortedCollectExecutorTestSkip()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
-        trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
         collectRegister(2),
@@ -637,7 +639,8 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count),
+              std::move(variables), std::move(aggregateRegisters),
+              &VPackOptions::Defaults, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -918,7 +921,6 @@ using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
 class SortedCollectExecutorTestSplit
     : public AqlExecutorTestCaseWithParam<std::tuple<SortedCollectSplitType>> {
  protected:
-  arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> regToClear;
   std::unordered_set<RegisterId> regToKeep;
@@ -944,8 +946,7 @@ class SortedCollectExecutorTestSplit
   SortedCollectExecutorInfos infos;
 
   SortedCollectExecutorTestSplit()
-      : trx(fakedQuery->trx()),
-        groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
+      : groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
         collectRegister(2),
         writeableOutputRegisters({1, 2}),
@@ -957,7 +958,8 @@ class SortedCollectExecutorTestSplit
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count) {}
+              std::move(variables), std::move(aggregateRegisters),
+              &VPackOptions::Defaults, count) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {

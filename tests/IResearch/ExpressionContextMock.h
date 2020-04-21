@@ -40,10 +40,15 @@ struct Variable; // forward decl
 } // arangodb
 
 struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextBase {
+/* TODO!
   static ExpressionContextMock EMPTY;
 
-  ExpressionContextMock() noexcept
-    : arangodb::iresearch::ViewExpressionContextBase(nullptr) {
+  ExpressionContextMock() {} ;
+*/
+  ExpressionContextMock(arangodb::transaction::Methods& trx,
+                        arangodb::aql::QueryContext& query,
+                        arangodb::aql::RegexCache& cache) noexcept
+    : arangodb::iresearch::ViewExpressionContextBase(trx, query, cache) {
   }
 
   virtual ~ExpressionContextMock();
@@ -53,12 +58,16 @@ struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextB
     return 0;
   }
 
+  virtual bool isDataFromCollection(arangodb::aql::Variable const* variable) const override {
+    return variable->isDataFromCollection;
+  }
+
   virtual arangodb::aql::AqlValue getVariableValue(
     arangodb::aql::Variable const* variable,
     bool doCopy,
     bool& mustDestroy
   ) const override;
-  
+  /* TODO
   void registerWarning(int, char const*) override {
     TRI_ASSERT(false);
   }
@@ -81,6 +90,7 @@ struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextB
     TRI_ASSERT(false);
     return nullptr;
   }
+  */
 
 //  bool killed() const override {
 //    TRI_ASSERT(false);

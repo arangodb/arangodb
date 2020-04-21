@@ -42,6 +42,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
 
@@ -60,7 +61,7 @@ class DistinctCollectExecutorTest
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
-  arangodb::transaction::Methods* trx;
+  // arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> const regToClear;
   std::unordered_set<RegisterId> const regToKeep;
@@ -75,10 +76,10 @@ class DistinctCollectExecutorTest
   DistinctCollectExecutorInfos infos;
 
   DistinctCollectExecutorTest()
-      : trx(fakedQuery->trx()),
+    : // trx(fakedQuery->trx()),
         infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
+              std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {

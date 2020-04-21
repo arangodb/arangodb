@@ -25,7 +25,7 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
-ExpressionContextMock ExpressionContextMock::EMPTY;
+// TODO ExpressionContextMock ExpressionContextMock::EMPTY;
 
 ExpressionContextMock::~ExpressionContextMock() {
   for (auto& entry : vars) {

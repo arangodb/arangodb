@@ -63,7 +63,7 @@ namespace aql {
 class TokenTranslator : public TraverserCache {
  public:
   TokenTranslator(Query* query, BaseOptions* opts)
-      : TraverserCache(query, opts),
+      : TraverserCache(*query, opts),
         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() = default;
@@ -185,7 +185,8 @@ class FakePathFinder : public ShortestPathFinder {
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {
-  TestShortestPathOptions(Query* query) : ShortestPathOptions(query) {
+  TestShortestPathOptions(Query* query) :
+    ShortestPathOptions(*query) {
     std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
@@ -270,7 +271,7 @@ class ShortestPathExecutorTest
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
 
-  std::shared_ptr<Builder> fakeUnusedBlock;
+  std::shared_ptr<arangodb::velocypack::Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
   ShortestPathExecutor testee;

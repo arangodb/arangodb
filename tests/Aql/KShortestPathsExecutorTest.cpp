@@ -204,7 +204,7 @@ class KShortestPathsExecutorTest
         server{},
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
-        options(fakedQuery.get()),
+        options(*fakedQuery.get()),
         infos(std::make_shared<RegisterSet>(parameters._inputRegisters),
               std::make_shared<RegisterSet>(parameters._outputRegisters), 2, 3, {}, {0},
               std::make_unique<FakeKShortestPathsFinder>(options, parameters._paths),

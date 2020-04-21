@@ -33,6 +33,8 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -46,7 +48,6 @@
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -87,8 +88,6 @@ struct GraphTestSetup
     features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
                               system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
-                          false);  // must be before AqlFeature
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
@@ -136,9 +135,11 @@ struct MockGraphDatabase {
 
   ~MockGraphDatabase() {
     for (auto& q : queries) {
-      if (q->trx() != nullptr) {
-        q->trx()->abort();
+      /* TODO
+      if (q->_trx != nullptr) {
+        /// TODO q->trx()->abort();
       }
+      */
       delete q;
     }
     for (auto& o : spos) {
@@ -245,11 +246,11 @@ struct MockGraphDatabase {
   arangodb::aql::Query* getQuery(std::string qry) {
     auto queryString = arangodb::aql::QueryString(qry);
 
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     arangodb::aql::Query* query =
-        new arangodb::aql::Query(false, vocbase, queryString, nullptr,
-                                 arangodb::velocypack::Parser::fromJson("{}"),
-                                 arangodb::aql::PART_MAIN);
-    query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
+      new arangodb::aql::Query(ctx, queryString, nullptr,
+                                 arangodb::velocypack::Parser::fromJson("{}"));
+    query->prepareQuery(SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);
 
@@ -259,7 +260,7 @@ struct MockGraphDatabase {
   arangodb::graph::ShortestPathOptions* getShortestPathOptions(arangodb::aql::Query* query) {
     arangodb::graph::ShortestPathOptions* spo;
 
-    auto plan = query->plan();
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->rootEngine()->root()->getPlanNode()->plan());
     auto ast = plan->getAst();
 
     auto _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -287,7 +288,7 @@ struct MockGraphDatabase {
           ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
       _fromCondition->addMember(cond);
     }
-    spo = new ShortestPathOptions(query);
+    spo = new ShortestPathOptions(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));
     spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString, _toCondition->clone(ast));
