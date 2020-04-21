@@ -1312,7 +1312,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  if (!engine.waitForSatellites(collection())) {
+  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
     double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
                                    "collection " + collection()->name() +

@@ -157,20 +157,8 @@ Query::~Query() {
   }
 
   // this will reset _trx, so _trx is invalid after here
-  auto* engine = rootEngine();
-  if (engine) {
-    try {
-      auto ss = engine->sharedState();
-      while(true) {
-        auto [state, res] = engine->shutdown(TRI_ERROR_INTERNAL);
-        if (state == ExecutionState::WAITING) {
-          ss->waitForAsyncWakeup();
-        } else {
-          break;
-        }
-      }
-    } catch (...) {}
-  }
+  ExecutionState state = cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
+  TRI_ASSERT(state != ExecutionState::WAITING);
 
   exitV8Context();
   
@@ -486,23 +474,23 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     TRI_ASSERT(false);
     return ExecutionState::DONE;
   } catch (arangodb::basics::Exception const& ex) {
-    cleanupPlanAndEngineSync(ex.code());
+    cleanupPlanAndEngine(ex.code(), /*sync*/true);
     queryResult.reset(Result(ex.code(), "AQL: " + ex.message() +
                                             QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (std::bad_alloc const&) {
-    cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/true);
     queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
                              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (std::exception const& ex) {
-    cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
     return ExecutionState::DONE;
   } catch (...) {
-    cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              TRI_errno_string(TRI_ERROR_INTERNAL) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
@@ -594,9 +582,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     // will throw if it fails
     prepareQuery(SerializationFormat::SHADOWROWS);
     
-    std::shared_ptr<SharedQueryState> ss = sharedState();
-    TRI_ASSERT(ss != nullptr);
-
     log();
 
     if (useQueryCache && (isModificationQuery()  || !_warnings.empty() ||
@@ -608,6 +593,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
     auto* engine = this->rootEngine();
     TRI_ASSERT(engine != nullptr);
+    
+    std::shared_ptr<SharedQueryState> ss = engine->sharedState();
+    TRI_ASSERT(ss != nullptr);
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = engine->resultRegister();
@@ -707,20 +695,20 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       state = finalize(queryResult);
     }
   } catch (arangodb::basics::Exception const& ex) {
-    cleanupPlanAndEngineSync(ex.code());
+    cleanupPlanAndEngine(ex.code(), /*sync*/true);
     queryResult.reset(Result(ex.code(), "AQL: " + ex.message() +
                                             QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::bad_alloc const&) {
-    cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/true);
     queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
                              TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::exception const& ex) {
-    cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (...) {
-    cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              TRI_errno_string(TRI_ERROR_INTERNAL) +
                                  QueryExecutionState::toStringWithPrefix(_execState)));
@@ -789,7 +777,7 @@ ExecutionState Query::finalize(QueryResult& result) {
     }
   }
 
-  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, result.extra.get());
+  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false, result.extra.get());
   if (state == ExecutionState::WAITING) {
     return state;
   }
@@ -830,11 +818,11 @@ QueryResult Query::parse() {
   } catch (arangodb::basics::Exception const& ex) {
     return QueryResult(Result(ex.code(), ex.message()));
   } catch (std::bad_alloc const&) {
-    cleanupPlanAndEngineSync(TRI_ERROR_OUT_OF_MEMORY);
+    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/true);
     return QueryResult(Result(TRI_ERROR_OUT_OF_MEMORY,
                               TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY)));
   } catch (std::exception const& ex) {
-    cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
     return QueryResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   } catch (...) {
     return QueryResult(
@@ -1133,38 +1121,24 @@ void Query::enterState(QueryExecutionState::ValueType state) {
   _execState = state;
 }
 
-void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
-  if (_snippets.empty()) {
-    return;
-  }
-  
-  try {
-    std::shared_ptr<SharedQueryState> ss = sharedState();
-    if (!ss) {
-      return;
-    }
-    ss->resetWakeupHandler();
-
-    ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
-    while (state == ExecutionState::WAITING) {
-      ss->waitForAsyncWakeup();
-      state = cleanupPlanAndEngine(errorCode, statsBuilder);
-    }
-    ss->invalidate();
-  } catch (...) {
-    // this is called from the destructor... we must not leak exceptions from
-    // here
-  }
-}
-
 /// @brief cleanup plan and engine for current query
-ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
+ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
+                                           VPackBuilder* statsBuilder) {
   auto* engine = rootEngine();
   if (engine) {
+    std::shared_ptr<SharedQueryState> ss;
+    if (sync) {
+      ss = engine->sharedState();
+    }
     try {
-      auto [state, res] = engine->shutdown(errorCode);
-      if (state == ExecutionState::WAITING) {
-        return state;
+      while (true) {
+        auto [state, res] = engine->shutdown(errorCode);
+        if (state != ExecutionState::WAITING) {
+          break;
+        } else if (!sync) {
+          return state;
+        }
+        ss->waitForAsyncWakeup();
       }
       engine->sharedState()->invalidate();
     } catch (...) {
@@ -1173,7 +1147,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     }
   }
  
-  if (statsBuilder != nullptr) {
+  if (statsBuilder != nullptr && !_snippets.empty()) {
     TRI_ASSERT(statsBuilder->isOpenObject());
     ExecutionStats stats;
     stats.requests += _numRequests.load(std::memory_order_relaxed);
@@ -1189,7 +1163,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
   }
   
-  if (_trx->state()->isCoordinator()) {
+  if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
     auto* registry = QueryRegistryFeature::registry();
     if (registry) {
       registry->unregisterEngines(_snippets);
@@ -1207,7 +1181,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
   }
 
   // If the transaction was not committed, it is automatically aborted
-  _trx = nullptr;
+  _trx.reset();
 
   return ExecutionState::DONE;
 }

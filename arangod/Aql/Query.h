@@ -213,12 +213,8 @@ class Query : public QueryContext {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query. synchronous variant,
-  /// will block this thread in WAITING case.
-  void cleanupPlanAndEngineSync(int errorCode, velocypack::Builder* statsBuilder = nullptr) noexcept;
-
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int errorCode,
+  ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
                                       velocypack::Builder* statsBuilder = nullptr);
 
  protected:
