@@ -51,62 +51,65 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  if (en->isIncreaseDepth()) {
+  bool const isIncreaseDepth = en->isIncreaseDepth();
+  if (isIncreaseDepth) {
     plan->increaseDepth();
-  }
-
-  for (VariableId const& v : en->getOutputVariables()._set) {
-    if (v != RegisterPlanT<T>::MaxRegisterId) {
-      plan->registerVariable(v);
-    }  else {
-      plan->addRegister();
-    }
   }
 
   if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
     plan->addSubqueryNode(en);
   }
 
-  en->_depth = plan->depth;
-  en->_registerPlan = plan;
-
-  // Now find out which registers ought to be erased after this node:
-  // ReturnNodes are special, since they return a single column anyway
-  if (en->getType() == ExecutionNode::RETURN) {
-    return;
-  }
-
   ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
       en->getVarsUsedLater();
   ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
   en->getVariablesUsedHere(varsUsedHere);
-
-  // We need to delete those variables that have been used here but are not
-  // used any more later:
   std::unordered_set<RegisterId> regsToClear;
 
-  for (auto const& v : varsUsedHere) {
-    auto it = varsUsedLater.find(v);
+  // Now find out which registers ought to be erased after this node:
+  // ReturnNodes are special, since they return a single column anyway
+  if (en->getType() != ExecutionNode::RETURN) {
+    for (auto const& v : varsUsedHere) {
+      auto it = varsUsedLater.find(v);
 
-    if (it == varsUsedLater.end()) {
-      auto it2 = plan->varInfo.find(v->id);
+      if (it == varsUsedLater.end()) {
+        auto it2 = plan->varInfo.find(v->id);
 
-      if (it2 == plan->varInfo.end()) {
-        // report an error here to prevent crashing
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            std::string("missing variable #") + std::to_string(v->id) + " (" +
-                v->name + ") for node #" + std::to_string(en->id().id()) +
-                " (" + en->getTypeString() + ") while planning registers");
+        if (it2 == plan->varInfo.end()) {
+          // report an error here to prevent crashing
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              std::string("missing variable #") + std::to_string(v->id) + " (" +
+                  v->name + ") for node #" + std::to_string(en->id().id()) +
+                  " (" + en->getTypeString() + ") while planning registers");
+        }
+
+        TRI_ASSERT(it2 != plan->varInfo.end());
+        RegisterId r = it2->second.registerId;
+        regsToClear.insert(r);
       }
-
-      // finally adjust the variable inside the IN calculation
-      TRI_ASSERT(it2 != plan->varInfo.end());
-      RegisterId r = it2->second.registerId;
-      regsToClear.insert(r);
     }
+
+    unusedRegisters.insert(regsToClear.begin(), regsToClear.end());
+    if (isIncreaseDepth) {
+      reusableRegisters.merge(unusedRegisters);
+      TRI_ASSERT(unusedRegisters.empty());
+    }
+
+    // We need to delete those variables that have been used here but are not
+    // used any more later:
+    en->setRegsToClear(std::move(regsToClear));
   }
-  en->setRegsToClear(std::move(regsToClear));
+
+  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
+  auto outputVariables = en->getOutputVariables()._set;
+  for (VariableId const& v : outputVariables) {
+    TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
+    plan->registerVariable(v, reusableRegisters);
+  }
+
+  en->_depth = plan->depth;
+  en->_registerPlan = plan;
 }
 
 template <typename T>
@@ -179,7 +182,6 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   other->nrRegs = nrRegs;
   other->depth = depth;
   other->totalNrRegs = totalNrRegs;
-
   other->varInfo = varInfo;
 
   // No need to clone subQueryNodes because this was only used during
@@ -199,16 +201,35 @@ void RegisterPlanT<T>::increaseDepth() {
 }
 
 template <typename T>
-void RegisterPlanT<T>::addRegister() {
+RegisterId RegisterPlanT<T>::addRegister() {
   nrRegs[depth]++;
-  totalNrRegs++;
+  return totalNrRegs++;
+}
+
+template <typename T>
+void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<RegisterId>& unusedRegisters) {
+  RegisterId regId;
+
+  if (unusedRegisters.empty()) {
+    regId = totalNrRegs;
+    addRegister();
+    LOG_DEVEL << "Adding new register id " << regId << " for variable " << v;
+  } else {
+    auto iter = unusedRegisters.begin();
+    regId = *iter;
+    LOG_DEVEL << "Reusing register id " << regId << " for variable " << v;
+    unusedRegisters.erase(iter);
+  }
+
+  varInfo.try_emplace(v, VarInfo(depth, regId));
 }
 
 template <typename T>
 void RegisterPlanT<T>::registerVariable(VariableId v) {
-  auto total = totalNrRegs;
+  auto regId = totalNrRegs;
   addRegister();
-  varInfo.try_emplace(v, VarInfo(depth, total));
+
+  varInfo.try_emplace(v, VarInfo(depth, regId));
 }
 
 template <typename T>

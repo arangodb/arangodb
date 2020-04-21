@@ -805,6 +805,8 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 #endif
 
+std::mutex plan_mutex;
+
 /// @brief planRegisters
 void ExecutionNode::planRegisters(ExecutionNode* super) {
   // The super is only for the case of subqueries.
@@ -816,8 +818,13 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  RegisterPlanWalkerT walker(v);
-  walk(walker);
+  {
+    std::unique_lock guard(plan_mutex);
+
+    RegisterPlanWalkerT walker(v);
+    walk(walker);
+  }
+
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
@@ -825,7 +832,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
       sq->getSubquery()->planRegisters(s);
     }
   }
-  walker.reset();
+  // walker.reset();
 }
 
 RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
@@ -939,16 +946,21 @@ std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
   // Only the Singleton has no previousNode, and it does not call this method.
   TRI_ASSERT(previousNode != nullptr);
 
-  bool inserted = false;
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
   std::unordered_set<RegisterId> regsToKeep{};
   regsToKeep.reserve(getVarsUsedLater().size());
 
-  for (auto const var : getVarsUsedLater()) {
+  auto varsUsedLater = getVarsUsedLater();
+  auto varsSetHere = getVariablesSetHere();
+
+  for (auto const var : getVarsValid()) {
     auto reg = variableToRegisterId(var);
-    if (reg < nrInRegs) {
-      std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
-      TRI_ASSERT(inserted);
+
+    bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                     varsSetHere.end();
+    bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                       varsUsedLater.end();
+    if (!isSetHere && isUsedLater) {
+      regsToKeep.insert(reg);
     }
   }
 
@@ -1194,7 +1206,6 @@ bool ExecutionNode::isIncreaseDepth() const {
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::COLLECT:
 
-
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS:
@@ -1262,9 +1273,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
-VariableIdSet SingletonNode::getOutputVariables() const {
-  return {};
-}
+VariableIdSet SingletonNode::getOutputVariables() const { return {}; }
 
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
@@ -1561,9 +1570,7 @@ size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
 
-auto LimitNode::getOutputVariables() const -> VariableIdSet {
-  return {};
-}
+auto LimitNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -2532,7 +2539,6 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-auto materialize::MaterializeNode::getOutputVariables() const
-    -> VariableIdSet {
+auto materialize::MaterializeNode::getOutputVariables() const -> VariableIdSet {
   return {_outVariable->id};
 }
