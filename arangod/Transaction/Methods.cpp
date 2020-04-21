@@ -1992,6 +1992,11 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
   }
+  
+  // TODO: an extra optimizer rule could make this unnecessary
+  if (isInaccessibleCollection(idx->collection().name())) {
+    return std::make_unique<EmptyIndexIterator>(&idx->collection(), this);
+  }
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
@@ -2005,11 +2010,11 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
                                                                CursorType cursorType) {
   // For now we assume indexId is the iid part of the index.
 
-  if (_state->isCoordinator()) {
+  if (ADB_UNLIKELY(_state->isCoordinator())) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
-
+  
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
@@ -2019,6 +2024,11 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
 
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
+  
+  // TODO: an extra optimizer rule could make this unnecessary
+  if (isInaccessibleCollection(collectionName)) {
+    return std::make_unique<EmptyIndexIterator>(logical.get(), this);
+  }
 
   std::unique_ptr<IndexIterator> iterator;
   switch (cursorType) {

@@ -83,6 +83,12 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   std::unordered_set<std::string> const& restrictToShards = query.queryOptions().restrictToShards;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
+#ifdef USE_ENTERPRISE
+    if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
+      _inaccessible.insert(col->name());
+      _inaccessible.insert(std::to_string(col->id()));
+    }
+#endif
     _edgeCollections.emplace_back(
         getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards)));
   }
@@ -93,15 +99,13 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // It might in fact be empty, if we only have edge collections in a graph.
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
-    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
 #ifdef USE_ENTERPRISE
-    for (auto const& s : shards) {
-      if (query.trxForOptimization().isInaccessibleCollectionId(col->getPlanId())) {
-        _inaccessibleShards.insert(s);
-        _inaccessibleShards.insert(std::to_string(col->id()));
-      }
+    if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
+      _inaccessible.insert(col->name());
+      _inaccessible.insert(std::to_string(col->id()));
     }
 #endif
+    auto shards = getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards));
     _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
@@ -171,16 +175,16 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
   }
   infoBuilder.close();  // edges
 
-#ifdef USE_ENTERPRISE
-  if (!_inaccessibleShards.empty()) {
-    infoBuilder.add(VPackValue("inaccessible"));
-    infoBuilder.openArray();
-    for (ShardID const& shard : _inaccessibleShards) {
-      infoBuilder.add(VPackValue(shard));
-    }
-    infoBuilder.close();  // inaccessible
-  }
-#endif
+//#ifdef USE_ENTERPRISE
+//  if (!_inaccessibleShards.empty()) {
+//    infoBuilder.add(VPackValue("inaccessible"));
+//    infoBuilder.openArray();
+//    for (ShardID const& shard : _inaccessibleShards) {
+//      infoBuilder.add(VPackValue(shard));
+//    }
+//    infoBuilder.close();  // inaccessible
+//  }
+//#endif
   infoBuilder.close();  // shards
 
   _node->enhanceEngineInfo(infoBuilder);
@@ -554,17 +558,19 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
   builder.add(VPackValue("options"));
   // toVelocyPack will open & close the "options" object
 #ifdef USE_ENTERPRISE
-  if (_query.queryOptions().skipInaccessibleCollections/* trx()->state()->options().skipInaccessibleCollections*/) {
+  if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
     aql::QueryOptions opts = _query.queryOptions();
-    TRI_ASSERT(opts.skipInaccessibleCollections);
-    auto usedCollections = _shardLocking.getUsedCollections();
-    for (auto const& it : usedCollections) {
-      TRI_ASSERT(it != nullptr);
-      if (_query.trxForOptimization().isInaccessibleCollectionId(it->getPlanId())) {
-        for (ShardID const& sid : _shardLocking.getShardsForCollection(server, it)) {
+    TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
+    std::vector<Collection const*> used = _shardLocking.getUsedCollections();
+    for (Collection const* coll : used) {
+      TRI_ASSERT(coll != nullptr);
+      // simon: add collection name, plan ID and shard IDs
+      if (_query.trxForOptimization().isInaccessibleCollection(coll->getPlanId())) {
+        for (ShardID const& sid : _shardLocking.getShardsForCollection(server, coll)) {
           opts.inaccessibleCollections.insert(sid);
         }
-        opts.inaccessibleCollections.insert(std::to_string(it->getPlanId()));
+        opts.inaccessibleCollections.insert(std::to_string(coll->getPlanId()));
+//        opts.inaccessibleCollections.insert(coll->name());
       }
     }
     opts.toVelocyPack(builder, true);

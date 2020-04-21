@@ -81,10 +81,6 @@ struct QueryOptions {
   bool verboseErrors;
   bool inspectSimplePlans;
   
-#ifdef USE_ENTERPRISE
-  bool skipInaccessibleCollections;
-#endif
-
   /// @brief hack to be used only for /_api/export, contains the name of
   /// the target collection
   std::string exportCollection;

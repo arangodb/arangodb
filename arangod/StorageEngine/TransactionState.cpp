@@ -59,11 +59,10 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
-
-  releaseCollections();
-
-  // free all collections
+  
+  // process collections in reverse order, free all collections
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (*it)->releaseUsage();
     delete (*it);
   }
 }
@@ -145,7 +144,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
     
     // we may need to recheck permissions here
     if (trxColl->accessType() < accessType) {
-      res.reset(checkCollectionPermission(cname, accessType));
+      res.reset(checkCollectionPermission(cid, cname, accessType));
 
       if (res.fail()) {
         return res;
@@ -175,7 +174,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   }
 
   // now check the permissions
-  res = checkCollectionPermission(cname, accessType);
+  res = checkCollectionPermission(cid, cname, accessType);
 
   if (res.fail()) {
     return res;
@@ -291,8 +290,9 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
-Result TransactionState::checkCollectionPermission(std::string const& cname,
-                                                   AccessMode::Type accessType) const {
+Result TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
+                                                   std::string const& cname,
+                                                   AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();
 
@@ -309,8 +309,8 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
         << "User " << exec.user() << " has collection auth::Level::NONE";
     
 #ifdef USE_ENTERPRISE
-    if (accessType == AccessMode::Type::READ) {
-      
+    if (accessType == AccessMode::Type::READ && _options.skipInaccessibleCollections) {
+      addInaccessibleCollection(cid, cname);
       return Result();
     }
 #endif
@@ -332,14 +332,6 @@ Result TransactionState::checkCollectionPermission(std::string const& cname,
   }
 
   return Result{};
-}
-
-/// @brief release collection locks for a transaction
-void TransactionState::releaseCollections() {
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->releaseUsage();
-  }
 }
 
 /// @brief clear the query cache for all collections that were modified by

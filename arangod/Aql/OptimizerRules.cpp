@@ -5788,19 +5788,6 @@ void arangodb::aql::removeDataModificationOutVariablesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-// replace inaccessible EnumerateCollectionNode with NoResult nodes
-#ifdef USE_ENTERPRISE
-void arangodb::aql::skipInaccessibleCollectionsRule(Optimizer* opt,
-                                                    std::unique_ptr<ExecutionPlan> plan,
-                                                    OptimizerRule const& rule) {
-  bool wasModified = false;
-  if (!plan->getAst()->query().queryOptions().skipInaccessibleCollections) {
-    opt->addPlan(std::move(plan), rule, wasModified);
-    return;
-  }
-}
-#endif
-
 /// @brief patch UPDATE statement on single collection that iterates over the
 /// entire collection to operate in batches
 void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
@@ -7415,8 +7402,9 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   bool const _parallelizeWrites;
   bool _isParallelizable;
 
-  explicit ParallelizableFinder(/*TRI_vocbase_t const& _vocbase*/)
-      : _parallelizeWrites(true/*_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()*/),
+  explicit ParallelizableFinder(bool parallelizeWrites)
+#warning TODO
+      : _parallelizeWrites(parallelizeWrites && false),
         _isParallelizable(true) {}
 
   ~ParallelizableFinder() = default;
@@ -7453,13 +7441,13 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// no modification nodes, ScatterNodes etc
-bool isParallelizable(GatherNode* node) {
+bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
 //  if (_parallelism == Parallelism::Serial) {
 //    // node already defined to be serial
 //    return false;
 //  }
 
-  ParallelizableFinder finder;
+  ParallelizableFinder finder(parallelizeWrites);
   for (ExecutionNode* e : node->getDependencies()) {
     e->walk(finder);
     if (!finder._isParallelizable) {
@@ -7521,9 +7509,12 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   if (nodes.size() == 1 && !plan->contains(EN::TRAVERSAL) &&
       !plan->contains(EN::SHORTEST_PATH) && !plan->contains(EN::K_SHORTEST_PATHS) &&
       !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+    TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
+    bool parallelizeWrites = vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites();
+
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
-    if (!gn->isInSubquery() && isParallelizable(gn)) {
+    if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
       // TODO do a cost estimation to enable async parallelism on DBServers
       gn->setParallelism(GatherNode::Parallelism::Parallel);
       modified = true;

@@ -61,6 +61,9 @@ struct Options {
   uint64_t intermediateCommitCount;
   bool allowImplicitCollections;
   bool waitForSync;
+#ifdef USE_ENTERPRISE
+  bool skipInaccessibleCollections;
+#endif
 };
 
 }  // namespace transaction

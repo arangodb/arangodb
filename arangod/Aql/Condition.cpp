@@ -618,6 +618,9 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
   std::string collectionName = coll.name();
 
   transaction::Methods& trx = _ast->query().trxForOptimization();
+  if (trx.isInaccessibleCollection(collectionName)) {
+    return {false, false};
+  }
   
   size_t itemsInIndex;
   if (!collectionName.empty() && collectionName[0] == '_' &&

@@ -233,9 +233,8 @@ class Methods {
   ENTERPRISE_VIRT OperationResult any(std::string const& collectionName);
 
   /// @brief add a collection to the transaction for read, at runtime
-  ENTERPRISE_VIRT TRI_voc_cid_t
-  addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName,
-                         AccessMode::Type type);
+  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName,
+                                       AccessMode::Type type);
 
   /// @brief add a collection to the transaction for read, at runtime
   virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName,
@@ -364,7 +363,6 @@ class Methods {
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  ENTERPRISE_VIRT
   std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
                                            CursorType cursorType);
 
@@ -379,16 +377,22 @@ class Methods {
   
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-  
-  ENTERPRISE_VIRT bool skipInaccessible() const {
+    
+#ifndef USE_ENTERPRISE
+  bool skipInaccessible() const {
     return false;
   }
-  ENTERPRISE_VIRT bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) const {
+  bool isInaccessibleCollection(TRI_voc_cid_t /*cid*/) const {
     return false;
   }
-  ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) const {
+  bool isInaccessibleCollection(std::string const& /*cname*/) const {
     return false;
   }
+#else
+  bool skipInaccessible() const;
+  bool isInaccessibleCollection(TRI_voc_cid_t /*cid*/) const;
+  bool isInaccessibleCollection(std::string const& /*cname*/) const;
+#endif
 
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
@@ -455,7 +459,7 @@ class Methods {
 
  protected:
   /// @brief return the transaction collection for a document collection
-  ENTERPRISE_VIRT TransactionCollection* trxCollection(
+  TransactionCollection* trxCollection(
       TRI_voc_cid_t cid, AccessMode::Type type = AccessMode::Type::READ) const;
   
   TransactionCollection* trxCollection(
@@ -471,21 +475,11 @@ class Methods {
   OperationResult countLocal(std::string const& collectionName, CountType type);
 
   /// @brief add a collection by id, with the name supplied
-  ENTERPRISE_VIRT Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
+  Result addCollection(TRI_voc_cid_t, std::string const&, AccessMode::Type);
 
   /// @brief add a collection by name
   Result addCollection(std::string const&, AccessMode::Type);
   
-#if 0
-
-  /// @brief read- or write-lock a collection
-  ENTERPRISE_VIRT Result lockRecursive(TRI_voc_cid_t, AccessMode::Type);
-
-  /// @brief read- or write-unlock a collection
-  ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
-  
-#endif
-
  protected:
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
