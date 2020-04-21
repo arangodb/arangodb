@@ -747,7 +747,7 @@ void output(level_t level, log_appender_callback_t appender, void* context) {
 void output_le(level_t level, log_appender_callback_t appender, void* context) {
   logger_ctx::instance().output_le(level, appender, context);
 }
-#if !defined(_MSC_VER)
+#ifndef _MSC_VER
 class stack_trace_printer {
  public:
    int start(level_t level) {
@@ -822,7 +822,7 @@ void stack_trace(level_t level) {
     stack_trace_win32(level, nullptr);
   #else
     stack_trace_printer printer;
-    int fd = printer.start();
+    int fd = printer.start(level);
     try {
       if (!stack_trace_libunwind(level, fd) && !stack_trace_gdb(level, fd)) {
         stack_trace_posix(level, fd);
@@ -853,7 +853,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
     stack_trace_win32(level, nullptr);
   #else
     stack_trace_printer printer;
-    int fd = printer.start();
+    int fd = printer.start(level);
     try {
 
       if (!stack_trace_libunwind(level, fd) && !stack_trace_gdb(level, fd)) {
