@@ -194,9 +194,8 @@ struct field_collector final: public irs::sort::field_collector {
   uint64_t total_term_freq = 0; // number of terms for processed field
 
   virtual void collect(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field
-  ) override {
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
 
     auto& freq = field.attributes().get<irs::frequency>();
@@ -204,6 +203,11 @@ struct field_collector final: public irs::sort::field_collector {
     if (freq) {
       total_term_freq += freq->value;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_field = 0;
+    total_term_freq = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -238,6 +242,10 @@ struct term_collector final: public irs::sort::term_collector {
     if (meta) {
       docs_with_term += meta->docs_count;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_term = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -416,7 +424,18 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<bm25::const_score_ctx>(boost),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+          auto& state = *static_cast<const bm25::const_score_ctx*>(ctx);
+          irs::sort::score_cast<score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(query_stats);
@@ -516,7 +535,3 @@ sort::prepared::ptr bm25_sort::prepare() const {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

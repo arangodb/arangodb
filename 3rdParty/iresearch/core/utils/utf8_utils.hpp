@@ -206,7 +206,21 @@ FORCE_INLINE bool utf8_to_utf32(const bytes_ref& in, OutputIterator out) {
   return utf8_to_utf32<Checked>(in.begin(), in.size(), out);
 }
 
-NS_END
-NS_END
+inline size_t utf8_length(const byte_type* begin, size_t size) noexcept {
+  size_t length = 0;
 
-#endif
+  for (auto end = begin + size; begin < end; begin = next(begin, end)) {
+    ++length;
+  }
+
+  return length;
+}
+
+FORCE_INLINE size_t utf8_length(const bytes_ref& in) noexcept {
+  return utf8_length(in.c_str(), in.size());
+}
+
+NS_END // utf8_utils
+NS_END // ROOT
+
+#endif // IRESEARCH_UTF8_UTILS_H

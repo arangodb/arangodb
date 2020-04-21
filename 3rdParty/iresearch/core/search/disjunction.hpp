@@ -66,37 +66,6 @@ void evaluate_score_iter(const irs::byte_type**& pVal,  DocIterator& src) {
 
 NS_END // detail
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class position_score_iterator_adapter
-/// @brief adapter to use doc_iterator with positions for disjunction
-////////////////////////////////////////////////////////////////////////////////
-template<typename DocIterator>
-struct position_score_iterator_adapter : score_iterator_adapter<DocIterator> {
-  position_score_iterator_adapter(DocIterator&& it) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(it)) {
-    auto& attrs = this->it->attributes();
-    position = irs::position::extract(attrs);
-  }
-
-  position_score_iterator_adapter(const position_score_iterator_adapter&) = default;
-  position_score_iterator_adapter& operator=(const position_score_iterator_adapter&) = default;
-
-  position_score_iterator_adapter(position_score_iterator_adapter&& rhs) noexcept
-    : score_iterator_adapter<DocIterator>(std::move(rhs)),
-      position(std::move(rhs.position)) {
-  }
-
-  position_score_iterator_adapter& operator=(position_score_iterator_adapter&& rhs) noexcept {
-    if (this != &rhs) {
-      position = rhs.position;
-      score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
-    }
-    return *this;
-  }
-
-  irs::position* position;
-}; // position_score_iterator_adapter
-
 template<typename Adapter>
 struct compound_doc_iterator : doc_iterator {
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) = 0;
@@ -200,11 +169,12 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   virtual void visit(void* ctx, bool (*visitor)(void*, Adapter&)) override {
     assert(ctx);
     assert(visitor);
-    if (*lhs_.doc == doc_.value && !visitor(ctx, lhs_)) {
+    assert(lhs_.doc->value >= doc_.value); // assume that seek or next has been called
+    if (lhs_.value() == doc_.value && !visitor(ctx, lhs_)) {
       return;
     }
     seek_iterator_impl(rhs_, doc_.value);
-    if (*rhs_.doc == doc_.value && !visitor(ctx, rhs_)) {
+    if (rhs_.value() == doc_.value && !visitor(ctx, rhs_)) {
       return;
     }
   }
@@ -270,11 +240,10 @@ class basic_disjunction final : public doc_iterator_base<compound_doc_iterator<A
   void next_iterator_impl(doc_iterator_t& it) {
     const auto doc = it.value();
 
-    if (doc_ == doc) {
+    if (doc_.value == doc) {
       it->next();
     } else if (doc < doc_.value) {
-      assert(!doc_limits::eof(doc_.value));
-      it->seek(doc_.value + 1);
+      it->seek(doc_.value + doc_id_t(!doc_limits::eof(doc_.value)));
     }
   }
 
@@ -362,7 +331,7 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
         if (!remove_iterator(it)) {
-          doc_ = doc_limits::eof();
+          doc_.value = doc_limits::eof();
           return false;
         }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
@@ -375,7 +344,7 @@ class small_disjunction final : public doc_iterator_base<compound_doc_iterator<A
       }
     }
 
-    doc_ = min;
+    doc_.value = min;
     return true;
   }
 

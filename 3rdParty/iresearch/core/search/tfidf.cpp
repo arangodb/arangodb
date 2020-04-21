@@ -174,11 +174,13 @@ struct byte_ref_iterator
 struct field_collector final: public irs::sort::field_collector {
   uint64_t docs_with_field = 0; // number of documents containing the matched field (possibly without matching terms)
 
-  virtual void collect(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field
-  ) override {
+  virtual void collect(const irs::sub_reader& /*segment*/,
+                       const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_field = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -200,16 +202,18 @@ struct field_collector final: public irs::sort::field_collector {
 struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
 
-  virtual void collect(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field,
-    const irs::attribute_view& term_attrs
-  ) override {
+  virtual void collect(const irs::sub_reader& /*segment*/,
+                       const irs::term_reader& /*field*/,
+                       const irs::attribute_view& term_attrs) override {
     auto& meta = term_attrs.get<irs::term_meta>();
 
     if (meta) {
       docs_with_term += meta->docs_count;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_term = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -342,7 +346,18 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<tfidf::const_score_ctx>(boost),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+          auto& state = *static_cast<const tfidf::const_score_ctx*>(ctx);
+          irs::sort::score_cast<tfidf::score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(stats_buf);
@@ -432,7 +447,3 @@ sort::prepared::ptr tfidf_sort::prepare() const {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

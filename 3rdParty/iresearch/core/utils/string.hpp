@@ -23,12 +23,13 @@
 #ifndef IRESEARCH_STRING_H
 #define IRESEARCH_STRING_H
 
-#include "shared.hpp"
-
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <cassert>
-#include <algorithm>
+#include <vector>
+
+#include "shared.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   std extensions
@@ -348,6 +349,11 @@ inline size_t common_prefix_length(
     const basic_string_ref<Char, Traits>& lhs,
     const basic_string_ref<Char, Traits>& rhs) noexcept {
   return common_prefix_length(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+}
+
+template<typename Char>
+inline void assign(std::basic_string<Char>& str, const basic_string_ref<Char>& ref) {
+  str.assign(ref.c_str(), ref.size());
 }
 
 template< typename _Elem, typename _Traits >

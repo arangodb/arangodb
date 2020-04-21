@@ -21,11 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "wildcard_filter.hpp"
-#include "phrase_filter.hpp"
 
 #include "shared.hpp"
-#include "multiterm_query.hpp"
-#include "term_query.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/multiterm_query.hpp"
+#include "search/term_filter.hpp"
+#include "search/prefix_filter.hpp"
 #include "index/index_reader.hpp"
 #include "utils/wildcard_utils.hpp"
 #include "utils/automaton_utils.hpp"
@@ -54,7 +55,7 @@ inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
 inline void executeWildcard(
-    bstring& buf, bytes_ref& term, Invalid inv, Term t, Prefix p, WildCard w) {
+    bstring& buf, bytes_ref term, Invalid inv, Term t, Prefix p, WildCard w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
       inv();
@@ -98,27 +99,6 @@ inline void executeWildcard(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// MSVC2019 does not link inner functions in lambdas directly
-inline void by_prefix_visit(const term_reader& reader,
-                            const bytes_ref& term,
-                            filter_visitor& fv) {
-  by_prefix::visit(reader, term, fv);
-}
-
-inline void term_query_visit(const term_reader& reader,
-                             const bytes_ref& term,
-                             filter_visitor& fv) {
-  term_query::visit(reader, term, fv);
-}
-
-inline void automaton_visit(const term_reader& reader,
-                            const bytes_ref& term,
-                            filter_visitor& fv) {
-  automaton_visit(reader, from_wildcard(term), fv);
-}
-////////////////////////////////////////////////////////////////////////////////
-
 NS_END
 
 NS_ROOT
@@ -130,12 +110,67 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
+field_visitor by_wildcard::visitor(const bytes_ref& term) {
+  field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
+
+  bstring buf;
+  executeWildcard(
+    buf, term,
+    [](){ },
+    [&res](const bytes_ref& term) {
+      // must copy term as it may point to temporary string
+      res = [term = bstring(term)](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) {
+        by_term::visit(segment, field, term, visitor);
+      };
+    },
+    [&res](const bytes_ref& term) {
+      // must copy term as it may point to temporary string
+      res = [term = bstring(term)](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) {
+        by_prefix::visit(segment, field, term, visitor);
+      };
+    },
+    [&res](const bytes_ref& term) {
+      struct automaton_context : util::noncopyable {
+        automaton_context(const bytes_ref& term)
+          : acceptor(from_wildcard(term)),
+            matcher(make_automaton_matcher(acceptor)) {
+        }
+
+        automaton acceptor;
+        automaton_table_matcher matcher;
+      };
+
+      // FIXME
+      auto ctx = memory::make_shared<automaton_context>(term);
+
+      if (!validate(ctx->acceptor)) {
+        return;
+      }
+
+      res = [ctx](
+          const sub_reader& segment,
+          const term_reader& field,
+          filter_visitor& visitor) mutable {
+        return irs::visit(segment, field, ctx->matcher, visitor);
+      };
+    }
+  );
+
+  return res;
+}
+
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
     const index_reader& index,
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    bytes_ref term,
+    const bytes_ref& term,
     size_t scored_terms_limit) {
   bstring buf;
   filter::prepared::ptr res;
@@ -144,37 +179,15 @@ DEFINE_FACTORY_DEFAULT(by_wildcard)
     [&res]() {
       res = prepared::empty(); },
     [&res, &index, &order, boost, &field](const bytes_ref& term) {
-      res = term_query::make(index, order, boost, field, term);},
+      res = by_term::prepare(index, order, boost, field, term);},
     [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
       res = by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);},
     [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
-      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit, index, order, boost);}
-  );
-  return res;
-}
-
-/*static*/ void by_wildcard::visit(
-    const term_reader& reader,
-    bytes_ref term,
-    filter_visitor& fv) {
-  bstring buf;
-  executeWildcard(
-    buf, term,
-    []() {},
-    [&reader, &fv](const bytes_ref& term) {
-      term_query_visit(reader, term, fv);
-    },
-    [&reader, &fv](const bytes_ref& term) {
-      by_prefix_visit(reader, term, fv);
-    },
-    [&reader, &fv](const bytes_ref& term) {
-      ::automaton_visit(reader, term, fv);
+      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit,
+                                     index, order, boost);
     }
   );
-}
-
-by_wildcard::by_wildcard() noexcept
-  : by_prefix(by_wildcard::type()) {
+  return res;
 }
 
 NS_END

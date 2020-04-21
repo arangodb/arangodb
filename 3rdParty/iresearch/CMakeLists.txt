@@ -341,7 +341,11 @@ if (USE_TESTS)
         coverage
         "--ires_output"
       )
-      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
+      setup_target_for_collecting_coverage_cobertura(
+        ${IResearch_TARGET_NAME}-coverage-cobertura-collect
+        coverage
+      )
+      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura-collect
         ${IResearchTests_TARGET_NAME}-static
       )
     endif()

@@ -23,54 +23,31 @@
 #ifndef IRESEARCH_TERM_QUERY_H
 #define IRESEARCH_TERM_QUERY_H
 
-#include "filter.hpp"
-#include "cost.hpp"
-#include "utils/string.hpp"
+#include "search/filter.hpp"
 
 NS_ROOT
 
-struct term_reader;
-struct filter_visitor;
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class term_state
-/// @brief cached per reader term state
-//////////////////////////////////////////////////////////////////////////////
-struct reader_term_state {
-  reader_term_state() = default;
-
-  reader_term_state(reader_term_state&& rhs) noexcept
-    : reader(rhs.reader),
-      cookie(std::move(rhs.cookie)) {
-    rhs.reader = nullptr;
-  }
-
-  const term_reader* reader{};
-  seek_term_iterator::cookie_ptr cookie;
-}; // term_state
-
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @class range_query
 /// @brief compiled query suitable for filters with a single term like "by_term"
-//////////////////////////////////////////////////////////////////////////////
-class term_query : public filter::prepared {
+////////////////////////////////////////////////////////////////////////////////
+class term_query final : public filter::prepared {
  public:
-  typedef states_cache<reader_term_state> states_t;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @class term_state
+  /// @brief cached per reader term state
+  //////////////////////////////////////////////////////////////////////////////
+  struct term_state {
+    term_state() = default;
+    term_state(term_state&& rhs) = default;
+
+    const term_reader* reader{};
+    seek_term_iterator::cookie_ptr cookie;
+  }; // term_state
+
+  typedef states_cache<term_state> states_t;
 
   DECLARE_SHARED_PTR(term_query);
-
-  static ptr make(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term
-  );
-
-  static void visit(
-    const term_reader& reader,
-    const bytes_ref& term,
-    filter_visitor& visitor);
 
   explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
 
@@ -81,7 +58,7 @@ class term_query : public filter::prepared {
   ) const override;
 
  private:
-  states_cache<reader_term_state> states_;
+  states_cache<term_state> states_;
   bstring stats_;
 }; // term_query
 

@@ -475,7 +475,3 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
 
 NS_END // analysis
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

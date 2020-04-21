@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -5781,8 +5781,10 @@ void init() {
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
+  REGISTER_FORMAT(::format13);
 #ifdef IRESEARCH_SSE2
   REGISTER_FORMAT(::format12simd);
+  REGISTER_FORMAT(::format13simd);
 #endif // IRESEARCH_SSE2
 #endif
 }
@@ -5797,7 +5799,3 @@ format::format(const irs::format::type_id& type) noexcept
 
 NS_END // version10
 NS_END // root
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -101,7 +101,7 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
+  explicit document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
     : basic_attribute<doc_id_t>(doc) {
   }
 };

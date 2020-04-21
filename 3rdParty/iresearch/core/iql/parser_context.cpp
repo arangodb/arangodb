@@ -1426,7 +1426,3 @@ parser::semantic_type parser_context::try_eval(
 #if defined (__GNUC__)
   #pragma GCC diagnostic pop
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
