@@ -790,3 +790,11 @@ bool GraphNode::isUsedAsSatellite() const {
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
+
+VariableIdSet GraphNode::getOutputVariables() const {
+  VariableIdSet vars;
+  for (auto const& it : getVariablesSetHere()) {
+    vars.insert(it->id);
+  }
+  return vars;
+}
