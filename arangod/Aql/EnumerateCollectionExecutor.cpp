@@ -59,8 +59,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool random)
+    std::vector<size_t> const& coveringIndexAttributePositions, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
@@ -130,13 +129,6 @@ _state(ExecutionState::HASMORE),
                                          ? transaction::Methods::CursorType::ANY
                                          : transaction::Methods::CursorType::ALL)));
 
-  if (!waitForSatellites(_infos.getQuery(), _infos.getCollection())) {
-    double maxWait = _infos.getQuery().queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + _infos.getCollection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
   if (_infos.getProduceResult()) {
     _documentProducer =
         buildDocumentCallback<false, false>(_documentProducingFunctionContext);
@@ -288,9 +280,3 @@ void EnumerateCollectionExecutor::initializeCursor() {
   _cursorHasMore = false;
   _cursor->reset();
 }
-#ifndef USE_ENTERPRISE
-bool EnumerateCollectionExecutor::waitForSatellites(aql::QueryContext& query,
-                                                    Collection const* collection) const {
-  return true;
-}
-#endif

@@ -144,7 +144,7 @@ class GraphManager {
    *
    * @return Either OK or an error.
    */
-  Result ensureCollections(Graph const* graph, bool waitForSync) const;
+  Result ensureCollections(Graph* graph, bool waitForSync) const;
 
   /// @brief check if only satellite collections are used
   bool onlySatellitesUsed(Graph const* graph) const;

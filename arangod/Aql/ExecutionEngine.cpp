@@ -1029,3 +1029,9 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   
   return ExecutionState::WAITING;
 }
+
+#ifndef USE_ENTERPRISE
+bool ExecutionEngine::waitForSatellites(QueryContext& /*query*/, Collection const* /*collection*/) const {
+  return true;
+}
+#endif
