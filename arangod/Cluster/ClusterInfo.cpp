@@ -2274,9 +2274,10 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
 
       auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+      auto s1 = std::chrono::steady_clock::now();
       auto r = cache.waitFor(
         res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+      LOG_DEVEL << std::chrono::duration<double>(std::chrono::steady_clock::now() - s1).count();
       loadPlan();
     }
   }
@@ -2339,6 +2340,12 @@ Result ClusterInfo::createCollectionsCoordinator(
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
+        LOG_DEVEL << "waiting for " << res.slice().toJson();
+        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+        auto r = cache.waitFor(
+          res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        LOG_DEVEL << "done " << res.slice().toJson();
+
       }
 
       // Report if this operation worked, if it failed collections will be
@@ -2396,7 +2403,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           // Let us check if we skipped other callbacks as well
           for (; i < infos.size(); ++i) {
             if (infos[i].state == ClusterCollectionCreationState::INIT) {
-              agencyCallbacks[i]->refetchAndUpdate2(true, false);
+              agencyCallbacks[i]->refetchAndUpdate(true, false);
             }
           }
         }

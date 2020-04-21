@@ -78,7 +78,7 @@ std::tuple <query_t, index_t> const AgencyCache::get(
 
 futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   std::lock_guard s(_storeLock);
-  if (index < _commitIndex) {
+  if (index <= _commitIndex) {
     LOG_DEVEL << "done before";
     return futures::makeFuture(arangodb::Result());
   }
@@ -156,7 +156,7 @@ void AgencyCache::run() {
                   auto const& key = q.key.copyString();
                   std::lock_guard g(_callbacksLock);
                   for (auto i : _callbacks) {
-                    if (key.rfind(i.first, 0) == 0) {
+                    if (key.find(i.first) != std::string::npos) {
                       toCall.push_back(i.second);
                     }
                   }
@@ -175,7 +175,7 @@ void AgencyCache::run() {
                 LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
                   << "Agency callback " << i << " has been triggered. refetching!";
                 try {
-                  cb->refetchAndUpdate2(true, false);
+                  cb->refetchAndUpdate(true, false);
                 } catch (arangodb::basics::Exception const& e) {
                   LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM)
                     << "Error executing callback: " << e.message();

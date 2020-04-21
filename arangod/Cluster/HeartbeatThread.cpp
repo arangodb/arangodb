@@ -369,8 +369,8 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   }
   // Check Plan/Version and Current/Version in case a callback did not get
   // through:
-  _planAgencyCallback->refetchAndUpdate2(true, false);
-  _currentAgencyCallback->refetchAndUpdate2(true, false);
+  _planAgencyCallback->refetchAndUpdate(true, false);
+  _currentAgencyCallback->refetchAndUpdate(true, false);
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
