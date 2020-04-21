@@ -323,7 +323,8 @@ void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef ver
   TRI_ASSERT(_internalCursorMapping == nullptr || _internalCursorMapping->size() == _cursors.size());
 }
 
-void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex) {
+void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
+                                       arangodb::velocypack::StringRef vertex) {
   auto& node = info.indexCondition;
   TRI_ASSERT(node->numMembers() > 0);
   if (info.conditionNeedUpdate) {
@@ -343,8 +344,8 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info, aran
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
-  for (auto const& it : info.idxHandles) {
+  for (std::shared_ptr<Index> const& index : info.idxHandles) {
     csrs.emplace_back(
-        std::make_unique<OperationCursor>(_trx->indexScanForCondition(it, node, _tmpVar, ::defaultIndexIteratorOptions)));
+        std::make_unique<OperationCursor>(_trx->indexScanForCondition(index, node, _tmpVar, ::defaultIndexIteratorOptions)));
   }
 }

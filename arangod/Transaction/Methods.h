@@ -363,7 +363,6 @@ class Methods {
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  ENTERPRISE_VIRT
   std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
                                            CursorType cursorType);
 
@@ -378,11 +377,11 @@ class Methods {
   
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
-  
-  ENTERPRISE_VIRT bool skipInaccessible() const {
+    
+#ifndef USE_ENTERPRISE
+  bool skipInaccessible() const {
     return false;
   }
-#ifndef USE_ENTERPRISE
   bool isInaccessibleCollection(TRI_voc_cid_t /*cid*/) const {
     return false;
   }
@@ -390,6 +389,7 @@ class Methods {
     return false;
   }
 #else
+  bool skipInaccessible() const;
   bool isInaccessibleCollection(TRI_voc_cid_t /*cid*/) const;
   bool isInaccessibleCollection(std::string const& /*cname*/) const;
 #endif
