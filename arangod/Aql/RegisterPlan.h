@@ -122,24 +122,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 };
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r) {
-  // level -> variable, info
-  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
-
-  for (auto [id, info] : r.varInfo) {
-    frames[info.depth][id] = info;
-  }
-
-  for (auto [depth, vars] : frames) {
-    os << "depth " << depth << std::endl;
-    os << "------------------------------------" << std::endl;
-
-    for (auto [id, info] : vars) {
-      os << "id = " << id << " register = " << info.registerId << std::endl;
-    }
-  }
-  return os;
-}
+std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
 

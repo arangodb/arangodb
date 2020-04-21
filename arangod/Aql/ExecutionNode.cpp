@@ -805,8 +805,6 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 #endif
 
-std::mutex plan_mutex;
-
 /// @brief planRegisters
 void ExecutionNode::planRegisters(ExecutionNode* super) {
   // The super is only for the case of subqueries.
@@ -818,12 +816,8 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  {
-    std::unique_lock guard(plan_mutex);
-
-    RegisterPlanWalkerT walker(v);
-    walk(walker);
-  }
+  RegisterPlanWalkerT walker(v);
+  walk(walker);
 
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
@@ -832,7 +826,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
       sq->getSubquery()->planRegisters(s);
     }
   }
-  // walker.reset();
+  walker.reset();
 }
 
 RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {

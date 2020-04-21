@@ -213,11 +213,9 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<Registe
   if (unusedRegisters.empty()) {
     regId = totalNrRegs;
     addRegister();
-    LOG_DEVEL << "Adding new register id " << regId << " for variable " << v;
   } else {
     auto iter = unusedRegisters.begin();
     regId = *iter;
-    LOG_DEVEL << "Reusing register id " << regId << " for variable " << v;
     unusedRegisters.erase(iter);
   }
 
@@ -281,5 +279,26 @@ void RegisterPlanT<T>::addSubqueryNode(ExecutionNode* subquery) {
   subQueryNodes.emplace_back(subquery);
 }
 
+template <typename T>
+std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
+  // level -> variable, info
+  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
+
+  for (auto [id, info] : r.varInfo) {
+    frames[info.depth][id] = info;
+  }
+
+  for (auto [depth, vars] : frames) {
+    os << "depth " << depth << std::endl;
+    os << "------------------------------------" << std::endl;
+
+    for (auto [id, info] : vars) {
+      os << "id = " << id << " register = " << info.registerId << std::endl;
+    }
+  }
+  return os;
+}
+
 template struct aql::RegisterPlanT<ExecutionNode>;
 template struct aql::RegisterPlanWalkerT<ExecutionNode>;
+template std::ostream& aql::operator<<<ExecutionNode>(std::ostream& os, const RegisterPlanT<ExecutionNode>& r);
