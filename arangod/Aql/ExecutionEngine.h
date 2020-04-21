@@ -47,8 +47,8 @@ class Collection;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
-class QueryRegistry;
 class QueryContext;
+class QueryRegistry;
 class SkipResult;
 class SharedQueryState;
 
@@ -147,7 +147,7 @@ class ExecutionEngine {
     _wasShutdown = true;
   }
   
-  bool waitForSatellites(Collection const* collection) const;
+  bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
  private:
   
