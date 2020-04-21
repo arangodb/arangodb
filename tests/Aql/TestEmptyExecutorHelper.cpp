@@ -49,8 +49,3 @@ std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(Outp
 
   return {state, stats};
 }
-
-TestEmptyExecutorHelperInfos::TestEmptyExecutorHelperInfos(
-    RegisterId inputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep) {}

@@ -290,9 +290,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       auto executorInfos =
-          HashedCollectExecutorInfos(std::move(readableInputRegisters),
-                                     std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), collectRegister,
+          HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),
                                      std::move(aggregateRegisters), trxPtr, _count);
 
@@ -390,10 +388,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
       TRI_ASSERT(groupRegisters.size() == 1);
-      auto executorInfos =
-          DistinctCollectExecutorInfos(std::move(readableInputRegisters),
-                                       std::move(writeableOutputRegisters),
-                                       groupRegisters.front(), trxPtr);
+      auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(), trxPtr);
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));

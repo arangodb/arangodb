@@ -79,7 +79,7 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
                          {}, 2, 2, {}, {0, 1});
   }
   auto buildExecutorInfos() -> FilterExecutorInfos {
-    return FilterExecutorInfos{0, 2, 2, {}, {0, 1}};
+    return FilterExecutorInfos{0};
   }
 };
 

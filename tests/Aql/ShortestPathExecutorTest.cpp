@@ -261,9 +261,10 @@ class ShortestPathExecutorTest
   TestShortestPathOptions options;
   TokenTranslator& translator;
 
+  RegisterInfos registerInfos;
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
-  ShortestPathExecutorInfos infos;
+  ShortestPathExecutorInfos executorInfos;
 
   FakePathFinder& finder;
 
@@ -282,15 +283,18 @@ class ShortestPathExecutorTest
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        infos(std::make_unique<FakePathFinder>(options, translator),
-              std::move(parameters._registerMapping),
-              std::move(parameters._source), std::move(parameters._target)),
-        finder(static_cast<FakePathFinder&>(infos.finder())),
+        registerInfos(std::make_shared<RegisterSet>(parameters._inputRegisters),
+                      std::make_shared<RegisterSet>(parameters._outputRegisters),
+                      2, 4, {}, {0, 1}),
+        executorInfos(std::make_unique<FakePathFinder>(options, translator),
+                      std::move(parameters._registerMapping),
+                      std::move(parameters._source), std::move(parameters._target)),
+        finder(static_cast<FakePathFinder&>(executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
         input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
-        testee(fetcher, infos) {
+        testee(fetcher, executorInfos) {
     for (auto&& p : parameters._paths) {
       finder.addPath(std::move(p));
     }
@@ -319,20 +323,20 @@ class ShortestPathExecutorTest
       auto source = std::string{};
       auto target = std::string{};
 
-      if (infos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, infos.getSourceInputRegister());
+      if (executorInfos.useRegisterForSourceInput()) {
+        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
-        source = infos.getSourceInputValue();
+        source = executorInfos.getSourceInputValue();
       }
 
-      if (infos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, infos.getTargetInputRegister());
+      if (executorInfos.useRegisterForTargetInput()) {
+        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
-        target = infos.getTargetInputValue();
+        target = executorInfos.getTargetInputValue();
       }
       ASSERT_EQ(source, input.first);
       ASSERT_EQ(target, input.second);
@@ -345,8 +349,8 @@ class ShortestPathExecutorTest
                       size_t skippedInitial, size_t skippedFullCount) {
     auto pathsQueriedBetween = finder.getCalledWith();
 
-    FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
-    TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
+    FakePathFinder& finder = static_cast<FakePathFinder&>(executorInfos.finder());
+    TokenTranslator& translator = *(static_cast<TokenTranslator*>(executorInfos.cache()));
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
@@ -371,10 +375,9 @@ class ShortestPathExecutorTest
       if (block != nullptr) {
         ASSERT_NE(block, nullptr);
         for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
-          if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+          if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
-                block->getValue(blockIndex,
-                                infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
             EXPECT_TRUE(value.isObject());
             EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                             value.slice(),
@@ -382,10 +385,9 @@ class ShortestPathExecutorTest
                                 expectedRowsFound[expectedRowsIndex])),
                             false) == 0);
           }
-          if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+          if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
             AqlValue value =
-                block->getValue(blockIndex,
-                                infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
 
             if (expectedPathStarts.find(expectedRowsIndex) != expectedPathStarts.end()) {
               EXPECT_TRUE(value.isNull(false));
@@ -438,8 +440,9 @@ class ShortestPathExecutorTest
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
-      OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                              infos.registersToKeep(), infos.registersToClear());
+      OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                              registerInfos.registersToKeep(),
+                              registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
       std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);

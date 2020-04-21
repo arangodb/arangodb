@@ -76,10 +76,11 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   std::vector<std::pair<std::string, RegisterId>> variables;
   bool count;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters;
 
-  SortedCollectExecutorInfos infos;
+  RegisterInfos registerInfos;
+  SortedCollectExecutorInfos executorInfos;
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
@@ -94,9 +95,15 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        readableInputRegisters{0},
-        writeableOutputRegisters{1},
-        infos(std::move(groupRegisters), collectRegister, expressionRegister,
+        readableInputRegisters(make_shared_unordered_set({0})),
+        writeableOutputRegisters(make_shared_unordered_set({1})),
+        registerInfos(std::move(readableInputRegisters),
+                      std::move(writeableOutputRegisters),
+                      1 /*nrIn*/,
+                      2 /*nrOut*/,
+                      regToClear,
+                      regToKeep),
+        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
@@ -106,7 +113,7 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   AqlCall clientCall;
 
@@ -114,9 +121,10 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(1, infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(1, registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -152,11 +160,11 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters;
 
   RegisterId collectRegister;
 
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -169,7 +177,8 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   std::vector<std::pair<std::string, RegisterId>> variables;
   bool count;
 
-  SortedCollectExecutorInfos infos;
+  RegisterInfos registerInfos;
+  SortedCollectExecutorInfos executorInfos;
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
@@ -179,16 +188,18 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters({0}),
+        readableInputRegisters(make_shared_unordered_set({0})),
         collectRegister(2),
-        writeableOutputRegisters({1, 2}),
+        writeableOutputRegisters(make_shared_unordered_set({1, 2})),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(std::move(groupRegisters), collectRegister, expressionRegister,
-              expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count),
+        registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+                      1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep),
+        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
+                      expressionVariable, std::move(aggregateTypes),
+                      std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -196,7 +207,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -205,9 +216,10 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(2, infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(2, registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -242,7 +254,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}, {3}});
   AqlCall clientCall;
@@ -251,9 +263,11 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(inputBlock->size(),
+                                    registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -292,7 +306,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
   auto input = VPackParser::fromJson("[ [1], [1], [2], [2], [3] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}, {2}, {3}});
@@ -302,9 +316,11 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(inputBlock->size(),
+                                    registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -342,7 +358,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
   auto input = VPackParser::fromJson("[ [1], [1], [2], [2] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{1}, {1}, {2}, {2}});
@@ -352,9 +368,11 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(inputBlock->size(),
+                                    registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -397,8 +415,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   std::unordered_set<RegisterId> regToKeep = {};
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters = {{1, 0}};
 
-  std::unordered_set<RegisterId> readableInputRegisters = {0};
-  std::unordered_set<RegisterId> writeableOutputRegisters = {1, 2};
+  auto readableInputRegisters = make_shared_unordered_set({0});
+  auto writeableOutputRegisters = make_shared_unordered_set({1, 2});
   RegisterId nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
@@ -411,10 +429,14 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
 
-  SortedCollectExecutorInfos infos(std::move(groupRegisters), collectRegister,
-                                   expressionRegister, expressionVariable,
-                                   std::move(aggregateTypes), std::move(variables),
-                                   std::move(aggregateRegisters), trx, false);
+  auto registerInfos = RegisterInfos(std::move(readableInputRegisters),
+                                     std::move(writeableOutputRegisters), 1, nrOutputRegister,
+                                     std::move(regToClear), std::move(regToKeep));
+  auto executorInfos =
+      SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
+                                 expressionRegister, expressionVariable,
+                                 std::move(aggregateTypes), std::move(variables),
+                                 std::move(aggregateRegisters), trx, false);
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlCall clientCall;
@@ -423,14 +445,16 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(inputBlock->size(),
+                                    registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -481,11 +505,9 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-  readableInputRegisters.insert(0);
+  auto readableInputRegisters = make_shared_unordered_set({0});
 
-  std::unordered_set<RegisterId> writeableOutputRegisters;
-  writeableOutputRegisters.insert(1);
+  auto writeableOutputRegisters = make_shared_unordered_set({1, 2});
 
   RegisterId nrOutputRegister = 3;
 
@@ -499,19 +521,21 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
   Variable const* expressionVariable = nullptr;
   std::vector<std::pair<std::string, RegisterId>> variables;
-  writeableOutputRegisters.insert(2);
 
-  SortedCollectExecutorInfos infos(std::move(groupRegisters), collectRegister,
-                                   expressionRegister, expressionVariable,
-                                   std::move(aggregateTypes), std::move(variables),
-                                   std::move(aggregateRegisters), trx, false);
+  auto registerInfos = RegisterInfos(std::move(readableInputRegisters),
+                                     std::move(writeableOutputRegisters), 1,
+                                     nrOutputRegister, regToClear, regToKeep);
+  auto executorInfos = SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
+                                 expressionRegister, expressionVariable,
+                                 std::move(aggregateTypes), std::move(variables),
+                                 std::move(aggregateRegisters), trx, false);
 
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   SharedAqlItemBlockPtr inputBlock =
       buildBlock<1>(itemBlockManager, {{"\"a\""}, {"\"aa\""}, {"\"aaa\""}});
@@ -521,9 +545,11 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
-      itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear(), {});
+      itemBlockManager.requestBlock(inputBlock->size(),
+                                    registerInfos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear(), {});
 
   {
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
@@ -589,11 +615,11 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters;
 
   RegisterId collectRegister;
 
-  std::unordered_set<RegisterId> writeableOutputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -606,7 +632,8 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   std::vector<std::pair<std::string, RegisterId>> variables;
   bool count;
 
-  SortedCollectExecutorInfos infos;
+  RegisterInfos registerInfos;
+  SortedCollectExecutorInfos executorInfos;
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
@@ -616,16 +643,18 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
         fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters({0}),
+        readableInputRegisters(make_shared_unordered_set({0})),
         collectRegister(2),
-        writeableOutputRegisters({1, 2}),
+        writeableOutputRegisters(make_shared_unordered_set({1, 2})),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        infos(std::move(groupRegisters), collectRegister, expressionRegister,
-              expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count),
+        registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+                      1, nrOutputRegister, regToClear, regToKeep),
+        executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
+                      expressionVariable, std::move(aggregateTypes),
+                      std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -637,7 +666,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   AqlCall clientCall;
   clientCall.offset = 2;
@@ -673,7 +702,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   AqlCall clientCall;
   clientCall.offset = 1;
@@ -703,9 +732,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-    OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear(), clientCall);
+        itemBlockManager.requestBlock(inputBlock->size(),
+                                      registerInfos.numberOfOutputRegisters());
+    OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                            registerInfos.registersToKeep(),
+                            registerInfos.registersToClear(), clientCall);
 
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
     EXPECT_EQ(ExecutorState::DONE, state);
@@ -733,7 +764,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
   AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
   AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
 
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   AqlCall clientCall;
   clientCall.offset = 1;
@@ -780,7 +811,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
   AqlItemBlockInputRange inputRange2(ExecutorState::HASMORE, 0, inputBlock2, 0);
   AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
 
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   AqlCall clientCall;
   clientCall.offset = 1;
@@ -818,9 +849,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-    OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear(), clientCall);
+        itemBlockManager.requestBlock(inputBlock->size(),
+                                      registerInfos.numberOfOutputRegisters());
+    OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                            registerInfos.registersToKeep(),
+                            registerInfos.registersToClear(), clientCall);
 
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange2, result);
     EXPECT_EQ(state, ExecutorState::HASMORE);
@@ -830,9 +863,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-    OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear(), clientCall);
+        itemBlockManager.requestBlock(inputBlock->size(),
+                                      registerInfos.numberOfOutputRegisters());
+    OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                            registerInfos.registersToKeep(),
+                            registerInfos.registersToClear(), clientCall);
 
     auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRangeDone, result);
     EXPECT_EQ(state, ExecutorState::DONE);
@@ -855,7 +890,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
   AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
-  SortedCollectExecutor testee(fetcher, infos);
+  SortedCollectExecutor testee(fetcher, executorInfos);
 
   AqlCall clientCall;
   clientCall.offset = 1;
@@ -883,9 +918,11 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
 
   {
     SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
-    OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear(), clientCall);
+        itemBlockManager.requestBlock(inputBlock->size(),
+                                      registerInfos.numberOfOutputRegisters());
+    OutputAqlItemRow result(outputBlock, registerInfos.getOutputRegisters(),
+                            registerInfos.registersToKeep(),
+                            registerInfos.registersToClear(), clientCall);
 
     auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
     EXPECT_EQ(ExecutorState::DONE, state);

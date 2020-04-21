@@ -115,42 +115,13 @@ class HashedCollectExecutorTest
                           std::vector<std::string> aggregateTypes = {},
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    std::unordered_set<RegisterId> readableInputRegisters{};
-    std::unordered_set<RegisterId> writeableOutputRegisters{};
-
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
-      // All registers need to be invalidated!
-      registersToClear.emplace(i);
-    }
-
-    for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters.emplace(in);
-      writeableOutputRegisters.emplace(out);
-    }
-
     // It seems that count <=> collectRegister exists
     bool count = false;
     if (collectRegister != RegisterPlan::MaxRegisterId) {
-      writeableOutputRegisters.emplace(collectRegister);
       count = true;
     }
-    TRI_ASSERT(aggregateTypes.size() == aggregateRegisters.size());
-    for (auto const& [out, in] : aggregateRegisters) {
-      if (in != RegisterPlan::MaxRegisterId) {
-        readableInputRegisters.emplace(in);
-      }
-      writeableOutputRegisters.emplace(out);
-    }
 
-    return HashedCollectExecutorInfos{nrInputRegisters,
-                                      nrOutputRegisters,
-                                      registersToClear,
-                                      registersToKeep,
-                                      std::move(readableInputRegisters),
-                                      std::move(writeableOutputRegisters),
-                                      std::move(groupRegisters),
+    return HashedCollectExecutorInfos{std::move(groupRegisters),
                                       collectRegister,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
@@ -628,39 +599,16 @@ class HashedCollectExecutorTestAggregate
                          registersToKeep};
   };
 
-  auto buildExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                          std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
+  auto buildExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
       -> HashedCollectExecutorInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    std::unordered_set<RegisterId> readableInputRegisters{};
-    std::unordered_set<RegisterId> writeableOutputRegisters{};
-
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
-      // All registers need to be invalidated!
-      registersToClear.emplace(i);
-    }
-
-    for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters.emplace(in);
-      writeableOutputRegisters.emplace(out);
-    }
-
     bool count = false;
     RegisterId collectRegister = RegisterPlan::MaxRegisterId;
 
     auto agg = getAggregator();
     std::vector<std::string> aggregateTypes{agg.name};
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
-    if (agg.inReg != RegisterPlan::MaxRegisterId) {
-      readableInputRegisters.emplace(agg.inReg);
-    }
 
-    writeableOutputRegisters.emplace(3);
-
-    auto infos = HashedCollectExecutorInfos(std::move(readableInputRegisters),
-                                            std::move(writeableOutputRegisters),
-                                            std::move(groupRegisters), collectRegister,
+    auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
                                             fakedQuery->trx(), count);
@@ -704,7 +652,7 @@ INSTANTIATE_TEST_CASE_P(HashedCollectAggregate, HashedCollectExecutorTestAggrega
 
 TEST_P(HashedCollectExecutorTestAggregate, run) {
   auto registerInfos = buildRegisterInfos(2, 4, {{2, 0}});
-  auto executorInfos = buildExecutorInfos(2, 4, {{2, 0}});
+  auto executorInfos = buildExecutorInfos({{2, 0}});
   AqlCall call{};          // unlimited produce
   ExecutionStats stats{};  // No stats here
   makeExecutorTestHelper<2, 2>()

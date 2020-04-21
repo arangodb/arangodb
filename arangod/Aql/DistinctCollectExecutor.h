@@ -52,9 +52,7 @@ class SingleRowFetcher;
 
 class DistinctCollectExecutorInfos {
  public:
-  DistinctCollectExecutorInfos(std::unordered_set<RegisterId>&& readableInputRegisters,
-                               std::unordered_set<RegisterId>&& writeableInputRegisters,
-                               std::pair<RegisterId, RegisterId> groupRegister,
+  DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
                                transaction::Methods* trxPtr);
 
   DistinctCollectExecutorInfos() = delete;

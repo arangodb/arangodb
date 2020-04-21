@@ -60,8 +60,9 @@ class OutputAqlItemRow;
 
 class IdExecutorInfos {
  public:
-  IdExecutorInfos(bool doCount, RegisterId outputRegister,
-                  std::string distributeId, bool isResponsibleForInitializeCursor);
+  IdExecutorInfos(bool doCount, RegisterId outputRegister = 0,
+                  std::string distributeId = {""},
+                  bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;

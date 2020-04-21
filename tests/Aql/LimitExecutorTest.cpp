@@ -319,7 +319,7 @@ TEST_P(LimitExecutorTest, testSuite) {
       });
 
   auto registerInfos = RegisterInfos{{}, {}, 1, 1, {}, {0}};
-  auto executorInfos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
+  auto executorInfos = LimitExecutorInfos{offset, limit, fullCount};
 
   auto expectedStats = ExecutionStats{};
   expectedStats += expectedLimitStats;

@@ -53,8 +53,7 @@ class CountCollectExecutorTest
   }
 
   auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {
-    return CountCollectExecutorInfos{
-        outReg, outReg /*inputRegisters*/, outReg + 1 /*outputRegisters*/, {}, {}};
+    return CountCollectExecutorInfos{outReg};
   }
   auto GetSplit() -> CountCollectSplitType {
     auto const& [split] = GetParam();
@@ -105,20 +104,8 @@ class CountCollectExecutorTest
 
   auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
     auto const outputRegister = RegisterId{inputRegister + 1};
-    auto inputRegisterSet = make_shared_unordered_set({});
-    for (RegisterId r = 0; r <= inputRegister; ++r) {
-      inputRegisterSet->emplace(r);
-    }
-    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
-    auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
-
-    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
-                                      nrOutputRegisters, {}, toKeepRegisterSet,
-                                      nullptr, inputRegister, outputRegister, false);
+    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister, false);
   }
 
   auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {
@@ -133,17 +120,6 @@ class CountCollectExecutorTest
   }
 
   auto MakeRemoveAllLinesExecutorInfos() -> LambdaExe::Infos {
-    auto numRegs = RegisterCount{1};
-
-    auto inRegisterList = make_shared_unordered_set({});
-    auto outRegisterList = make_shared_unordered_set({});
-
-    std::unordered_set<RegisterId> toKeep;
-
-    for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
-    }
-
     ProduceCall prod = [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       EXPECT_TRUE(false) << "Should never be called";
@@ -157,8 +133,7 @@ class CountCollectExecutorTest
               AqlCall{0, true, 0, AqlCall::LimitType::HARD}};
     };
 
-    return LambdaExe::Infos(inRegisterList, outRegisterList, numRegs, numRegs,
-                            {}, toKeep, prod, skip);
+    return LambdaExe::Infos(prod, skip);
   }
 };
 

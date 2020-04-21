@@ -186,7 +186,8 @@ class KShortestPathsExecutorTest
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
 
-  KShortestPathsExecutorInfos infos;
+  RegisterInfos registerInfos;
+  KShortestPathsExecutorInfos executorInfos;
 
   FakeKShortestPathsFinder& finder;
 
@@ -205,16 +206,21 @@ class KShortestPathsExecutorTest
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
-        infos(0, std::make_unique<FakeKShortestPathsFinder>(options, parameters._paths),
-              std::move(parameters._source), std::move(parameters._target)),
-        finder(static_cast<FakeKShortestPathsFinder&>(infos.finder())),
+        registerInfos(std::make_shared<RegisterSet>(parameters._inputRegisters),
+                      std::make_shared<RegisterSet>(parameters._outputRegisters),
+                      2, 3, {}, {}),
+        executorInfos(0,
+                      std::make_unique<FakeKShortestPathsFinder>(options,
+                                                                 parameters._paths),
+                      std::move(parameters._source), std::move(parameters._target)),
+        finder(static_cast<FakeKShortestPathsFinder&>(executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
         input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
-        testee(fetcher, infos),
-        output(std::move(block), infos.getOutputRegisters(),
-               infos.registersToKeep(), infos.registersToClear()) {}
+        testee(fetcher, executorInfos),
+        output(std::move(block), registerInfos.getOutputRegisters(),
+               registerInfos.registersToKeep(), registerInfos.registersToClear()) {}
 
   size_t ExpectedNumberOfRowsProduced(size_t expectedFound) {
     if (parameters._call.getOffset() >= expectedFound) {
@@ -237,20 +243,20 @@ class KShortestPathsExecutorTest
       auto source = std::string{};
       auto target = std::string{};
 
-      if (infos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, infos.getSourceInputRegister());
+      if (executorInfos.useRegisterForSourceInput()) {
+        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
-        source = infos.getSourceInputValue();
+        source = executorInfos.getSourceInputValue();
       }
 
-      if (infos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, infos.getTargetInputRegister());
+      if (executorInfos.useRegisterForTargetInput()) {
+        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
-        target = infos.getTargetInputValue();
+        target = executorInfos.getTargetInputValue();
       }
       ASSERT_EQ(source, input.first);
       ASSERT_EQ(target, input.second);
@@ -276,7 +282,7 @@ class KShortestPathsExecutorTest
     for (auto const& block : results) {
       if (block != nullptr) {
         for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
-          AqlValue value = block->getValue(blockIndex, infos.getOutputRegister());
+          AqlValue value = block->getValue(blockIndex, executorInfos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
 
           // Note that the correct layout of the result path is currently the
@@ -309,7 +315,8 @@ class KShortestPathsExecutorTest
     }
   }
 
-  void TestExecutor(KShortestPathsExecutorInfos& infos, AqlItemBlockInputRange& input) {
+  void TestExecutor(RegisterInfos& registerInfos, KShortestPathsExecutorInfos& executorInfos,
+                    AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
     auto stats = NoStats{};
@@ -328,8 +335,8 @@ class KShortestPathsExecutorTest
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
-      OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                              infos.registersToKeep(), infos.registersToClear());
+      OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+          registerInfos.registersToKeep(), registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
       std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
@@ -348,7 +355,7 @@ class KShortestPathsExecutorTest
   }
 };  // namespace aql
 
-TEST_P(KShortestPathsExecutorTest, the_test) { TestExecutor(infos, input); }
+TEST_P(KShortestPathsExecutorTest, the_test) { TestExecutor(registerInfos, executorInfos, input); }
 
 // Conflict with the other shortest path finder
 namespace {

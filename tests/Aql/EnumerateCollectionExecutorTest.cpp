@@ -307,18 +307,14 @@ class EnumerateCollectionExecutorTestProduce
     return registerInfos;
   }
 
-  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1,
-                         std::unordered_set<RegisterId> regToClear = {},
-                         std::unordered_set<RegisterId> regToKeep = {})
+  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
-    EnumerateCollectionExecutorInfos infos{
-        outputRegister, nrInputRegister, nrOutputRegister,
-        regToClear,     regToKeep,       engine,
-        &aqlCollection, &outVariable,    varUsedLater,
-        nullptr,        projections,     coveringIndexAttributePositions,
-        random}(0, nullptr, nullptr, nullptr, false, nullptr, <#initializer #>,
-                <#initializer #>, false);
+    auto infos = EnumerateCollectionExecutorInfos{
+        outputRegister, engine,
+        &aqlCollection, &outVariable,
+        varUsedLater,   nullptr,
+        projections,    coveringIndexAttributePositions,
+        random};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

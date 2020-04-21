@@ -114,21 +114,9 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto makeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto inputRegisterSet = make_shared_unordered_set({inputRegister});
     auto const outputRegister = RegisterId{inputRegister + 1};
-    for (RegisterId r = 0; r <= inputRegister; ++r) {
-      inputRegisterSet->emplace(r);
-    }
-    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
-    auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
-
-    return SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
-                                      nrOutputRegisters, {}, toKeepRegisterSet,
-                                      nullptr, inputRegister, outputRegister, false);
+    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister, false);
   }
 
   auto makeDoNothingRegisterInfos() -> RegisterInfos {
@@ -166,8 +154,7 @@ class SplicedSubqueryIntegrationTest
       toKeep.emplace(r);
     }
 
-    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
-                            createProduceCall(), createSkipCall());
+    return LambdaExe::Infos(createProduceCall(), createSkipCall());
   }
 
   auto makeAssertRegisterInfos() -> RegisterInfos {
@@ -190,43 +177,11 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto makeAssertExecutorInfos() -> LambdaExe::Infos {
-    auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
-    std::unordered_set<RegisterId> toKeep;
-
-    for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
-    }
-
-    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
-        createAssertCall(), createSkipCall());
+    return LambdaExe::Infos(createAssertCall(), createSkipCall());
   }
 
   auto makeAssertExecutorInfos(AqlCall call) -> LambdaExe::Infos {
-    auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-
-    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{0});
-    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{1});
-
-    std::unordered_set<RegisterId> toKeep;
-
-    for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
-    }
-
-    return LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
-                            createAssertCallCall(call), createSkipCall());
+    return LambdaExe::Infos(createAssertCallCall(call), createSkipCall());
   }
 
   auto createProduceCall() -> ProduceCall {

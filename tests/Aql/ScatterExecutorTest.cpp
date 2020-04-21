@@ -102,9 +102,7 @@ class SharedScatterExecutionBlockTest {
   }
 
   auto generateExecutorInfos() const -> ScatterExecutorInfos {
-    auto inputRegs = make_shared_unordered_set({0});
-    auto outputRegs = make_shared_unordered_set({});
-    return {inputRegs, outputRegs, 1, 1, {}, {0}, clientIds};
+    return ScatterExecutorInfos{clientIds};
   }
 
   auto createProducer(SharedAqlItemBlockPtr inputBlock, size_t subqueryDepth = 0)

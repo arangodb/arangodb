@@ -52,12 +52,6 @@ class HashedCollectExecutorInfos {
   /**
    * @brief Construct a new Hashed Collect Executor Infos object
    *
-   * @param nrInputRegisters Number Registers in the input row
-   * @param nrOutputRegisters Number Registers in the output row
-   * @param registersToClear Registers that need to be empty after this
-   * @param registersToKeep Registers that will be copied after this
-   * @param readableInputRegisters InputRegisters this Executor is allowed to read
-   * @param writeableOutputRegisters OutputRegisters this Executor is required to write
    * @param groupRegisters Registers the grouping is based on.
    *                       If values in the registers are identical,
    *                       the rows are considered as the same group.
@@ -69,9 +63,7 @@ class HashedCollectExecutorInfos {
    * @param trxPtr The AQL transaction, as it might be needed for aggregates
    * @param count Flag to enable count, will be written to collectRegister
    */
-  HashedCollectExecutorInfos(std::unordered_set<RegisterId>&& readableInputRegisters,
-                             std::unordered_set<RegisterId>&& writeableOutputRegisters,
-                             std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+  HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
                              transaction::Methods* trxPtr, bool count);

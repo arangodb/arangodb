@@ -40,11 +40,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableInputRegisters,
-    std::pair<RegisterId, RegisterId> groupRegister, transaction::Methods* trxPtr)
-    : _groupRegister(groupRegister), _trxPtr(trxPtr) {}
+DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
+                                                           transaction::Methods* trxPtr)
+    : _groupRegister(std::move(groupRegister)), _trxPtr(trxPtr) {}
 
 std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;

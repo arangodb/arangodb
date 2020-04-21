@@ -80,9 +80,7 @@ class DistinctCollectExecutorTest
         registerInfos(std::make_shared<decltype(readableInputRegisters)>(readableInputRegisters),
                       std::make_shared<decltype(readableInputRegisters)>(writeableOutputRegisters), 1, 2,
                       regToClear, regToKeep),
-        executorInfos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
-                      std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
+        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {
