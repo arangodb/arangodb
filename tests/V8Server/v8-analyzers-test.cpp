@@ -48,7 +48,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -191,7 +190,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
@@ -461,7 +460,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
@@ -879,7 +878,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
@@ -1263,7 +1262,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
@@ -1581,7 +1580,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));

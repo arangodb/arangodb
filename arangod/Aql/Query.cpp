@@ -198,11 +198,6 @@ void Query::injectTransaction(std::unique_ptr<transaction::Methods> trx) {
 
 void Query::prepareQuery(SerializationFormat format) {
 
-  QueryRegistry* registry = QueryRegistryFeature::registry();
-  if (!registry) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
   init();
   enterState(QueryExecutionState::ValueType::PARSING);
 
@@ -228,6 +223,10 @@ void Query::prepareQuery(SerializationFormat format) {
   
   if (_snippets.size() > 1) {  // register coordinator snippets
     TRI_ASSERT(_trx->state()->isCoordinator());
+    QueryRegistry* registry = QueryRegistryFeature::registry();
+    if (!registry) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN, "query registry not available");
+    }
     registry->registerEngines(_snippets);
   }
   
