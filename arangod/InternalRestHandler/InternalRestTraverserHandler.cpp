@@ -105,7 +105,7 @@ void InternalRestTraverserHandler::queryEngine() {
   traverser::BaseEngine* engine = _registry->openGraphEngine(engineId);
   if (engine == nullptr) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid TraverserEngineId");
+                  "invalid TraverserEngine id - potentially the AQL query was already aborted or timed out");
     return;
   }
 
