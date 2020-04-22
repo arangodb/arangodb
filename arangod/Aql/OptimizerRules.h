@@ -150,7 +150,7 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
-ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, SubqueryNode* snode,
+ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
                                                           bool& wasModified);
 

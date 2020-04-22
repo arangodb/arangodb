@@ -3903,42 +3903,45 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
-
-
-
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
     -> DistributeNode* {
-  CollectionAccessingNode* access = dynamic_cast<CollectionAccessingNode*>(node);
-  auto const* collection = access->collection();
-
-  auto& server = collection->vocbase()->server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-  auto collInfo = ci.getCollection(collection->vocbase()->name(), collection->name());
-
-  Variable const* inputVariable;
-  Variable const* alternativeVariable;
+  auto collection = (Collection const*){nullptr};
+  auto inputVariable = (Variable const*){nullptr};
+  auto alternativeVariable = (Variable const*){nullptr};
 
   auto createKeys = bool{false};
   auto allowSpecifiedKeys = bool{false};
 
+  LOG_DEVEL << "trying to handle a node: " << node->getTypeString();
+
+  // TODO: this seems a bit verbose, but is at least local & simple
+  //       the modification nodes are all collectionaccessing, the graph nodes are
+  //       currently assumed to be disjoint, and hence smart, so all collections
+  //       are sharded the same way!
   switch (node->getType()) {
     case ExecutionNode::INSERT: {
-      inputVariable = ExecutionNode::castTo<InsertNode const*>(node)->inVariable();
+      auto const* insertNode = ExecutionNode::castTo<InsertNode const*>(node);
+      collection = insertNode->collection();
+      inputVariable = insertNode->inVariable();
       alternativeVariable = inputVariable;
       createKeys = true;
       allowSpecifiedKeys = true;
     } break;
     case ExecutionNode::REMOVE: {
-      inputVariable = ExecutionNode::castTo<RemoveNode const*>(node)->inVariable();
+      auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
+      collection = removeNode->collection();
+      inputVariable = removeNode->inVariable();
       alternativeVariable = inputVariable;
       createKeys = false;
       allowSpecifiedKeys = true;
     } break;
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE: {
-      auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(node);
+      auto const* updateReplaceNode =
+          ExecutionNode::castTo<UpdateReplaceNode const*>(node);
+      collection = updateReplaceNode->collection();
       if (updateReplaceNode->inKeyVariable() != nullptr) {
         inputVariable = updateReplaceNode->inKeyVariable();
         // This is the _inKeyVariable! This works, since we use default
@@ -3955,13 +3958,19 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
     case ExecutionNode::UPSERT: {
       // an UPSERT node has two input variables!
       auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
+      collection = upsertNode->collection();
       inputVariable = upsertNode->inDocVariable();
       alternativeVariable = upsertNode->insertVariable();
       allowSpecifiedKeys = true;
       createKeys = true;
     } break;
     case ExecutionNode::TRAVERSAL: {
-      inputVariable = ExecutionNode::castTo<TraversalNode const*>(node)->inVariable();
+      LOG_DEVEL << "casting now";
+      auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
+      LOG_DEVEL << "casting done";
+      TRI_ASSERT(traversalNode->isDisjoint());
+      collection = traversalNode->collection();
+      inputVariable = traversalNode->inVariable();
       // TODO:
       // If the traversal node uses a constant start vertex, then this will be
       // nullptr, hence we'll have to stunt around this.
@@ -3971,16 +3980,20 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       createKeys = false;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
+      auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
+      TRI_ASSERT(kShortestPathsNode->isDisjoint());
+      collection = kShortestPathsNode->collection();
       // Subtle: KShortestPathsNode uses a reference when returning startInVariable
-      inputVariable =
-          &ExecutionNode::castTo<KShortestPathsNode const*>(node)->startInVariable();
+      inputVariable = &kShortestPathsNode->startInVariable();
       alternativeVariable = inputVariable;
       allowSpecifiedKeys = true;
       createKeys = false;
     } break;
     case ExecutionNode::SHORTEST_PATH: {
-      inputVariable =
-          ExecutionNode::castTo<ShortestPathNode const*>(node)->startInVariable();
+      auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
+      TRI_ASSERT(shortestPathNode->isDisjoint());
+      collection = shortestPathNode->collection();
+      inputVariable = shortestPathNode->startInVariable();
       // TODO:
       // If the traversal node uses a constant start vertex, then this will be
       // nullptr, hence we'll have to stunt around this.
@@ -3996,7 +4009,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
                                          node->getTypeString() + ".");
     } break;
   }
-
+  TRI_ASSERT(collection != nullptr);
   auto distNode =
       plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
                                       collection, inputVariable, alternativeVariable,
@@ -4035,8 +4048,7 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan, DistributeNode* nod
 // inserted GATHER node
 //
 auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                                  ExecutionNode* at,
-                                                      SubqueryNode* snode)
+                                                  ExecutionNode* at, SubqueryNode* snode)
     -> std::pair<DistributeNode*, GatherNode*> {
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
@@ -4053,7 +4065,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   //       creating the remote node. The vocbase parameter for
   //       the remote node does not seem to be really needed, since
   //       the vocbase is stored in plan (and this variable is actually used in)
-  //       some code, so maybe this parameter could be removed? 
+  //       some code, so maybe this parameter could be removed?
   auto const* collection = distNode->collection();
   TRI_vocbase_t* vocbase = collection->vocbase();
 
@@ -4095,6 +4107,32 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
                                                  ExecutionNode::castTo<GatherNode*>(gatherNode)};
 }
 
+auto extractSmartnessAndCollection(ExecutionNode* node)
+    -> std::pair<bool, Collection const*> {
+  auto nodeType = node->getType();
+  auto collection = (Collection const*){nullptr};
+  auto isSmart = bool{false};
+
+  if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+      nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+    auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+
+    isSmart = graphNode->isSmart();
+
+    // Note that here we are in the disjoint smart graph case and "collection()" will
+    // give us any collection in the graph, but they're all sharded the same way.
+    collection = graphNode->collection();
+
+  } else {
+    auto const* collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
+    TRI_ASSERT(collectionAccessingNode != nullptr);
+
+    isSmart = collection->isSmart();
+    collection = collectionAccessingNode->collection();
+  }
+
+  return std::pair<bool, Collection const*>{isSmart, collection};
+}
 
 /// @brief distribute operations in cluster
 ///
@@ -4106,7 +4144,6 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                                             std::unique_ptr<ExecutionPlan> plan,
                                             OptimizerRule const& rule) {
-  LOG_DEVEL << "distribute rule";
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
   // we are a coordinator, we replace the root if it is a modification node
@@ -4178,42 +4215,30 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                  nodeType == ExecutionNode::SHORTEST_PATH ||
                  nodeType == ExecutionNode::K_SHORTEST_PATHS);
 
-      auto collection = (Collection const*){nullptr};
-      if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
-          nodeType == ExecutionNode::K_SHORTEST_PATHS) {
-        auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
-        if (!graphNode->isDisjoint()) {
+      auto const [isSmart, collection] = extractSmartnessAndCollection(node);
+
+      if (isSmart) {
+#ifdef USE_ENTERPRISE
+        node = distributeInClusterRuleSmart(plan.get(), snode, node, wasModified);
+        // TODO: MARKUS CHECK WHEN YOU NEED TO CONTINUE HERE!
+        //       We want to just handle all smart collections here, so we probably
+        //       just want to always continue
+        continue;
+#endif
+      } else {
+        // Nothing to see here for the non-smart traversals
+        if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+            nodeType == ExecutionNode::K_SHORTEST_PATHS) {
           node = node->getFirstDependency();
           continue;
         }
-
-        // Note that here we are in the disjoint smart graph case and "collection()" will
-        // give us any collection in the graph, but they're all sharded the same way.
-        collection = graphNode->collection();
-      } else {
-        auto const* collectionAccessingNode =
-            dynamic_cast<CollectionAccessingNode*>(node);
-        TRI_ASSERT(collectionAccessingNode != nullptr);
-        collection = collectionAccessingNode->collection();
-
-#ifdef USE_ENTERPRISE
-        auto& ci = collection->vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
-        auto collInfo =
-            ci.getCollection(collection->vocbase()->name(), collection->name());
-        // Throws if collection is not found!
-
-        if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
-          node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,
-                                                            wasModified);
-          continue;
-        }
-#endif
       }
-      TRI_ASSERT(collection != nullptr);
 
+      TRI_ASSERT(collection != nullptr);
       bool const defaultSharding = collection->usesDefaultSharding();
 
       // If the collection does not use default sharding, we have to use a scatter node
+      // this is because we might only have a _key for REMOVE or UPDATE
       if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
         if (!defaultSharding) {
           // We have to use a ScatterNode.
@@ -4222,8 +4247,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         }
       }
 
-      // For INSERT, REPLACE, disjoint TRAVERSAL, SHORTEST_PATH, K_SHORTEST_PATHS
-      // we use a DistributeNode.
+      // For INSERT, REPLACE,
       auto [distNode, gatherNode] = insertDistributeGatherSnippet(*plan, node, snode);
 
       wasModified = true;
