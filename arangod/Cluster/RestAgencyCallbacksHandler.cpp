@@ -73,7 +73,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
         << "Agency callback has been triggered. refetching!";
 
     try {
-      cb->refetchAndUpdate(true, false);
+      cb->refetchAndUpdate(true, false, false);
     } catch (arangodb::basics::Exception const& e) {
       LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
     }

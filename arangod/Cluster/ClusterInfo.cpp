@@ -1641,6 +1641,9 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  
   // Now update our own cache of planned databases:
   loadPlan();
 
@@ -1692,6 +1695,9 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
     // Something else went wrong.
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
   }
+
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // Make sure we're all aware of collections that have been created
   loadPlan();
@@ -2042,7 +2048,7 @@ Result ClusterInfo::createCollectionsCoordinator(
                     << "Did not find shard in _shardServers: " << p.key.copyString()
                     << ". Maybe the collection is already dropped.";
                 *errMsg = "Error in creation of collection: " + p.key.copyString() +
-                          ". Collection already dropped. " + __FILE__ + ":" +
+                          ". Collection already dropped. " + __PRETTY_FUNCTION__ + ":" +
                           std::to_string(__LINE__);
                 dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
@@ -2086,7 +2092,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         }
         if (!tmpError.empty()) {
           *errMsg = "Error in creation of collection:" + tmpError + " " +
-                    __FILE__ + std::to_string(__LINE__);
+                    __PRETTY_FUNCTION__ + std::to_string(__LINE__);
           dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                 std::memory_order_release);
           // We cannot get into bad state after a collection was created
@@ -2109,11 +2115,11 @@ Result ClusterInfo::createCollectionsCoordinator(
     // AgencyCallback for this.
 
     auto agencyCallback =
-        std::make_shared<AgencyCallback>(_server,
-                                         "Current/Collections/" + databaseName +
-                                             "/" + info.collectionID,
-                                         closure, true, false);
-    _agencyCallbackRegistry->registerCallback(agencyCallback);
+        std::make_shared<AgencyCallback>(
+          _server, "Current/Collections/" + databaseName + "/" + info.collectionID,
+          closure, true, false);
+
+      _agencyCallbackRegistry->registerCallback(agencyCallback);
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
@@ -2276,7 +2282,6 @@ Result ClusterInfo::createCollectionsCoordinator(
       auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
       auto r = cache.waitFor(
         res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
       loadPlan();
     }
   }
@@ -2339,6 +2344,10 @@ Result ClusterInfo::createCollectionsCoordinator(
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
+        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+        auto r = cache.waitFor(
+          res.slice().get("results")[0].getNumber<uint64_t>()).get();
+
       }
 
       // Report if this operation worked, if it failed collections will be
@@ -2396,7 +2405,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           // Let us check if we skipped other callbacks as well
           for (; i < infos.size(); ++i) {
             if (infos[i].state == ClusterCollectionCreationState::INIT) {
-              agencyCallbacks[i]->refetchAndUpdate2(true, false);
+              agencyCallbacks[i]->refetchAndUpdate(true, false);
             }
           }
         }
@@ -2553,6 +2562,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(
+    res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // Update our own cache:
   loadPlan();
@@ -2759,12 +2771,15 @@ Result ClusterInfo::createViewCoordinator(  // create view
     events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
     return Result(                                        // result
         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
-        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+        std::string("file: ") + __PRETTY_FUNCTION__ + " line: " + std::to_string(__LINE__) +
             " HTTP code: " + std::to_string(res.httpCode()) +
             " error message: " + res.errorMessage() +
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  
   // Update our cache:
   loadPlan();
 
@@ -2793,6 +2808,9 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+
   // Update our own cache
   loadPlan();
 
@@ -2810,7 +2828,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
     } else {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+          std::string("file: ") + __PRETTY_FUNCTION__ + " line: " + std::to_string(__LINE__) +
               " HTTP code: " + std::to_string(res.httpCode()) +
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
@@ -2863,6 +2881,9 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage()};
   }
 
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  
   loadPlan();
   return {};
 }
@@ -2928,6 +2949,8 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
+    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     loadPlan();
     return Result();
   }
@@ -3176,6 +3199,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
@@ -3193,7 +3218,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         std::string(" Failed to execute ") + trx.toJson() +
             " ResultCode: " + std::to_string(result.errorCode()) +
             " HttpCode: " + std::to_string(result.httpCode()) + " " +
-            std::string(__FILE__) + ":" + std::to_string(__LINE__));
+            std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__));
   }
 
   // From here on we want to roll back the index creation if we run into
@@ -3224,8 +3249,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
 
-        auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-        auto [acb, index] = agencyCache.get(planIndexesKey);
+        auto [acb, index] = cache.get(planIndexesKey);
         auto indexes = acb->slice();
 
         bool found = false;
@@ -3525,6 +3549,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyPrecondition prec(planCollKey, AgencyPrecondition::Type::VALUE, collection);
   AgencyWriteTransaction trx({planErase, incrementVersion}, prec);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   if (!result.successful()) {
     events::DropIndex(databaseName, collectionID, idString,

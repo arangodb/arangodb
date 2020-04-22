@@ -109,8 +109,7 @@ class AgencyCallback {
   /// have changed (like a Plan change).
   //////////////////////////////////////////////////////////////////////////////
 
-  void refetchAndUpdate(bool needToAcquireMutex, bool forceCheck);
-  void refetchAndUpdate2(bool needToAcquireMutex, bool forceCheck);
+  void refetchAndUpdate(bool needToAcquireMutex, bool forceCheck, bool local = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
