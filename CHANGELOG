@@ -1,5 +1,10 @@
 devel
 -----
+* Fix a bug in the optimizer which handled combinations of smart joins with
+  query components that had to run on a coordinator wrong.
+
+* Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
+  integrated into scatter-in-cluster.
 
 * Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base` and 
   `--rocksdb.target-file-size-multiplier` to make them configurable.
@@ -98,6 +103,24 @@ devel
   efficient, as it will not retrieve the existing document from storage and
   not write any updates to it.
 
+* Added feature: SatelliteGraphs
+
+  SatelliteGraphs are a new type of graph, added in addition to the existing
+	ones, General Graphs and SmartGraphs.
+
+	When doing joins involving graph traversals, shortest path or k-shortest paths
+	computation in an ArangoDB cluster, data has to be exchanged between different
+	servers. In particular graph traversals are usually executed on a Coordinator,
+	because they need global information. This results in a lot of network traffic
+	and potentially slow query execution.
+
+  SatelliteGraphs are the natural extension of the concept of
+	SatelliteCollections to graphs. All of the usual benefits and caveats apply.
+	SatelliteGraphs are synchronously replicated to all DB-Servers that are part of
+	a cluster, which enables DB-Servers to execute graph traversals locally. This
+	includes (k-)shortest path(s) computation and possibly joins with traversals
+	and greatly improves performance for such queries.
+
 * Removed deprecated MMFiles storage engine and also the `arango-dfdb`
   (datafile debugger) executable that could be used to validate MMFiles
   datafiles.
@@ -110,7 +133,7 @@ devel
   field.
 
 * Fixed a bug in the agency supervision, which could declare an already FAILED
-  dbserver temporarily as GOOD again after an agency leader change.
+  DB-Server temporarily as GOOD again after an agency leader change.
 
 * Added `INTERLEAVE` AQL function.
 
@@ -147,7 +170,7 @@ devel
   "numberOfShards" for each new collection. The default values were "_graphs"
   and 1 and were not modified if the user did not alter them, but it was still
   possible to alter them.
-  This is now (silenly) ignored. Any attempt to set any value for
+  This is now (silently) ignored. Any attempt to set any value for
   "distributeShardsLike" or "numberOfShards" for new collections in a OneShard
   database will silently be ignored. The collection will automatically be
   sharded like the sharding prototype and will have a single shard.

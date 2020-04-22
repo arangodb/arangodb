@@ -1319,6 +1319,13 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
+  if (!engine.waitForSatellites(collection())) {
+    double maxWait = engine.getQuery()->queryOptions().satelliteSyncWait;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+                                   "collection " + collection()->name() +
+                                       " did not come into sync in time (" +
+                                       std::to_string(maxWait) + ")");
+  }
   auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   auto outputRegister = variableToRegisterId(_outVariable);
   auto registerInfos = createRegisterInfos(make_shared_unordered_set(),

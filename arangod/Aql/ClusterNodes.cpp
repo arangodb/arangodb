@@ -301,9 +301,7 @@ CostEstimate ScatterNode::estimateCost() const {
   return estimate;
 }
 
-auto ScatterNode::getOutputVariables() const -> VariableIdSet {
-  return {};
-}
+auto ScatterNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -416,22 +414,53 @@ CostEstimate DistributeNode::estimateCost() const {
 /*static*/ Collection const* GatherNode::findCollection(GatherNode const& root) noexcept {
   ExecutionNode const* node = root.getFirstDependency();
 
+  auto remotesSeen = 0;
+
   while (node) {
     switch (node->getType()) {
-      case ENUMERATE_COLLECTION:
-        return castTo<EnumerateCollectionNode const*>(node)->collection();
-      case INDEX:
-        return castTo<IndexNode const*>(node)->collection();
+      case UPDATE:
+      case REMOVE:
+      case INSERT:
+      case UPSERT:
+      case REPLACE:
+      case MATERIALIZE:
       case TRAVERSAL:
       case SHORTEST_PATH:
       case K_SHORTEST_PATHS:
-        return castTo<GraphNode const*>(node)->collection();
+      case INDEX:
+      case ENUMERATE_COLLECTION: {
+        auto const* cNode = castTo<CollectionAccessingNode const*>(node);
+        if (!cNode->isUsedAsSatellite() && cNode->prototypeCollection() == nullptr) {
+          return cNode->collection();
+        }
+        break;
+      }
+      case ENUMERATE_IRESEARCH_VIEW:
+        // Views are instantiated per DBServer, not per Shard, and are not
+        // CollectionAccessingNodes. And we don't know the number of DBServers
+        // at this point.
+        return nullptr;
+      case REMOTE:
+        ++remotesSeen;
+        if (remotesSeen > 1) {
+          TRI_ASSERT(false);
+          return nullptr;  // diamond boundary
+        }
+        break;
       case SCATTER:
+      case DISTRIBUTE:
+        TRI_ASSERT(false);
         return nullptr;  // diamond boundary
+      case REMOTESINGLE:
+        // While being a CollectionAccessingNode, it lives on the Coordinator.
+        // However it should thus not be encountered here.
+        TRI_ASSERT(false);
+        return nullptr;
       default:
-        node = node->getFirstDependency();
         break;
     }
+
+    node = node->getFirstDependency();
   }
 
   return nullptr;
@@ -579,14 +608,23 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER || node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE ||
-        node->getType() == ExecutionNode::TRAVERSAL ||
-        node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+    auto nodeType = node->getType();
+
+    if (nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER ||
+        nodeType == ExecutionNode::DISTRIBUTE) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
+
+    if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+        nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+      auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      if (!gn->isSatelliteNode()) {
+        _isParallelizable = false;
+        return true;  // true to abort the whole walking process
+      }
+    }
+
     // write operations of type REMOVE, REPLACE and UPDATE
     // can be parallelized, provided the rest of the plan
     // does not prohibit this
@@ -628,6 +666,15 @@ void GatherNode::setParallelism(GatherNode::Parallelism value) {
 GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
                                                   size_t shardsRequiredForHeapMerge) noexcept {
   return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
+}
+
+GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collection) noexcept {
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
+           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
+              ? Parallelism::Serial
+              : Parallelism::Undefined);
 }
 
 auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }

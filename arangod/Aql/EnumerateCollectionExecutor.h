@@ -144,8 +144,6 @@ class EnumerateCollectionExecutor {
   void initializeCursor();
 
  private:
-  bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
-
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
  private:

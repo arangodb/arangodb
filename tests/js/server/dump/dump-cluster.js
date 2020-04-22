@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -31,9 +30,11 @@
 const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
-let analyzers = require("@arangodb/analyzers");
+const arangosh = require('@arangodb/arangosh');
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
+const _ = require('lodash');
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertTypeOf} = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -381,7 +382,14 @@ function dumpTestEnterpriseSuite () {
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
   const satellite = "UnitTestDumpSatelliteCollection";
+  const satelliteGraphName = "UnitTestDumpSatelliteGraph";
+  const satelliteVertexCollection1Name = "UnitTestDumpSatelliteVertexCollection1";
+  const satelliteVertexCollection2Name = "UnitTestDumpSatelliteVertexCollection2";
+  const satelliteOrphanCollectionName = "UnitTestDumpSatelliteOrphanCollection";
+  const satelliteEdgeCollection1Name = "UnitTestDumpSatelliteEdgeCollection1";
+  const satelliteEdgeCollection2Name = "UnitTestDumpSatelliteEdgeCollection2";
   const gm = require("@arangodb/smart-graph");
+  const satgm = require("@arangodb/satellite-graph");
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
 
   return {
@@ -407,6 +415,103 @@ function dumpTestEnterpriseSuite () {
       assertEqual(1, p.numberOfShards);
       assertEqual("satellite", p.replicationFactor);
       assertEqual(100, c.count());
+    },
+
+    testSatelliteGraph : function () {
+      {
+        // check collections in graph object
+        const satelliteGraph = satgm._graph(satelliteGraphName);
+        const actualVertexCollections = Object.keys(satelliteGraph._vertexCollections(true)).sort();
+        const expectedVertexCollections = [satelliteVertexCollection1Name, satelliteVertexCollection2Name].sort();
+        assertEqual(expectedVertexCollections, actualVertexCollections);
+        const expectedOrphanCollections = [satelliteOrphanCollectionName].sort();
+        const actualOrphanCollections = satelliteGraph._orphanCollections().sort();
+        assertEqual(expectedOrphanCollections, actualOrphanCollections);
+        const expectedEdgeCollections = [satelliteEdgeCollection1Name, satelliteEdgeCollection2Name].sort();
+        const actualEdgeCollections = satelliteGraph._edgeCollections().map(c => c.name()).sort();
+        assertEqual(expectedEdgeCollections, actualEdgeCollections);
+      }
+
+      {
+        // check edge definitions
+        const graphInfo = arangosh.checkRequestResult(db._connection.GET('/_api/gharial/' + satelliteGraphName));
+        assertTypeOf('object', graphInfo);
+        assertTypeOf('object', graphInfo.graph);
+        assertTypeOf('object', graphInfo.graph.edgeDefinitions);
+        graphInfo.graph.edgeDefinitions.sort();
+        const expectedEdgeDefinitions = [
+          {
+            collection: satelliteEdgeCollection1Name,
+            from: [satelliteVertexCollection1Name],
+            to: [satelliteVertexCollection2Name],
+          },
+          {
+            collection: satelliteEdgeCollection2Name,
+            from: [satelliteVertexCollection2Name],
+            to: [satelliteVertexCollection1Name],
+          },
+        ].sort();
+        assertEqual(expectedEdgeDefinitions, graphInfo.graph.edgeDefinitions);
+      }
+
+      {
+        // check replicationFactor and distributeShardsLike of collections
+        assertEqual("satellite", db[satelliteVertexCollection1Name].properties().replicationFactor);
+        assertEqual("satellite", db[satelliteVertexCollection2Name].properties().replicationFactor);
+        assertEqual("satellite", db[satelliteEdgeCollection1Name].properties().replicationFactor);
+        assertEqual("satellite", db[satelliteEdgeCollection2Name].properties().replicationFactor);
+        assertEqual("satellite", db[satelliteOrphanCollectionName].properties().replicationFactor);
+        assertUndefined(db[satelliteVertexCollection1Name].properties().distributeShardsLike);
+        assertEqual(satelliteVertexCollection1Name, db[satelliteVertexCollection2Name].properties().distributeShardsLike);
+        assertEqual(satelliteVertexCollection1Name, db[satelliteEdgeCollection1Name].properties().distributeShardsLike);
+        assertEqual(satelliteVertexCollection1Name, db[satelliteEdgeCollection2Name].properties().distributeShardsLike);
+        assertEqual(satelliteVertexCollection1Name, db[satelliteOrphanCollectionName].properties().distributeShardsLike);
+      }
+
+      {
+        // check contents of vertex collections
+        const getVertices = `FOR d IN @@col SORT TO_NUMBER(SUBSTRING(d._key, 1)) RETURN d._key`;
+        // [ "v1", "v3", "v5", ..., "v99" ]
+        const v1s = db._query(getVertices, {'@col': satelliteVertexCollection1Name}).toArray();
+        const expectedV1s = _.range(1, 100 + 1, 2).map(i => `v${i}`);
+        assertEqual(expectedV1s, v1s);
+        // [ "v2", "v4", "v6", ..., "v100" ]
+        const v2s = db._query(getVertices, {'@col': satelliteVertexCollection2Name}).toArray();
+        const expectedV2s = _.range(2, 100 + 1, 2).map(i => `v${i}`);
+        assertEqual(expectedV2s, v2s);
+        // [ "w1", "w2", "w3", ..., "w100" ]
+        const os = db._query(getVertices, {'@col': satelliteOrphanCollectionName}).toArray();
+        const expectedOs = _.range(1, 100 + 1, 1).map(i => `w${i}`);
+        assertEqual(expectedOs, os);
+
+        // check contents of edge collections
+        const getEdges = `
+          FOR e IN @@col
+            LET from = PARSE_IDENTIFIER(e._from).key
+            LET to = PARSE_IDENTIFIER(e._to).key
+            SORT TO_NUMBER(SUBSTRING(from, 1)), TO_NUMBER(SUBSTRING(to, 1))
+            RETURN [from, to]
+        `;
+        // [ "v1" -> "v2", "v3" -> "v4", "v5" -> "v6", ..., "v99" -> "v100" ]
+        const e1s = db._query(getEdges, {'@col': satelliteEdgeCollection1Name}).toArray();
+        const expectedE1s = _.range(1, 100+1, 2).map(i => [`v${i}`, `v${i%100 + 1}`]);
+        assertEqual(expectedE1s, e1s);
+        // [ "v2" -> "v3", "v4" -> "v5", "v6" -> "v7", ..., "v98" -> "v99", "v100" -> "v1" ]
+        const e2s = db._query(getEdges, {'@col': satelliteEdgeCollection2Name}).toArray();
+        const expectedE2s = _.range(2, 100+1, 2).map(i => [`v${i}`, `v${i%100 + 1}`]);
+        assertEqual(expectedE2s, e2s);
+      }
+
+      {
+        // run a simple traversal
+        const res = db._query(`
+          FOR v, e, p IN 100 OUTBOUND "UnitTestDumpSatelliteVertexCollection1/v1" GRAPH "UnitTestDumpSatelliteGraph"
+            RETURN p.vertices[*]._key
+        `);
+        // [ [ "v1", "v2", ..., "v99", "v100", "v1" ] ]
+        const expected = [_.range(0, 100 + 1).map(i => "v" + (i % 100 + 1))];
+        assertEqual(expected, res.toArray());
+      }
     },
 
     testHiddenCollectionsOmitted : function () {

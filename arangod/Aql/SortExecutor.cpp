@@ -45,8 +45,8 @@ class OurLessThan {
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
-    InputAqlItemRow left = _input.getRow(a);
-    InputAqlItemRow right = _input.getRow(b);
+    InputAqlItemRow const& left = _input.getRow(a);
+    InputAqlItemRow const& right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);

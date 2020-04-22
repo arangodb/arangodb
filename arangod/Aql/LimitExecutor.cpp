@@ -221,6 +221,8 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     } else {
       // We are done.
       // All produced, all skipped, nothing to report
+      // Throw away the leftover skipped-rows from upstream
+      std::ignore = inputRange.skipAll();
       break;
     }
   }
