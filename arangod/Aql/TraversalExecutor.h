@@ -57,7 +57,7 @@ class TraversalExecutorInfos {
 
   TraversalExecutorInfos() = delete;
 
-  TraversalExecutorInfos(TraversalExecutorInfos&&) noexcept = default;
+  TraversalExecutorInfos(TraversalExecutorInfos&&) = default;
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
   ~TraversalExecutorInfos() = default;
 
