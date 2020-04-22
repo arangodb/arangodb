@@ -686,7 +686,10 @@ TEST_F(IResearchFilterFunctionTest, Boost) {
 
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
-    termFilter.field(mangleStringIdentity("foo")).term("abc").boost(1.5);
+    *termFilter.mutable_field() = mangleStringIdentity("foo");
+    termFilter.boost(1.5);
+    irs::assign(termFilter.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(irs::string_ref("abc")));
 
     assertFilterSuccess(
         vocbase(),
@@ -703,7 +706,10 @@ TEST_F(IResearchFilterFunctionTest, Boost) {
 
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
-    termFilter.field(mangleStringIdentity("foo")).term("abc").boost(6.0f);  // 1.5*4 or 1.5*2*2
+    *termFilter.mutable_field() = mangleStringIdentity("foo");
+    termFilter.boost(6.0f); // 1.5*4 or 1.5*2*2
+    irs::assign(termFilter.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(irs::string_ref("abc")));
 
     assertFilterSuccess(
         vocbase(),
@@ -749,9 +755,10 @@ TEST_F(IResearchFilterFunctionTest, Analyzer) {
   // simple analyzer
   {
     irs::Or expected;
-    expected.add<irs::by_term>()
-        .field(mangleString("foo", "test_analyzer"))
-        .term("bar");
+    auto& termFilter = expected.add<irs::by_term>();
+    *termFilter.mutable_field() = mangleString("foo", "test_analyzer");
+    irs::assign(termFilter.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -763,7 +770,10 @@ TEST_F(IResearchFilterFunctionTest, Analyzer) {
   // overriden analyzer
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field(mangleStringIdentity("foo")).term("bar");
+    auto& termFilter = expected.add<irs::by_term>();
+    *termFilter.mutable_field() = mangleStringIdentity("foo");
+    irs::assign(termFilter.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -779,9 +789,10 @@ TEST_F(IResearchFilterFunctionTest, Analyzer) {
                      arangodb::aql::AqlValue(arangodb::aql::AqlValue("test_")));
 
     irs::Or expected;
-    expected.add<irs::by_term>()
-        .field(mangleString("foo", "test_analyzer"))
-        .term("bar");
+    auto& termFilter = expected.add<irs::by_term>();
+    *termFilter.mutable_field() = mangleString("foo", "test_analyzer");
+    irs::assign(termFilter.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -834,10 +845,10 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     irs::Or expected;
     auto& minMatch = expected.add<irs::Or>();
     minMatch.min_match_count(2);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobar"))
-        .term("bar");
+    auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+    *termFilter.mutable_field() = mangleStringIdentity("foobar");
+    irs::assign(termFilter.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
 
     assertFilterSuccess(
         vocbase(),
@@ -855,18 +866,24 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     irs::Or expected;
     auto& minMatch = expected.add<irs::Or>();
     minMatch.min_match_count(2);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobar"))
-        .term("bar");
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobaz"))
-        .term("baz");
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobad"))
-        .term("bad");
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobar");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobaz");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobad");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -884,19 +901,25 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     irs::Or expected;
     auto& minMatch = expected.add<irs::Or>();
     minMatch.min_match_count(2);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobar"))
-        .term("bar");
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobaz"))
-        .term("baz")
-        .boost(1.5f);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobad"))
-        .term("bad");
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobar");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobaz");
+      termFilter.boost(1.5f);
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobad");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -929,19 +952,25 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     auto& minMatch = expected.add<irs::Or>();
     minMatch.boost(3.0f);
     minMatch.min_match_count(2);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobar"))
-        .term("bar");
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobaz"))
-        .term("baz")
-        .boost(1.5f);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobad"))
-        .term("bad");
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobar");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobaz");
+      termFilter.boost(1.5f);
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobad");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -961,31 +990,44 @@ TEST_F(IResearchFilterFunctionTest, MinMatch) {
     auto& minMatch = expected.add<irs::Or>();
     minMatch.boost(3.0f);
     minMatch.min_match_count(2);
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobar"))
-        .term("bar");
-    minMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobaz"))
-        .term("baz")
-        .boost(1.5f);
+
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobar");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobaz");
+      termFilter.boost(1.5f);
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+    }
+
     auto& subMinMatch = minMatch.add<irs::Or>().add<irs::Or>();
     subMinMatch.min_match_count(2);
-    subMinMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobar"))
-        .term("bar");
-    subMinMatch.add<irs::Or>()
-        .add<irs::by_range>()
-        .field(mangleStringIdentity("foobaz"))
-        .term<irs::Bound::MIN>("baz")
-        .include<irs::Bound::MIN>(false);
-    subMinMatch.add<irs::Or>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("foobad"))
-        .term("bad")
-        .boost(2.7f);
+    {
+      auto& termFilter = subMinMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobar");
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bar")));
+    }
+    {
+      auto& rangeFilter = subMinMatch.add<irs::Or>().add<irs::by_range>();
+      *rangeFilter.mutable_field() = mangleStringIdentity("foobaz");
+      rangeFilter.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
+      irs::assign(rangeFilter.mutable_options()->range.min,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("baz")));
+    }
+    {
+      auto& termFilter = minMatch.add<irs::Or>().add<irs::by_term>();
+      *termFilter.mutable_field() = mangleStringIdentity("foobad");
+      termFilter.boost(2.7f);
+      irs::assign(termFilter.mutable_options()->term,
+                  irs::ref_cast<irs::byte_type>(irs::string_ref("bad")));
+    }
+
 
     assertFilterSuccess(
         vocbase(),
@@ -1037,7 +1079,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("name").prefix_match(true);
+    *exists.mutable_field() = "name";
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
@@ -1053,7 +1096,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("[42]").prefix_match(true);
+    *exists.mutable_field() = "[42]";
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
@@ -1063,7 +1107,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("obj.prop.name").prefix_match(true);
+    *exists.mutable_field() = "obj.prop.name";
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d", expected);
@@ -1080,7 +1125,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("obj.prop[3].name").prefix_match(true);
+    *exists.mutable_field() = "obj.prop[3].name";
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d", expected);
@@ -1098,7 +1144,9 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("obj.prop[3].name").prefix_match(true).boost(1.5f);
+    *exists.mutable_field() = "obj.prop[3].name";
+    exists.boost(1.5f);
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(),
@@ -1129,7 +1177,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("obj.prop[3].name").prefix_match(true);
+    *exists.mutable_field() = "obj.prop[3].name";
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(),
@@ -1158,7 +1207,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field("a.b.c.e[4].f[5].g[3].g.a").prefix_match(true);
+    *exists.mutable_field() = "a.b.c.e[4].f[5].g[3].g.a";
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(),
@@ -1241,7 +1291,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleType("name")).prefix_match(true);
+    *exists.mutable_field() = mangleType("name");
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d", expected);
@@ -1285,7 +1336,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleAnalyzer("name")).prefix_match(true);
+    *exists.mutable_field() = mangleAnalyzer("name");
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d", expected);
@@ -1332,7 +1384,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleAnalyzer("name")).prefix_match(true);
+    *exists.mutable_field() = mangleAnalyzer("name");
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(vocbase(),
                         "LET anl='str' FOR d IN myView FILTER exists(d.name, "
@@ -1368,7 +1421,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleStringIdentity("name")).prefix_match(false);
+    *exists.mutable_field() = mangleStringIdentity("name");
+    exists.mutable_options()->prefix_match = true;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'analyzer') RETURN d", expected);
@@ -1407,7 +1461,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleStringIdentity("name")).prefix_match(false);
+    *exists.mutable_field() = mangleStringIdentity("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1435,7 +1490,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleNumeric("obj.name")).prefix_match(false);
+    *exists.mutable_field() = mangleNumeric("obj.name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1468,7 +1524,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleNumeric("name")).prefix_match(false);
+    *exists.mutable_field() = mangleNumeric("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(vocbase(),
                         "LET type='nume' FOR d IN myView FILTER exists(d.name, "
@@ -1496,7 +1553,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleBool("name")).prefix_match(false);
+    *exists.mutable_field() = mangleBool("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'bool') RETURN d", expected);
@@ -1523,7 +1581,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleBool("name")).prefix_match(false);
+    *exists.mutable_field() = mangleBool("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'boolean') RETURN d", expected);
@@ -1558,7 +1617,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleBool("name")).prefix_match(false);
+    *exists.mutable_field() = mangleBool("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(vocbase(),
                         "LET type='boo' FOR d IN myView FILTER exists(d.name, "
@@ -1586,7 +1646,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleNull("name")).prefix_match(false);
+    *exists.mutable_field() = mangleNull("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'null') RETURN d", expected);
@@ -1616,7 +1677,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleNull("name")).prefix_match(false);
+    *exists.mutable_field() = mangleNull("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(vocbase(),
                         "LET type='nu' FOR d IN myView FILTER exists(d.name, "
@@ -1672,7 +1734,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleStringIdentity("name")).prefix_match(false);
+    *exists.mutable_field() = mangleStringIdentity("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1692,7 +1755,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+    *exists.mutable_field() = mangleString("name", "test_analyzer");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1792,7 +1856,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+    *exists.mutable_field() = mangleString("name", "test_analyzer");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1822,7 +1887,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+    *exists.mutable_field() = mangleString("name", "test_analyzer");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1918,7 +1984,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleStringIdentity("name")).prefix_match(false);
+    *exists.mutable_field() = mangleStringIdentity("name");
+    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1966,8 +2033,9 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleStringIdentity("name"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("quick"))});
+    *phrase.mutable_field() = mangleStringIdentity("name");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("quick"));
 
     // implicit (by default)
     assertFilterSuccess(
@@ -2047,12 +2115,13 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
+    *phrase.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2132,7 +2201,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     // empty phrase
     irs::Or expectedEmpty;
     auto& phraseEmpty = expectedEmpty.add<irs::by_phrase>();
-    phraseEmpty.field(mangleString("name", "test_analyzer"));
+    *phraseEmpty.mutable_field() = mangleString("name", "test_analyzer");
     assertFilterSuccess(
       vocbase(),
       "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ ]), 'test_analyzer') "
@@ -2147,12 +2216,14 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     // accumulating offsets
     irs::Or expectedAccumulated;
     auto& phraseAccumulated = expectedAccumulated.add<irs::by_phrase>();
-    phraseAccumulated.field(mangleString("name", "test_analyzer"));
-    phraseAccumulated.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))}, 7)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))}, 3)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))}, 4)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))}, 5);
+    *phraseAccumulated.mutable_field() = mangleString("name", "test_analyzer");
+    auto* optsAccumulated = phraseAccumulated.mutable_options();
+    optsAccumulated->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    optsAccumulated->push_back<irs::by_term_options>(7).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    optsAccumulated->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    optsAccumulated->push_back<irs::by_term_options>(4).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    optsAccumulated->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+
     assertFilterSuccess(
       vocbase(),
       "FOR d IN myView FILTER ANALYZER(phrase(d.name, "
@@ -2211,12 +2282,13 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
 
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
+    *phrase.mutable_field() = mangleString("a.b.c.e[4].f[5].g[3].g.a", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2316,12 +2388,13 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("[42]", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
+    *phrase.mutable_field() = mangleString("[42]", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2354,12 +2427,13 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
 
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
+    *phrase.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2562,17 +2636,18 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    *phrase.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2679,18 +2754,20 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("0"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    *phrase.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("0"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+
     assertFilterSuccess(
         vocbase(),
         "FOR d IN myView FILTER AnaLYZER(phrase(d.name, [ 'quick', '0', "
@@ -2706,17 +2783,18 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 5)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    *phrase.mutable_field() = mangleString("obj.name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2845,17 +2923,19 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.name", "test_analyzer")).boost(3.0f);
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 5)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    *phrase.mutable_field() = mangleString("obj.name", "test_analyzer");
+    phrase.boost(3.0f);
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -2894,17 +2974,18 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj[3].name[1]", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 5)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    *phrase.mutable_field() = mangleString("obj[3].name[1]", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3033,17 +3114,18 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("[5].obj.name[100]", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 5)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
+    *phrase.mutable_field() = mangleString("[5].obj.name[100]", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(5).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3172,25 +3254,26 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 3)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("f"))}, 2)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("j"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("m"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("p"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("s"))});
+    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>(2).term = irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
 
     assertFilterSuccess(
         vocbase(),
@@ -3499,25 +3582,26 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 3)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("f"))}, 2)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("j"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("m"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("p"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("s"))});
+    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>(2).term = irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
@@ -3674,25 +3758,26 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("c"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("b"))}, 3)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("f"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x"))});
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("j"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("m"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("p"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("s"))});
+    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    opts->push_back<irs::by_term_options>(3).term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("f"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("j"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
@@ -3735,39 +3820,55 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
   {
     irs::Or expected;
     auto& phrase = expected.add<irs::by_phrase>();
-    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
-    phrase.push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("q"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("i"))});
-    irs::by_phrase::prefix_term pt{arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("c"))};
-    phrase.push_back(std::move(pt))
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("k"))});
-    irs::by_phrase::wildcard_term wt{arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("b"))};
-    phrase.push_back(std::move(wt), 3)
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("r"))});
-    irs::by_phrase::range_term rt{arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit,
-      {irs::ref_cast<irs::byte_type>(irs::string_ref("n")),
-            irs::ref_cast<irs::byte_type>(irs::string_ref("p")), irs::BoundType::EXCLUSIVE,
-            irs::BoundType::EXCLUSIVE}};
-    phrase.push_back(std::move(rt))
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("w"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("n"))});
-    irs::by_phrase::levenshtein_term lt{true, 1, arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit,
-          &arangodb::iresearch::getParametricDescription, irs::ref_cast<irs::byte_type>(irs::string_ref("p"))};
-    phrase.push_back(std::move(lt))
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("o"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("x"))});
-    irs::by_phrase::set_term ct;
-    ct.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("g")), irs::ref_cast<irs::byte_type>(irs::string_ref("j"))};
-    phrase.push_back(std::move(ct))
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("u"))})
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("m"))});
-    irs::by_phrase::set_term ct2;
-    ct2.terms = {irs::ref_cast<irs::byte_type>(irs::string_ref("b")), irs::ref_cast<irs::byte_type>(irs::string_ref("p"))};
-    phrase.push_back(std::move(ct2))
-        .push_back(irs::by_phrase::simple_term{irs::ref_cast<irs::byte_type>(irs::string_ref("s"))});
+    *phrase.mutable_field() = mangleString("obj.properties.id.name", "test_analyzer");
+    auto* opts= phrase.mutable_options();
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("q"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("i"));
+    {
+      auto& part = opts->push_back<irs::by_prefix_options>();
+      part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("c"));
+      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    }
+    opts->push_back<irs::by_term_options>().term = irs::ref_cast<irs::byte_type>(irs::string_ref("k"));
+    {
+      auto& part = opts->push_back<irs::by_wildcard_options>(3);
+      part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("b"));
+      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    }
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("r"));
+    {
+      auto& part = opts->push_back<irs::by_range_options>(3);
+      part.range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+      part.range.min_type = irs::BoundType::EXCLUSIVE;
+      part.range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+      part.range.max_type = irs::BoundType::EXCLUSIVE;
+      part.scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+    }
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("w"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("n"));
+    {
+      auto& part = opts->push_back<irs::by_edit_distance_filter_options>();
+      part.max_distance = 1;
+      part.with_transpositions = true;
+      part.provider = &arangodb::iresearch::getParametricDescription;
+      part.term = irs::ref_cast<irs::byte_type>(irs::string_ref("p"));
+    }
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("o"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("x"));
+    {
+      auto& part = opts->push_back<irs::by_terms_options>();
+      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("g")));
+      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("j")));
+    }
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("u"));
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("m"));
+    {
+      auto& part = opts->push_back<irs::by_terms_options>();
+      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("b")));
+      part.terms.emplace(irs::ref_cast<irs::byte_type>(irs::string_ref("p")));
+    }
+    opts->push_back<irs::by_term_options>( ).term = irs::ref_cast<irs::byte_type>(irs::string_ref("s"));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
@@ -4871,8 +4972,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -4887,12 +4990,16 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
     auto& prefix0 = orFilter.add<irs::by_prefix>();
-    prefix0.field(mangleStringIdentity("name")).term("abc");
-    prefix0.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix0.mutable_field() = mangleStringIdentity("name");
+    auto* opt0 = prefix0.mutable_options();
+    opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt0->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     auto& prefix1 = orFilter.add<irs::by_prefix>();
-    prefix1.field(mangleStringIdentity("name")).term("def");
-    prefix1.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix1.mutable_field() = mangleStringIdentity("name");
+    auto* opt1 = prefix1.mutable_options();
+    opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
+    opt1->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -4913,8 +5020,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -4984,8 +5093,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name[1]")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("name[1]");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5004,8 +5115,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("obj.properties.name")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("obj.properties.name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5038,9 +5151,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("obj[400].properties[3].name"))
-        .term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5068,9 +5182,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleString("obj[400].properties[3].name", "test_analyzer"))
-        .term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleString("obj[400].properties[3].name", "test_analyzer");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5105,9 +5220,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("obj[400].properties[3].name"))
-        .term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5144,13 +5260,16 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(arangodb::iresearch::FilterConstants::DefaultStartsWithMinMatchCount);
     auto& prefix0 = orFilter.add<irs::by_prefix>();
-    prefix0.field(mangleStringIdentity("obj[400].properties[3].name"))
-        .term("abc");
-    prefix0.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix0.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    auto* opt0 = prefix0.mutable_options();
+    opt0->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt0->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
+
     auto& prefix1 = orFilter.add<irs::by_prefix>();
-    prefix1.field(mangleStringIdentity("obj[400].properties[3].name"))
-        .term("def");
-    prefix1.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix1.mutable_field() = mangleStringIdentity("obj[411].properties[3].name");
+    auto* opt1 = prefix1.mutable_options();
+    opt1->term = irs::ref_cast<irs::byte_type>(irs::string_ref("def"));
+    opt1->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5252,8 +5371,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(1024);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 1024;
 
     assertFilterSuccess(
         vocbase(),
@@ -5269,8 +5390,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(2);
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5286,8 +5409,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(2);
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(1024);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 1024;
 
     assertFilterSuccess(
         vocbase(),
@@ -5301,8 +5426,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   {
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(100);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 100;
 
     assertFilterSuccess(
         vocbase(),
@@ -5318,8 +5445,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(2);
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5335,8 +5464,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(2);
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(100);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 100;
 
     assertFilterSuccess(
         vocbase(),
@@ -5351,8 +5482,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     irs::Or expected;
     expected.boost(3.1f);
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(100);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 100;
 
     assertFilterSuccess(
         vocbase(),
@@ -5373,8 +5506,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(2);
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(100);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 100;
 
     assertFilterSuccess(
         vocbase(),
@@ -5397,9 +5532,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("obj[400].properties[3].name"))
-        .term("abc");
-    prefix.scored_terms_limit(6);
+    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 6;
 
     assertFilterSuccess(
         vocbase(),
@@ -5436,9 +5572,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("obj[400].properties[3].name"))
-        .term("abc");
-    prefix.scored_terms_limit(6);
+    *prefix.mutable_field() = mangleStringIdentity("obj[400].properties[3].name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 6;
 
     assertFilterSuccess(
         vocbase(),
@@ -5476,9 +5613,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
 
     irs::Or expected;
     auto& prefix = expected.add<irs::by_prefix>();
-    prefix.field(mangleString("obj[400].properties[3].name", "test_analyzer"))
-        .term("abc");
-    prefix.scored_terms_limit(6);
+    *prefix.mutable_field() = mangleString("obj[400].properties[3].name", "test_analyzer");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 6;
 
     assertFilterSuccess(
         vocbase(),
@@ -5549,8 +5687,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     irs::Or expected;
     auto& orFilter = expected.add<irs::Or>();
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(1024);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = 1024;
 
     assertFilterSuccess(
         vocbase(),
@@ -5570,8 +5710,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(5);
     auto& prefix = orFilter.add<irs::by_prefix>();
-    prefix.field(mangleStringIdentity("name")).term("abc");
-    prefix.scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit);
+    *prefix.mutable_field() = mangleStringIdentity("name");
+    auto* opt = prefix.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5710,8 +5852,10 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
   {
     irs::Or expected;
     auto& wildcard = expected.add<irs::by_wildcard>();
-    wildcard.field(mangleStringIdentity("name"))
-      .scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit).term("foo");
+    *wildcard.mutable_field() = mangleStringIdentity("name");
+    auto* opt = wildcard.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     assertFilterSuccess(
         vocbase(),
@@ -5735,8 +5879,10 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
   {
     irs::Or expected;
     auto& wildcard = expected.add<irs::by_wildcard>();
-    wildcard.field(mangleString("name.foo", "test_analyzer"))
-      .scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit).term("foo%");
+    *wildcard.mutable_field() = mangleString("name.foo", "test_analyzer");
+    auto* opt = wildcard.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
@@ -5766,9 +5912,11 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
   {
     irs::Or expected;
     auto& wildcard = expected.add<irs::by_wildcard>();
-    wildcard.field(mangleString("name[4]", "test_analyzer"))
-      .scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit)
-      .term("_foo%").boost(0.5);
+    *wildcard.mutable_field() = mangleString("name[4]", "test_analyzer");
+    wildcard.boost(0.5f);
+    auto* opt = wildcard.mutable_options();
+    opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("_foo%"));
+    opt->scored_terms_limit = arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit;
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
@@ -5877,11 +6025,12 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
-    filter.field(mangleStringIdentity("name"))
-          .max_distance(1)
-          .with_transpositions(false)
-          .scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit)
-          .term("foo");
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 1;
+    opts->with_transpositions = false;
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("foo"));
+    opts->max_terms = 0;
 
     assertFilterSuccess(
         vocbase(),
@@ -5897,11 +6046,12 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
-    filter.field(mangleString("name.foo", "test_analyzer"))
-          .max_distance(0)
-          .with_transpositions(true)
-          .scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit)
-          .term("fooo");
+    *filter.mutable_field() = mangleString("name.foo", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 0;
+    opts->with_transpositions = true;
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
+    opts->max_terms = 0;
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
@@ -5933,12 +6083,13 @@ TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
   {
     irs::Or expected;
     auto& filter = expected.add<irs::by_edit_distance>();
-    filter.field(mangleString("name[4]", "test_analyzer"))
-          .max_distance(2)
-          .with_transpositions(false)
-          .scored_terms_limit(arangodb::iresearch::FilterConstants::DefaultScoringTermsLimit)
-          .term("fooo")
-          .boost(0.5);
+    filter.boost(0.5);
+    *filter.mutable_field() = mangleString("name[4]", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->max_distance = 2;
+    opts->with_transpositions = false;
+    opts->term = irs::ref_cast<irs::byte_type>(irs::string_ref("fooo"));
+    opts->max_terms = 0;
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
@@ -6125,11 +6276,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
   {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("name"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("a")
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("z");
+    *range.mutable_field() = mangleStringIdentity("name");
+    auto* opts = range.mutable_options();
+    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+    opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("z"));
+    opts->range.max_type = irs::BoundType::EXCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6148,11 +6300,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
-    range.field(mangleStringIdentity("name"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("a")
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("z");
+    *range.mutable_field() = mangleStringIdentity("name");
+    auto* opts = range.mutable_options();
+    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("z"));
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6171,11 +6324,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
-    range.field(mangleString("name", "test_analyzer"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("a")
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("z");
+    *range.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = range.mutable_options();
+    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("a"));
+    opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("z"));
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6201,11 +6355,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
 
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
-    range.field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("abc")
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("bce");
+    *range.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+    auto* opts = range.mutable_options();
+    opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("bce"));
+    opts->range.max_type = irs::BoundType::EXCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6252,11 +6407,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
-    range.field(mangleBool("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true())
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+    *range.mutable_field() = mangleBool("a.b.c.e.f");
+    auto* opts = range.mutable_options();
+    opts->range.min = irs::boolean_token_stream::value_true();
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->range.max = irs::boolean_token_stream::value_true();
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6283,11 +6439,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     irs::Or expected;
     auto& range = expected.add<irs::by_range>();
     range.boost(1.5);
-    range.field(mangleNull("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::null_token_stream::value_null())
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+    *range.mutable_field() = mangleNull("a.b.c.e.f");
+    auto* opts = range.mutable_options();
+    opts->range.min = irs::null_token_stream::value_null();
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    opts->range.max = irs::null_token_stream::value_null();
+    opts->range.max_type = irs::BoundType::INCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6321,11 +6478,12 @@ TEST_F(IResearchFilterFunctionTest, inRange) {
     irs::Or expected;
     auto& range = expected.add<irs::by_granular_range>();
     range.boost(1.5);
-    range.field(mangleNumeric("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm)
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    *range.mutable_field() = mangleNumeric("a.b.c.e.f");
+    auto* opts = range.mutable_options();
+    irs::set_granular_term(opts->range.min, minTerm);
+    opts->range.min_type = irs::BoundType::INCLUSIVE;
+    irs::set_granular_term(opts->range.max, maxTerm);
+    opts->range.max_type = irs::BoundType::EXCLUSIVE;
 
     assertFilterSuccess(
         vocbase(),
@@ -6473,9 +6631,11 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with default analyzer default threshold
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
-      .threshold(0.7f)
-      .push_back("foo");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.7f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6493,9 +6653,11 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     ctx.vars.emplace("strVal", arangodb::aql::AqlValue("foo"));
 
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
-      .threshold(0.7f)
-      .push_back("foo");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.7f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6510,9 +6672,12 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with boost
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
-      .threshold(0.7f)
-      .push_back("foo").boost(1.5);
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    filter.boost(1.5);
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.7f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6527,9 +6692,11 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with default analyzer explicit threshold
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
-      .threshold(0.8f)
-      .push_back("foo");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.8f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6547,9 +6714,11 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(0.8)));
 
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleStringIdentity("name"))
-      .threshold(0.8f)
-      .push_back("foo");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleStringIdentity("name");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.8f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("foo")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6563,9 +6732,14 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // variables + function calls
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleString("name.foo", "test_analyzer"))
-      .threshold(0.5)
-      .push_back("f").push_back("o").push_back("o").push_back("o");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleString("name.foo", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.5;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{ 0.5 }));
@@ -6587,9 +6761,13 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with explicit analyzer default threshold
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
-      .threshold(0.7f)
-      .push_back("f").push_back("o").push_back("o");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.7f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6604,9 +6782,13 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with explicit analyzer via ANALYZER default threshold
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
-      .threshold(0.7f)
-      .push_back("f").push_back("o").push_back("o");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.7f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6621,9 +6803,13 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with explicit analyzer explicit threshold
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
-      .threshold(0.25f)
-      .push_back("f").push_back("o").push_back("o");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.25f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
 
     assertFilterSuccess(
       vocbase(),
@@ -6638,9 +6824,13 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
   // NGRAM_MATCH with explicit analyzer via ANALYZER explicit threshold
   {
     irs::Or expected;
-    expected.add<irs::by_ngram_similarity>().field(mangleString("name", "test_analyzer"))
-      .threshold(0.25f)
-      .push_back("f").push_back("o").push_back("o");
+    auto& filter = expected.add<irs::by_ngram_similarity>();
+    *filter.mutable_field() = mangleString("name", "test_analyzer");
+    auto* opts = filter.mutable_options();
+    opts->threshold = 0.25f;
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("f")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
+    opts->ngrams.push_back(irs::ref_cast<irs::byte_type>(irs::string_ref("o")));
 
     assertFilterSuccess(
       vocbase(),

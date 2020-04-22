@@ -145,9 +145,9 @@ namespace {
      ASSERT_EQ(irs::by_range::type(), filter->type());
      auto& actual = dynamic_cast<irs::by_range const&>(*filter);
      irs::by_range expected;
-     expected.field(field);
-     expected.term<irs::Bound::MIN>(term);
-     expected.include<irs::Bound::MIN>(false);
+     *expected.mutable_field() = field;
+     expected.mutable_options()->range.min = term;
+     expected.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
      EXPECT_EQ(expected, actual);
   };
 
@@ -157,9 +157,9 @@ namespace {
      ASSERT_EQ(irs::by_range::type(), filter->type());
      auto& actual = dynamic_cast<irs::by_range const&>(*filter);
      irs::by_range expected;
-     expected.field(field);
-     expected.term<irs::Bound::MIN>(term);
-     expected.include<irs::Bound::MIN>(true);
+     *expected.mutable_field() = field;
+     expected.mutable_options()->range.min = term;
+     expected.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
      EXPECT_EQ(expected, actual);
   };
 
@@ -169,9 +169,9 @@ namespace {
      ASSERT_EQ(irs::by_range::type(), filter->type());
      auto& actual = dynamic_cast<irs::by_range const&>(*filter);
      irs::by_range expected;
-     expected.field(field);
-     expected.term<irs::Bound::MAX>(term);
-     expected.include<irs::Bound::MAX>(true);
+     *expected.mutable_field() = field;
+     expected.mutable_options()->range.max = term;
+     expected.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
      EXPECT_EQ(expected, actual);
   };
 
@@ -181,9 +181,9 @@ namespace {
     ASSERT_EQ(irs::by_range::type(), filter->type());
     auto& actual = dynamic_cast<irs::by_range const&>(*filter);
     irs::by_range expected;
-    expected.field(field);
-    expected.term<irs::Bound::MAX>(term);
-    expected.include<irs::Bound::MAX>(false);
+    *expected.mutable_field() = field;
+    expected.mutable_options()->range.max = term;
+    expected.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     EXPECT_EQ(expected, actual);
   };
 
@@ -309,20 +309,21 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       {
         auto& by_range_actual = dynamic_cast<irs::by_granular_range const&>(*subFiltersIterator);
         irs::by_granular_range expected;
-        expected.field(mangleNumeric("quick.brown.fox"));
+        *expected.mutable_field() = mangleNumeric("quick.brown.fox");
+
        // granular range handled separately (it is used only for numerics, just check it here once)
         if (operation.first == "ANY >" || operation.first == "ALL >" || operation.first == "NONE <=") {
-          expected.insert<irs::Bound::MAX>(stream);
-          expected.include<irs::Bound::MAX>(false);
+          irs::set_granular_term(expected.mutable_options()->range.max, stream);
+          expected.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
         } else if (operation.first == "ANY >=" || operation.first == "ALL >=" || operation.first == "NONE <") {
-          expected.insert<irs::Bound::MAX>(stream);
-          expected.include<irs::Bound::MAX>(true);
+          irs::set_granular_term(expected.mutable_options()->range.max, stream);
+          expected.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
         } else if (operation.first == "ANY <" || operation.first == "ALL <" || operation.first == "NONE >=") {
-          expected.insert<irs::Bound::MIN>(stream);
-          expected.include<irs::Bound::MIN>(false);
+          irs::set_granular_term(expected.mutable_options()->range.min, stream);
+          expected.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
         } else if (operation.first == "ANY <=" || operation.first == "ALL <=" || operation.first == "NONE >") {
-          expected.insert<irs::Bound::MIN>(stream);
-          expected.include<irs::Bound::MIN>(true);
+          irs::set_granular_term(expected.mutable_options()->range.min, stream);
+          expected.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
         } else {
           ASSERT_TRUE(false); // new array comparison operator added? Need to update checks here!
         }

@@ -78,10 +78,10 @@ namespace iresearch {
 
   std::ostream& operator<<(std::ostream& os, by_range const& range) {
     os << "Range(" << range.field();
-    std::string termValueMin(ref_cast<char>(range.term<Bound::MIN>()));
-    std::string termValueMax(ref_cast<char>(range.term<Bound::MAX>()));
+    std::string termValueMin(ref_cast<char>(range.options().range.min));
+    std::string termValueMax(ref_cast<char>(range.options().range.max));
     if (!termValueMin.empty()) {
-      os << " " << (range.include<Bound::MIN>() ? ">=" : ">") << termValueMin;
+      os << " " << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">=" : ">") << termValueMin;
     }
     if (!termValueMax.empty()) {
       if (!termValueMin.empty()) {
@@ -89,13 +89,13 @@ namespace iresearch {
       } else {
         os << " ";
       }
-      os << (range.include<Bound::MAX>() ? "<=" : "<") << termValueMax;
+      os << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? "<=" : "<") << termValueMax;
     }
     return os << ")";
   }
 
   std::ostream& operator<<(std::ostream& os, by_term const& term) {
-    std::string termValue(ref_cast<char>(term.term()));
+    std::string termValue(ref_cast<char>(term.options().term));
     return os << "Term(" << term.field() << "=" << termValue << ")";
   }
 
