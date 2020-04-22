@@ -29,6 +29,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
 #include "ClusterNodes.h"
+#include "Containers/SmallUnorderedMap.h"
 #include "ExecutionNode.h"
 #include "VocBase/vocbase.h"
 
@@ -172,8 +173,8 @@ void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief move collect to the DB servers in cluster
 void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
-void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                        OptimizerRule const&);
+void distributeFilterCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                       OptimizerRule const&);
 
 void distributeSortToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                  OptimizerRule const&);
@@ -272,6 +273,10 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
+//// @brief reduces a sorted gather to an unsorted gather if only one shard is involved
+void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                  OptimizerRule const&);
+
 void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
                                 ExecutionNode* node, bool isRootNode,
                                 std::vector<ExecutionNode*> const& nodeDependencies,
@@ -279,6 +284,15 @@ void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
                                 SortElementVector const& elements, size_t numberOfShards,
                                 std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
                                 Collection const* collection);
+
+//// @brief enclose a node in SCATTER/GATHER
+void insertScatterGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries);
+
+//// @brief find all subqueries in a plan and store a map from subqueries to nodes
+void findSubqueriesInPlan(ExecutionPlan& plan,
+                          containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 }  // namespace aql
 }  // namespace arangodb
