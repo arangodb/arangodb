@@ -61,7 +61,7 @@ class Action {
    * @param feature  Maintenance feature
    * @param action   Concrete action
    */
-  explicit Action(std::unique_ptr<ActionBase> action);
+  explicit Action(std::shared_ptr<ActionBase> action);
 
   /// @brief clean up
   virtual ~Action();
@@ -203,7 +203,7 @@ class Action {
   void create(MaintenanceFeature&, ActionDescription const&);
 
   /// @brief concrete action
-  std::unique_ptr<ActionBase> _action;
+  std::shared_ptr<ActionBase> _action;
 };
 
 }  // namespace maintenance

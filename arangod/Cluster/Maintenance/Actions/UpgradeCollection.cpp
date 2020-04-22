@@ -112,14 +112,19 @@ void writeStatusToCurrent(arangodb::LogicalCollection& collection,
     status.toVelocyPack(statusBuilder, false);
   }
 
-  std::string agencyKey =
+  auto operations = std::vector<arangodb::AgencyOperation>{};
+
+  std::string const statusKey =
       "/Current/Collections/" + desc.get(arangodb::maintenance::DATABASE) +
       "/" + desc.get(arangodb::maintenance::COLLECTION) + "/" +
       desc.get(arangodb::maintenance::SHARD) + "/" + arangodb::maintenance::UPGRADE_STATUS;
+  operations.emplace_back(statusKey, arangodb::AgencyValueOperationType::SET,
+                          statusBuilder.slice());
 
-  auto trx = arangodb::AgencyWriteTransaction{
-      arangodb::AgencyOperation{agencyKey, arangodb::AgencyValueOperationType::SET,
-                                statusBuilder.slice()}};
+  std::string const versionKey = "/Current/Version";
+  operations.emplace_back(versionKey, arangodb::AgencySimpleOperationType::INCREMENT_OP);
+
+  auto trx = arangodb::AgencyWriteTransaction{operations};
 
   arangodb::AgencyComm comm(collection.vocbase().server());
   arangodb::AgencyCommResult result = comm.sendTransactionWithFailover(trx);
@@ -178,7 +183,11 @@ UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescript
   }
 }
 
-UpgradeCollection::~UpgradeCollection() = default;
+UpgradeCollection::~UpgradeCollection() = default; /*{
+   while (!_futures.empty() && !feature().server().isShuttingDown()) {
+     std::this_thread::sleep(std::chrono::milliseconds(10));
+   }
+ };*/
 
 bool UpgradeCollection::first() {
   auto const& database = _description.get(DATABASE);
@@ -275,48 +284,42 @@ bool UpgradeCollection::next() {
         ::writeStatusToCurrent(*config.collection, _description);
       }
 
+      std::unordered_map<::UpgradeState, std::vector<std::string>> servers =
+          ::serversByStatus(*config.collection);
       switch (targetState) {
         case ::UpgradeState::Prepare: {
-          std::unordered_map<UpgradeState, std::vector<std::string>> servers =
-              ::serversByStatus(*config.collection);
-          decltype(servers)::const_iterator it = servers.find(::UpgradeState::ToDo);
-          if (it != servers.end() && !it->second.empty()) {
-            for (auto const& server : it->second) {
-              decltype(_futures)::iterator f = _futures.find(server);
-              if (f == _futures.end()) {
-                LOG_DEVEL << "sending 'Prepare' to '" << config.collection->name() << "'";
-                _futures.emplace(server, sendRequest(*config.collection, server,
-                                                     ::UpgradeState::Prepare));
-              } else {
-                if (f->second.hasValue()) {
-                  Result r = f->second.get();
-                  if (r.ok()) {
-                    _futures.erase(f);
-                  } else {
-                    LOG_DEVEL << "have response for '" << server << "', code "
-                              << r.errorNumber() << ", message: '"
-                              << r.errorMessage() << "'";
-                    _result.reset(r);
-                  }
-                } else if (f->second.hasException()) {
-                  if (f->second.getTry().exception()) {
-                    std::rethrow_exception(f->second.getTry().exception());
-                  }
-                } else {
-                  LOG_DEVEL << "already have outstanding request for '" << server << "'";
-                }
-              }
-            }
-          }
+          [[maybe_unused]] bool haveServers =
+              processPhase(servers, ::UpgradeState::ToDo,
+                           ::UpgradeState::Prepare, *config.collection);
           break;
         }
         case ::UpgradeState::Finalize: {
+          bool haveServers = processPhase(servers, ::UpgradeState::ToDo,
+                                          ::UpgradeState::Prepare, *config.collection);
+          if (!haveServers && _result.ok()) {
+            haveServers = processPhase(servers, ::UpgradeState::Prepare,
+                                       ::UpgradeState::Finalize, *config.collection);
+          }
           break;
         }
         case ::UpgradeState::Rollback: {
+          [[maybe_unused]] bool haveServers =
+              processPhase(servers, ::UpgradeState::Finalize,
+                           ::UpgradeState::Rollback, *config.collection);
           break;
         }
         case ::UpgradeState::Cleanup: {
+          // send cleanup for all non-Cleanup server states, even ToDo, since it
+          // might have started Prepare and encountered an error
+          [[maybe_unused]] bool haveServers =
+              processPhase(servers, ::UpgradeState::ToDo,
+                           ::UpgradeState::Cleanup, *config.collection);
+          haveServers = processPhase(servers, ::UpgradeState::Prepare,
+                                     ::UpgradeState::Cleanup, *config.collection);
+          haveServers = processPhase(servers, ::UpgradeState::Finalize,
+                                     ::UpgradeState::Cleanup, *config.collection);
+          haveServers = processPhase(servers, ::UpgradeState::Rollback,
+                                     ::UpgradeState::Cleanup, *config.collection);
           break;
         }
         case ::UpgradeState::ToDo:
@@ -342,7 +345,7 @@ bool UpgradeCollection::next() {
 }
 
 bool UpgradeCollection::hasMore() const {
-  if (_futures.empty()) {
+  if (_result.fail() || _futures.empty()) {
     return false;
   }
 
@@ -374,7 +377,7 @@ futures::Future<Result> UpgradeCollection::sendRequest(LogicalCollection& collec
 
 std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
     std::string const& server, LogicalCollection::UpgradeStatus::State phase) {
-  return [this, server, phase](network::Response&& res) -> Result {
+  return [self = shared_from_this(), this, server, phase](network::Response&& res) -> Result {
     LOG_DEVEL << "handling response for '" << server << "'";
     Result result;
     int commError = network::fuerteToArangoErrorCode(res);
@@ -391,6 +394,7 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
     }
 
     // okay, we executed this operation successfully, let everyone know
+    LOG_DEVEL << "response for '" << server << "' OK";
     try {
       ::Config config(_description);
       if (config.collection) {
@@ -401,6 +405,7 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
           status.set(server, phase);
         }
         ::writeStatusToCurrent(*config.collection, _description);
+        LOG_DEVEL << "wrote status after '" << server << "'";
       } else {
         std::stringstream error;
         error << "failed to lookup local collection " << _description.get(SHARD)
@@ -419,6 +424,42 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
 
     return result;
   };
+}
+
+bool UpgradeCollection::processPhase(
+    std::unordered_map<::UpgradeState, std::vector<std::string>> servers,
+    ::UpgradeState searchPhase, ::UpgradeState targetPhase, LogicalCollection& collection) {
+  bool haveServers = false;
+  decltype(servers)::const_iterator it = servers.find(searchPhase);
+  if (it != servers.end() && !it->second.empty()) {
+    haveServers = true;
+    for (auto const& server : it->second) {
+      decltype(_futures)::iterator f = _futures.find(server);
+      if (f == _futures.end()) {
+        LOG_DEVEL << "sending '" << static_cast<unsigned>(targetPhase)
+                  << "' to '" << server << "'";
+        _futures.emplace(server, sendRequest(collection, server, targetPhase));
+      } else {
+        if (f->second.hasValue()) {
+          Result r = f->second.get();
+          if (r.ok()) {
+            _futures.erase(f);
+          } else {
+            LOG_DEVEL << "have response for '" << server << "', code "
+                      << r.errorNumber() << ", message: '" << r.errorMessage() << "'";
+            _result.reset(r);
+          }
+        } else if (f->second.hasException()) {
+          if (f->second.getTry().exception()) {
+            std::rethrow_exception(f->second.getTry().exception());
+          }
+        } else {
+          LOG_DEVEL << "already have request in flight for '" << server << "'";
+        }
+      }
+    }
+  }
+  return haveServers;
 }
 
 }  // namespace arangodb::maintenance

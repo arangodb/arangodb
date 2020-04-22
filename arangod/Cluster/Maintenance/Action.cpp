@@ -44,63 +44,63 @@ using namespace arangodb;
 using namespace arangodb::maintenance;
 
 using factories_t =
-    std::unordered_map<std::string, std::function<std::unique_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>>;
+    std::unordered_map<std::string, std::function<std::shared_ptr<ActionBase>(MaintenanceFeature&, ActionDescription const&)>>;
 
 static factories_t const factories = factories_t{
 
     {CREATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new CreateCollection(f, a));
+       return std::make_shared<CreateCollection>(f, a);
      }},
 
     {CREATE_DATABASE,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new CreateDatabase(f, a));
+       return std::make_shared<CreateDatabase>(f, a);
      }},
 
     {DROP_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new DropCollection(f, a));
+       return std::make_shared<DropCollection>(f, a);
      }},
 
     {DROP_DATABASE,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new DropDatabase(f, a));
+       return std::make_shared<DropDatabase>(f, a);
      }},
 
     {DROP_INDEX,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new DropIndex(f, a));
+       return std::make_shared<DropIndex>(f, a);
      }},
 
     {ENSURE_INDEX,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new EnsureIndex(f, a));
+       return std::make_shared<EnsureIndex>(f, a);
      }},
 
     {RESIGN_SHARD_LEADERSHIP,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new ResignShardLeadership(f, a));
+       return std::make_shared<ResignShardLeadership>(f, a);
      }},
 
     {SYNCHRONIZE_SHARD,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new SynchronizeShard(f, a));
+       return std::make_shared<SynchronizeShard>(f, a);
      }},
 
     {UPGRADE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new UpgradeCollection(f, a));
+       return std::make_shared<UpgradeCollection>(f, a);
      }},
 
     {UPDATE_COLLECTION,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new UpdateCollection(f, a));
+       return std::make_shared<UpdateCollection>(f, a);
      }},
 
     {TAKEOVER_SHARD_LEADERSHIP,
      [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::unique_ptr<ActionBase>(new TakeoverShardLeadership(f, a));
+       return std::make_shared<TakeoverShardLeadership>(f, a);
      }},
 
 };
@@ -123,7 +123,7 @@ Action::Action(MaintenanceFeature& feature, std::shared_ptr<ActionDescription> c
   create(feature, *description);
 }
 
-Action::Action(std::unique_ptr<ActionBase> action)
+Action::Action(std::shared_ptr<ActionBase> action)
     : _action(std::move(action)) {}
 
 Action::~Action() = default;
@@ -133,7 +133,7 @@ void Action::create(MaintenanceFeature& feature, ActionDescription const& descri
 
   _action = (factory != factories.end())
                 ? factory->second(feature, description)
-                : std::unique_ptr<ActionBase>(new NonAction(feature, description));
+                : std::make_shared<NonAction>(feature, description);
 }
 
 ActionDescription const& Action::describe() const {

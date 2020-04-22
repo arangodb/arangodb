@@ -33,7 +33,8 @@
 
 namespace arangodb::maintenance {
 
-class UpgradeCollection : public ActionBase {
+class UpgradeCollection : public ActionBase,
+                          public std::enable_shared_from_this<UpgradeCollection> {
  public:
   UpgradeCollection(MaintenanceFeature&, ActionDescription const&);
 
@@ -51,6 +52,11 @@ class UpgradeCollection : public ActionBase {
 
   std::function<Result(network::Response&&)> handleResponse(std::string const&,
                                                             LogicalCollection::UpgradeStatus::State);
+
+  bool processPhase(std::unordered_map<LogicalCollection::UpgradeStatus::State, std::vector<std::string>> servers,
+                    LogicalCollection::UpgradeStatus::State searchPhase,
+                    LogicalCollection::UpgradeStatus::State targetPhase,
+                    LogicalCollection& collection);
 
  private:
   std::shared_ptr<velocypack::Builder> _planStatus;

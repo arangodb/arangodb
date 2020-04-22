@@ -124,7 +124,7 @@ void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collect
                                             arangodb::velocypack::Builder& builder,
                                             ::ObjectIdTransformer idFunc,
                                             bool toggleUpgradedProperties,
-                                            ::IndicesMap& indicesMap,
+                                            bool isRollback, ::IndicesMap& indicesMap,
                                             arangodb::velocypack::Slice key,
                                             arangodb::velocypack::Slice value) {
   using arangodb::StaticStrings;
@@ -168,18 +168,16 @@ void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collect
 
   if (toggleUpgradedProperties && key.isEqualString(StaticStrings::Version)) {
     arangodb::LogicalCollection::Version targetVersion =
-        collection.version() == arangodb::LogicalCollection::Version::v37
-            ? arangodb::LogicalCollection::Version::v34
-            : arangodb::LogicalCollection::Version::v37;
+        isRollback ? arangodb::LogicalCollection::Version::v34
+                   : arangodb::LogicalCollection::Version::v37;
     builder.add(StaticStrings::Version,
                 arangodb::velocypack::Value(static_cast<std::uint32_t>(targetVersion)));
   } else if (toggleUpgradedProperties && key.isEqualString(StaticStrings::SyncByRevision)) {
-    builder.add(StaticStrings::SyncByRevision,
-                arangodb::velocypack::Value(!collection.syncByRevision()));
+    builder.add(StaticStrings::SyncByRevision, arangodb::velocypack::Value(!isRollback));
   } else if (toggleUpgradedProperties &&
              key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
     builder.add(StaticStrings::UsesRevisionsAsDocumentIds,
-                arangodb::velocypack::Value(!collection.usesRevisionsAsDocumentIds()));
+                arangodb::velocypack::Value(!isRollback));
   } else {
     builder.add(key);
     builder.add(value);
@@ -208,20 +206,20 @@ arangodb::Result setObjectIdsForCollection(arangodb::LogicalCollection& collecti
   return res;
 }
 
-void toggleUpgradedPropertiesForCollection(arangodb::LogicalCollection& collection) {
+void toggleUpgradedPropertiesForCollection(arangodb::LogicalCollection& collection,
+                                           bool isRollback) {
   arangodb::LogicalCollection::Version targetVersion =
-      collection.version() == arangodb::LogicalCollection::Version::v37
-          ? arangodb::LogicalCollection::Version::v34
-          : arangodb::LogicalCollection::Version::v37;
+      isRollback ? arangodb::LogicalCollection::Version::v34
+                 : arangodb::LogicalCollection::Version::v37;
   collection.setVersion(targetVersion);
-  collection.setUsesRevisionsAsDocumentIds(!collection.usesRevisionsAsDocumentIds());
-  collection.setSyncByRevision(!collection.syncByRevision());
+  collection.setUsesRevisionsAsDocumentIds(!isRollback);
+  collection.setSyncByRevision(!isRollback);
 }
 
 arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
                                               arangodb::LogicalCollection& collection,
                                               ::ObjectIdTransformer idFunc,
-                                              bool toggleUpgradedProperties) {
+                                              bool toggleUpgradedProperties, bool isRollback) {
   using arangodb::StaticStrings;
   using arangodb::basics::VelocyPackHelper;
 
@@ -253,7 +251,8 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
         VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
     outputPair = idFunc(objectId, tempObjectId);
     for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
-      ::handlePropertiesEntryForObjectIdUpdate(collection, builder, idFunc, toggleUpgradedProperties,
+      ::handlePropertiesEntryForObjectIdUpdate(collection, builder, idFunc,
+                                               toggleUpgradedProperties, isRollback,
                                                indicesMap, pair.key, pair.value);
     }
     builder.add(StaticStrings::ObjectId,
@@ -280,7 +279,7 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
     return res;
   }
   if (toggleUpgradedProperties) {
-    ::toggleUpgradedPropertiesForCollection(collection);
+    ::toggleUpgradedPropertiesForCollection(collection, isRollback);
   }
 
   cleanup.cancel();  // succeeded, no cleanup needed
@@ -1737,7 +1736,9 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
 
 Result RocksDBCollection::prepareUpgrade() {
   Result res{};
-  if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
+  if (_logicalCollection.version() >= LogicalCollection::Version::v37 ||
+      _logicalCollection.syncByRevision() ||
+      _logicalCollection.usesRevisionsAsDocumentIds() || tempObjectId() != 0) {
     return res;
   }
 
@@ -1746,7 +1747,7 @@ Result RocksDBCollection::prepareUpgrade() {
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                       ::injectNewTemporaryObjectId, false);
+                                       ::injectNewTemporaryObjectId, false, false);
   if (res.fail()) {
     return res;
   }
@@ -1771,7 +1772,9 @@ Result RocksDBCollection::prepareUpgrade() {
 
 Result RocksDBCollection::finalizeUpgrade() {
   Result res{};
-  if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
+  if (_logicalCollection.version() >= LogicalCollection::Version::v37 ||
+      _logicalCollection.syncByRevision() ||
+      _logicalCollection.usesRevisionsAsDocumentIds()) {
     return res;
   }
 
@@ -1780,7 +1783,7 @@ Result RocksDBCollection::finalizeUpgrade() {
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                       ::swapObjectIds, true);
+                                       ::swapObjectIds, true, false);
   if (res.fail()) {
     return res;
   }
@@ -1790,18 +1793,20 @@ Result RocksDBCollection::finalizeUpgrade() {
 
 Result RocksDBCollection::rollbackUpgrade() {
   Result res{};
-  if (_logicalCollection.version() >= LogicalCollection::Version::v37) {
+  if (_logicalCollection.version() < LogicalCollection::Version::v37 &&
+      !_logicalCollection.syncByRevision() &&
+      !_logicalCollection.usesRevisionsAsDocumentIds()) {
     return res;
   }
 
-  // TODO handle any missed updates in old ID-space
+  // TODO handle any missed updates in old ID-space?
 
   auto& server = _logicalCollection.vocbase().server();
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                       ::swapObjectIds, true);
+                                       ::swapObjectIds, true, true);
   if (res.fail()) {
     return res;
   }
@@ -1822,7 +1827,7 @@ Result RocksDBCollection::cleanupUpgrade() {
   }
 
   return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                        ::clearTemporaryObjectId, false);
+                                        ::clearTemporaryObjectId, false, false);
 }
 
 bool RocksDBCollection::didPartialUpgrade() {
