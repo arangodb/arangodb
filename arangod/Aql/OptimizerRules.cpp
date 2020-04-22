@@ -3988,7 +3988,9 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
     } break;
     default: {
       TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot distribute " +
+                                         node->getTypeString() + ".");
     } break;
   }
 
@@ -4091,23 +4093,29 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         TRI_ASSERT(node == root);
       }
 
-      auto const* collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
-      TRI_ASSERT(collectionAccessingNode != nullptr);
-      auto const* collection = collectionAccessingNode->collection();
-
-      // For non-enterprise code, we don't care about these.
+      auto collection = (Collection const*){nullptr};
       if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
           nodeType == ExecutionNode::K_SHORTEST_PATHS) {
-        auto const* graph = ExecutionNode::castTo<GraphNode*>(node);
-        if (!graph->isDisjoint()) {
+        auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+        if (!graphNode->isDisjoint()) {
           continue;
         }
+
+        // Note that here we are in the disjoint smart graph case and "collection()" will
+        // give us any collection in the graph, but they're all sharded the same way.
+        collection = graphNode->collection();
       } else {
+        auto const* collectionAccessingNode =
+            dynamic_cast<CollectionAccessingNode*>(node);
+        TRI_ASSERT(collectionAccessingNode != nullptr);
+        collection = collectionAccessingNode->collection();
+
 #ifdef USE_ENTERPRISE
         auto& ci = collection->vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
         auto collInfo =
             ci.getCollection(collection->vocbase()->name(), collection->name());
         // Throws if collection is not found!
+
         if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
           node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,
                                                             originalParent, wasModified);
@@ -4115,13 +4123,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         }
 #endif
       }
+      TRI_ASSERT(collection != nullptr);
 
       bool const defaultSharding = collection->usesDefaultSharding();
 
+      // If the collection does not use default sharding, we have to use a scatter node
       if (nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE) {
         if (!defaultSharding) {
           // We have to use a ScatterNode.
-          node = node->getFirstDependency();  // advance node
+          node = node->getFirstDependency();
           continue;
         }
       }
@@ -4156,28 +4166,26 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
 
       // extract database from plan node
-      TRI_vocbase_t* vocbase = collectionAccessingNode->vocbase();
+      TRI_vocbase_t* vocbase = collection->vocbase();
 
-      // insert a distribute node
+      // create and register a distribute node
       DistributeNode* distNode = createDistributeNodeFor(*plan, node);
       TRI_ASSERT(distNode != nullptr);
 
-      plan->registerNode(distNode);
       distNode->addDependency(deps[0]);
 
       // insert a remote node
       ExecutionNode* remoteNode =
-          new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
-      plan->registerNode(remoteNode);
+          plan->createNode<RemoteNode>(plan.get(), plan->nextId(), vocbase, "",
+                                       "", "");
       remoteNode->addDependency(distNode);
 
       // re-link with the remote node
       node->addDependency(remoteNode);
 
       // insert another remote node
-      remoteNode =
-          new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
-      plan->registerNode(remoteNode);
+      remoteNode = plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
+                                                vocbase, "", "", "");
       remoteNode->addDependency(node);
 
       // insert a gather node
