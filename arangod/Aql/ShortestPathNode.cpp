@@ -291,6 +291,10 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     finder.reset(new graph::ConstantWeightShortestPathFinder(*opts));
   }
 
+#ifdef USE_ENTERPRISE
+  waitForSatelliteIfRequired(&engine);
+#endif
+
   TRI_ASSERT(finder != nullptr);
   ShortestPathExecutorInfos infos(inputRegisters, outputRegisters,
                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
