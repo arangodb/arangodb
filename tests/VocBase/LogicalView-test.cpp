@@ -176,9 +176,6 @@ TEST_F(LogicalViewTest, test_auth) {
                                   arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
@@ -193,9 +190,6 @@ TEST_F(LogicalViewTest, test_auth) {
                                   arangodb::auth::Level::RO, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
@@ -211,9 +205,6 @@ TEST_F(LogicalViewTest, test_auth) {
                                   arangodb::auth::Level::RW, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
