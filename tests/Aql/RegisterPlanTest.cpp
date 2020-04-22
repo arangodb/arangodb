@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.cpp"
+#include "Aql/VarUsageFinder.h"
 #include "Basics/StringUtils.h"
 
 using namespace arangodb;
@@ -36,10 +37,26 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+typedef ::arangodb::containers::HashSet<Variable const*> VarSet;
+
+struct PlanMiniMock {
+  PlanMiniMock(ExecutionNode::NodeType expectedType)
+      : _expectedType(expectedType) {}
+
+  auto increaseCounter(ExecutionNode::NodeType type) {
+    EXPECT_FALSE(_called) << "Only count every node once per run";
+    _called = true;
+    EXPECT_EQ(_expectedType, type) << "Count the correct type";
+  }
+
+  bool _called{false};
+  ExecutionNode::NodeType _expectedType;
+};
+
 struct ExecutionNodeMock {
   ExecutionNodeMock(ExecutionNode::NodeType type, bool isIncreaseDepth,
                     std::vector<Variable const*> input, std::vector<Variable const*> output)
-      : _type(type), _isIncreaseDepth(isIncreaseDepth), _input(), _output() {
+      : _type(type), _isIncreaseDepth(isIncreaseDepth), _input(), _output(), _plan(type) {
     for (auto const& v : input) {
       _input.emplace(v);
     }
@@ -48,22 +65,31 @@ struct ExecutionNodeMock {
     }
   }
 
+  auto plan() -> PlanMiniMock* { return &_plan; }
+
   auto id() -> ExecutionNodeId { return ExecutionNodeId{0}; }
 
   auto isIncreaseDepth() -> bool { return _isIncreaseDepth; }
 
   auto getType() -> ExecutionNode::NodeType { return _type; }
 
-  auto getVarsUsedLater() -> ::arangodb::containers::HashSet<Variable const*> const& {
-    return {};
-  }
+  auto getVarsUsedLater() -> VarSet const& { return _usedLater; }
 
-  auto getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& res) const
-      -> void {
+  auto getVariablesUsedHere(VarSet& res) const -> void {
     for (auto const v : _input) {
       res.emplace(v);
     }
   }
+
+  auto setVarsUsedLater(VarSet& v) -> void { _usedLater = v; }
+
+  auto invalidateVarUsage() -> void {
+    _usedLater.clear();
+    _varsValid.clear();
+    _varUsageValid = false;
+  }
+
+  auto setVarUsageValid() -> void { _varUsageValid = true; }
 
   auto getOutputVariables() const -> VariableIdSet {
     VariableIdSet res;
@@ -73,10 +99,19 @@ struct ExecutionNodeMock {
     return res;
   }
 
+  auto getVariablesSetHere() const -> VarSet { return _output; }
+
   auto setRegsToClear(std::unordered_set<RegisterId>&& toClear) -> void {}
 
   auto getTypeString() -> std::string const& {
     return ExecutionNode::getTypeString(_type);
+  }
+
+  auto setVarsValid(VarSet const& v) -> void { _varsValid = v; }
+
+  auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   // Will be modified by walker worker
@@ -86,8 +121,12 @@ struct ExecutionNodeMock {
  private:
   ExecutionNode::NodeType _type;
   bool _isIncreaseDepth;
-  ::arangodb::containers::HashSet<Variable const*> _input;
-  ::arangodb::containers::HashSet<Variable const*> _output;
+  VarSet _input;
+  VarSet _output;
+  VarSet _usedLater;
+  VarSet _varsValid{};
+  bool _varUsageValid{false};
+  PlanMiniMock _plan;
 };
 
 class RegisterPlanTest : public ::testing::Test {
@@ -96,15 +135,14 @@ class RegisterPlanTest : public ::testing::Test {
 
   auto walk(std::vector<ExecutionNodeMock>& nodes)
       -> std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> {
+    // Compute the variable usage for nodes.
+    std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
+    ::VarUsageFinder finder(&varSetBy);
+    applyWalkerToNodes(nodes, finder);
+
     auto registerPlan = std::make_shared<RegisterPlanT<ExecutionNodeMock>>();
     RegisterPlanWalkerT<ExecutionNodeMock> worker(registerPlan);
-
-    for (auto& n : nodes) {
-      worker.before(&n);
-    }
-    for (auto it = nodes.rbegin(); it < nodes.rend(); ++it) {
-      worker.after(&(*it));
-    }
+    applyWalkerToNodes(nodes, worker);
 
     return registerPlan;
   }
@@ -116,15 +154,73 @@ class RegisterPlanTest : public ::testing::Test {
     }
     return res;
   }
+
+  auto assertVariableInRegister(std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan,
+                                Variable const& v, RegisterId r) {
+    auto it = plan->varInfo.find(v.id);
+    ASSERT_NE(it, plan->varInfo.end());
+    EXPECT_EQ(it->second.registerId, r);
+  }
+
+ private:
+  template <class Walker>
+  auto applyWalkerToNodes(std::vector<ExecutionNodeMock>& nodes, Walker& worker) -> void {
+    for (auto it = nodes.rbegin(); it < nodes.rend(); ++it) {
+      worker.before(&(*it));
+    }
+
+    for (auto& n : nodes) {
+      worker.after(&n);
+    }
+  }
 };
 
-TEST_F(RegisterPlanTest, planRegisters_should_add_registerPlan) {
+TEST_F(RegisterPlanTest, walker_should_plan_registers) {
   auto vars = generateVars(1);
   std::vector<ExecutionNodeMock> myList{
       ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  LOG_DEVEL << "Plan: " << *plan;
+  assertVariableInRegister(plan, vars[0], 0);
+}
+
+TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed) {
+  auto vars = generateVars(2);
+  std::vector<ExecutionNodeMock> myList{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[0], &vars[1]}, {}}};
+  auto plan = walk(myList);
+  ASSERT_NE(plan, nullptr);
+  assertVariableInRegister(plan, vars[0], 0);
+  assertVariableInRegister(plan, vars[1], 1);
+}
+
+TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
+  auto vars = generateVars(2);
+  std::vector<ExecutionNodeMock> myList{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
+  auto plan = walk(myList);
+  ASSERT_NE(plan, nullptr);
+  assertVariableInRegister(plan, vars[0], 0);
+  assertVariableInRegister(plan, vars[1], 0);
+}
+
+TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_passthrough) {
+  auto vars = generateVars(2);
+  std::vector<ExecutionNodeMock> myList{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
+  auto plan = walk(myList);
+  ASSERT_NE(plan, nullptr);
+  assertVariableInRegister(plan, vars[0], 0);
+  assertVariableInRegister(plan, vars[1], 1);
 }
 
 }  // namespace aql
