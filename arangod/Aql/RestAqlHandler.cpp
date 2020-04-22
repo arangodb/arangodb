@@ -891,7 +891,7 @@ void RestAqlHandler::handleFinishQuery(std::string const& idString) {
   
   int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
   
-  auto query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode, false);
+  auto query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
     // this may be a race between query garbage collection and the client
     // shutting down the query. it is debatable whether this is an actual error 
