@@ -301,6 +301,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   KShortestPathsExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
   KShortestPathsExecutorInfos::InputVertex targetInput = ::prepareVertexInput(this, true);
 
+#ifdef USE_ENTERPRISE
+  waitForSatelliteIfRequired(&engine);
+#endif
+
   std::unique_ptr<KShortestPathsFinder> finder;
   finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
 
