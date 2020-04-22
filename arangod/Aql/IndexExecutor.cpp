@@ -182,7 +182,7 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.getQuery(), infos.getFilter(), infos.getProjections(),
-      infos.getCoveringIndexAttributePositions(), false, 
+      infos.getCoveringIndexAttributePositions(), false,
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
 }
 }  // namespace
@@ -196,7 +196,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, 
+    std::vector<size_t> const& coveringIndexAttributePositions,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
@@ -481,6 +481,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
+
   // Creation of a cursor will trigger search.
   // As we want to create them lazily we only
   // reserve here.
