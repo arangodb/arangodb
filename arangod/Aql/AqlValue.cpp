@@ -760,18 +760,14 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice(t));
       if (s.isObject()) {
-        if (s.isExternal()) {
-          s = s.resolveExternal();
-        }
+        s = s.resolveExternal();
         VPackSlice prev;
         size_t const n = names.size();
         for (size_t i = 0; i < n; ++i) {
           // fetch subattribute
           prev = s;
           s = s.get(names[i]);
-          if (s.isExternal()) {
-            s = s.resolveExternal();
-          }
+          s = s.resolveExternal();
 
           if (s.isNone()) {
             // not found

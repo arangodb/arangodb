@@ -298,9 +298,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-    if (slice.isExternal()) {
-      slice = slice.resolveExternal();
-    }
+    slice = slice.resolveExternal();
     
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
       vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
@@ -454,9 +452,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
   } else {
     auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-      if (slice.isExternal()) {
-        slice = slice.resolveExternal();
-      }
+      slice = slice.resolveExternal();
       
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
       allocateSpace(toValue.size());

@@ -645,9 +645,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     idNode->setStringValue(vertexId.data(), vertexId.length());
   }
-  if (edge.isExternal()) {
-    edge = edge.resolveExternal();
-  }
+  edge = edge.resolveExternal();
   return evaluateExpression(expression, edge);
 }
 
@@ -663,9 +661,7 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
     expression = _baseVertexExpression.get();
   }
 
-  if (vertex.isExternal()) {
-    vertex = vertex.resolveExternal();
-  }
+  vertex = vertex.resolveExternal();
   return evaluateExpression(expression, vertex);
 }
 

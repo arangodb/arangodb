@@ -64,18 +64,14 @@ size_t getWriteConcern(VPackSlice slice, struct ServerDefaults serverDefaults) {
 #ifndef USE_ENTERPRISE
 // Factory methods
 std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase, VPackSlice document) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
+  document = document.resolveExternal();
   std::unique_ptr<Graph> result{new Graph{document, vocbase}};
   return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
                                             VPackSlice document, VPackSlice options) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
+  document = document.resolveExternal();
   std::unique_ptr<Graph> result{new Graph{vocbase, std::move(name), document, options}};
   return result;
 }

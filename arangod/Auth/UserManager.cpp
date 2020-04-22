@@ -173,9 +173,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
 /// Convert documents from _system/_users into the format used in
 /// the REST user API and Foxx
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
-  if (doc.isExternal()) {
-    doc = doc.resolveExternals();
-  }
+  doc = doc.resolveExternals();
   VPackSlice authDataSlice = doc.get("authData");
   {
     VPackObjectBuilder b(&result, true);
@@ -293,11 +291,9 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
     if (res.ok()) {
       VPackSlice userDoc = opres.slice();
-      TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
-      userDoc = userDoc.get("new");
-      if (userDoc.isExternal()) {
-        userDoc = userDoc.resolveExternal();
-      }
+      TRI_ASSERT(userDoc.isObject() && userDoc.hasKey(StaticStrings::New));
+      userDoc = userDoc.get(StaticStrings::New);
+      userDoc = userDoc.resolveExternal();
 
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);

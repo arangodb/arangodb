@@ -184,9 +184,7 @@ static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
 
 /// @brief validates documents for duplicate attribute names
 bool isValidDocument(VPackSlice slice) {
-  if (slice.isExternal()) {
-    slice = slice.resolveExternals();
-  }
+  slice = slice.resolveExternals();
 
   if (slice.isObject()) {
     std::unordered_set<VPackStringRef> keys;

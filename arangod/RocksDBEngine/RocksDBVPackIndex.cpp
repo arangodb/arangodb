@@ -764,13 +764,9 @@ namespace {
 
       // fetch subattribute
       first = first.get(begin->name);
-      if (first.isExternal()) {
-        first = first.resolveExternal();
-      }
+      first = first.resolveExternal();
       second = second.get(begin->name);
-      if (second.isExternal()) {
-        second = second.resolveExternal();
-      }
+      second = second.resolveExternal();
 
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {
