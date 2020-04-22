@@ -115,10 +115,10 @@ class HttpRequest final : public GeneralRequest {
   std::unordered_map<std::string, std::string> _cookies;
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
-  bool const _allowMethodOverride;
+  bool const _allowMethodOverride = false;
 
   /// @brief was VPack payload validated
-  bool _validatedPayload;
+  bool _validatedPayload = false;
 };
 }  // namespace arangodb
 
