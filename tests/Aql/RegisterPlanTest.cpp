@@ -215,7 +215,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
   std::vector<ExecutionNodeMock> myList{
       ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
       ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[0]}, {&vars[1]}},
       ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
