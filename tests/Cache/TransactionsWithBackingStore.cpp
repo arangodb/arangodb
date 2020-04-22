@@ -225,8 +225,8 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
   if (expected < 0.0) {
     expected = 0.01;
   }
-  EXPECT_GE(hitRates.first, 0.1);
-  EXPECT_GE(hitRates.second, 2.5);
+  EXPECT_GE(hitRates.first, expected);
+  EXPECT_GE(hitRates.second, expected);
 
   RandomGenerator::shutdown();
 }
