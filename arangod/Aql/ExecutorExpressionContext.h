@@ -46,8 +46,6 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
 
   ~ExecutorExpressionContext() override = default;
 
-  size_t numRegisters() const override;
-  
   bool isDataFromCollection(Variable const* variable) const override {
     return variable->isDataFromCollection;
   }

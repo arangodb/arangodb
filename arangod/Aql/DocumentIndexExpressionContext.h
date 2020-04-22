@@ -39,8 +39,6 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 
   ~DocumentIndexExpressionContext() = default;
 
-  virtual size_t numRegisters() const override;
-  
   /// true if the variable we are referring to is set by
   /// a collection enumeration/index enumeration
   virtual bool isDataFromCollection(Variable const* variable) const override {

@@ -73,8 +73,6 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
-  virtual size_t numRegisters() const override;
-  
   virtual bool isDataFromCollection(aql::Variable const* variable) const override {
     return variable->isDataFromCollection;
   }
