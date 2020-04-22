@@ -1658,7 +1658,7 @@ TRI_voc_tick_t StorageEngineMock::recoveryTick() {
 
 arangodb::Result StorageEngineMock::lastLogger(
     TRI_vocbase_t& vocbase, 
-    uint64_t tickStart, uint64_t tickEnd, velocypack::Builder& builderSPtr) {
+    uint64_t tickStart, uint64_t tickEnd, arangodb::velocypack::Builder& builderSPtr) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -1743,7 +1743,7 @@ int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice c
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,
                                                      TRI_voc_cid_t cid,
                                                      arangodb::AccessMode::Type accessType)
-    : TransactionCollection(state, cid, accessType, 0) {}
+    : TransactionCollection(state, cid, accessType) {}
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {
   return nullptr != _collection;  // collection must have be opened previously
@@ -1754,7 +1754,7 @@ bool TransactionCollectionMock::hasOperations() const {
   return false;
 }
 
-void TransactionCollectionMock::release() {
+void TransactionCollectionMock::releaseUsage() {
   if (_collection) {
     if (!arangodb::ServerState::instance()->isCoordinator()) {
       _transaction->vocbase().releaseCollection(_collection.get());
@@ -1763,13 +1763,7 @@ void TransactionCollectionMock::release() {
   }
 }
 
-void TransactionCollectionMock::releaseUsage() {
-  // NOOP, assume success
-}
-
 arangodb::Result TransactionCollectionMock::lockUsage() {
-  TRI_vocbase_col_status_e status;
-
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
@@ -1795,11 +1789,11 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
       _collection =
           ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     } else {
-      _collection = _transaction->vocbase().useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, true);
     }
   }
 
-  return Result(_collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  return arangodb::Result(_collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 arangodb::Result TransactionCollectionMock::doLock(arangodb::AccessMode::Type type) {
@@ -1834,7 +1828,7 @@ TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
-  releaseUsage();
+//  releaseUsage();
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
   const_cast<TRI_voc_tid_t&>(_id) = 0;
 
@@ -1844,8 +1838,12 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   ++beginTransactionCount;
   _hints = hints;
+  
+  arangodb::Result res = useCollections();
+  if (res.fail()) { // something is wrong
+    return res;
+  }
 
-  auto res = lockUsage();
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
@@ -1862,7 +1860,7 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   updateStatus(arangodb::transaction::Status::COMMITTED);
   // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
   const_cast<TRI_voc_tid_t&>(_id) = 0;
-  releaseUsage();
+//  releaseUsage();
 
   return arangodb::Result();
 }

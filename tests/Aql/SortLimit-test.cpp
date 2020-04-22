@@ -130,13 +130,12 @@ class SortLimitTest
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
                                nullptr, options);
-    std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
     arangodb::aql::QueryResult result;
 
     while (true) {
       auto state = query.execute(result);
       if (state == arangodb::aql::ExecutionState::WAITING) {
-        ss->waitForAsyncWakeup();
+        query.sharedState()->waitForAsyncWakeup();
       } else {
         break;
       }

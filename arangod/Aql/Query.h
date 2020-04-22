@@ -187,6 +187,18 @@ class Query : public QueryContext {
   virtual velocypack::Options const& vpackOptions() const override;
   
   virtual transaction::Methods& trxForOptimization() override;
+  
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  ExecutionPlan* plan() const {
+    if (_plans.size() == 1) {
+      return _plans[0].get();
+    }
+    return nullptr;
+  }
+  AqlItemBlockManager& itemBlockManager() {
+    return _itemBlockManager;
+  }
+#endif
 
  protected:
   /// @brief initializes the query

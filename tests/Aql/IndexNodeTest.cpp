@@ -69,13 +69,11 @@ arangodb::aql::QueryResult executeQuery(const std::shared_ptr<arangodb::transact
                              bindVars,
                              arangodb::velocypack::Parser::fromJson(optionsString));
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-
   arangodb::aql::QueryResult result;
   while (true) {
     auto state = query.execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncWakeup();
+      query.sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }

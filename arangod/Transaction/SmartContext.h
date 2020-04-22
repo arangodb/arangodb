@@ -64,6 +64,10 @@ class SmartContext : public Context {
   /// @brief locally persisted transaction ID
   TRI_voc_tid_t generateId() const override final;
   
+  bool isStateSet() const {
+    return _state != nullptr;
+  }
+  
  protected:
   /// @brief ID of the transaction to use
   TRI_voc_tid_t const _globalId;

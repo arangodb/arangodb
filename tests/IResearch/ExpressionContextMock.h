@@ -24,8 +24,10 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT
 #define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
 
-#include "Aql/FixedVarExpressionContext.h"
+#include "Aql/QueryContext.h"
+#include "Aql/RegexCache.h"
 #include "IResearch/IResearchExpressionContext.h"
+#include "Transaction/Methods.h"
 
 #include <unordered_map>
 
@@ -39,17 +41,22 @@ struct Variable; // forward decl
 } // aql
 } // arangodb
 
-struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextBase {
-/* TODO!
-  static ExpressionContextMock EMPTY;
+struct ExpressionContextMockBase : public arangodb::iresearch::ViewExpressionContextBase {
+  ExpressionContextMockBase(arangodb::transaction::Methods* trx,
+                            arangodb::aql::QueryContext* query,
+                            arangodb::aql::RegexCache* cache)
+      : ViewExpressionContextBase(*trx, *query, *cache) {}
+};
 
-  ExpressionContextMock() {} ;
-*/
-  ExpressionContextMock(arangodb::transaction::Methods& trx,
-                        arangodb::aql::QueryContext& query,
-                        arangodb::aql::RegexCache& cache) noexcept
-    : arangodb::iresearch::ViewExpressionContextBase(trx, query, cache) {
-  }
+struct ExpressionContextMock final : public ExpressionContextMockBase {
+
+  static ExpressionContextMock EMPTY;
+  
+  ExpressionContextMock() : ExpressionContextMockBase(nullptr, nullptr, nullptr) {}
+
+//  ExpressionContextMock(arangodb::aql::QueryContext& query) noexcept
+//  : arangodb::iresearch::ViewExpressionContextBase(_trx, query, _regexCache),
+//    _trx(arangodb::transaction::StandaloneConte) {}
 
   virtual ~ExpressionContextMock();
 
@@ -67,39 +74,6 @@ struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextB
     bool doCopy,
     bool& mustDestroy
   ) const override;
-  /* TODO
-  void registerWarning(int, char const*) override {
-    TRI_ASSERT(false);
-  }
-
-  void registerError(int, char const*) override {
-    TRI_ASSERT(false);
-  }
-  
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive) override {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
-
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive) override {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
-
-  icu::RegexMatcher* buildSplitMatcher(arangodb::aql::AqlValue splitExpression, arangodb::transaction::Methods*, bool& isEmptyExpression) override {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
-  */
-
-//  bool killed() const override {
-//    TRI_ASSERT(false);
-//    return false;
-//  }
-//
-//  TRI_vocbase_t& vocbase() const override;
-//
-//  arangodb::aql::Query* query() const override;
 
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock

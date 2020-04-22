@@ -101,7 +101,6 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
 Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx) {
   LOG_TRX("fc653", TRACE, this) << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
-  Result res;
 
   updateStatus(transaction::Status::ABORTED);
   _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;

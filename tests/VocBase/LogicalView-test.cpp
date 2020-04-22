@@ -178,8 +178,7 @@ TEST_F(LogicalViewTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
@@ -196,8 +195,7 @@ TEST_F(LogicalViewTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
@@ -215,8 +213,7 @@ TEST_F(LogicalViewTest, test_auth) {
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
