@@ -6,6 +6,9 @@ devel
   For these systems the default value were presumably too high and needed manual
   adjustment.
 
+* Allow to override the detected number of avaiable CPU cores via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES.
+
 * Fix a bug in the optimizer which handled combinations of smart joins with
   query components that had to run on a coordinator wrong.
 

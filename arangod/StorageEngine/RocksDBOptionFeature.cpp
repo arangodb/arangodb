@@ -28,6 +28,7 @@
 #include "RocksDBOptionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -130,7 +131,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _exclusiveWrites(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
-      std::max(static_cast<size_t>(2), std::min(TRI_numberProcessors(), static_cast<size_t>(8))));
+      std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
 #ifdef _WIN32
   // Windows code does not (yet) support lowering thread priority of
   //  compactions.  Therefore it is possible for rocksdb to use all
@@ -442,7 +443,7 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
 void RocksDBOptionFeature::start() {
   uint32_t max = _maxBackgroundJobs / 2;
-  uint32_t clamped = std::max(std::min((uint32_t)TRI_numberProcessors(), max), 1U);
+  uint32_t clamped = std::max(std::min(static_cast<uint32_t>(NumberOfCores::getValue()), max), 1U);
   // lets test this out
   if (_numThreadsHigh == 0) {
     _numThreadsHigh = clamped;
