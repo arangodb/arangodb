@@ -115,11 +115,11 @@ class TransactionState {
   bool waitForSync() const { return _options.waitForSync; }
   void waitForSync(bool value) { _options.waitForSync = value; }
 
-  bool allowImplicitCollections() const {
-    return _options.allowImplicitCollections;
+  bool allowImplicitCollectionsForRead() const {
+    return _options.allowImplicitCollectionsForRead;
   }
-  void allowImplicitCollections(bool value) {
-    _options.allowImplicitCollections = value;
+  void allowImplicitCollectionsForRead(bool value) {
+    _options.allowImplicitCollectionsForRead = value;
   }
 
   /// @brief return the collection from a transaction

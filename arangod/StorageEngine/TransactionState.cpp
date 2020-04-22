@@ -156,17 +156,19 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   // collection not found.
   
   LOG_TRX("ad6e1", TRACE, this) << "adding new collection " << cid << ": '" << cname << "'";
-
+      
   if (_status != transaction::Status::CREATED &&
-      AccessMode::isWriteOrExclusive(accessType)) {
-    // trying to write access a collection in an embedded transaction
+      AccessMode::isWriteOrExclusive(accessType) &&
+      !_options.allowImplicitCollectionsForWrite) {
+    // trying to write access a collection that was not declared at start.
+    // this is only supported internally for replication transactions.
     return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
                      " [" + AccessMode::typeString(accessType) + "]");
   }
 
   if (!AccessMode::isWriteOrExclusive(accessType) &&
-      (isRunning() && !_options.allowImplicitCollections)) {
+      (isRunning() && !_options.allowImplicitCollectionsForRead)) {
     return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
                      std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname +
                      " [" + AccessMode::typeString(accessType) + "]");
@@ -197,7 +199,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   }
   
   if (lockUsage) {
-    TRI_ASSERT(!isRunning() || !AccessMode::isWriteOrExclusive(accessType));
+    TRI_ASSERT(!isRunning() || !AccessMode::isWriteOrExclusive(accessType) || _options.allowImplicitCollectionsForWrite);
     res = trxColl->lockUsage();
   }
 

@@ -112,7 +112,7 @@ class Methods {
   
   /// @brief create the transaction
   explicit Methods(std::shared_ptr<transaction::Context> const& transactionContext,
-          transaction::Options const& options = transaction::Options());
+                   transaction::Options const& options = transaction::Options());
 
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,

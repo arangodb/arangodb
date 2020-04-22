@@ -267,7 +267,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
-  trxOpts.allowImplicitCollections = true;
+  trxOpts.allowImplicitCollectionsForRead = true;
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
   transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
   Result res = trx.begin();
