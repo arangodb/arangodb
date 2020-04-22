@@ -3018,62 +3018,75 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databaseName) {
-  AnalyzerRevision::Revision revision;
-  {
-    // Get current revision for precondition
-    loadPlan();
-    READ_LOCKER(readLocker, _planProt.lock);
-    auto it = _dbAnalyzerRevision.find(databaseName);
-    if (it == _dbAnalyzerRevision.cend()) {
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
-                    "start modifying analyzer: unknown database name '" + databaseName + "'");
-    }
-    revision = it->second->getRevision();
-  }
-
-  AgencyComm ac(_server);
-
-  VPackBuilder revisionBuilder;
-  revisionBuilder.add(VPackValue(revision));
-
   VPackBuilder serverIDBuilder;
   serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
 
   VPackBuilder rebootIDBuilder;
   rebootIDBuilder.add(VPackValue(ServerState::instance()->getRebootId().value()));
 
-  AgencyWriteTransaction const transaction{
-      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
-            AgencySimpleOperationType::INCREMENT_OP},
-       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
-            AgencyValueOperationType::SET, serverIDBuilder.slice()},
-       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
-            AgencyValueOperationType::SET, rebootIDBuilder.slice()},
-       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
-            AgencyPrecondition::Type::VALUE, revisionBuilder.slice()}}};
+  AgencyComm ac(_server);
 
-  auto const res = ac.sendTransactionWithFailover(transaction);
+  AnalyzerRevision::Revision revision;
+  auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
 
-  // Only if not precondition failed
-  if (!res.successful()) {
-    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
-      // Dump agency plan
-      logAgencyDump();
-
-      return Result(
-          TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
-          "start modifying analyzer precondition for database " + databaseName + ": Revision " +
-            revisionBuilder.toString() + " is not equal to BuildingRevision. Cannot modify an analyzer.");
+  // do until precondition success or timeout
+  do {
+    {
+      // Get current revision for precondition
+      loadPlan();
+      READ_LOCKER(readLocker, _planProt.lock);
+      auto it = _dbAnalyzerRevision.find(databaseName);
+      if (it == _dbAnalyzerRevision.cend()) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                      "start modifying analyzer: unknown database name '" + databaseName + "'");
+      }
+      revision = it->second->getRevision();
     }
 
-    return Result(
-        TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
-        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-            " HTTP code: " + std::to_string(res.httpCode()) +
-            " error message: " + res.errorMessage() +
-            " error details: " + res.errorDetails() + " body: " + res.body());
-  }
+    VPackBuilder revisionBuilder;
+    revisionBuilder.add(VPackValue(revision));
+
+    AgencyWriteTransaction const transaction{
+        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+              AgencySimpleOperationType::INCREMENT_OP},
+         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
+              AgencyValueOperationType::SET, serverIDBuilder.slice()},
+         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
+              AgencyValueOperationType::SET, rebootIDBuilder.slice()},
+         {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+              AgencyPrecondition::Type::VALUE, revisionBuilder.slice()}}};
+
+    auto const res = ac.sendTransactionWithFailover(transaction);
+
+    // Only if not precondition failed
+    if (!res.successful()) {
+      if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+        if (TRI_microtime() > endTime) {
+          // Dump agency plan
+          logAgencyDump();
+
+          return Result(
+              TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+              "start modifying analyzer precondition for database " + databaseName + ": Revision " +
+                revisionBuilder.toString() + " is not equal to BuildingRevision. Cannot modify an analyzer.");
+        }
+
+        if (_server.isStopping()) {
+          return Result(TRI_ERROR_SHUTTING_DOWN);
+        }
+
+        continue;
+      }
+
+      return Result(
+          TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+              " HTTP code: " + std::to_string(res.httpCode()) +
+              " error message: " + res.errorMessage() +
+              " error details: " + res.errorDetails() + " body: " + res.body());
+    }
+  } while (true);
 
   // Update our cache
   loadPlan();
@@ -3087,64 +3100,78 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
 /// and the errorMsg is set accordingly. One possible error
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databaseName) {
-  AnalyzerRevision::Revision revision;
-  {
-    // Get current revision for precondition
-    loadPlan();
-    READ_LOCKER(readLocker, _planProt.lock);
-    auto it = _dbAnalyzerRevision.find(databaseName);
-    if (it == _dbAnalyzerRevision.cend()) {
-      return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
-                    "finish modifying analyzer: unknown database name '" + databaseName + "'");
-    }
-    revision = it->second->getRevision();
-  }
-
-  AgencyComm ac(_server);
-
-  VPackBuilder revisionBuilder;
-  revisionBuilder.add(VPackValue(++revision));
-
+Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databaseName, bool restore) {
   VPackBuilder serverIDBuilder;
   serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
 
   VPackBuilder rebootIDBuilder;
   rebootIDBuilder.add(VPackValue(ServerState::instance()->getRebootId().value()));
 
-  AgencyWriteTransaction const transaction{
-      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
-            AgencySimpleOperationType::INCREMENT_OP},
-       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-      {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
-            AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
-       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
-            AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
-       {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
-            AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
+  AgencyComm ac(_server);
 
-  auto const res = ac.sendTransactionWithFailover(transaction);
+  AnalyzerRevision::Revision revision;
+  auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
 
-  // Only if not precondition failed
-  if (!res.successful()) {
-    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
-      // Dump agency plan
-      logAgencyDump();
-
-      return Result(
-          TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
-          "finish modifying analyzer precondition for database " + databaseName + ": Revision " +
-            revisionBuilder.toString() + " + 1 is not equal to BuildingRevision " +
-            "or incorrect coordinator or rebootID. Cannot modify an analyzer.");
+  // do until precondition success or timeout
+  do {
+    {
+      // Get current revision for precondition
+      loadPlan();
+      READ_LOCKER(readLocker, _planProt.lock);
+      auto it = _dbAnalyzerRevision.find(databaseName);
+      if (it == _dbAnalyzerRevision.cend()) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                      "finish modifying analyzer: unknown database name '" + databaseName + "'");
+      }
+      revision = it->second->getRevision();
     }
 
-    return Result(
-        TRI_ERROR_CLUSTER_COULD_NOT_CREATE_ANALYZER_IN_PLAN,
-        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-            " HTTP code: " + std::to_string(res.httpCode()) +
-            " error message: " + res.errorMessage() +
-            " error details: " + res.errorDetails() + " body: " + res.body());
-  }
+    VPackBuilder revisionBuilder;
+    revisionBuilder.add(VPackValue(++revision));
+
+    AgencyWriteTransaction const transaction{
+        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+              restore ? AgencySimpleOperationType::DECREMENT_OP
+                      : AgencySimpleOperationType::INCREMENT_OP},
+         {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+              AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
+         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
+              AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
+         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
+              AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
+
+    auto const res = ac.sendTransactionWithFailover(transaction);
+
+    // Only if not precondition failed
+    if (!res.successful()) {
+      if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+        if (TRI_microtime() > endTime) {
+          // Dump agency plan
+          logAgencyDump();
+
+          return Result(
+              TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+              "finish modifying analyzer precondition for database " + databaseName + ": Revision " +
+                revisionBuilder.toString() + (restore ? " - 1" : " + 1") + " is not equal to BuildingRevision " +
+                "or incorrect coordinator or rebootID. Cannot modify an analyzer.");
+        }
+
+        if (_server.isStopping()) {
+          return Result(TRI_ERROR_SHUTTING_DOWN);
+        }
+
+        continue;
+      }
+
+      return Result(
+          TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+              " HTTP code: " + std::to_string(res.httpCode()) +
+              " error message: " + res.errorMessage() +
+              " error details: " + res.errorDetails() + " body: " + res.body());
+    }
+  } while (true);
 
   // Update our cache
   loadPlan();

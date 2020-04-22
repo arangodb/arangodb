@@ -201,13 +201,15 @@ void RestAnalyzerHandler::createAnalyzer( // create
     auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
     auto res = engine.startModifyingAnalyzerCoordinator(splittedAnalyzerName.first);
     if (res.fail()) {
-      // try again if precondition
+      generateError(res);
+
+      return;
     }
   }
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
 
-  if (!res.ok()) {
+  if (res.fail()) {
     generateError(res);
 
     return;
@@ -230,9 +232,11 @@ void RestAnalyzerHandler::createAnalyzer( // create
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(server().hasFeature<arangodb::ClusterFeature>());
     auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
-    auto res = engine.finishModifyingAnalyzerCoordinator(splittedAnalyzerName.first);
+    auto res = engine.finishModifyingAnalyzerCoordinator(splittedAnalyzerName.first, false);
     if (res.fail()) {
-      // error
+      generateError(res);
+
+      return;
     }
   }
 
