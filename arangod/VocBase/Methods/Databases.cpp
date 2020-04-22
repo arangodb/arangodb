@@ -294,8 +294,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
-    LOG_TOPIC("15580", ERR, Logger::FIXME)
-      << "Could not create database: " << res.errorMessage();
     events::CreateDatabase(dbName, res.errorNumber());
     return res;
   }
