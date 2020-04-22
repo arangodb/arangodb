@@ -120,7 +120,11 @@ struct BaseOptions {
 
   bool produceVertices() const { return _produceVertices; }
 
+  bool produceEdges() const { return _produceEdges; }
+
   void setProduceVertices(bool value) { _produceVertices = value; }
+
+  void setProduceEdges(bool value) { _produceEdges = value; }
 
   transaction::Methods* trx() const;
 
@@ -185,6 +189,9 @@ struct BaseOptions {
 
   /// @brief whether or not the traversal will produce vertices
   bool _produceVertices;
+
+  /// @brief whether or not the traversal will produce edges
+  bool _produceEdges{true};
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;

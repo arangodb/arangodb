@@ -98,9 +98,10 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& bu
   _modCondition->toVelocyPack(builder, verbose);
 }
 
-TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                             AstNode const* direction, AstNode const* start,
-                             AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+TraversalNode::TraversalNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             TRI_vocbase_t* vocbase, AstNode const* direction,
+                             AstNode const* start, AstNode const* graph,
+                             std::unique_ptr<Expression> pruneExpression,
                              std::unique_ptr<BaseOptions> options)
     : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
@@ -486,16 +487,20 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
     size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
     for (auto const v : pruneVars) {
-      auto it = varInfo.find(v->id);
-      TRI_ASSERT(it != varInfo.end());
       if (v == vertexOutVariable()) {
         vertexRegIdx = pruneRegs.size();
+        pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
       } else if (v == edgeOutVariable()) {
         edgeRegIdx = pruneRegs.size();
+        pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
       } else if (v == pathOutVariable()) {
         pathRegIdx = pruneRegs.size();
+        pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
+      } else {
+        auto it = varInfo.find(v->id);
+        TRI_ASSERT(it != varInfo.end());
+        pruneRegs.emplace_back(it->second.registerId);
       }
-      pruneRegs.emplace_back(it->second.registerId);
     }
 
     opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
@@ -793,6 +798,10 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
       res.emplace_back(it);
     }
   }
+}
+
+bool TraversalNode::usesPathOutVariable() const {
+  return _pathOutVariable != nullptr && options()->producePaths();
 }
 
 auto TraversalNode::options() const -> TraverserOptions* {
