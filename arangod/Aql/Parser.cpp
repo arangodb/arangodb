@@ -125,7 +125,9 @@ QueryResult Parser::parseWithDetails() {
   QueryResult result;
   result.collectionNames = _query.collections().collectionNames();
   result.bindParameters = _ast.bindParameters();
-  result.data = _ast.toVelocyPack(false);
+  auto builder = std::make_shared<VPackBuilder>();
+  _ast.toVelocyPack(*builder, false);
+  result.data = std::move(builder); 
 
   return result;
 }

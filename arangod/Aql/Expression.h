@@ -101,7 +101,7 @@ class Expression {
   bool willUseV8();
 
   /// @brief clone the expression, needed to clone execution plans
-  std::unique_ptr<Expression> clone(ExecutionPlan* plan, Ast* ast);
+  std::unique_ptr<Expression> clone(Ast* ast);
 
   /// @brief return all variables used in the expression
   void variables(::arangodb::containers::HashSet<Variable const*>&) const;

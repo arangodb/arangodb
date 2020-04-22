@@ -73,7 +73,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
   if (_filter != nullptr) {
-    c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan, plan->getAst())));
+    c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan->getAst())));
   }
 }
 

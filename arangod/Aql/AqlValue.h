@@ -214,9 +214,6 @@ struct AqlValue final {
   // construct from Builder, copying contents
   explicit AqlValue(arangodb::velocypack::Builder const& builder);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const* builder);
-
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice);
 

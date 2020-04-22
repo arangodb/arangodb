@@ -98,7 +98,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    AqlValue v(b.get());
+    AqlValue v(b->slice());
     AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
@@ -422,7 +422,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       InputAqlItemRow const& input = context.getInputRow();
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
-      AqlValue v(b.get());
+      AqlValue v(b->slice());
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
       output.moveValueInto(registerId, input, guard);

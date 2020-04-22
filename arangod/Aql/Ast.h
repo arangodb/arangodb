@@ -120,7 +120,7 @@ class Ast {
   bool containsParallelNode() const;
 
   /// @brief convert the AST into VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
   /// @brief add an operation to the root node
   void addOperation(AstNode*);

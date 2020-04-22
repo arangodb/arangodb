@@ -119,7 +119,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
   if (other.expression != nullptr) {
-    expression = other.expression->clone(nullptr, nullptr);
+    expression = other.expression->clone(nullptr);
   }
 }
 

@@ -598,7 +598,12 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
-    return AqlValue(node->computeValue().begin());
+    uint8_t const* cv = node->computedValue();
+    if (cv != nullptr) {
+      return AqlValue(cv);
+    }
+    transaction::BuilderLeaser builder(trx);
+    return AqlValue(node->computeValue(builder.get()).begin());
   }
 
   size_t const n = node->numMembers();
@@ -620,7 +625,7 @@ AqlValue Expression::executeSimpleExpressionArray(AstNode const* node,
 
   builder->close();
   mustDestroy = true;  // AqlValue contains builder contains dynamic data
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief execute an expression of type SIMPLE with OBJECT
@@ -630,7 +635,12 @@ AqlValue Expression::executeSimpleExpressionObject(AstNode const* node,
   mustDestroy = false;
   if (node->isConstant()) {
     // this will not create a copy
-    return AqlValue(node->computeValue().begin());
+    uint8_t const* cv = node->computedValue();
+    if (cv != nullptr) {
+      return AqlValue(cv);
+    }
+    transaction::BuilderLeaser builder(trx);
+    return AqlValue(node->computeValue(builder.get()).begin());
   }
 
   size_t const n = node->numMembers();
@@ -737,7 +747,12 @@ AqlValue Expression::executeSimpleExpressionValue(AstNode const* node,
                                                   bool& mustDestroy) {
   // this will not create a copy
   mustDestroy = false;
-  return AqlValue(node->computeValue().begin());
+  uint8_t const* cv = node->computedValue();
+  if (cv != nullptr) {
+    return AqlValue(cv);
+  }
+  transaction::BuilderLeaser builder(trx);
+  return AqlValue(node->computeValue(builder.get()).begin());
 }
 
 /// @brief execute an expression of type SIMPLE with REFERENCE
@@ -912,7 +927,7 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   }
 
   mustDestroy = true;  // builder = dynamic data
-  return AqlValue(builder.get());
+  return AqlValue(builder->slice());
 }
 
 /// @brief execute an expression of type SIMPLE, JavaScript variant
@@ -1682,7 +1697,7 @@ bool Expression::willUseV8() {
   return (_type == SIMPLE && _node->willUseV8());
 }
 
-std::unique_ptr<Expression> Expression::clone(ExecutionPlan* plan, Ast* ast) {
+std::unique_ptr<Expression> Expression::clone(Ast* ast) {
   // We do not need to copy the _ast, since it is managed by the
   // query object and the memory management of the ASTs
   return std::make_unique<Expression>(ast != nullptr ? ast : _ast, _node);

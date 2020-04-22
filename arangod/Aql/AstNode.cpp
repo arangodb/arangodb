@@ -402,7 +402,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
 
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), computedValue(nullptr) {
+    : type(type), flags(0), _computedValue(nullptr) {
   // properly zero-initialize all members
   value.value._int = 0;
   value.length = 0;
@@ -415,13 +415,13 @@ AstNode::AstNode(AstNodeValue const& value)
       flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE,
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
       value(value),
-      computedValue(nullptr) {}
+      _computedValue(nullptr) {}
 
 /// @brief create the node from VPack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
+  TRI_ASSERT(_computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
@@ -631,7 +631,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
                  arangodb::velocypack::Slice const& slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
+  TRI_ASSERT(_computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -898,20 +898,33 @@ void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
-VPackSlice AstNode::computeValue() const {
+VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
   TRI_ASSERT(isConstant());
 
-  if (computedValue == nullptr) {
-    VPackBuilder builder;
-    toVelocyPackValue(builder);
-
-    computedValue = new uint8_t[builder.size()];
-    memcpy(computedValue, builder.data(), builder.size());
+  if (_computedValue == nullptr) {
+    if (builder == nullptr) {
+      VPackBuilder b;
+      computeValue(b);
+    } else {
+      builder->clear();
+      computeValue(*builder);
+    }
   }
 
-  TRI_ASSERT(computedValue != nullptr);
+  TRI_ASSERT(_computedValue != nullptr);
 
-  return VPackSlice(computedValue);
+  return VPackSlice(_computedValue);
+}
+
+/// @brief internal function for actual computing the constant value
+/// and storing it
+void AstNode::computeValue(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isEmpty());
+  toVelocyPackValue(builder);
+
+  TRI_ASSERT(_computedValue == nullptr);
+  _computedValue = new uint8_t[builder.size()];
+  memcpy(_computedValue, builder.data(), builder.size());
 }
 
 /// @brief sort the members of an (array) node
@@ -954,7 +967,9 @@ std::string const& AstNode::getValueTypeString() const {
 
 /// @brief stringify the AstNode
 std::string AstNode::toString(AstNode const* node) {
-  return node->toVelocyPack(false)->toJson();
+  VPackBuilder builder;
+  node->toVelocyPack(builder, false);
+  return builder.toJson();
 }
 
 /// @brief checks whether we know a type of this kind; throws exception if not.
@@ -1066,17 +1081,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   // Do not add anything.
 }
 
-/// @brief return a VelocyPack representation of the node
-std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
-  auto builder = std::make_shared<VPackBuilder>();
-  if (builder == nullptr) {
-    return nullptr;
-  }
-  toVelocyPack(*builder, verbose);
-  return builder;
-}
-
-/// @brief Create a VelocyPack representation of the node
+/// @brief create a VelocyPack representation of the node
 void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   VPackObjectBuilder guard(&builder);
 
@@ -2836,18 +2841,19 @@ bool AstNode::getBoolValue() const noexcept { return value.value._bool; }
 
 void AstNode::setBoolValue(bool v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._bool = v;
 }
 
 int64_t AstNode::getIntValue(bool) const noexcept { return value.value._int; }
 void AstNode::setIntValue(int64_t v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._int = v;
 }
 
 void AstNode::setDoubleValue(double v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  
   freeComputedValue();
   value.value._double = v;
 }
@@ -2890,18 +2896,20 @@ void* AstNode::getData() const { return value.value._data; }
 
 void AstNode::setData(void* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._data = v;
 }
 
 void AstNode::setData(void const* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  freeComputedValue();
   value.value._data = const_cast<void*>(v);
 }
 
 void AstNode::freeComputedValue() {
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-    computedValue = nullptr;
+  if (_computedValue != nullptr) {
+    delete[] _computedValue;
+    _computedValue = nullptr;
   }
 }
 

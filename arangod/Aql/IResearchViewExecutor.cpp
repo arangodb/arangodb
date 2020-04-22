@@ -560,11 +560,12 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
 
     if (rv.fail()) {
+      arangodb::velocypack::Builder builder;
+      infos().filterCondition().toVelocyPack(builder, true);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           rv.errorNumber(),
           "failed to build filter while querying arangosearch view, query '" +
-              infos().filterCondition().toVelocyPack(true)->toJson() +
-              "': " + rv.errorMessage());
+              builder.toJson() + "': " + rv.errorMessage());
     }
 
     if (infos().volatileSort() || !_isInitialized) {

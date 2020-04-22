@@ -7344,7 +7344,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
           en->setFilter(std::make_unique<Expression>(plan->getAst(), merged));
         } else {
           // node did not yet have a filter
-          en->setFilter(expr->clone(plan.get(), plan->getAst()));
+          en->setFilter(expr->clone(plan->getAst()));
         }
 
         // remove the filter

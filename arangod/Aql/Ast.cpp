@@ -199,13 +199,11 @@ Ast::Ast(QueryContext& query)
 Ast::~Ast() = default;
 
 /// @brief convert the AST into VelocyPack
-std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
-  auto builder = std::make_shared<VPackBuilder>();
+void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   {
-    VPackArrayBuilder guard(builder.get());
-    _root->toVelocyPack(*builder, verbose);
+    VPackArrayBuilder guard(&builder);
+    _root->toVelocyPack(builder, verbose);
   }
-  return builder;
 }
 
 /// @brief add an operation to the AST
@@ -1157,9 +1155,11 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
       cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
 
+  VPackBuilder temp;
+
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
-    VPackSlice slice = member->computeValue();
+    VPackSlice slice = member->computeValue(&temp);
 
     cache.try_emplace(slice, member);
   }
@@ -1168,7 +1168,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
-    VPackSlice slice = member->computeValue();
+    VPackSlice slice = member->computeValue(&temp);
 
     auto it = cache.find(slice);
 
@@ -1200,6 +1200,8 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
       cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
             arangodb::basics::VelocyPackHelper::VPackEqual());
 
+  VPackBuilder temp;
+
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
     if (i < nl) {
@@ -1207,7 +1209,7 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     } else {
       member = rhs->getMemberUnchecked(i - nl);
     }
-    VPackSlice slice = member->computeValue();
+    VPackSlice slice = member->computeValue(&temp);
 
     if (cache.try_emplace(slice, member).second) {
       // only insert unique values
@@ -2547,13 +2549,15 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     // nothing to do
     return node;
   }
+  
+  VPackBuilder temp;
 
   if (node->isSorted()) {
     bool unique = true;
     auto member = node->getMemberUnchecked(0);
-    VPackSlice lhs = member->computeValue();
+    VPackSlice lhs = member->computeValue(&temp);
     for (size_t i = 1; i < n; ++i) {
-      VPackSlice rhs = node->getMemberUnchecked(i)->computeValue();
+      VPackSlice rhs = node->getMemberUnchecked(i)->computeValue(&temp);
 
       if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
@@ -2577,7 +2581,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    VPackSlice slice = member->computeValue();
+    VPackSlice slice = member->computeValue(&temp);
 
     if (cache.find(slice) == cache.end()) {
       cache.try_emplace(slice, member);

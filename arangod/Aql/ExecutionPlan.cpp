@@ -397,21 +397,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
-/// @brief create an execution plan identical to this one
-///   keep the memory of the plan on the query object specified.
-//ExecutionPlan* ExecutionPlan::clone(Query const& query) {
-//  auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
-//  // Clone nextID, this is required, if we need to create Nodes after
-//  // this clone;
-//  otherPlan->_nextId = _nextId;
-//  for (auto const& it : _ids) {
-//    auto clonedNode = it.second->clone(otherPlan.get(), false, true);
-//    otherPlan->registerNode(clonedNode);
-//  }
-//
-//  return otherPlan.release();
-//}
-
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
   VPackOptions options;

@@ -1571,11 +1571,6 @@ AqlValue::AqlValue(arangodb::velocypack::Builder const& builder) {
   initFromSlice(builder.slice());
 }
 
-AqlValue::AqlValue(arangodb::velocypack::Builder const* builder) {
-  TRI_ASSERT(builder->isClosed());
-  initFromSlice(builder->slice());
-}
-
 AqlValue::AqlValue(arangodb::velocypack::Slice const& slice) {
   initFromSlice(slice);
 }
