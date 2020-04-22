@@ -28,20 +28,22 @@
 namespace arangodb::aql {
 
 /// @brief helper struct for findVarUsage
-struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
+
+template <class T>
+struct VarUsageFinder final : public WalkerWorker<T> {
   ::arangodb::containers::HashSet<Variable const*> _usedLater;
   ::arangodb::containers::HashSet<Variable const*> _valid;
-  std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
+  std::unordered_map<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 
   VarUsageFinder(VarUsageFinder const&) = delete;
   VarUsageFinder& operator=(VarUsageFinder const&) = delete;
 
   VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
-    _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
+    _varSetBy = new std::unordered_map<VariableId, T*>();
   }
 
-  explicit VarUsageFinder(std::unordered_map<VariableId, ExecutionNode*>* varSetBy)
+  explicit VarUsageFinder(std::unordered_map<VariableId, T*>* varSetBy)
       : _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }
@@ -53,7 +55,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  bool before(ExecutionNode* en) override final {
+  bool before(T* en) override final {
     // count the type of node found
     en->plan()->increaseCounter(en->getType());
 
@@ -66,7 +68,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  void after(ExecutionNode* en) override final {
+  void after(T* en) override final {
     // Add variables set here to _valid:
     for (auto const& v : en->getVariablesSetHere()) {
       _valid.insert(v);
@@ -77,7 +79,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
     en->setVarUsageValid();
   }
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
+  bool enterSubquery(T*, T* sub) override final {
     VarUsageFinder subfinder(_varSetBy);
     subfinder._valid = _valid;  // need a copy for the subquery!
     sub->walk(subfinder);
