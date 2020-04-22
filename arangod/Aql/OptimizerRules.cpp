@@ -4043,6 +4043,7 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan, DistributeNode* nod
 // and we handle this case in here as well by resetting the root to the
 // inserted GATHER node
 //
+// TODO: at the moment only the distributeNode return value is used
 auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
                                                   ExecutionNode* at, SubqueryNode* snode)
     -> std::pair<DistributeNode*, GatherNode*> {
