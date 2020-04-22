@@ -78,7 +78,7 @@ class TransactionCollection {
 
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
-  virtual int lockUsage() = 0;
+  virtual Result lockUsage() = 0;
   virtual void releaseUsage() = 0;
 
  protected:
@@ -90,8 +90,8 @@ class TransactionCollection {
 
  private:
   // perform lock, sets _lockType
-  virtual int doLock(AccessMode::Type) = 0;
-  virtual int doUnlock(AccessMode::Type) = 0;
+  virtual Result doLock(AccessMode::Type) = 0;
+  virtual Result doUnlock(AccessMode::Type) = 0;
 };
 
 }  // namespace arangodb

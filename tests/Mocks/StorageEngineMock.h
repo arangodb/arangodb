@@ -149,11 +149,11 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
   virtual bool hasOperations() const override;
   virtual void releaseUsage() override;
-  virtual int lockUsage() override;
+  virtual arangodb::Result lockUsage() override;
 
  private:
-  int doLock(arangodb::AccessMode::Type type) override;
-  int doUnlock(arangodb::AccessMode::Type type) override;
+  arangodb::Result doLock(arangodb::AccessMode::Type type) override;
+  arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
 class TransactionStateMock : public arangodb::TransactionState {

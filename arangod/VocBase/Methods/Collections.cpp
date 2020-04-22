@@ -587,7 +587,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
+    return Result(TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") + coll->name() + "'");
   }
 
   std::unordered_set<std::string> ignoreKeys{
@@ -717,7 +717,7 @@ Result Collections::rename(LogicalCollection& collection,
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
-    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   if (!doOverride) {

@@ -80,4 +80,3 @@ Result TransactionCollection::updateUsage(AccessMode::Type accessType) {
   // all correct
   return {};
 }
-

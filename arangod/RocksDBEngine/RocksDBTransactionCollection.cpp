@@ -73,8 +73,7 @@ bool RocksDBTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int RocksDBTransactionCollection::lockUsage() {
-
+Result RocksDBTransactionCollection::lockUsage() {
   bool doSetup = false;
 
   if (_collection == nullptr) {
@@ -82,25 +81,30 @@ int RocksDBTransactionCollection::lockUsage() {
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
-      TRI_vocbase_col_status_e status;
-
       LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid;
-      TRI_set_errno(TRI_ERROR_NO_ERROR);  // clear error state so can get valid
-                                          // error below
-      _collection = _transaction->vocbase().useCollection(_cid, status);
 
-      if (!_collection) {
-        // must return an error
-        return TRI_ERROR_NO_ERROR == TRI_errno() ? TRI_ERROR_INTERNAL : TRI_errno();
+#ifdef USE_ENTERPRISE
+      // we don't need to check the permissions of collections that we only
+      // read from if skipInaccessible is set
+      bool checkPermissions = AccessMode::isWriteOrExclusive(_accessType) || !_transaction->options().skipInaccessibleCollections;
+#else
+      bool checkPermissions = true;
+#endif
+      // will throw if collection does not exist
+      try {
+        _collection = _transaction->vocbase().useCollection(_cid, checkPermissions);
+      } catch (basics::Exception const& ex) {
+        return {ex.code(), ex.what()};
       }
 
+      TRI_ASSERT(_collection != nullptr);
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
       _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
-        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
       }
     }
 
@@ -111,12 +115,12 @@ int RocksDBTransactionCollection::lockUsage() {
 
   if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/!isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType);
+    Result res = doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
     // been held before)
-    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
+    if (res.fail() && !res.is(TRI_ERROR_LOCKED)) {
       return res;
     }
   }
@@ -127,7 +131,7 @@ int RocksDBTransactionCollection::lockUsage() {
     _revision = rc->meta().revisionId();
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 void RocksDBTransactionCollection::releaseUsage() {
@@ -270,20 +274,19 @@ void RocksDBTransactionCollection::trackIndexRemove(IndexId iid, uint64_t hash) 
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-int RocksDBTransactionCollection::doLock(AccessMode::Type type) {
-
+Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
 
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -295,7 +298,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   const double timeout = _transaction->lockTimeout();
 
   LOG_TRX("f1246", TRACE, _transaction) << "write-locking collection " << _cid;
-  int res;
+  Result res;
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
@@ -306,14 +309,14 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     res = physical->lockRead(timeout);
   }
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     _lockType = type;
     // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually
     // acquired the lock ourselves
-    return TRI_ERROR_LOCKED;
+    return {TRI_ERROR_LOCKED};
   }
 
-  if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
+  if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
     LOG_TOPIC("4512c", WARN, Logger::QUERIES)
         << "timed out after " << timeout << " s waiting for "
         << AccessMode::typeString(type) << "-lock on collection '"
@@ -324,19 +327,19 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type) {
 }
 
 /// @brief unlock a collection
-int RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
+Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
 
   if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never unlock
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -344,14 +347,14 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   
   if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
     LOG_TOPIC("2b651", ERR, arangodb::Logger::ENGINES) << "logic error in doUnlock";
     TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL, "logical error in doUnloc"};
   }
 
   TRI_ASSERT(_collection);
@@ -372,5 +375,5 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 
   _lockType = AccessMode::Type::NONE;
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }

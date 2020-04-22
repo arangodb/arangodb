@@ -45,7 +45,7 @@ class ClusterTransactionCollection final : public TransactionCollection {
   bool hasOperations() const override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  int lockUsage() override;
+  Result lockUsage() override;
   void releaseUsage() override;
 
  private:
@@ -53,10 +53,10 @@ class ClusterTransactionCollection final : public TransactionCollection {
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
   /// and no other error occurred returns any other error code otherwise
-  int doLock(AccessMode::Type) override;
+  Result doLock(AccessMode::Type) override;
 
   /// @brief request an unlock for a collection
-  int doUnlock(AccessMode::Type) override;
+  Result doUnlock(AccessMode::Type) override;
 };
 }  // namespace arangodb
 

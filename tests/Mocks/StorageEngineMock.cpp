@@ -1767,21 +1767,21 @@ void TransactionCollectionMock::releaseUsage() {
   // NOOP, assume success
 }
 
-int TransactionCollectionMock::lockUsage() {
+arangodb::Result TransactionCollectionMock::lockUsage() {
   TRI_vocbase_col_status_e status;
 
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType);
+    arangodb::Result res = doLock(_accessType);
 
-    if (res == TRI_ERROR_LOCKED) {
+    if (res.is(TRI_ERROR_LOCKED)) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
       // operation has actually acquired the lock (and that the lock has not
       // been held before)
-      res = TRI_ERROR_NO_ERROR;
-    } else if (res != TRI_ERROR_NO_ERROR) {
+      res.reset();
+    } else if (res.fail()) {
       return res;
     }
   }
@@ -1799,27 +1799,27 @@ int TransactionCollectionMock::lockUsage() {
     }
   }
 
-  return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  return Result(_collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-int TransactionCollectionMock::doLock(arangodb::AccessMode::Type type) {
+arangodb::Result TransactionCollectionMock::doLock(arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = type;
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
-int TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type) {
+arangodb::Result TransactionCollectionMock::doUnlock(arangodb::AccessMode::Type type) {
   if (_lockType != type) {
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = arangodb::AccessMode::Type::NONE;
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 size_t TransactionStateMock::abortTransactionCount;

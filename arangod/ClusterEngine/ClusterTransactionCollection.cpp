@@ -60,12 +60,11 @@ bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const 
 }
 
 // simon: actually probably never called on coordinator
-int ClusterTransactionCollection::lockUsage() {
-
+Result ClusterTransactionCollection::lockUsage() {
   if (_collection == nullptr) {
     // open the collection
     if (_transaction->vocbase().server().isStopping()) {
-      return TRI_ERROR_SHUTTING_DOWN;
+      return {TRI_ERROR_SHUTTING_DOWN};
     }
     ClusterInfo& ci =
         _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -73,7 +72,7 @@ int ClusterTransactionCollection::lockUsage() {
     _collection =
         ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     if (_collection == nullptr) {
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
 
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
@@ -85,17 +84,17 @@ int ClusterTransactionCollection::lockUsage() {
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
-    int res = doLock(_accessType);
+    Result res = doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
     // been held before)
-    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
+    if (res.fail() && res.isNot(TRI_ERROR_LOCKED)) {
       return res;
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 void ClusterTransactionCollection::releaseUsage() {
@@ -117,15 +116,15 @@ void ClusterTransactionCollection::releaseUsage() {
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-int ClusterTransactionCollection::doLock(AccessMode::Type type) {
+Result ClusterTransactionCollection::doLock(AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -138,19 +137,19 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type) {
   _lockType = type;
   // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually
   // acquired the lock ourselves
-  return TRI_ERROR_LOCKED;
+  return {TRI_ERROR_LOCKED};
 }
 
 /// @brief unlock a collection
-int ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
+Result ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never unlock
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -159,19 +158,19 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type) {
 
   if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
     LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
     TRI_ASSERT(false);
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL, "logic error in doUnlock"};
   }
 
   TRI_ASSERT(_collection);
 
   _lockType = AccessMode::Type::NONE;
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
