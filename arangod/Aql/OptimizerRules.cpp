@@ -3914,8 +3914,6 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto createKeys = bool{false};
   auto allowSpecifiedKeys = bool{false};
 
-  LOG_DEVEL << "trying to handle a node: " << node->getTypeString();
-
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes are
   //       currently assumed to be disjoint, and hence smart, so all collections
@@ -3965,9 +3963,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       createKeys = true;
     } break;
     case ExecutionNode::TRAVERSAL: {
-      LOG_DEVEL << "casting now";
       auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
-      LOG_DEVEL << "casting done";
       TRI_ASSERT(traversalNode->isDisjoint());
       collection = traversalNode->collection();
       inputVariable = traversalNode->inVariable();
