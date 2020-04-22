@@ -41,9 +41,16 @@ ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
   IdExecutorInfos executorInfos(false, 0, "", false);
+  auto idExecutorRegisterInfos =
+    RegisterInfos{{},
+                  {},
+                  registerInfos.numberOfInputRegisters(),
+                  registerInfos.numberOfOutputRegisters(),
+                  *registerInfos.registersToClear(),
+                  *registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-      &engine, node, registerInfos, std::move(executorInfos));
+      &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
 }
 
 auto ScatterExecutor::ClientBlockData::clear() -> void {

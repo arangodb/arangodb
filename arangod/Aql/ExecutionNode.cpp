@@ -816,7 +816,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  RegisterPlanWalkerT walker(v);
+  RegisterPlanWalker walker(v);
   walk(walker);
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {

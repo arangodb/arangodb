@@ -109,18 +109,22 @@ auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
   return _logCol->createKey(input);
 }
 
-// TODO
-// This section is not implemented yet
-
 DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                      ScatterNode const* node,
                                                      RegisterInfos const& registerInfos)
     : _blockManager(engine.itemBlockManager()), registerInfos(registerInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
   auto executorInfos = IdExecutorInfos{false, 0, "", false};
+  auto idExecutorRegisterInfos =
+      RegisterInfos{{},
+                    {},
+                    registerInfos.numberOfInputRegisters(),
+                    registerInfos.numberOfOutputRegisters(),
+                    *registerInfos.registersToClear(),
+                    *registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-      &engine, node, registerInfos, std::move(executorInfos));
+      &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
 }
 
 auto DistributeExecutor::ClientBlockData::clear() -> void {
@@ -382,73 +386,3 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(ExecutionEngine* engi
                                                            DistributeExecutorInfos&& executorInfos)
     : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
                             std::move(executorInfos)) {}
-
-/*
-/// @brief getOrSkipSomeForShard
-std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecutor>::getOrSkipSomeForShard(
-    size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
-    size_t& skipped, std::string const& shardId) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
-  TRI_ASSERT(atMost > 0);
-
-  size_t clientId = getClientId(shardId);
-
-  if (!hasMoreForClientId(clientId)) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-
-  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
-
-  if (buf.empty()) {
-    auto res = getBlockForClient(atMost, clientId);
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, TRI_ERROR_NO_ERROR};
-    }
-    if (!res.second) {
-      // Upstream is empty!
-      TRI_ASSERT(res.first == ExecutionState::DONE);
-      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-    }
-  }
-
-  skipped = (std::min)(buf.size(), atMost);
-
-  if (skipping) {
-    for (size_t i = 0; i < skipped; i++) {
-      buf.pop_front();
-    }
-    return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
-  }
-
-  BlockCollector collector(&_engine->itemBlockManager());
-  std::vector<size_t> chosen;
-
-  size_t i = 0;
-  while (i < skipped) {
-    size_t const n = buf.front().first;
-    while (buf.front().first == n && i < skipped) {
-      chosen.emplace_back(buf.front().second);
-      buf.pop_front();
-      i++;
-
-      // make sure we are not overreaching over the end of the buffer
-      if (buf.empty()) {
-        break;
-      }
-    }
-
-    SharedAqlItemBlockPtr more{_buffer[n]->slice(chosen, 0, chosen.size())};
-    collector.add(std::move(more));
-
-    chosen.clear();
-  }
-
-  // Skipping was handle before
-  TRI_ASSERT(!skipping);
-  result = collector.steal();
-
-  // _buffer is left intact, deleted and cleared at shutdown
-
-  return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
-}
-*/
