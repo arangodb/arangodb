@@ -312,9 +312,8 @@ class GatherNode final : public ExecutionNode {
 
   enum class Parallelism : uint8_t {
     Undefined = 0,
-    Parallel = 2,
-    Async = 4,
-    Serial = 8
+    Serial = 2,
+    Parallel = 4
   };
 
   /// @brief inspect dependencies starting from a specified 'node'

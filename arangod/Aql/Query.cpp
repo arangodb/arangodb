@@ -519,7 +519,6 @@ QueryResult Query::executeSync() {
     
     if (!ss) {
       ss = sharedState();
-      ss->resetWakeupHandler();
     }
     
     ss->waitForAsyncWakeup();

@@ -177,9 +177,6 @@ struct OptimizerRule {
 
     // remove unused out variables for data-modification queries
     removeDataModificationOutVariablesRule,
-    
-    // replace inaccessible EnumerateCollectionNode with NoResult nodes
-    skipInaccessibleCollectionsRule,
 
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
     // ======================================================

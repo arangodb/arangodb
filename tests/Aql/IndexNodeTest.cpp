@@ -464,7 +464,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   {
     // short path for a test
     {
-      auto vars = query.rootEngine()->root()->getPlanNode()->plan()->getAst()->variables();
+      auto vars = query.ast()->variables();
       for (auto const& v : {
             std::make_unique<arangodb::aql::Variable>("d", 0, false),
             std::make_unique<arangodb::aql::Variable>("3", 4, false),

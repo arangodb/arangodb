@@ -248,8 +248,7 @@ class TraverserHelper : public Traverser {
 };
 
 static TraverserOptions generateOptions(arangodb::aql::Query* query, size_t min, size_t max) {
-  arangodb::velocypack::Slice definition; // TODO
-  TraverserOptions options{*query, definition};
+  TraverserOptions options{*query};
   options.minDepth = min;
   options.maxDepth = max;
   return options;

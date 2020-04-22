@@ -199,8 +199,7 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _limit(infos.limit()),
       _rowsReturned(0),
       _strategy(nullptr),
-      _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel ||
-                     infos.parallelism() == GatherNode::Parallelism::Async) {
+      _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
       _strategy = std::make_unique<MinElementSorting>(infos.query(), infos.sortRegister());

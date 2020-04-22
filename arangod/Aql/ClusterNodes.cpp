@@ -73,8 +73,6 @@ char const* toString(GatherNode::Parallelism value) {
   switch (value) {
     case GatherNode::Parallelism::Parallel:
       return "parallel";
-    case GatherNode::Parallelism::Async:
-      return "async";
     case GatherNode::Parallelism::Serial:
       return "serial";
     case GatherNode::Parallelism::Undefined:
@@ -86,8 +84,6 @@ char const* toString(GatherNode::Parallelism value) {
 GatherNode::Parallelism parallelismFromString(std::string const& value) {
   if (value == "parallel") {
     return GatherNode::Parallelism::Parallel;
-  } else if (value == "parallel") {
-    return GatherNode::Parallelism::Async;
   } else if (value == "serial") {
     return GatherNode::Parallelism::Serial;
   }
@@ -558,8 +554,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    if ((ServerState::instance()->isCoordinator() &&
-         _parallelism == Parallelism::Parallel) || _parallelism == Parallelism::Async) {
+    if ((ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel)) {
       ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                                                 calcRegsToKeep(), getRegsToClear());
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
@@ -574,7 +569,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   }
 
   Parallelism p = _parallelism;
-  if (ServerState::instance()->isDBServer() && p != Parallelism::Async) {
+  if (ServerState::instance()->isDBServer()) {
     p = Parallelism::Serial; // not supported in v36
   }
 
