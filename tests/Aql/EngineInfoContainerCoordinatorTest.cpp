@@ -155,12 +155,8 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
                           // coordinatorQueryIds
         );
   ASSERT_TRUE(result.ok());
-  /* TODO
-  ExecutionEngine* engine = result.engine();
-
-  ASSERT_NE(engine, nullptr);
-  ASSERT_EQ(engine, &myEngine);
-  */
+  ASSERT_TRUE(coordSnippets.size() == 1);
+  
   // The last engine should not be stored
   // It is not added to the registry
   ASSERT_TRUE(queryIds.empty());

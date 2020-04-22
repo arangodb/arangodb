@@ -46,7 +46,7 @@ namespace aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
-struct Collection;
+class Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
 class ExecutorInfos;
