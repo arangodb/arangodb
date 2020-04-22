@@ -51,7 +51,6 @@ VPackSlice ClusterTraverserCache::lookupToken(EdgeDocumentToken const& token) {
 }
 
 aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& token) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME: the ClusterTraverserCache lifetime is shorter than the query
   // lifetime therefore we cannot get away here without copying the result
   return aql::AqlValue(VPackSlice(token.vpack()));  // will copy slice
@@ -60,7 +59,6 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
 aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef id) {
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
   // uses _edges to store its vertices
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto it = _cache.find(id);
 
@@ -79,7 +77,6 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::
 
 void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
                                                  VPackBuilder& result) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
   result.add(VPackSlice(token.vpack()));
 }
 

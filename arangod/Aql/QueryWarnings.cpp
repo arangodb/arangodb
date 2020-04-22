@@ -102,3 +102,9 @@ void QueryWarnings::updateOptions(QueryOptions const& opts) {
   _maxWarningCount = opts.maxWarningCount;
   _failOnWarning = opts.failOnWarning;
 }
+
+
+std::vector<std::pair<int, std::string>> QueryWarnings::all() const {
+  std::lock_guard<std::mutex> guard(_mutex);
+  return _list;
+}

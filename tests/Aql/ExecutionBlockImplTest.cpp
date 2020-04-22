@@ -72,13 +72,7 @@ class SharedExecutionBlockImplTest {
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
-  SharedExecutionBlockImplTest() {
-    /* TODO
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
-    */
-  }
+  SharedExecutionBlockImplTest() {}
 
   /**
    * @brief Creates and manages a ExecutionNode.

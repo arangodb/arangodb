@@ -61,6 +61,8 @@ public:
   
   void updateOptions(QueryOptions const&);
   
+  std::vector<std::pair<int, std::string>> all() const;
+  
  private:
   
   mutable std::mutex _mutex;

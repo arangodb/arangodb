@@ -659,7 +659,7 @@ void assertExpressionFilter(
     irs::Or expected;
     expected.add<arangodb::iresearch::ByExpression>().init(*dummyPlan, *ast,
                                                            *expressionExtractor(filterNode));
-/* TODO
+
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                 &ExpressionContextMock::EMPTY, ref};
@@ -667,7 +667,6 @@ void assertExpressionFilter(
         (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
     EXPECT_EQ(expected, actual);
     EXPECT_EQ(boost, actual.begin()->boost());
-*/
   }
 }
 
