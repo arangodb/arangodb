@@ -3903,6 +3903,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
+
+
+
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
@@ -4002,6 +4005,97 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   return distNode;
 }
 
+// Create a new GatherNode for the DistributeNode passed in node, and
+// register it with the plan
+//
+// TODO: Really Scatter/Gather and Distribute/Gather should be created in pairs.
+auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node)
+    -> GatherNode* {
+  auto const collection = node->collection();
+
+  auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
+  auto const parallelism = GatherNode::Parallelism::Undefined;
+  return plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+}
+
+//
+// for a node `at` of type
+//  - INSERT, REMOVE, UPDATE, REPLACE, UPSERT
+//  - TRAVERSAL, SHORTEST_PATH, K_SHORTEST_PATHS,
+// we transform
+//
+// parents[0] -> `node` -> deps[0]
+//
+// into
+//
+// parents[0] -> GATHER -> REMOTE -> `node` -> REMOTE -> DISTRIBUTE -> deps[0]
+//
+// Note that parents[0] might be `nullptr` if `node` is the root of the plan,
+// and we handle this case in here as well by resetting the root to the
+// inserted GATHER node
+//
+auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
+                                                  ExecutionNode* at,
+                                                      SubqueryNode* snode)
+    -> std::pair<DistributeNode*, GatherNode*> {
+  auto const parents = at->getParents();
+  auto const deps = at->getDependencies();
+
+  // This transforms `parents[0] -> node -> deps[0]` into `parents[0] -> deps[0]`
+  plan.unlinkNode(at, true);
+
+  // create, and register a distribute node
+  DistributeNode* distNode = createDistributeNodeFor(plan, at);
+  TRI_ASSERT(distNode != nullptr);
+  distNode->addDependency(deps[0]);
+
+  // TODO: This dance is only needed to extract vocbase for
+  //       creating the remote node. The vocbase parameter for
+  //       the remote node does not seem to be really needed, since
+  //       the vocbase is stored in plan (and this variable is actually used in)
+  //       some code, so maybe this parameter could be removed? 
+  auto const* collection = distNode->collection();
+  TRI_vocbase_t* vocbase = collection->vocbase();
+
+  // insert a remote node
+  ExecutionNode* remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  remoteNode->addDependency(distNode);
+
+  // re-link with the remote node
+  at->addDependency(remoteNode);
+
+  // insert another remote node
+  remoteNode =
+      plan.createNode<RemoteNode>(&plan, plan.nextId(), vocbase, "", "", "");
+  remoteNode->addDependency(at);
+
+  // insert a gather node matching the distribute node
+  auto* gatherNode = createGatherNodeFor(plan, distNode);
+  gatherNode->addDependency(remoteNode);
+
+  // Song and dance to deal with at being the root of a plan or a subquery
+  if (parents.empty()) {
+    if (snode) {
+      if (snode->getSubquery() == at) {
+        snode->setSubquery(gatherNode, true);
+      }
+    } else {
+      plan.root(gatherNode, true);
+    }
+  } else {
+    // This is correct: Since we transformed `parents[0] -> node -> deps[0]`
+    // into `parents[0] -> deps[0]` above, created
+    //
+    // gather -> remote -> node -> remote -> distribute -> deps[0]
+    // and now make the plan consistent again by splicing in our snippet.
+    parents[0]->replaceDependency(deps[0], gatherNode);
+  }
+  return std::pair<DistributeNode*, GatherNode*>{ExecutionNode::castTo<DistributeNode*>(distNode),
+                                                 ExecutionNode::castTo<GatherNode*>(gatherNode)};
+}
+
+
 /// @brief distribute operations in cluster
 ///
 /// this rule inserts distribute, remote nodes so operations on sharded
@@ -4012,6 +4106,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                                             std::unique_ptr<ExecutionPlan> plan,
                                             OptimizerRule const& rule) {
+  LOG_DEVEL << "distribute rule";
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
   // we are a coordinator, we replace the root if it is a modification node
@@ -4137,79 +4232,10 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         }
       }
 
-      // In the INSERT and REPLACE cases we use a DistributeNode...
+      // For INSERT, REPLACE, disjoint TRAVERSAL, SHORTEST_PATH, K_SHORTEST_PATHS
+      // we use a DistributeNode.
+      auto [distNode, gatherNode] = insertDistributeGatherSnippet(*plan, node, snode);
 
-      TRI_ASSERT(node->hasDependency());
-      // intentional copy of the dependencies, as we will be modifying
-      // dependencies later on
-      auto const deps = node->getDependencies();
-
-      bool haveAdjusted = false;
-      if (originalParent != nullptr) {
-        // nodes below removed node
-        originalParent->removeDependency(node);
-        plan->unlinkNode(node, true);
-        if (snode) {
-          if (snode->getSubquery() == node) {
-            snode->setSubquery(originalParent, true);
-            haveAdjusted = true;
-          }
-        }
-      } else {
-        // no nodes below unlinked node
-        plan->unlinkNode(node, true);
-        if (snode) {
-          snode->setSubquery(deps[0], true);
-          haveAdjusted = true;
-        } else {
-          plan->root(deps[0], true);
-        }
-      }
-
-      // extract database from plan node
-      TRI_vocbase_t* vocbase = collection->vocbase();
-
-      // create and register a distribute node
-      DistributeNode* distNode = createDistributeNodeFor(*plan, node);
-      TRI_ASSERT(distNode != nullptr);
-
-      distNode->addDependency(deps[0]);
-
-      // insert a remote node
-      ExecutionNode* remoteNode =
-          plan->createNode<RemoteNode>(plan.get(), plan->nextId(), vocbase, "",
-                                       "", "");
-      remoteNode->addDependency(distNode);
-
-      // re-link with the remote node
-      node->addDependency(remoteNode);
-
-      // insert another remote node
-      remoteNode = plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
-                                                vocbase, "", "", "");
-      remoteNode->addDependency(node);
-
-      // insert a gather node
-      auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
-      auto const parallelism = GatherNode::Parallelism::Undefined;
-      auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism);
-      plan->registerNode(gatherNode);
-      gatherNode->addDependency(remoteNode);
-
-      if (originalParent != nullptr) {
-        // we did not replace the root node
-        TRI_ASSERT(gatherNode);
-        originalParent->addDependency(gatherNode);
-      } else {
-        // we replaced the root node, set a new root node
-        if (snode) {
-          if (snode->getSubquery() == node || haveAdjusted) {
-            snode->setSubquery(gatherNode, true);
-          }
-        } else {
-          plan->root(gatherNode, true);
-        }
-      }
       wasModified = true;
       node = distNode;  // will be gatherNode or nulltpr
     }                   // for node in subquery

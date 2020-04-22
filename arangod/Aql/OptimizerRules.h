@@ -294,7 +294,15 @@ void insertScatterGatherSnippet(
 void findSubqueriesInPlan(ExecutionPlan& plan,
                           containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
+//// @brief create a DistributeNode for the given ExecutionNode
 auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
+
+//// @brief create a gather node matching the given DistributeNode
+auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;
+
+//// @brief enclose a node in DISTRIBUTE/GATHER
+auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
+    -> std::pair<DistributeNode*, GatherNode*>;
 
 }  // namespace aql
 }  // namespace arangodb
