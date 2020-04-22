@@ -52,7 +52,7 @@ class HttpRequest final : public GeneralRequest {
 
  public:
   HttpRequest(HttpRequest&&) = default;
-  ~HttpRequest() = default;
+  ~HttpRequest() override = default;
 
  public:
   arangodb::Endpoint::TransportType transportType() override {
@@ -99,7 +99,6 @@ class HttpRequest final : public GeneralRequest {
                                         std::unordered_map<std::string, std::string> const& headers);
 
  protected:
-  void setValue(char* key, char* value);
   void setArrayValue(char const* key, size_t length, char const* value);
 
  private:
