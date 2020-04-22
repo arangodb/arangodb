@@ -56,6 +56,15 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->increaseDepth();
   }
 
+  LOG_DEVEL << en->getTypeString() << ":" << en->id() << " isIncreaseDepth = " << isIncreaseDepth;
+
+  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
+  auto outputVariables = en->getOutputVariables()._set;
+  for (VariableId const& v : outputVariables) {
+    TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
+    plan->registerVariable(v, reusableRegisters);
+  }
+
   if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
     plan->addSubqueryNode(en);
   }
@@ -86,6 +95,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
         TRI_ASSERT(it2 != plan->varInfo.end());
         RegisterId r = it2->second.registerId;
+        LOG_DEVEL << "Register " << r << " can be cleared";
         regsToClear.insert(r);
       }
     }
@@ -99,13 +109,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     // We need to delete those variables that have been used here but are not
     // used any more later:
     en->setRegsToClear(std::move(regsToClear));
-  }
-
-  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
-  auto outputVariables = en->getOutputVariables()._set;
-  for (VariableId const& v : outputVariables) {
-    TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
-    plan->registerVariable(v, reusableRegisters);
   }
 
   en->_depth = plan->depth;
@@ -212,10 +215,12 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<Registe
 
   if (unusedRegisters.empty()) {
     regId = totalNrRegs;
+    LOG_DEVEL << "adding new register " << regId << " for variable " << v;
     addRegister();
   } else {
     auto iter = unusedRegisters.begin();
     regId = *iter;
+    LOG_DEVEL << "reusing register " << regId << " for variable " << v;
     unusedRegisters.erase(iter);
   }
 

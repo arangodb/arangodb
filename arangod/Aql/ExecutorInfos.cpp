@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutorInfos.h"
+#include <Logger/LogMacros.h>
 
 #include "Basics/debugging.h"
 
@@ -63,6 +64,9 @@ ExecutorInfos::ExecutorInfos(
     TRI_ASSERT(inReg < nrInputRegisters);
   }
   for (RegisterId const outReg : *_outRegs) {
+    if (outReg >= nrOutputRegisters) {
+      LOG_DEVEL << "output reg = " << outReg << " nr out regs = " << nrOutputRegisters;
+    }
     TRI_ASSERT(outReg < nrOutputRegisters);
   }
   for (RegisterId const regToClear : *_registersToClear) {

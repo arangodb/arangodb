@@ -482,6 +482,10 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions, trxPtr);
 
   auto const firstOutputRegister = getNrInputRegisters();
+
+  auto const outRegister = variableToRegisterId(_outVariable);
+  LOG_DEVEL << "IndexNode output register = " << outRegister;
+  TRI_ASSERT(true || firstOutputRegister == outRegister);
   auto numIndVarsRegisters =
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
@@ -497,15 +501,12 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
       aql::make_shared_unordered_set();
   writableOutputRegisters->reserve(numDocumentRegs + numIndVarsRegisters);
-  for (aql::RegisterId reg = firstOutputRegister;
-       reg < firstOutputRegister + numIndVarsRegisters + numDocumentRegs; ++reg) {
-    writableOutputRegisters->emplace(reg);
-  }
-
-  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
-  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
-  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->cbegin(),
-                                                      writableOutputRegisters->cend()));
+  writableOutputRegisters->emplace(outRegister);
+//
+//  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
+//  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
+//  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->cbegin(),
+//                                                      writableOutputRegisters->cend()));
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;
@@ -515,16 +516,18 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                  _outNonMaterializedIndVars.second.cend(),
                  std::inserter(outNonMaterializedIndRegs.second,
                                outNonMaterializedIndRegs.second.end()),
-                 [&varInfos](auto const& indVar) {
+                 [&](auto const& indVar) {
                    auto it = varInfos.find(indVar.first->id);
                    TRI_ASSERT(it != varInfos.cend());
-
+                   writableOutputRegisters->emplace(it->second.registerId);
                    return std::make_pair(indVar.second, it->second.registerId);
                  });
 
+  LOG_DEVEL << "IndexExecturoInfos firstOutputRegister = " << firstOutputRegister << " nrOutputRegister = " << getRegisterPlan()->nrRegs[getDepth()];
+
   IndexExecutorInfos infos(std::move(writableOutputRegisters),
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           firstOutputRegister, getRegisterPlan()->nrRegs[getDepth()],
+                           outRegister, getRegisterPlan()->nrRegs[getDepth()],
                            getRegsToClear(), calcRegsToKeep(), &engine,
                            this->collection(), _outVariable, isProduceResult(),
                            this->_filter.get(), this->projections(),
