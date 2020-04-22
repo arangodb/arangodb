@@ -3903,6 +3903,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
+// Create a new DistributeNode for the ExecutionNode passed in node, and
+// register it with the plan
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
     -> DistributeNode* {
   CollectionAccessingNode* access = dynamic_cast<CollectionAccessingNode*>(node);
@@ -3954,6 +3956,35 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = upsertNode->insertVariable();
       allowSpecifiedKeys = true;
       createKeys = true;
+    } break;
+    case ExecutionNode::TRAVERSAL: {
+      inputVariable = ExecutionNode::castTo<TraversalNode const*>(node)->inVariable();
+      // TODO:
+      // If the traversal node uses a constant start vertex, then this will be
+      // nullptr, hence we'll have to stunt around this.
+      TRI_ASSERT(inputVariable);
+      alternativeVariable = inputVariable;
+      allowSpecifiedKeys = true;
+      createKeys = false;
+    } break;
+    case ExecutionNode::K_SHORTEST_PATHS: {
+      // Subtle: KShortestPathsNode uses a reference when returning startInVariable
+      inputVariable =
+          &ExecutionNode::castTo<KShortestPathsNode const*>(node)->startInVariable();
+      alternativeVariable = inputVariable;
+      allowSpecifiedKeys = true;
+      createKeys = false;
+    } break;
+    case ExecutionNode::SHORTEST_PATH: {
+      inputVariable =
+          ExecutionNode::castTo<ShortestPathNode const*>(node)->startInVariable();
+      // TODO:
+      // If the traversal node uses a constant start vertex, then this will be
+      // nullptr, hence we'll have to stunt around this.
+      TRI_ASSERT(inputVariable);
+      alternativeVariable = inputVariable;
+      allowSpecifiedKeys = true;
+      createKeys = false;
     } break;
     default: {
       TRI_ASSERT(false);
