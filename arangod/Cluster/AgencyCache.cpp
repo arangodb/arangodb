@@ -128,13 +128,18 @@ void AgencyCache::run() {
     rb.clear();
     toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
-    
+
+    // rb holds receives either
+    // * A complete overwrite (firstIndex == 0)
+    //   {..., result:{commitIndex:X, firstIndex:0, readDB:{...}}}
+    // * Incremental change to cache (firstIndex != 0)
+    //   {..., result:{commitIndex:X, firstIndex:Y, log:[]}}
+
     auto ret = sendTransaction(rb)
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
           if (rb.ok() && rb.statusCode() == arangodb::fuerte::StatusOK) {
-            auto tmp = VPackParser::fromJson(rb.payloadAsString());
-            auto slc = tmp->slice();
+            auto slc = rb.slice();
             wait = 0.;
             TRI_ASSERT(slc.hasKey("result"));
             VPackSlice rs = slc.get("result");
@@ -144,7 +149,7 @@ void AgencyCache::run() {
             TRI_ASSERT(rs.get("firstIndex").isNumber());
             index_t commitIndex = rs.get("commitIndex").getNumber<uint64_t>();
             index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
-            
+
             if (firstIndex > 0) {
               std::lock_guard g(_storeLock);
               TRI_ASSERT(rs.hasKey("log"));
@@ -235,7 +240,7 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
     }
     pit = _waiting.erase(pit);
   }
-  
+
 }
 
 
@@ -274,7 +279,7 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint32_t const& id)
 /// Orderly shutdown
 void AgencyCache::beginShutdown() {
   // trigger all waiting for an index
-  {  
+  {
     std::lock_guard g(_storeLock);
     triggerWaitingNoLock(std::numeric_limits<uint64_t>::max());
   }
@@ -297,4 +302,24 @@ void AgencyCache::beginShutdown() {
   }
 
   Thread::beginShutdown();
+}
+
+bool AgencyCache::ready() const {
+  std::lock_guard g(_storeLock);
+  return _commitIndex > 0;
+}
+
+bool AgencyCache::has(std::string const& path) const {
+  std::lock_guard g(_storeLock);
+  return _readDB.has(AgencyCommManager::path(path));
+}
+
+std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const {
+  std::vector<bool> ret;
+  ret.reserve(paths.size());
+  std::lock_guard g(_storeLock);
+  for (auto const& i : paths) {
+    ret.push_back(_readDB.has(i));
+  }
+  return ret;
 }

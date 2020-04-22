@@ -1643,7 +1643,7 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
 
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  
+
   // Now update our own cache of planned databases:
   loadPlan();
 
@@ -1746,6 +1746,9 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
         << "failed to cancel creation of database " << database.getName() << " with error "
         << res.errorMessage() << ". Retrying.";
     }
+
+    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
@@ -2661,6 +2664,9 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
+    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(
+      res.slice().get("results")[0].getNumber<uint64_t>()).get();
     loadPlan();
     return Result();
   }
@@ -2732,15 +2738,13 @@ Result ClusterInfo::createViewCoordinator(  // create view
     }
   }
 
-  AgencyComm ac(_server);
-
-  // mop: why do these ask the agency instead of checking cluster info?
-  if (!ac.exists("Plan/Databases/" + databaseName)) {
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  if (!cache.has("Plan/Databases/" + databaseName)) {
     events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (ac.exists("Plan/Views/" + databaseName + "/" + viewID)) {
+  if (cache.has("Plan/Views/" + databaseName + "/" + viewID)) {
     events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
     return Result(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
   }
@@ -2752,6 +2756,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
       // preconditions
       {{"Plan/Views/" + databaseName + "/" + viewID, AgencyPrecondition::Type::EMPTY, true}}};
 
+  AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(transaction);
 
   // Only if not precondition failed
@@ -2777,9 +2782,8 @@ Result ClusterInfo::createViewCoordinator(  // create view
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  
+
   // Update our cache:
   loadPlan();
 
@@ -2883,7 +2887,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-  
+
   loadPlan();
   return {};
 }

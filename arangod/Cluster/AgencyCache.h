@@ -60,7 +60,7 @@ public:
   /// @brief Read from local readDB cache at path
   arangodb::consensus::Node const& read(std::string const& path) const;
 
-  /// @brief Get velocypack from node downward
+  /// @brief Get velocypack from node downward. AgencyCommManager::path is prepended
   std::tuple <consensus::query_t, consensus::index_t> const get(
     std::string const& path = std::string("/")) const;
 
@@ -77,14 +77,24 @@ public:
   /// @brief Register local callback
   bool unregisterCallback(std::string const& key, uint32_t const& id);
 
+  /// @brief Wait to be notified, when a Raft index has arrived.
   futures::Future<Result> waitFor(consensus::index_t index);
+
+  /// @brief Cache has these path? AgencyCommManager::path is prepended
+  bool has(std::string const& path) const;
+
+  /// @brief Cache has these path? Paths are absolute
+  std::vector<bool> has(std::vector<std::string> const& paths) const;
+
+  /// @brief Ready for business
+  bool ready() const;
 
 private:
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock
   void triggerWaitingNoLock(consensus::index_t commitIndex);
-  
+
   /// @brief Guard for _readDB
   std::condition_variable _cv;
   mutable std::mutex _storeLock;
@@ -104,7 +114,7 @@ private:
 
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
-  std::multimap<consensus::index_t, futures::Promise<Result>> _waiting;
+  std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
 };
 
 } // namespace
