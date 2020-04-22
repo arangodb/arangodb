@@ -35,6 +35,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -709,7 +710,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
 
   uint32_t clamped =
       boost::algorithm::clamp(_options.threadCount, 1,
-                              4 * static_cast<uint32_t>(TRI_numberProcessors()));
+                              4 * static_cast<uint32_t>(NumberOfCores::getValue()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC("0460e", WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
