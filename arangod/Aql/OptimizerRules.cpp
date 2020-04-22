@@ -7441,10 +7441,10 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
 
 /// no modification nodes, ScatterNodes etc
 bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
-//  if (_parallelism == Parallelism::Serial) {
-//    // node already defined to be serial
-//    return false;
-//  }
+  if (node->parallelism() == GatherNode::Parallelism::Serial) {
+    // node already defined to be serial
+    return false;
+  }
 
   ParallelizableFinder finder(parallelizeWrites);
   for (ExecutionNode* e : node->getDependencies()) {
@@ -7523,6 +7523,9 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
         gn->setParallelism(GatherNode::Parallelism::Parallel);
         modified = true;
       }
+    } else {
+      gn->setParallelism(GatherNode::Parallelism::Serial);
+      modified = true;
     }
   }
 

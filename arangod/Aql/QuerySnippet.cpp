@@ -252,6 +252,7 @@ void QuerySnippet::serializeIntoBuilder(
       secondToLast->swapFirstDependency(consumer);
     }
     
+#if 0
     // hook in the async executor node, if required
     if (internalGather->parallelism() == GatherNode::Parallelism::Async) {
       TRI_ASSERT(internalScatter == nullptr);
@@ -262,6 +263,7 @@ void QuerySnippet::serializeIntoBuilder(
       _nodes.insert(_nodes.begin(), async.get());
       plan->registerNode(async.release());
     }
+#endif
     
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
