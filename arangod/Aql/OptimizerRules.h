@@ -152,7 +152,6 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 #ifdef USE_ENTERPRISE
 ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
-                                                          ExecutionNode* originalParent,
                                                           bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections

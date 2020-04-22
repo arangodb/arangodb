@@ -4178,16 +4178,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                  nodeType == ExecutionNode::SHORTEST_PATH ||
                  nodeType == ExecutionNode::K_SHORTEST_PATHS);
 
-      ExecutionNode* originalParent = nullptr;
-      if (node->hasParent()) {
-        auto const& parents = node->getParents();
-        originalParent = parents[0];
-        TRI_ASSERT(originalParent != nullptr);
-        TRI_ASSERT(node != root);
-      } else {
-        TRI_ASSERT(node == root);
-      }
-
       auto collection = (Collection const*){nullptr};
       if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
           nodeType == ExecutionNode::K_SHORTEST_PATHS) {
@@ -4214,7 +4204,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 
         if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
           node = distributeInClusterRuleSmartEdgeCollection(plan.get(), snode, node,
-                                                            originalParent, wasModified);
+                                                            wasModified);
           continue;
         }
 #endif
