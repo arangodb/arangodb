@@ -4098,6 +4098,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
           nodeType == ExecutionNode::K_SHORTEST_PATHS) {
         auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
         if (!graphNode->isDisjoint()) {
+          node = node->getFirstDependency();
           continue;
         }
 
