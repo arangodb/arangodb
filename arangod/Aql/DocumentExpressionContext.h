@@ -38,8 +38,6 @@ class DocumentExpressionContext final : public QueryExpressionContext {
 
   ~DocumentExpressionContext() = default;
 
-  size_t numRegisters() const override;
-  
   bool isDataFromCollection(Variable const* variable) const override {
     return true;
   }

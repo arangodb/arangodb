@@ -31,8 +31,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-size_t FixedVarExpressionContext::numRegisters() const { return 0; }
-
 bool FixedVarExpressionContext::isDataFromCollection(Variable const* variable) const {
   return false;
 }

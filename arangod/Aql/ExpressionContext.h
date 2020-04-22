@@ -47,8 +47,6 @@ class ExpressionContext {
 
   virtual ~ExpressionContext() = default;
 
-  virtual size_t numRegisters() const = 0;
-  
   /// true if the variable we are referring to is set by
   /// a collection enumeration/index enumeration
   virtual bool isDataFromCollection(Variable const* variable) const = 0;

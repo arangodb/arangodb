@@ -60,11 +60,6 @@ struct ExpressionContextMock final : public ExpressionContextMockBase {
 
   virtual ~ExpressionContextMock();
 
-  virtual size_t numRegisters() const override {
-    TRI_ASSERT(false);
-    return 0;
-  }
-
   virtual bool isDataFromCollection(arangodb::aql::Variable const* variable) const override {
     return variable->isDataFromCollection;
   }
