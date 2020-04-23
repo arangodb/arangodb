@@ -285,6 +285,11 @@ void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
 }
 
 template <typename T>
+auto RegisterPlanT<T>::getTotalNrRegs() -> unsigned int {
+  return totalNrRegs;
+}
+
+template <typename T>
 std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
   // level -> variable, info
   std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
