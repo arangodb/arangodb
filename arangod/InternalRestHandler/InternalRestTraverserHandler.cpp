@@ -88,7 +88,7 @@ void InternalRestTraverserHandler::createEngine() {
 void InternalRestTraverserHandler::queryEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   size_t count = suffixes.size();
-  if (count < 2 || count > 3) {
+  if (count != 2) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected PUT " + INTERNAL_TRAVERSER_PATH +
                       "/[vertex|edge]/<TraverserEngineId>");
@@ -102,6 +102,17 @@ void InternalRestTraverserHandler::queryEngine() {
                   "expected TraveserEngineId to be an integer number");
     return;
   }
+
+  bool parseSuccess = true;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+
+  if (!parseSuccess) {
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting a valid object containing the keys 'depth' and 'keys'");
+    return;
+  }
+
   traverser::BaseEngine* engine = _registry->openGraphEngine(engineId);
   if (engine == nullptr) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -117,23 +128,6 @@ void InternalRestTraverserHandler::queryEngine() {
   if (option == "lock") {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "API for traversal engine locking no longer supported");
-  }
-
-  if (count != 2) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected PUT " + INTERNAL_TRAVERSER_PATH +
-                      "/[vertex|edge]/<TraverserEngineId>");
-    return;
-  }
-
-  bool parseSuccess = true;
-  VPackSlice body = this->parseVPackBody(parseSuccess);
-
-  if (!parseSuccess) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expecting a valid object containing the keys 'depth' and 'keys'");
-    return;
   }
 
   VPackBuilder result;
@@ -154,7 +148,7 @@ void InternalRestTraverserHandler::queryEngine() {
                         "expecting 'depth' to be an integer value");
           return;
         }
-        // Save Cast BaseTraverserEngines are all of type TRAVERSER
+        // Safe cast BaseTraverserEngines are all of type TRAVERSER
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
         eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
@@ -167,7 +161,7 @@ void InternalRestTraverserHandler::queryEngine() {
                         "expecting 'backward' to be a boolean value");
           return;
         }
-        // Save Cast ShortestPathEngines are all of type SHORTESTPATH
+        // Safe cast ShortestPathEngines are all of type SHORTESTPATH
         auto eng = static_cast<ShortestPathEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
         eng->getEdges(keysSlice, bwSlice.getBoolean(), result);
@@ -196,7 +190,7 @@ void InternalRestTraverserHandler::queryEngine() {
                       "expecting 'depth' to be an integer value");
         return;
       }
-      // Save Cast BaseTraverserEngines are all of type TRAVERSER
+      // Safe cast BaseTraverserEngines are all of type TRAVERSER
       auto eng = static_cast<BaseTraverserEngine*>(engine);
       TRI_ASSERT(eng != nullptr);
       eng->getVertexData(keysSlice, depthSlice.getNumericValue<size_t>(), result);
@@ -207,7 +201,7 @@ void InternalRestTraverserHandler::queryEngine() {
                     "this engine does not support the requested operation.");
       return;
     }
-    // Save Cast BaseTraverserEngines are all of type TRAVERSER
+    // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearch(body, result);
@@ -217,7 +211,7 @@ void InternalRestTraverserHandler::queryEngine() {
                     "this engine does not support the requested operation.");
       return;
     }
-    // Save Cast BaseTraverserEngines are all of type TRAVERSER
+    // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     eng->smartSearchBFS(body, result);
@@ -240,7 +234,7 @@ void InternalRestTraverserHandler::destroyEngine() {
     return;
   }
 
-  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[1]));
+  auto engineId = static_cast<aql::EngineId>(basics::StringUtils::uint64(suffixes[0]));
   bool found = _registry->destroyEngine(engineId, TRI_ERROR_NO_ERROR);
   generateResult(ResponseCode::OK, VPackSlice::booleanSlice(found));
 }
