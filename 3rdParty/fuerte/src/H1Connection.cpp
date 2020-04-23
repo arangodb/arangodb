@@ -228,7 +228,7 @@ template <SocketType ST>
 void H1Connection<ST>::activate() {
   FUERTE_ASSERT(_active.load());
   Connection::State state = this->_state.load();
-  FUERTE_ASSERT(state != Connection::State::Connecting);
+  // FUERTE_ASSERT(state != Connection::State::Connecting);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "activate: connected\n";
     startWriting();
