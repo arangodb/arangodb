@@ -104,7 +104,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator-mock"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end && _keysIt.valid()) {
       auto key = _keysIt.value();
 
@@ -126,7 +126,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end || _keysIt.valid();
   }
 
-  void reset() override {
+  void resetImpl() override {
     _keysIt.reset();
     _begin = _map.begin();
     _end = _map.end();
@@ -385,9 +385,9 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
     return "ReverseAllIteratorMock";
   }
 
-  virtual void reset() override { _end = _size; }
+  virtual void resetImpl() override { _end = _size; }
 
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
+  virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     while (_end && limit) {  // `_end` always > 0
       callback(arangodb::LocalDocumentId(_end--));
       --limit;
@@ -409,9 +409,9 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 
   virtual char const* typeName() const override { return "AllIteratorMock"; }
 
-  virtual void reset() override { _it = _data.begin(); }
+  virtual void resetImpl() override { _it = _data.begin(); }
 
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
+  virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     while (_it != _data.end() && limit != 0) {
       callback(_it->second.docId());
       ++_it;
@@ -653,7 +653,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
 
   char const* typeName() const override { return "hash-index-iterator-mock"; }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
       cb(_begin->first, _begin->second.slice());
       ++_begin;
@@ -663,7 +663,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end;
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end) {
       cb(_begin->first);
       ++_begin;
@@ -673,7 +673,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     return _begin != _end;
   }
 
-  void reset() override {
+  void resetImpl() override {
     _documents.clear();
     _begin = _documents.begin();
     _end = _documents.end();
