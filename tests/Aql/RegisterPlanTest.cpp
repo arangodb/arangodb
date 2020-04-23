@@ -182,7 +182,6 @@ class RegisterPlanTest : public ::testing::Test {
     for (size_t i = 0; i < total; ++i) {
       varsRequiredHere.emplace_back(std::nullopt);
     }
-    bool foundAllRegistersInUse = false;
 
     // As we may have output variables these are added initially
     {
@@ -195,12 +194,6 @@ class RegisterPlanTest : public ::testing::Test {
             << " not planned ";
         auto regId = info->second.registerId;
         varsRequiredHere.at(regId) = v;
-      }
-      // Also final node can use all registers.
-      if (std::all_of(varsRequiredHere.begin(), varsRequiredHere.end(),
-                      [](auto const& v) -> bool { return v.has_value(); })) {
-        // All registers are used at one point.
-        foundAllRegistersInUse = true;
       }
     }
 
@@ -249,15 +242,7 @@ class RegisterPlanTest : public ::testing::Test {
     for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
       checkProducedVariables(*it);
       insertRequiredVariables(*it);
-      if (std::all_of(varsRequiredHere.begin(), varsRequiredHere.end(),
-                      [](auto const& v) -> bool { return v.has_value(); })) {
-        // All registers are used at one point.
-        foundAllRegistersInUse = true;
-      }
     }
-    EXPECT_TRUE(foundAllRegistersInUse)
-        << "Inefficiency detected, not all registers are filled at least once "
-           "in the query.";
   }
 
  private:
