@@ -38,7 +38,7 @@
 #include <vector>
 
 namespace arangodb {
-struct OperationCursor;
+class IndexIterator;
 namespace transaction {
 class Methods;
 }
@@ -158,7 +158,7 @@ class EnumerateCollectionExecutor {
   bool _cursorHasMore;
   InputAqlItemRow _currentRow;
   ExecutorState _currentRowState;
-  std::unique_ptr<OperationCursor> _cursor;
+  std::unique_ptr<IndexIterator> _cursor;
 };
 
 }  // namespace aql

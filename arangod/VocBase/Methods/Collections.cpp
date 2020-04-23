@@ -53,7 +53,6 @@
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/LogicalCollection.h"
@@ -945,9 +944,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
+    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL);
 
-    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
+    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
       cb(doc.resolveExternal());
       return true;
     }, 1000);
@@ -975,9 +974,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor(trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL));
+  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL);
 
-  opCursor.allDocuments([&](LocalDocumentId const& token, VPackSlice slice) {
+  iterator->allDocuments([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
     uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
     if (withRevisions) {
