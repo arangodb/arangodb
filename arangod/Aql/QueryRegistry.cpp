@@ -72,14 +72,14 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
     try {
       for (auto& pair : p->_query->snippets()) {
         if (pair.first != 0) { // skip the root snippet
-          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
           TRI_ASSERT(result.second);
           TRI_ASSERT(result.first->second._type == EngineType::Execution);
           p->_numEngines++;
         }
       }
       for (auto& pair : p->_query->traversers()) {
-        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
         TRI_ASSERT(result.second);
         TRI_ASSERT(result.first->second._type == EngineType::Graph);
         p->_numEngines++;
@@ -208,7 +208,7 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 
     if (m == _queries.end()) {
       // database not found. this can happen as a consequence of a race between garbage collection
-      // and shutdown
+      // and query shutdown
       return nullptr;
     }
     
@@ -235,7 +235,12 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     
     // remove engines
     for (auto const& pair : queryInfo->_query->snippets()) {
-      _engines.erase(pair.first);
+      auto it = _engines.find(pair.first);
+      if (it != _engines.end()) {
+        TRI_ASSERT(it->second._queryInfo != nullptr);
+        TRI_ASSERT(!it->second._isOpen);
+        _engines.erase(it);
+      }
     }
     for (auto& pair : queryInfo->_query->traversers()) {
       _engines.erase(pair.first);
