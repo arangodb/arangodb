@@ -7525,7 +7525,6 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       }
     } else {
       gn->setParallelism(GatherNode::Parallelism::Serial);
-      modified = true;
     }
   }
 
