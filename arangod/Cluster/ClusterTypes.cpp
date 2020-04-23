@@ -21,7 +21,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTypes.h"
+#include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
 }
+
+namespace arangodb {
+
+arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
+  arangodb::velocypack::Builder builder;
+  builder.openObject();
+  builder.add(StaticStrings::AnalyzersRevision, VPackValue(_revision));
+  builder.add(StaticStrings::AnalyzersBuildingRevision, VPackValue(_buildingRevision));
+  TRI_ASSERT((_serverID.empty() && !_rebootID.initialized()) ||
+             (!_serverID.empty() && _rebootID.initialized()));
+
+  if (!_serverID.empty()) {
+    builder.add(StaticStrings::AnalyzersCoordinator, VPackValue(_serverID));
+  }
+  if (_rebootID.initialized()) {
+    builder.add(StaticStrings::AnalyzersRebootID, VPackValue(_rebootID.value()));
+  }
+  builder.close();
+
+  return builder;
+}
+
+}  // namespace arangodb

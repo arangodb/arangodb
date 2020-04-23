@@ -603,7 +603,7 @@ void ClusterInfo::loadPlan() {
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
-  decltype(_dbAnalyzerRevision) newDbAnalyzerRevision;
+  decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -878,9 +878,9 @@ void ClusterInfo::loadPlan() {
         rebootID = rebootIDSlice.getNumber<uint64_t>();
       }
 
-      newDbAnalyzerRevision[databaseName] = std::make_shared<AnalyzerRevision>(
-            revisionSlice.getNumber<AnalyzerRevision::Revision>(),
-            buildingRevisionSlice.getNumber<AnalyzerRevision::Revision>(),
+      newDbAnalyzersRevision[databaseName] = std::make_shared<AnalyzersRevision>(
+            revisionSlice.getNumber<AnalyzersRevision::Revision>(),
+            buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
             std::move(coordinatorID), rebootID);
     }
   }
@@ -1158,7 +1158,7 @@ void ClusterInfo::loadPlan() {
   }
 
   if (swapAnalyzers) {
-    _dbAnalyzerRevision.swap(newDbAnalyzerRevision);
+    _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
   }
 
   // mark plan as fully loaded only if all incoming objects were fully loaded
@@ -1599,34 +1599,19 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief ask about an analyzer revision
+/// @brief ask about analyzers revision
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<AnalyzerRevision> ClusterInfo::getAnalyzerRevision(DatabaseID const& databaseID) {
-  int tries = 0;
+std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID) {
+  loadPlan();
+  READ_LOCKER(readLocker, _planProt.lock);
+  // look up database by id
+  auto it = _dbAnalyzersRevision.find(databaseID);
 
-  if (!_planProt.isValid) {
-    loadPlan();
-    ++tries;
+  if (it != _dbAnalyzersRevision.cend()) {
+    return it->second;
   }
 
-  while (true) {  // left by break
-    {
-      READ_LOCKER(readLocker, _planProt.lock);
-      // look up database by id
-      auto it = _dbAnalyzerRevision.find(databaseID);
-
-      if (it != _dbAnalyzerRevision.cend()) {
-        return it->second;
-      }
-    }
-    if (++tries >= 2) {
-      break;
-    }
-
-    // must load analyzers outside the lock
-    loadPlan();
-  }
   return nullptr;
 }
 
@@ -3017,7 +3002,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 /// and the errorMsg is set accordingly. One possible error
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databaseName) {
+Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& databaseID) {
   VPackBuilder serverIDBuilder;
   serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
 
@@ -3026,7 +3011,7 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
 
   AgencyComm ac(_server);
 
-  AnalyzerRevision::Revision revision;
+  AnalyzersRevision::Revision revision;
   auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
 
   // do until precondition success or timeout
@@ -3035,10 +3020,10 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
       // Get current revision for precondition
       loadPlan();
       READ_LOCKER(readLocker, _planProt.lock);
-      auto it = _dbAnalyzerRevision.find(databaseName);
-      if (it == _dbAnalyzerRevision.cend()) {
+      auto it = _dbAnalyzersRevision.find(databaseID);
+      if (it == _dbAnalyzersRevision.cend()) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                      "start modifying analyzer: unknown database name '" + databaseName + "'");
+                      "start modifying analyzer: unknown database name '" + databaseID + "'");
       }
       revision = it->second->getRevision();
     }
@@ -3047,14 +3032,14 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
     revisionBuilder.add(VPackValue(revision));
 
     AgencyWriteTransaction const transaction{
-        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
               AgencySimpleOperationType::INCREMENT_OP},
-         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
+         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersCoordinator,
               AgencyValueOperationType::SET, serverIDBuilder.slice()},
-         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
+         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRebootID,
               AgencyValueOperationType::SET, rebootIDBuilder.slice()},
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
               AgencyPrecondition::Type::VALUE, revisionBuilder.slice()}}};
 
     auto const res = ac.sendTransactionWithFailover(transaction);
@@ -3068,7 +3053,7 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
 
           return Result(
               TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-              "start modifying analyzer precondition for database " + databaseName + ": Revision " +
+              "start modifying analyzer precondition for database " + databaseID + ": Revision " +
                 revisionBuilder.toString() + " is not equal to BuildingRevision. Cannot modify an analyzer.");
         }
 
@@ -3086,6 +3071,7 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
     }
+    break;
   } while (true);
 
   // Update our cache
@@ -3100,7 +3086,7 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(std::string const& databas
 /// and the errorMsg is set accordingly. One possible error
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databaseName, bool restore) {
+Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore) {
   VPackBuilder serverIDBuilder;
   serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
 
@@ -3109,7 +3095,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databa
 
   AgencyComm ac(_server);
 
-  AnalyzerRevision::Revision revision;
+  AnalyzersRevision::Revision revision;
   auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
 
   // do until precondition success or timeout
@@ -3118,10 +3104,10 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databa
       // Get current revision for precondition
       loadPlan();
       READ_LOCKER(readLocker, _planProt.lock);
-      auto it = _dbAnalyzerRevision.find(databaseName);
-      if (it == _dbAnalyzerRevision.cend()) {
+      auto it = _dbAnalyzersRevision.find(databaseID);
+      if (it == _dbAnalyzersRevision.cend()) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                      "finish modifying analyzer: unknown database name '" + databaseName + "'");
+                      "finish modifying analyzer: unknown database name '" + databaseID + "'");
       }
       revision = it->second->getRevision();
     }
@@ -3130,15 +3116,15 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databa
     revisionBuilder.add(VPackValue(++revision));
 
     AgencyWriteTransaction const transaction{
-        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRevision,
               restore ? AgencySimpleOperationType::DECREMENT_OP
                       : AgencySimpleOperationType::INCREMENT_OP},
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-        {{"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
               AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
-         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersCoordinator,
+         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersCoordinator,
               AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
-         {"Plan/Analyzers/" + databaseName + "/" + StaticStrings::AnalyzersRebootID,
+         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRebootID,
               AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
 
     auto const res = ac.sendTransactionWithFailover(transaction);
@@ -3152,7 +3138,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databa
 
           return Result(
               TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-              "finish modifying analyzer precondition for database " + databaseName + ": Revision " +
+              "finish modifying analyzer precondition for database " + databaseID + ": Revision " +
                 revisionBuilder.toString() + (restore ? " - 1" : " + 1") + " is not equal to BuildingRevision " +
                 "or incorrect coordinator or rebootID. Cannot modify an analyzer.");
         }
@@ -3171,6 +3157,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(std::string const& databa
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
     }
+    break;
   } while (true);
 
   // Update our cache

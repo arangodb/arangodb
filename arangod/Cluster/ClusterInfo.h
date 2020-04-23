@@ -505,9 +505,9 @@ class ClusterInfo final {
   std::vector<std::shared_ptr<LogicalView>> const getViews(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask about an analyzer revision
+  /// @brief ask about analyzers revision
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<AnalyzerRevision> getAnalyzerRevision(DatabaseID const& databaseID);
+  std::shared_ptr<AnalyzersRevision> getAnalyzersRevision(DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -637,7 +637,7 @@ class ClusterInfo final {
   /// is a timeout, a timeout of 0.0 means no timeout.
   //////////////////////////////////////////////////////////////////////////////
 
-  Result startModifyingAnalyzerCoordinator(std::string const& databaseName);
+  Result startModifyingAnalyzerCoordinator(DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish creating or deleting an analyzer in coordinator,
@@ -646,7 +646,7 @@ class ClusterInfo final {
   /// is a timeout, a timeout of 0.0 means no timeout.
   //////////////////////////////////////////////////////////////////////////////
 
-  Result finishModifyingAnalyzerCoordinator(std::string const& databaseName, bool restore);
+  Result finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
@@ -1011,8 +1011,8 @@ class ClusterInfo final {
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
                               // execution
 
-  // database ID => analyzer revision
-  std::unordered_map<DatabaseID, std::shared_ptr<AnalyzerRevision>> _dbAnalyzerRevision; // from Plan/Analyzers
+  // database ID => analyzers revision
+  std::unordered_map<DatabaseID, std::shared_ptr<AnalyzersRevision>> _dbAnalyzersRevision; // from Plan/Analyzers
 
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 

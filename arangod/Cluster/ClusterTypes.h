@@ -76,20 +76,25 @@ class RebootId {
   uint64_t _value;
 };
 
-class AnalyzerRevision {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
+class AnalyzersRevision {
  public:
   using Revision = uint64_t;
 
-  AnalyzerRevision(Revision revision, Revision buildingRevision,
+  AnalyzersRevision(Revision revision, Revision buildingRevision,
                    ServerID&& serverID, uint64_t rebootID)
     : _revision(revision), _buildingRevision(buildingRevision),
       _serverID(std::move(serverID)), _rebootID(rebootID) {}
 
-  AnalyzerRevision() = default;
-  AnalyzerRevision(AnalyzerRevision const&) = default;
-  AnalyzerRevision(AnalyzerRevision&&) = default;
-  AnalyzerRevision& operator=(AnalyzerRevision const&) = default;
-  AnalyzerRevision& operator=(AnalyzerRevision&&) = default;
+  AnalyzersRevision() = default;
+  AnalyzersRevision(AnalyzersRevision const&) = default;
+  AnalyzersRevision(AnalyzersRevision&&) = default;
+  AnalyzersRevision& operator=(AnalyzersRevision const&) = default;
+  AnalyzersRevision& operator=(AnalyzersRevision&&) = default;
 
   Revision getRevision() const noexcept {
     return _revision;
@@ -106,6 +111,8 @@ class AnalyzerRevision {
   RebootId const& getRebootID() const noexcept {
     return _rebootID;
   }
+
+  arangodb::velocypack::Builder toVelocyPack() const;
 
  private:
   Revision _revision{};
