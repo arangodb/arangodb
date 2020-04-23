@@ -59,40 +59,18 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     QueryContext& query,
     AqlItemBlockManager& mgr,
-    std::unordered_set<std::string> const& restrictToShards,
     MapRemoteToSnippet const& dbServerQueryIds,
     std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
   engine = std::make_unique<ExecutionEngine>(query, mgr, SerializationFormat::SHADOWROWS);
 
-  auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
+  auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {
     engine.reset();
     return res;
   }
 
   TRI_ASSERT(engine->root() != nullptr);
-
-  // For _id == 0 this thread will always maintain the handle to
-  // the engine and will clean up. We do not keep track of it seperately
-//  if (_id != 0) {
-//    coordinatorQueryIds.emplace_back(_id);
-//
-//    double ttl = query.queryOptions().ttl;
-//    TRI_ASSERT(ttl > 0);
-//    try {
-//      queryRegistry->insert(_id, &query, ttl, true, false);
-//    } catch (basics::Exception const& e) {
-//      coordinatorQueryIds.pop_back();
-//      return {e.code(), e.message()};
-//    } catch (std::exception const& e) {
-//      coordinatorQueryIds.pop_back();
-//      return {TRI_ERROR_INTERNAL, e.what()};
-//    } catch (...) {
-//      coordinatorQueryIds.pop_back();
-//      return {TRI_ERROR_INTERNAL, "unable to store query in registry"};
-//    }
-//  }
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -136,34 +114,16 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 Result EngineInfoContainerCoordinator::buildEngines(
     QueryContext& query,
     AqlItemBlockManager& mgr,
-    std::unordered_set<std::string> const& restrictToShards,
     MapRemoteToSnippet const& dbServerQueryIds,
     aql::SnippetList& coordSnippets) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
-  // destroy all query snippets in case of error
-//  auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
-//    for (auto const& it : coordinatorQueryIds) {
-//      registry->destroy(dbname, it, TRI_ERROR_INTERNAL, false);
-//    }
-//  });
-  
   try {
     bool first = true;
     for (EngineInfo const& info : _engines) {
-//      if (!first) {
-//        // need a new query instance on the coordinator
-//        localQuery = query.clone(PART_DEPENDENT, false);
-//        if (localQuery == nullptr) {
-//          // clone() cannot return nullptr, but some mocks seem to do it
-//          return ExecutionEngineResult(TRI_ERROR_INTERNAL,
-//                                       "cannot clone query");
-//        }
-//        TRI_ASSERT(localQuery != nullptr);
-//      }
       std::unique_ptr<ExecutionEngine> engine;
-      auto res = info.buildEngine(query, mgr, restrictToShards, dbServerQueryIds, engine);
+      auto res = info.buildEngine(query, mgr, dbServerQueryIds, engine);
       if (res.fail()) {
         return res;
       }

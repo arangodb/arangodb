@@ -80,7 +80,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
-  std::unordered_set<std::string> const& restrictToShards = query.queryOptions().restrictToShards;
+  auto const& restrictToShards = query.queryOptions().restrictToShards;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
 #ifdef USE_ENTERPRISE

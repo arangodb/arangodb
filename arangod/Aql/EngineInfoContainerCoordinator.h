@@ -62,7 +62,6 @@ class EngineInfoContainerCoordinator {
 
     Result buildEngine(QueryContext& query,
       AqlItemBlockManager& mgr,
-      std::unordered_set<std::string> const& restrictToShards,
       MapRemoteToSnippet const& dbServerQueryIds,
       std::unique_ptr<ExecutionEngine>& engine) const;
 
@@ -103,7 +102,6 @@ class EngineInfoContainerCoordinator {
   //   * Injects all Parts but the First one into QueryRegistry
   //   Return the first engine which is not added in the Registry
   Result buildEngines(QueryContext& query, AqlItemBlockManager& mgr,
-                      std::unordered_set<std::string> const& restrictToShards,
                       MapRemoteToSnippet const& dbServerQueryIds,
                       SnippetList& coordSnippets) const;
 

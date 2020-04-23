@@ -43,7 +43,6 @@ namespace aql {
 class AqlCallStack;
 class AqlItemBlock;
 class AqlItemBlockManager;
-class Collection;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
@@ -73,7 +72,6 @@ class ExecutionEngine {
                                     SnippetList& list);
   
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
-                                   std::unordered_set<std::string> const& restrictToShards,
                                    MapRemoteToSnippet const& queryIds);
 
   /// @brief get the root block
@@ -83,7 +81,7 @@ class ExecutionEngine {
   TEST_VIRTUAL void root(ExecutionBlock* root);
 
   /// @brief get the query
-  TEST_VIRTUAL QueryContext& getQuery() const;
+  QueryContext& getQuery() const;
   
   std::shared_ptr<SharedQueryState> sharedState() const {
     return _sharedState;
