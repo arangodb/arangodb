@@ -43,10 +43,20 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using Helper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+size_t getWriteConcern(VPackSlice slice) {
+  if (slice.hasKey(StaticStrings::WriteConcern)) {
+    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern, 1);
+  }
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor, 1);
+}
+}  // namespace
 
 #ifndef USE_ENTERPRISE
 // Factory methods
@@ -58,28 +68,19 @@ std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t
   return result;
 }
 
-std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document,
+std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string&& name, VPackSlice document,
                                             VPackSlice options) {
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
-  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
+  std::unique_ptr<Graph> result{new Graph{vocbase, std::move(name), document, options}};
   return result;
 }
 #endif
 
-std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name,
+std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string const& name,
                                             VPackSlice document, VPackSlice options) {
-  return Graph::fromUserInput(std::string{name}, document, options);
-}
-
-namespace {
-size_t getWriteConcern(VPackSlice slice) {
-  if (slice.hasKey(StaticStrings::WriteConcern)) {
-    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern, 1);
-  }
-  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor, 1);
-}
+  return Graph::fromUserInput(vocbase, std::string{name}, document, options);
 }
 
 // From persistence
@@ -120,12 +121,12 @@ Graph::Graph(velocypack::Slice const& slice)
 }
 
 // From user input
-Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options)
-    : _graphName(graphName),
+Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName, VPackSlice const& info, VPackSlice const& options)
+    : _graphName(std::move(graphName)),
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
-      _replicationFactor(1),
+      _replicationFactor(vocbase.replicationFactor()),
       _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
@@ -141,7 +142,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
   }
   if (options.isObject()) {
     _numberOfShards = Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
-    _replicationFactor = Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+    _replicationFactor = Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, _replicationFactor);
     _writeConcern = ::getWriteConcern(options);
   }
 }
