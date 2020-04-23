@@ -23,6 +23,7 @@
 #include "InAndOutRowExpressionContext.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
@@ -30,6 +31,14 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) {
+  if (id == std::numeric_limits<std::size_t>::max()) {
+    return true;
+  }
+  TRI_ASSERT(id < regs.size());
+  return regs[id] == RegisterPlan::MaxRegisterId;
+}
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
     Query* query, std::vector<Variable const*> const&& vars,
@@ -43,12 +52,9 @@ InAndOutRowExpressionContext::InAndOutRowExpressionContext(
       _edgeVarIdx(edgeVarIdx),
       _pathVarIdx(pathVarIdx) {
   TRI_ASSERT(_vars.size() == _regs.size());
-  TRI_ASSERT(_vertexVarIdx < _vars.size() ||
-             _vertexVarIdx == std::numeric_limits<std::size_t>::max());
-  TRI_ASSERT(_edgeVarIdx < _vars.size() ||
-             _edgeVarIdx == std::numeric_limits<std::size_t>::max());
-  TRI_ASSERT(_pathVarIdx < _vars.size() ||
-             _pathVarIdx == std::numeric_limits<std::size_t>::max());
+  TRI_ASSERT(testInternalIdValid(_vertexVarIdx, _regs));
+  TRI_ASSERT(testInternalIdValid(_edgeVarIdx, _regs));
+  TRI_ASSERT(testInternalIdValid(_pathVarIdx, _regs));
 }
 
 void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {

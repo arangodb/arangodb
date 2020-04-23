@@ -110,6 +110,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);
+  auto getTotalNrRegs() -> unsigned int;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);

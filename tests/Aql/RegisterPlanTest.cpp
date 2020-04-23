@@ -103,7 +103,7 @@ struct ExecutionNodeMock {
 
   auto setRegsToClear(std::unordered_set<RegisterId>&& toClear) -> void {}
 
-  auto getTypeString() -> std::string const& {
+  auto getTypeString() const -> std::string const& {
     return ExecutionNode::getTypeString(_type);
   }
 
@@ -162,6 +162,89 @@ class RegisterPlanTest : public ::testing::Test {
     EXPECT_EQ(it->second.registerId, r);
   }
 
+  auto assertPlanKeepsAllVariables(std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan,
+                                   std::vector<ExecutionNodeMock>& nodes) {
+    if (nodes.empty()) {
+      // Empty plan is valid.
+      return;
+    }
+
+    // This test tries to do a bookkeeping of which variable is placed into
+    // which register. This is done on "requirement" base, if a Node requires a
+    // variable it will be added to to the bookkeeping, it can only be removed
+    // by the Node claiming to produce it. If there is already a variable at
+    // this position in the bookkeeping, The plan is invalid.
+
+    std::vector<std::optional<Variable const*>> varsRequiredHere;
+
+    auto total = plan->getTotalNrRegs();
+    varsRequiredHere.reserve(total);
+    for (size_t i = 0; i < total; ++i) {
+      varsRequiredHere.emplace_back(std::nullopt);
+    }
+
+    // As we may have output variables these are added initially
+    {
+      auto final = nodes.back();
+      auto setHere = final.getVariablesSetHere();
+      for (auto const& v : setHere) {
+        auto info = plan->varInfo.find(v->id);
+        ASSERT_NE(info, plan->varInfo.end())
+            << "variable " << v->name << " of node " << final.getTypeString()
+            << " not planned ";
+        auto regId = info->second.registerId;
+        varsRequiredHere.at(regId) = v;
+      }
+    }
+
+    auto checkProducedVariables = [&](ExecutionNodeMock const& n) {
+      for (auto const& v : n.getVariablesSetHere()) {
+        auto info = plan->varInfo.find(v->id);
+        ASSERT_NE(info, plan->varInfo.end()) << "variable " << v->name << " of node "
+                                             << n.getTypeString() << " not planned ";
+        auto regId = info->second.registerId;
+        ASSERT_LT(regId, total) << "Planned Register out of bounds";
+        ASSERT_TRUE(varsRequiredHere.at(regId).has_value())
+            << "Writing variable " << v->name << " to register " << regId
+            << " where it is not expected";
+        auto expected = varsRequiredHere.at(regId).value();
+        ASSERT_EQ(v, expected)
+            << "register " << regId << " used twice, content of "
+            << expected->name << " expected while writing " << v->name;
+        // Variable is produced here, cannot be required before
+        varsRequiredHere.at(regId) = std::nullopt;
+      }
+    };
+
+    auto insertRequiredVariables = [&](ExecutionNodeMock const& n) {
+      VarSet requestedHere{};
+      n.getVariablesUsedHere(requestedHere);
+      for (auto const& v : requestedHere) {
+        auto info = plan->varInfo.find(v->id);
+        ASSERT_NE(info, plan->varInfo.end())
+            << "variable " << v->name << " required by node "
+            << n.getTypeString() << " not planned ";
+        auto regId = info->second.registerId;
+        ASSERT_LT(regId, total) << "Planned Register out of bounds";
+        auto target = varsRequiredHere.at(regId);
+        if (!target.has_value()) {
+          // This register is free, claim it!
+          varsRequiredHere.at(regId) = v;
+        } else {
+          ASSERT_EQ(target.value(), v)
+              << "register " << regId << " used twice, content of "
+              << target.value()->name << " still expected while also expecting "
+              << v->name;
+        }
+      }
+    };
+
+    for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
+      checkProducedVariables(*it);
+      insertRequiredVariables(*it);
+    }
+  }
+
  private:
   template <class Walker>
   auto applyWalkerToNodes(std::vector<ExecutionNodeMock>& nodes, Walker& worker) -> void {
@@ -181,7 +264,9 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
       ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 1);
   assertVariableInRegister(plan, vars[0], 0);
+  assertPlanKeepsAllVariables(plan, myList);
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed) {
@@ -193,8 +278,10 @@ TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed
       ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[0], &vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
+  assertPlanKeepsAllVariables(plan, myList);
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
@@ -206,8 +293,10 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
       ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 0);
+  assertPlanKeepsAllVariables(plan, myList);
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_passthrough) {
@@ -219,8 +308,31 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
       ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
+  assertPlanKeepsAllVariables(plan, myList);
+}
+
+TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) {
+  auto vars = generateVars(5);
+  std::vector<ExecutionNodeMock> myList{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[1]}, {&vars[2]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[2]}, {&vars[3]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[3]}, {&vars[4]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[4]}, {}}};
+  auto plan = walk(myList);
+  ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 3);
+  assertVariableInRegister(plan, vars[0], 0);
+  assertVariableInRegister(plan, vars[1], 1);
+  assertVariableInRegister(plan, vars[2], 2);
+  assertVariableInRegister(plan, vars[3], 0);
+  assertVariableInRegister(plan, vars[4], 1);
+  assertPlanKeepsAllVariables(plan, myList);
 }
 
 }  // namespace aql
