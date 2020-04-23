@@ -1248,7 +1248,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
                                      regsToClear,
                                      regsToKeep};
 
-  IdExecutorInfos infos(false, 0, std::string(), false);
+  IdExecutorInfos infos(false);
 
   auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
       &engine, this, std::move(registerInfos), std::move(infos));
@@ -2168,7 +2168,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
   if (returnInheritedResults) {
-    auto executorInfos = IdExecutorInfos(_count, inputRegister, std::string(), false);
+    auto executorInfos = IdExecutorInfos(_count, inputRegister);
     auto registerInfos = createRegisterInfos({}, {});
     return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -551,7 +551,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
           &engine, this, std::move(registerInfos), EmptyExecutorInfos());
     } else {
-      auto executorInfos = IdExecutorInfos(false, 0, std::string(), false);
+      auto executorInfos = IdExecutorInfos(false);
 
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
