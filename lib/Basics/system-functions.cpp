@@ -26,7 +26,6 @@
 #include "system-functions.h"
 
 #include <chrono>
-#include <thread>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -137,22 +136,6 @@ double TRI_microtime() {
   return std::chrono::duration<double>(  // time since epoch in seconds
              std::chrono::system_clock::now().time_since_epoch())
       .count();
-}
-
-size_t TRI_numberProcessors() {
-#ifdef TRI_SC_NPROCESSORS_ONLN
-  auto n = sysconf(_SC_NPROCESSORS_ONLN);
-
-  if (n < 0) {
-    n = 0;
-  }
-
-  if (n > 0) {
-    return n;
-  }
-#endif
-
-  return static_cast<size_t>(std::thread::hardware_concurrency());
 }
 
 std::string arangodb::utilities::timeString(char sep, char fin) {
