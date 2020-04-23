@@ -88,9 +88,9 @@ struct custom_sort : public irs::sort {
 
   class prepared : public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
-    class collector : public irs::sort::field_collector, public irs::sort::term_collector {
+    class field_collector : public irs::sort::field_collector {
      public:
-      collector(const custom_sort& sort) : sort_(sort) {}
+      field_collector(const custom_sort& sort) : sort_(sort) {}
 
       virtual void collect(const irs::sub_reader& segment,
                            const irs::term_reader& field) override {
@@ -98,6 +98,20 @@ struct custom_sort : public irs::sort {
           sort_.field_collector_collect(segment, field);
         }
       }
+
+      virtual void collect(const irs::bytes_ref& in) override {}
+
+      virtual void reset() override { }
+
+      virtual void write(irs::data_output& out) const override {}
+
+     private:
+      const custom_sort& sort_;
+    };
+
+    class term_collector : public irs::sort::term_collector {
+     public:
+      term_collector(const custom_sort& sort) : sort_(sort) {}
 
       virtual void collect(const irs::sub_reader& segment, const irs::term_reader& field,
                            const irs::attribute_view& term_attrs) override {
@@ -107,6 +121,8 @@ struct custom_sort : public irs::sort {
       }
 
       virtual void collect(const irs::bytes_ref& in) override {}
+
+      virtual void reset() override { }
 
       virtual void write(irs::data_output& out) const override {}
 
@@ -152,7 +168,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_field_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
+      return irs::memory::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
     virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
@@ -186,7 +202,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_term_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
+      return irs::memory::make_unique<custom_sort::prepared::term_collector>(sort_);
     }
 
     virtual void prepare_score(irs::byte_type* score) const override {
