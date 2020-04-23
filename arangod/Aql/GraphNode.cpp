@@ -101,7 +101,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _defaultDirection(parseDirection(direction)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(false),
+      _isDisjoint(false) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
