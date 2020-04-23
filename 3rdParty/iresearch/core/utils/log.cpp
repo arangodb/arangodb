@@ -67,9 +67,7 @@ NS_LOCAL
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprecated declaration
-static FILE* dev_null() {
-  return nullptr;
-}
+
 MSVC_ONLY(__pragma(warning(pop)))
 
 void noop_log_appender(void*, char const*, char const*,
@@ -340,6 +338,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
 
   #if defined(__APPLE__)
     bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
+      std::cerr << "starting stack_trace_gdb " << std::endl;//!!!!!
       auto pid = fork();
 
       if (!pid) {
@@ -360,7 +359,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
 
         exit(1);
       }
-
+      std::cerr << "waiting  " << pid << std::endl;///!!!!!
       int status;
 
       return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
@@ -478,7 +477,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
 
         auto fn_end = offset_start ? offset_start - 1 : nullptr;
         auto path_end = fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
-        bfd_callback_type_t callback = [out, out_pipe](
+        bfd_callback_type_t callback = [out](
             const char* file, size_t line, const char* fn)->void {
           UNUSED(fn);
 
@@ -765,6 +764,7 @@ class stack_trace_printer {
     constexpr size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
     pipe_reader_ = std::thread([this, level, &buf, &buf_len]()->void {
+      std::cerr << "Starting out pipe reading" << std::endl;//!!!!
       for (char ch; read(pipefd_[0], &ch, 1) > 0;) {
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
@@ -783,6 +783,7 @@ class stack_trace_printer {
         buf[buf_len] = 0;
         IR_LOG_FORMATED(level, "%s", buf);
       }
+      std::cerr << "Ended out pipe reading" << std::endl;//!!!!
     });
     return pipefd_[1];
   }
