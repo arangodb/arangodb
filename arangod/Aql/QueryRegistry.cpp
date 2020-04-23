@@ -125,7 +125,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 
 /// @brief open
 void* QueryRegistry::openEngine(EngineId id, EngineType type) {
-  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Open query with id " << id;
+  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Opening engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
   
@@ -146,9 +146,9 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   
   if (ei._isOpen) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
-        << "Engine with id " << id << " is already in open";
+        << "Engine with id " << id << " is already open";
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "query with given vocbase and id is already open");
+        TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
   }
   
   ei._isOpen = true;

@@ -23,6 +23,7 @@
 
 #include "InternalRestTraverserHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
@@ -30,6 +31,9 @@
 #include "Cluster/TraverserEngine.h"
 #include "Rest/GeneralResponse.h"
 #include "Transaction/StandaloneContext.h"
+
+#include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -113,12 +117,39 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  traverser::BaseEngine* engine = _registry->openGraphEngine(engineId);
-  if (engine == nullptr) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid TraverserEngine id - potentially the AQL query was already aborted or timed out");
-    return;
-  }
+  std::chrono::time_point<std::chrono::steady_clock> start =  std::chrono::steady_clock::now();
+
+  traverser::BaseEngine* engine = nullptr;
+  while (true) {
+    try {
+      engine = _registry->openGraphEngine(engineId);
+      if (engine != nullptr) {
+        break;
+      }
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid TraverserEngine id - potentially the AQL query was already aborted or timed out");
+      return;
+    } catch (basics::Exception const& ex) {
+      // it is possible that the engine is already in use
+      if (ex.code() != TRI_ERROR_LOCKED) {
+        throw;
+      }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    if (server().isStopping()) {
+      generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
+      return;
+    }
+
+    if (start + std::chrono::seconds(60) < std::chrono::steady_clock::now()) {
+      // timeout
+      generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_LOCK_TIMEOUT);
+      return;
+    }
+  } 
+
+  TRI_ASSERT(engine != nullptr);
 
   auto& registry = _registry;  // For the guard
   auto cleanup = scopeGuard([registry, &engineId]() {
