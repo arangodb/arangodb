@@ -182,6 +182,7 @@ class RegisterPlanTest : public ::testing::Test {
     for (size_t i = 0; i < total; ++i) {
       varsRequiredHere.emplace_back(std::nullopt);
     }
+    bool foundAllRegistersInUse = false;
 
     // As we may have output variables these are added initially
     {
@@ -194,6 +195,12 @@ class RegisterPlanTest : public ::testing::Test {
             << " not planned ";
         auto regId = info->second.registerId;
         varsRequiredHere.at(regId) = v;
+      }
+      // Also final node can use all registers.
+      if (std::all_of(varsRequiredHere.begin(), varsRequiredHere.end(),
+                      [](auto const& v) -> bool { return v.has_value(); })) {
+        // All registers are used at one point.
+        foundAllRegistersInUse = true;
       }
     }
 
@@ -211,7 +218,8 @@ class RegisterPlanTest : public ::testing::Test {
         ASSERT_EQ(v, expected)
             << "register " << regId << " used twice, content of "
             << expected->name << " expected while writing " << v->name;
-        varsRequiredHere.at(regId) = v;
+        // Variable is produced here, cannot be required before
+        varsRequiredHere.at(regId) = std::nullopt;
       }
     };
 
@@ -237,8 +245,6 @@ class RegisterPlanTest : public ::testing::Test {
         }
       }
     };
-
-    bool foundAllRegistersInUse = false;
 
     for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
       checkProducedVariables(*it);
@@ -273,6 +279,7 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
       ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertPlanKeepsAllVariables(plan, myList);
 }
@@ -286,6 +293,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed
       ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[0], &vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertPlanKeepsAllVariables(plan, myList);
@@ -300,6 +308,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
       ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 0);
   assertPlanKeepsAllVariables(plan, myList);
@@ -314,8 +323,30 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
       ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
+  assertPlanKeepsAllVariables(plan, myList);
+}
+
+TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) {
+  auto vars = generateVars(5);
+  std::vector<ExecutionNodeMock> myList{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[1]}, {&vars[2]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[2]}, {&vars[3]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[3]}, {&vars[4]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[4]}, {}}};
+  auto plan = walk(myList);
+  ASSERT_NE(plan, nullptr);
+  EXPECT_EQ(plan->getTotalNrRegs(), 3);
+  assertVariableInRegister(plan, vars[0], 0);
+  assertVariableInRegister(plan, vars[1], 1);
+  assertVariableInRegister(plan, vars[2], 2);
+  assertVariableInRegister(plan, vars[3], 0);
+  assertVariableInRegister(plan, vars[4], 1);
   assertPlanKeepsAllVariables(plan, myList);
 }
 
