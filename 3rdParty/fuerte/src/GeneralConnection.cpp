@@ -68,7 +68,7 @@ void GeneralConnection<ST>::startConnection() {
                asio_ns::error_code());
   } else {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << " found unexpected state "
-      << static_cast<int>(state) << " not equal to 'Disconnected'";
+      << static_cast<int>(exp) << " not equal to 'Disconnected'";
   }
 }
 
