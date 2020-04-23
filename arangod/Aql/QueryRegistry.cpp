@@ -287,12 +287,13 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
     }
 
     if (ei._queryInfo) {
-      ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       TRI_ASSERT(ei._queryInfo->_numEngines > 0);
       ei._queryInfo->_numEngines--;
       if (ei._queryInfo->_numEngines == 0) { // shutdown Query
         qId = ei._queryInfo->_query->id();
         vocbase = ei._queryInfo->_query->vocbase().name();
+      } else {
+        ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
     }
     
