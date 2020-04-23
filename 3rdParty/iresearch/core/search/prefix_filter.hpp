@@ -92,8 +92,6 @@ class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
     const bytes_ref& prefix,
     filter_visitor& visitor);
 
-  by_prefix() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

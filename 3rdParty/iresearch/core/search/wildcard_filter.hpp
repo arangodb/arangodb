@@ -89,8 +89,6 @@ class IRESEARCH_API by_wildcard final
 
   static field_visitor visitor(const bytes_ref& term);
 
-  by_wildcard() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

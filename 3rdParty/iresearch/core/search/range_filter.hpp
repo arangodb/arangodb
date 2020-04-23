@@ -96,16 +96,13 @@ class IRESEARCH_API by_range : public filter_base<by_range_options> {
     const options_type::range_type& rng,
     filter_visitor& visitor);
 
-  by_range() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& /*ctx*/
-  ) const override {
+      const index_reader& index,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_view& /*ctx*/) const override {
     return prepare(index, ord, this->boost()*boost,
                    field(), options().range,
                    options().scored_terms_limit);

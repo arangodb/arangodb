@@ -121,7 +121,7 @@ using variadic_term_position = std::pair<
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class variadic_phrase_frequency
-/// @tparam VolatileBoost boost is not a cont
+/// @tparam VolatileBoost boost is not a const
 /// @brief helper for variadic phrase frequency evaluation for cases when
 ///        only one term may be at a single position in a phrase (e.g. synonyms)
 ////////////////////////////////////////////////////////////////////////////////

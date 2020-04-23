@@ -58,10 +58,6 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_term() = default;
-
-  using filter::prepare;
-
   static prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
@@ -74,6 +70,8 @@ class IRESEARCH_API by_term : public filter_base<by_term_options> {
     const term_reader& field,
     const bytes_ref& term,
     filter_visitor& visitor);
+
+  using filter::prepare;
 
   virtual prepared::ptr prepare(
       const index_reader& rdr,

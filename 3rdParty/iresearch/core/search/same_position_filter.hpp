@@ -73,8 +73,6 @@ class IRESEARCH_API by_same_position
   //////////////////////////////////////////////////////////////////////////////
   static const flags& required();
 
-  by_same_position() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

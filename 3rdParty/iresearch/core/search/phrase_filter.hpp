@@ -193,8 +193,6 @@ class IRESEARCH_API by_phrase : public filter_base<by_phrase_options> {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_phrase() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

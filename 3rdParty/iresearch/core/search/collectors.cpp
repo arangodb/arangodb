@@ -182,7 +182,7 @@ void term_collectors::collect(
 
 size_t term_collectors::push_back() {
   const size_t size = buckets_->size();
-  assert(0 == collectors_.size() || 0 == collectors_.size() % size);
+  assert(0 == size || 0 == collectors_.size() % size);
 
   switch (size) {
     case 0:

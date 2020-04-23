@@ -117,8 +117,6 @@ class IRESEARCH_API by_granular_range
     const options_type::range_type& rng,
     filter_visitor& visitor);
 
-  by_granular_range() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(

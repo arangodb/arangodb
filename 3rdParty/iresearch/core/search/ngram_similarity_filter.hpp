@@ -65,16 +65,13 @@ class IRESEARCH_API by_ngram_similarity
   // returns set of features required for filter 
   static const flags& features();
 
-  by_ngram_similarity() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 }; // by_ngram_similarity
 
 NS_END // ROOT

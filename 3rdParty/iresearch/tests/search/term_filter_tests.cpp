@@ -665,7 +665,7 @@ TEST(by_term_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-
+    ASSERT_EQ(boost, prepared->boost());
   }
 }
 

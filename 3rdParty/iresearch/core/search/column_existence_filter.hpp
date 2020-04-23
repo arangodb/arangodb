@@ -61,8 +61,6 @@ class IRESEARCH_API by_column_existence final
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_column_existence() = default;
-
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
