@@ -450,7 +450,7 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
-  [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] bool isPassthrough() const;
   [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 

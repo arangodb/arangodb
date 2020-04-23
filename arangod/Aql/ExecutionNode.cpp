@@ -1193,7 +1193,7 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
-bool ExecutionNode::isIncreaseDepth() const {
+bool ExecutionNode::isPassthrough() const {
   switch (getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
@@ -1207,10 +1207,10 @@ bool ExecutionNode::isIncreaseDepth() const {
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::MATERIALIZE:
-      return true;
+      return false;
 
     default:
-      return false;
+      return true;
   }
 }
 

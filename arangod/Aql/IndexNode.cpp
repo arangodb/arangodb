@@ -478,14 +478,10 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
   std::vector<std::unique_ptr<NonConstExpression>> nonConstExpressions;
-
   initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions, trxPtr);
 
-  auto const firstOutputRegister = getNrInputRegisters();
-
-  auto const outRegister = variableToRegisterId(_outVariable);
-  LOG_DEVEL << "IndexNode output register = " << outRegister;
-  TRI_ASSERT(true || firstOutputRegister == outRegister);
+  auto const outVariable = isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
+  auto const outRegister = variableToRegisterId(outVariable);
   auto numIndVarsRegisters =
       static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.second.size());
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
@@ -502,11 +498,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       aql::make_shared_unordered_set();
   writableOutputRegisters->reserve(numDocumentRegs + numIndVarsRegisters);
   writableOutputRegisters->emplace(outRegister);
-//
-//  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
-//  TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
-//  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->cbegin(),
-//                                                      writableOutputRegisters->cend()));
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;
@@ -519,11 +510,13 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                  [&](auto const& indVar) {
                    auto it = varInfos.find(indVar.first->id);
                    TRI_ASSERT(it != varInfos.cend());
-                   writableOutputRegisters->emplace(it->second.registerId);
-                   return std::make_pair(indVar.second, it->second.registerId);
+                   RegisterId regId = it->second.registerId;
+
+                   writableOutputRegisters->emplace(regId);
+                   return std::make_pair(indVar.second, regId);
                  });
 
-  LOG_DEVEL << "IndexExecturoInfos firstOutputRegister = " << firstOutputRegister << " nrOutputRegister = " << getRegisterPlan()->nrRegs[getDepth()];
+  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
 
   IndexExecutorInfos infos(std::move(writableOutputRegisters),
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
@@ -668,6 +661,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
 VariableIdSet IndexNode::getOutputVariables() const {
   VariableIdSet vars;
   if (isLateMaterialized()) {
+    LOG_DEVEL << "Index uses late materialization.";
     TRI_ASSERT(_outNonMaterializedDocId != nullptr);
     vars.insert(_outNonMaterializedDocId->id);
     // plan registers for index references

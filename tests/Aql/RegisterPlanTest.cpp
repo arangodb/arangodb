@@ -54,9 +54,9 @@ struct PlanMiniMock {
 };
 
 struct ExecutionNodeMock {
-  ExecutionNodeMock(ExecutionNode::NodeType type, bool isIncreaseDepth,
+  ExecutionNodeMock(ExecutionNode::NodeType type, bool isPassthrough,
                     std::vector<Variable const*> input, std::vector<Variable const*> output)
-      : _type(type), _isIncreaseDepth(isIncreaseDepth), _input(), _output(), _plan(type) {
+      : _type(type), _isPassthrough(isPassthrough), _input(), _output(), _plan(type) {
     for (auto const& v : input) {
       _input.emplace(v);
     }
@@ -69,7 +69,7 @@ struct ExecutionNodeMock {
 
   auto id() -> ExecutionNodeId { return ExecutionNodeId{0}; }
 
-  auto isIncreaseDepth() -> bool { return _isIncreaseDepth; }
+  auto isPassthrough() -> bool { return _isPassthrough; }
 
   auto getType() -> ExecutionNode::NodeType { return _type; }
 
@@ -120,7 +120,7 @@ struct ExecutionNodeMock {
 
  private:
   ExecutionNode::NodeType _type;
-  bool _isIncreaseDepth;
+  bool _isPassthrough;
   VarSet _input;
   VarSet _output;
   VarSet _usedLater;
@@ -178,7 +178,7 @@ class RegisterPlanTest : public ::testing::Test {
 TEST_F(RegisterPlanTest, walker_should_plan_registers) {
   auto vars = generateVars(1);
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {&vars[0]}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   assertVariableInRegister(plan, vars[0], 0);
@@ -187,10 +187,10 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
 TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed) {
   auto vars = generateVars(2);
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[0], &vars[1]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[0], &vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   assertVariableInRegister(plan, vars[0], 0);
@@ -200,10 +200,10 @@ TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed
 TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
   auto vars = generateVars(2);
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   assertVariableInRegister(plan, vars[0], 0);
@@ -213,10 +213,10 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
 TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_passthrough) {
   auto vars = generateVars(2);
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[1]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   assertVariableInRegister(plan, vars[0], 0);

@@ -70,7 +70,6 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
     return false;  // do not walk into subquery
   }
 
-  std::unordered_set<RegisterId> reusableRegisters;
   std::unordered_set<RegisterId> unusedRegisters;
   std::shared_ptr<RegisterPlanT<T>> plan;
 };

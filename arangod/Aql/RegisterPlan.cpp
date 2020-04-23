@@ -51,65 +51,79 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  bool const isIncreaseDepth = en->isIncreaseDepth();
-  if (isIncreaseDepth) {
+  bool const isPassthrough = en->isPassthrough();
+  if (!isPassthrough) {
     plan->increaseDepth();
   }
 
-  LOG_DEVEL << en->getTypeString() << ":" << en->id() << " isIncreaseDepth = " << isIncreaseDepth;
-
-  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
-  auto outputVariables = en->getOutputVariables()._set;
-  for (VariableId const& v : outputVariables) {
-    TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
-    plan->registerVariable(v, reusableRegisters);
-  }
-
+  LOG_DEVEL << en->getTypeString() << ":" << en->id() << " isPassthrough = " << isPassthrough;
   if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
     plan->addSubqueryNode(en);
   }
 
-  ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
-      en->getVarsUsedLater();
-  ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
-  en->getVariablesUsedHere(varsUsedHere);
-  std::unordered_set<RegisterId> regsToClear;
-
-  // Now find out which registers ought to be erased after this node:
-  // ReturnNodes are special, since they return a single column anyway
-  if (en->getType() != ExecutionNode::RETURN) {
-    for (auto const& v : varsUsedHere) {
-      auto it = varsUsedLater.find(v);
-
-      if (it == varsUsedLater.end()) {
-        auto it2 = plan->varInfo.find(v->id);
-
-        if (it2 == plan->varInfo.end()) {
-          // report an error here to prevent crashing
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              std::string("missing variable #") + std::to_string(v->id) + " (" +
-                  v->name + ") for node #" + std::to_string(en->id().id()) +
-                  " (" + en->getTypeString() + ") while planning registers");
-        }
-
-        TRI_ASSERT(it2 != plan->varInfo.end());
-        RegisterId r = it2->second.registerId;
-        LOG_DEVEL << "Register " << r << " can be cleared";
-        regsToClear.insert(r);
+  /*
+   * For passthrough blocks it is better to assign the registers _before_ we calculate
+   * which registers have become unused to prevent reusing a input register as output register.
+   *
+   * This is not the case if the block is not passthrough since in that case the output row
+   * is different from the input row.
+   */
+  auto const planRegistersForCurrentNode = [&](T* en, bool isBefore) -> void {
+    if (isBefore == isPassthrough) {
+      auto outputVariables = en->getOutputVariables()._set;
+      for (VariableId const& v : outputVariables) {
+        TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
+        plan->registerVariable(v, unusedRegisters);
       }
     }
+  };
 
-    unusedRegisters.insert(regsToClear.begin(), regsToClear.end());
-    if (isIncreaseDepth) {
-      reusableRegisters.merge(unusedRegisters);
-      TRI_ASSERT(unusedRegisters.empty());
+  auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
+    ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
+        en->getVarsUsedLater();
+    ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
+    en->getVariablesUsedHere(varsUsedHere);
+    std::unordered_set<RegisterId> regsToClear;
+
+    // Now find out which registers ought to be erased after this node:
+    // ReturnNodes are special, since they return a single column anyway
+    if (en->getType() != ExecutionNode::RETURN) {
+      for (auto const& v : varsUsedHere) {
+        auto it = varsUsedLater.find(v);
+
+        if (it == varsUsedLater.end()) {
+          auto it2 = plan->varInfo.find(v->id);
+
+          if (it2 == plan->varInfo.end()) {
+            // report an error here to prevent crashing
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                           std::string("missing variable #") +
+                                               std::to_string(v->id) + " (" +
+                                               v->name + ") for node #" +
+                                               std::to_string(en->id().id()) +
+                                               " (" + en->getTypeString() +
+                                               ") while planning registers");
+          }
+
+          TRI_ASSERT(it2 != plan->varInfo.end());
+          RegisterId r = it2->second.registerId;
+          LOG_DEVEL << "Register " << r << " can be cleared";
+          regsToClear.insert(r);
+        }
+      }
     }
+    return regsToClear;
+  };
 
-    // We need to delete those variables that have been used here but are not
-    // used any more later:
-    en->setRegsToClear(std::move(regsToClear));
-  }
+  planRegistersForCurrentNode(en, true);
+  auto regsToClear = calculateRegistersToClear(en);
+  unusedRegisters.insert(regsToClear.begin(), regsToClear.end());
+  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
+  planRegistersForCurrentNode(en, false);
+
+  // We need to delete those variables that have been used here but are not
+  // used any more later:
+  en->setRegsToClear(std::move(regsToClear));
 
   en->_depth = plan->depth;
   en->_registerPlan = plan;
@@ -224,7 +238,15 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<Registe
     unusedRegisters.erase(iter);
   }
 
-  varInfo.try_emplace(v, VarInfo(depth, regId));
+  bool inserted;
+  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(depth, regId));
+  TRI_ASSERT(inserted);
+  if (!inserted) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("duplicate register assignment for variable #") +
+            std::to_string(v) + " while planning registers");
+  }
 }
 
 template <typename T>
