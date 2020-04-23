@@ -83,14 +83,13 @@ struct TraverserEngineShardLists {
  * Only works in cluster mode
  *
  * @param nodes The list of Nodes => Blocks
- * @param restrictToShards This query is restricted to those shards
  * @param queryIds A Mapping: RemoteNodeId -> DBServerId -> [snippetId]
  *
  * @return A result containing the error in bad case.
  */
 Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
-                                     std::unordered_set<std::string> const& restrictToShards,
                                      MapRemoteToSnippet const& queryIds) {
+#warning remove ifndef
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 #endif
@@ -499,8 +498,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    res = _coordinatorParts.buildEngines(_query, mgr, _query.queryOptions().restrictToShards,
-                                         snippetIds, snippets);
+    res = _coordinatorParts.buildEngines(_query, mgr, snippetIds, snippets);
 
     if (res.ok()) {
       cleanupGuard.cancel();
@@ -869,6 +867,8 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   builder.openObject(true);
   builder.add(StaticStrings::Code, VPackValue(errorCode));
   builder.close();
+  
+  _query.incHttpRequests(_serverToQueryId.size());
    
   std::vector<futures::Future<futures::Unit>> futures;
   futures.reserve(_serverToQueryId.size());
