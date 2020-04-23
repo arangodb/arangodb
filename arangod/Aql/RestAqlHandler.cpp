@@ -531,6 +531,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
         _engine->sharedState()->resetWakeupHandler();
       }
       if (_qId != 0) {
+        _engine = nullptr;
         _queryRegistry->closeEngine(_qId);
       }
     }
@@ -549,6 +550,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
 
 // dig out the query from ID, handle errors
 ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
+  TRI_ASSERT(_engine == nullptr);
   TRI_ASSERT(_qId == 0);
   _qId = arangodb::basics::StringUtils::uint64(idString);
 
