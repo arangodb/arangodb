@@ -348,15 +348,11 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
         auto ppid = getppid();
 
         snprintf(pid_buf, pid_size, "%d", ppid);
-        std::cerr << pid_buf << std::endl; ///!!!!!
         if (0 < proc_pidpath(ppid, name_buf, sizeof(name_buf))) {
           // The exec() family of functions replaces the current process image with a new process image.
           // The exec() functions only return if an error has occurred.
-          std::cerr << "duplicating" << std::endl; ///!!!!!
           dup2(fd, 1); // redirect stdout to fd
-          std::cerr << "duplicating stderr" << std::endl; ///!!!!!
           dup2(fd, 2); // redirect stderr to fd
-          std::cerr << "running gdb" << std::endl; ///!!!!!
           execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
         }
 
@@ -772,6 +768,7 @@ class stack_trace_printer {
     pipe_reader_ = std::thread([this, level, &buf, &buf_len]()->void {
       std::cerr << "Starting out pipe reading" << std::endl;//!!!!
       for (char ch; read(pipefd_[0], &ch, 1) > 0;) {
+        std::cerr << "Read:" << ch << std::endl;//!!!!!
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
             buf[buf_len++] = ch;
