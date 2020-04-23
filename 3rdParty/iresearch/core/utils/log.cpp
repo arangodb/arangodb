@@ -362,7 +362,9 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
       std::cerr << "waiting  " << pid << std::endl;///!!!!!
       int status;
 
-      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
+      auto result = 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
+      std::cerr << "waiting  " << pid << " ended with status " << status << std::endl;///!!!!!
+      return result;
     }
   #else
     bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
