@@ -4227,15 +4227,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 
       auto const [isSmart, isDisjoint, collection] = extractSmartnessAndCollection(node);
 
-      if (isSmart) {
 #ifdef USE_ENTERPRISE
+      if (isSmart) {
         node = distributeInClusterRuleSmart(plan.get(), snode, node, wasModified);
         // TODO: MARKUS CHECK WHEN YOU NEED TO CONTINUE HERE!
         //       We want to just handle all smart collections here, so we
         //       probably just want to always continue
         // continue;
-#endif
       }
+#endif
 
       TRI_ASSERT(collection != nullptr);
       bool const defaultSharding = collection->usesDefaultSharding();
