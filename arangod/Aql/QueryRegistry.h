@@ -74,6 +74,7 @@ class QueryRegistry {
   ExecutionEngine* openExecutionEngine(EngineId eid) {
     return static_cast<ExecutionEngine*>(openEngine(eid, EngineType::Execution));
   }
+
   traverser::BaseEngine* openGraphEngine(EngineId eid) {
     return static_cast<traverser::BaseEngine*>(openEngine(eid, EngineType::Graph));
   }
@@ -94,7 +95,7 @@ class QueryRegistry {
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
   std::unique_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId qId,
-                                             int errorCode, bool ignoreOpened);
+                                             int errorCode);
   
   /// used for a legacy shutdown
   bool destroyEngine(EngineId qId, int errorCode);
@@ -148,14 +149,6 @@ class QueryRegistry {
         _type(other._type),
         _isOpen(other._isOpen) {}
     EngineInfo& operator=(EngineInfo&& other) = delete;
-    
-//    EngineInfo& operator=(EngineInfo&& other) {
-//      _engine = std::move(other._engine);
-//      _queryInfo = std::move(other._queryInfo);
-//      _type = other._type;
-//      _isOpen = std::move(other._isOpen);
-//      return *this;
-//    }
     
     EngineInfo(ExecutionEngine* en, QueryInfo* qi)
       : _engine(en), _queryInfo(qi),

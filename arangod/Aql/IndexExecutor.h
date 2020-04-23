@@ -34,13 +34,13 @@
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Stats.h"
-#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
 
 namespace arangodb {
-struct OperationCursor;
+class IndexIterator;
+
 namespace aql {
 
 class ExecutionEngine;
@@ -197,7 +197,7 @@ class IndexExecutor {
     IndexExecutorInfos const& _infos;
     AstNode const* _condition;
     std::shared_ptr<Index> const& _index;
-    std::unique_ptr<OperationCursor> _cursor;
+    std::unique_ptr<IndexIterator> _cursor;
     DocumentProducingFunctionContext& _context;
     Type const _type;
 

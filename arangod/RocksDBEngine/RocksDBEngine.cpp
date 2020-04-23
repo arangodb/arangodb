@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
@@ -419,7 +420,7 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.num_stripes = NumberOfCores::getValue();
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;

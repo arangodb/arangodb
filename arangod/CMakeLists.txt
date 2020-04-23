@@ -416,7 +416,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
-  Utils/OperationCursor.cpp
   Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}

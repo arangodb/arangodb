@@ -38,8 +38,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 
 #include <Logger/LogMacros.h>
 #include <utility>
@@ -123,11 +123,10 @@ _state(ExecutionState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
-  _cursor = std::make_unique<OperationCursor>(
-      _trx.indexScan(_infos.getCollection()->name(),
+  _cursor = _trx.indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL)));
+                                         : transaction::Methods::CursorType::ALL));
 
   if (_infos.getProduceResult()) {
     _documentProducer =

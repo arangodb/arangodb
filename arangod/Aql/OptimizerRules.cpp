@@ -7394,7 +7394,6 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   bool _isParallelizable;
 
   explicit ParallelizableFinder(bool parallelizeWrites)
-#warning TODO
       : _parallelizeWrites(parallelizeWrites && false),
         _isParallelizable(true) {}
 
@@ -7525,7 +7524,6 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       }
     } else {
       gn->setParallelism(GatherNode::Parallelism::Serial);
-      modified = true;
     }
   }
 

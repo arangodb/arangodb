@@ -68,7 +68,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -602,14 +601,13 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ANY));
+  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ANY);
 
-  cursor.nextDocument(
-      [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
+  iterator->nextDocument(
+      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
-      },
-      1);
+      }, 1);
 
   resultBuilder.close();
 
@@ -1694,13 +1692,13 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  OperationCursor cursor(indexScan(collectionName, transaction::Methods::CursorType::ALL));
+  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
-  auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
-    resultBuilder.add(slice);
-    return true;
-  };
-  cursor.allDocuments(cb, 1000);
+  iterator->allDocuments(
+      [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
+        resultBuilder.add(slice);
+        return true;
+      }, 1000);
 
   resultBuilder.close();
 

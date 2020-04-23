@@ -85,7 +85,6 @@ class Index;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct IndexIteratorOptions;
-struct OperationCursor;
 struct OperationOptions;
 class TransactionState;
 class TransactionCollection;

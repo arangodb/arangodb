@@ -42,9 +42,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 
 #include <velocypack/Iterator.h>
@@ -354,8 +354,8 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       _infos(infos),
       _condition(condition),
       _index(index),
-      _cursor(std::make_unique<OperationCursor>(_trx.indexScanForCondition(
-          index, condition, infos.getOutVariable(), infos.getOptions()))),
+      _cursor(_trx.indexScanForCondition(
+          index, condition, infos.getOutVariable(), infos.getOptions())),
       _context(context),
       _type(infos.isLateMaterialized()
                 ? Type::LateMaterialized
@@ -400,7 +400,7 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _documentSkipper(std::move(other._documentSkipper)) {}
 
 bool IndexExecutor::CursorReader::hasMore() const {
-  return _cursor != nullptr && _cursor->hasMore();
+  return _cursor->hasMore();
 }
 
 bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
@@ -411,8 +411,6 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   // and read*Index just reads from the iterator until it is done.
   // Then initIndexes is read again and so on. This is to avoid reading the
   // entire index when we only want a small number of documents.
-
-  TRI_ASSERT(_cursor != nullptr);
   TRI_ASSERT(_cursor->hasMore());
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -441,28 +439,27 @@ void IndexExecutor::CursorReader::reset() {
     _cursor->reset();
     return;
   }
-  IndexIterator* iterator = _cursor->indexIterator();
-  if (iterator != nullptr && iterator->canRearm()) {
+
+  if (_cursor->canRearm()) {
     bool didRearm =
-        iterator->rearm(_condition, _infos.getOutVariable(), _infos.getOptions());
+        _cursor->rearm(_condition, _infos.getOutVariable(), _infos.getOptions());
     if (didRearm) {
       _cursor->reset();
     } else {
       // iterator does not support the condition
       // It will not create any results
-      _cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(), &_trx));
+      _cursor = std::make_unique<EmptyIndexIterator>(_cursor->collection(), &_trx);
     }
   } else {
     // We need to build a fresh search and cannot go the rearm shortcut
-    _cursor->rearm(_trx.indexScanForCondition(_index, _condition,
-                                              _infos.getOutVariable(),
-                                              _infos.getOptions()));
+    _cursor = _trx.indexScanForCondition(_index, _condition,
+                                         _infos.getOutVariable(),
+                                         _infos.getOptions());
   }
 }
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
-    :
-      _trx(infos.query().newTrxContext()),
+    : _trx(infos.query().newTrxContext()),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _state(ExecutorState::HASMORE),
       _documentProducingFunctionContext(

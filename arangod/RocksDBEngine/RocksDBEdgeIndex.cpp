@@ -222,7 +222,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
   // calls cb(documentId)
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextImplementation([&cb](LocalDocumentId docId,
                                     VPackSlice /*fromTo*/) {
       cb(docId);
@@ -230,7 +230,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
   // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     transaction::BuilderLeaser coveringBuilder(_trx);
     return nextImplementation([&](LocalDocumentId docId,
                                   VPackSlice fromTo) {
@@ -246,14 +246,14 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
   // calls cb(documentId, _from) or (documentId, _to)
-  bool nextExtra(ExtraCallback const& cb, size_t limit) override {
+  bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
     return nextImplementation([&cb](LocalDocumentId docId,
                                     VPackSlice fromTo) {
       cb(docId, fromTo);
     }, limit);
   }
 
-  void reset() override {
+  void resetImpl() override {
     resetInplaceMemory();
     _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();

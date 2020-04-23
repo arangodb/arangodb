@@ -72,14 +72,14 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
     try {
       for (auto& pair : p->_query->snippets()) {
         if (pair.first != 0) { // skip the root snippet
-          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+          auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
           TRI_ASSERT(result.second);
           TRI_ASSERT(result.first->second._type == EngineType::Execution);
           p->_numEngines++;
         }
       }
       for (auto& pair : p->_query->traversers()) {
-        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), nullptr));
+        auto result = _engines.try_emplace(pair.first, EngineInfo(pair.second.get(), p.get()));
         TRI_ASSERT(result.second);
         TRI_ASSERT(result.first->second._type == EngineType::Graph);
         p->_numEngines++;
@@ -125,7 +125,7 @@ void QueryRegistry::insertQuery(std::unique_ptr<ClusterQuery> query, double ttl)
 
 /// @brief open
 void* QueryRegistry::openEngine(EngineId id, EngineType type) {
-  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Open query with id " << id;
+  LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL) << "Opening engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
   
@@ -146,9 +146,9 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   
   if (ei._isOpen) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
-        << "Engine with id " << id << " is already in open";
+        << "Engine with id " << id << " is already open";
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "query with given vocbase and id is already open");
+        TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
   }
   
   ei._isOpen = true;
@@ -157,9 +157,10 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
     ei._queryInfo->_numOpen++;
 
     TRI_ASSERT(ei._queryInfo->_numOpen == 1 || !ei._queryInfo->_query->isModificationQuery());
+    LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+  } else {
+    LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", no query";
   }
-  
-  LOG_TOPIC("50eff", DEBUG, arangodb::Logger::AQL) << "Engine with id " << id << " is now in use";
 
   return ei._engine;
 }
@@ -186,19 +187,21 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   ei._isOpen = false;
   
   if (ei._queryInfo) {
-    ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     TRI_ASSERT(ei._queryInfo->_numOpen > 0);
     ei._queryInfo->_numOpen--;
+    if (!ei._queryInfo->_query->killed()) {
+      ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
+    }
+    LOG_TOPIC("5ecdc", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+  } else {
+    LOG_TOPIC("ae981", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", no query";
   }
-
-  LOG_TOPIC("ae981", DEBUG, arangodb::Logger::AQL)
-  << "query with id " << engineId << " is now returned.";
 }
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
 std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
-                                                          int errorCode, bool ignoreOpened) {
+                                                          int errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -208,7 +211,7 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 
     if (m == _queries.end()) {
       // database not found. this can happen as a consequence of a race between garbage collection
-      // and shutdown
+      // and query shutdown
       return nullptr;
     }
     
@@ -219,7 +222,7 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
           TRI_ERROR_BAD_PARAMETER, "query with given id not found in query registry");
     }
 
-    if (q->second->_numOpen > 0 && !ignoreOpened) {
+    if (q->second->_numOpen > 0) {
       // query in use by another thread/request
       q->second->_query->kill();
       q->second->_expires = 0.0;
@@ -235,7 +238,12 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
     
     // remove engines
     for (auto const& pair : queryInfo->_query->snippets()) {
-      _engines.erase(pair.first);
+      auto it = _engines.find(pair.first);
+      if (it != _engines.end()) {
+        TRI_ASSERT(it->second._queryInfo != nullptr);
+        TRI_ASSERT(!it->second._isOpen);
+        _engines.erase(it);
+      }
     }
     for (auto& pair : queryInfo->_query->traversers()) {
       _engines.erase(pair.first);
@@ -273,18 +281,19 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
 
     EngineInfo& ei = it->second;
     if (ei._isOpen) {
-     LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " is open.";
-     THROW_ARANGO_EXCEPTION_MESSAGE(
-         TRI_ERROR_INTERNAL, "engine with given vocbase and id is open");
+      LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " is open.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "engine with given vocbase and id is open");
     }
 
     if (ei._queryInfo) {
-      ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       TRI_ASSERT(ei._queryInfo->_numEngines > 0);
       ei._queryInfo->_numEngines--;
       if (ei._queryInfo->_numEngines == 0) { // shutdown Query
         qId = ei._queryInfo->_query->id();
         vocbase = ei._queryInfo->_query->vocbase().name();
+      } else {
+        ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
     }
     
@@ -292,7 +301,7 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
   }
 
   if (qId != 0 && !vocbase.empty()) {  // simon: old shutdown case
-    destroyQuery(vocbase, qId, errorCode, false);
+    destroyQuery(vocbase, qId, errorCode);
   }
   
   return true;
@@ -324,7 +333,9 @@ void QueryRegistry::destroy(std::string const& vocbase) {
 void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<QueryId> queriesLeft;
+#endif
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -337,23 +348,26 @@ void QueryRegistry::expireQueries() {
         std::unique_ptr<QueryInfo> const& qi = y.second;
         if (qi->_numOpen == 0 && now > qi->_expires) {
           toDelete.emplace_back(x.first, y.first);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         } else {
           queriesLeft.emplace_back(y.first);
+#endif
         }
       }
     }
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!queriesLeft.empty()) {
     LOG_TOPIC("4f142", DEBUG, arangodb::Logger::AQL)
         << "queries left in QueryRegistry: " << queriesLeft;
   }
-
+#endif
   for (auto& p : toDelete) {
     try {  // just in case
       LOG_TOPIC("e95dc", DEBUG, arangodb::Logger::AQL)
           << "timeout for query with id " << p.second;
-      destroyQuery(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED, false);
+      destroyQuery(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
     } catch (...) {
     }
   }
@@ -384,19 +398,13 @@ void QueryRegistry::destroyAll() try {
     try {
       LOG_TOPIC("df275", DEBUG, arangodb::Logger::AQL)
           << "Timeout for query with id " << p.second << " due to shutdown";
-      destroyQuery(p.first, p.second, TRI_ERROR_SHUTTING_DOWN, /*ignoreOpened*/false);
+      destroyQuery(p.first, p.second, TRI_ERROR_SHUTTING_DOWN);
     } catch (...) {
       // ignore any errors here
     }
   }
 
-  size_t count = 0;
-  {
-    READ_LOCKER(readlock, _lock);
-    for (auto& p : _queries) {
-      count += p.second.size();
-    }
-  }
+  size_t count = numberRegisteredQueries();
   if (count > 0) {
     LOG_TOPIC("43bf8", INFO, arangodb::Logger::AQL)
         << "number of remaining queries in query registry at shutdown: " << count;

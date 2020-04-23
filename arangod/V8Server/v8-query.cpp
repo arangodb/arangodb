@@ -30,7 +30,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -208,17 +207,17 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor(trx.indexScan(collectionName, transaction::Methods::CursorType::ALL));
-
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler();
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
+  
+  // We directly read the entire cursor. so batchsize == limit
+  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
-  opCursor.allDocuments(
+  iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;

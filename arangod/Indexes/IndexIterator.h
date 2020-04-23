@@ -56,7 +56,7 @@ class LogicalCollection;
 namespace aql {
 struct AstNode;
 struct Variable;
-};
+}
 
 namespace transaction {
 class Methods;
@@ -67,6 +67,8 @@ struct IndexIteratorOptions;
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
+  friend class MultiIndexIterator;
+
  public:
   typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
   typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
@@ -88,6 +90,57 @@ class IndexIterator {
   LogicalCollection* collection() const { return _collection; }
 
   transaction::Methods* transaction() const { return _trx; }
+  
+  bool hasMore() const { return _hasMore; }
+  
+  void reset();
+
+  /// @brief Calls cb for the next batchSize many elements
+  /// returns true if there are more documents (hasMore) and false
+  /// if there are none
+  bool next(IndexIterator::LocalDocumentIdCallback const& callback, uint64_t batchSize);
+
+  /// @brief Calls cb for the next batchSize many elements
+  /// returns true if there are more documents (hasMore) and false
+  /// if there are none
+  bool nextExtra(IndexIterator::ExtraCallback const& callback, uint64_t batchSize);
+
+  /// @brief Calls cb for the next batchSize many elements, complete documents
+  /// returns true if there are more documents (hasMore) and false
+  /// if there are none
+  bool nextDocument(IndexIterator::DocumentCallback const& callback, uint64_t batchSize);
+
+  /// @brief Calls cb for the next batchSize many elements, index-only
+  /// projections returns true if there are more documents (hasMore) and false
+  /// if there are none
+  bool nextCovering(IndexIterator::DocumentCallback const& callback, uint64_t batchSize);
+
+  /// @brief convenience function to retrieve all results
+  void all(IndexIterator::LocalDocumentIdCallback const& callback) {
+    while (next(callback, 1000)) { /* intentionally empty */ }
+  }
+
+  /// @brief convenience function to retrieve all results with extra
+  void allExtra(IndexIterator::ExtraCallback const& callback) {
+    while (nextExtra(callback, 1000)) { /* intentionally empty */ }
+  }
+
+  /// @brief convenience function to retrieve all results
+  void allDocuments(IndexIterator::DocumentCallback const& callback, uint64_t batchSize) {
+    while (nextDocument(callback, batchSize)) { /* intentionally empty */ }
+  }
+
+  /// @brief skip the next toSkip many elements.
+  ///        skipped will be increased by the amount of skipped elements
+  ///        afterwards Check hasMore()==true before using this NOTE: This will
+  ///        throw on OUT_OF_MEMORY
+  void skip(uint64_t toSkip, uint64_t& skipped);
+
+  /// @brief skip all elements.
+  ///        skipped will be increased by the amount of skipped elements
+  ///        afterwards Check hasMore()==true before using this NOTE: This will
+  ///        throw on OUT_OF_MEMORY
+  void skipAll(uint64_t& skipped);
 
   /// @brief whether or not the index iterator supports rearming
   virtual bool canRearm() const { return false; }
@@ -102,33 +155,31 @@ class IndexIterator {
                      arangodb::aql::Variable const* variable,
                      IndexIteratorOptions const& opts);
 
-  virtual bool hasExtra() const {
-    // The default index has no extra information
-    return false;
-  }
+  /// @brief The default index has no extra information
+  virtual bool hasExtra() const { return false; }
 
   /// @brief default implementation for whether or not an index iterator
   /// provides the "nextCovering" method as a performance optimization
-  virtual bool hasCovering() const {
-    // The default index has no covering method information
-    return false;
-  }
-
-  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
-  virtual bool nextDocument(DocumentCallback const& callback, size_t limit);
-  virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
+  /// The default index has no covering method information
+  virtual bool hasCovering() const { return false; }
+ 
+ protected:
+  virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit);
+  virtual bool nextDocumentImpl(DocumentCallback const& callback, size_t limit);
+  virtual bool nextExtraImpl(ExtraCallback const& callback, size_t limit);
 
   // extract index attribute values directly from the index while index scanning
   // must only be called if hasCovering()
-  virtual bool nextCovering(DocumentCallback const& callback, size_t limit);
+  virtual bool nextCoveringImpl(DocumentCallback const& callback, size_t limit);
 
-  virtual void reset();
+  virtual void resetImpl() {}
 
-  virtual void skip(uint64_t count, uint64_t& skipped);
+  virtual void skipImpl(uint64_t count, uint64_t& skipped);
   
  protected:
   LogicalCollection* _collection;
   transaction::Methods* _trx;
+  bool _hasMore;
 };
 
 /// @brief Special iterator if the condition cannot have any result
@@ -140,15 +191,6 @@ class EmptyIndexIterator final : public IndexIterator {
   ~EmptyIndexIterator() = default;
 
   char const* typeName() const override { return "empty-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const&, size_t) override { return false; }
-  bool nextDocument(DocumentCallback const&, size_t) override { return false; }
-  bool nextExtra(ExtraCallback const&, size_t) override { return false; }
-  bool nextCovering(DocumentCallback const&, size_t) override { return false; }
-
-  void reset() override {}
-
-  void skip(uint64_t, uint64_t& skipped) override { skipped = 0; }
   
   /// @brief the iterator can easily claim to have extra information, however,
   /// it never produces any results, so this is a cheap trick 
@@ -157,6 +199,13 @@ class EmptyIndexIterator final : public IndexIterator {
   /// @brief the iterator can easily claim to have covering data, however,
   /// it never produces any results, so this is a cheap trick 
   bool hasCovering() const override { return true; }
+
+  bool nextImpl(LocalDocumentIdCallback const&, size_t) override { return false; }
+  bool nextDocumentImpl(DocumentCallback const&, size_t) override { return false; }
+  bool nextExtraImpl(ExtraCallback const&, size_t) override { return false; }
+  bool nextCoveringImpl(DocumentCallback const&, size_t) override { return false; }
+
+  void skipImpl(uint64_t, uint64_t& skipped) override { skipped = 0; }
 };
 
 /// @brief a wrapper class to iterate over several IndexIterators.
@@ -189,23 +238,23 @@ class MultiIndexIterator final : public IndexIterator {
   ~MultiIndexIterator() = default;
 
   char const* typeName() const override { return "multi-index-iterator"; }
+  
+  /// @brief for whether or not the iterators provide the "nextCovering" method
+  /// as a performance optimization
+  bool hasCovering() const override { return _hasCovering; }
 
   /// @brief Get the next elements
   ///        If one iterator is exhausted, the next one is used.
   ///        If callback is called less than limit many times
   ///        all iterators are exhausted
-  bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
-  bool nextDocument(DocumentCallback const& callback, size_t limit) override;
-  bool nextExtra(ExtraCallback const& callback, size_t limit) override;
-  bool nextCovering(DocumentCallback const& callback, size_t limit) override;
-
+  bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& callback, size_t limit) override;
+  bool nextExtraImpl(ExtraCallback const& callback, size_t limit) override;
+  bool nextCoveringImpl(DocumentCallback const& callback, size_t limit) override;
+  
   /// @brief Reset the cursor
   ///        This will reset ALL internal iterators and start all over again
-  void reset() override;
-
-  /// @brief for whether or not the iterators provide the "nextCovering" method
-  /// as a performance optimization
-  bool hasCovering() const override { return _hasCovering; }
+  void resetImpl() override;
 
  private:
   std::vector<std::unique_ptr<IndexIterator>> _iterators;

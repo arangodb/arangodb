@@ -24,8 +24,8 @@
 
 #include "Aql/OptimizerUtils.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -42,12 +42,8 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex.
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-                                         std::string const& vertexId) {
+std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {
   
   /// @brief index used for iteration
   transaction::Methods::IndexHandle indexId;
@@ -70,15 +66,10 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(indexId,
-                                                                       _searchBuilder.getOutboundCondition(),
-                                                                       _searchBuilder.getVariable(), opts));
+  return _trx->indexScanForCondition(indexId, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& EdgeCollectionInfo::getName() const {
   return _collectionName;
 }
