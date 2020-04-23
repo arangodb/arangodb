@@ -98,12 +98,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys != nullptr);
     TRI_ASSERT(_keys->slice().isArray());
-
-    auto* mthds = RocksDBTransactionState::toMethods(trx);
-    // intentional copy of the options
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    ro.fill_cache = EdgeIndexFillBlockCache;
-    _iterator = mthds->NewIterator(ro, index->columnFamily());
   }
 
   ~RocksDBEdgeIndexLookupIterator() {
@@ -305,6 +299,13 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad case read from RocksDB
+    if (_iterator == nullptr) {
+      auto* mthds = RocksDBTransactionState::toMethods(_trx);
+      // intentional copy of the options
+      rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+      ro.fill_cache = EdgeIndexFillBlockCache;
+      _iterator = mthds->NewIterator(ro, _index->columnFamily());
+    }
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
     resetInplaceMemory();
     rocksdb::Comparator const* cmp = _index->comparator();
