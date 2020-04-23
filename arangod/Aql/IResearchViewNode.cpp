@@ -1412,7 +1412,6 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
-
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
@@ -1491,7 +1490,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const buildExecutorInfo = [this](aql::ExecutionEngine& engine,
                                         std::shared_ptr<IResearchView::Snapshot const> reader) {
-    aql::RegisterId outRegister = variableToRegisterId(_outVariable);
+    ;
     // We could be asked to produce only document/collection ids for later materialization or full document body at once
     aql::RegisterCount numDocumentRegs = 0;
     MaterializeType materializeType = MaterializeType::Undefined;
@@ -1536,13 +1535,21 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         aql::make_shared_unordered_set();
     writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
+    aql::IResearchViewExecutorInfos::OutRegisters outRegister;
     if (isLateMaterialized()) {
-      writableOutputRegisters->emplace(variableToRegisterId(_outNonMaterializedColPtr));
-      writableOutputRegisters->emplace(variableToRegisterId(_outNonMaterializedDocId));
-    } else {
-      writableOutputRegisters->emplace(outRegister);
-    }
+      aql::RegisterId documentRegId = variableToRegisterId(_outNonMaterializedDocId);
+      aql::RegisterId collectionRegId = variableToRegisterId(_outNonMaterializedColPtr);
 
+      writableOutputRegisters->emplace(documentRegId);
+      writableOutputRegisters->emplace(collectionRegId);
+      outRegister =
+          aql::IResearchViewExecutorInfos::LateMaterializeRegister{documentRegId, collectionRegId};
+    } else if (!noMaterialization()) {
+      auto outReg = variableToRegisterId(_outVariable);
+
+      writableOutputRegisters->emplace(outReg);
+      outRegister = outReg;
+    }
 
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);
@@ -1565,8 +1572,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       }
     }
 
-
-
     TRI_ASSERT(writableOutputRegisters->size() ==
                numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
@@ -1576,7 +1581,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     auto executorInfos =
         aql::IResearchViewExecutorInfos{std::move(registerInfos),
                                         std::move(reader),
-                                        outRegister,
+                                        std::move(outRegister),
                                         std::move(scoreRegisters),
                                         *engine.getQuery(),
                                         scorers(),
@@ -1632,7 +1637,7 @@ aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
       vars.insert(_outNonMaterializedDocId->id);
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
-      //vars.insert(aql::RegisterPlan::MaxRegisterId);
+      // vars.insert(aql::RegisterPlan::MaxRegisterId);
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {

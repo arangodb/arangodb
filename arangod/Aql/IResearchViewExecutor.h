@@ -39,6 +39,7 @@
 #include <index/heap_iterator.hpp>
 
 #include <utility>
+#include <variant>
 
 namespace iresearch {
 class score;
@@ -64,25 +65,32 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
  public:
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
+  struct LateMaterializeRegister {
+    RegisterId documentOutReg;
+    RegisterId collectionOutReg;
+  };
+
+  using OutRegisters = std::variant<RegisterId, LateMaterializeRegister>;
+
   IResearchViewExecutorInfos(
       ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
-      RegisterId firstOutputRegister, std::vector<RegisterId> scoreRegisters,
+      OutRegisters outRegister, std::vector<RegisterId> scoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
-      std::pair<iresearch::IResearchViewSort const*, size_t>  sort,
+      std::pair<iresearch::IResearchViewSort const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
       Variable const& outVariable, aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
-  RegisterId getOutputRegister() const noexcept;
-  RegisterId getFirstScoreRegister() const noexcept;
-  RegisterId getNumScoreRegisters() const noexcept;
-  iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const
-      noexcept;
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
-  Query& getQuery() const noexcept;
+  auto getOutputRegister() const noexcept -> RegisterId;
+  auto getLateMaterializeRegisters() const noexcept -> LateMaterializeRegister const&;
+
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   std::vector<RegisterId> const& getScoreRegisters() const noexcept;
+
+  iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const noexcept;
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
+  Query& getQuery() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
@@ -97,10 +105,9 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
-  bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
-  RegisterId const _firstOutputRegister;
+  OutRegisters _outRegisters;
   std::vector<RegisterId> _scoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
@@ -173,17 +180,18 @@ class IResearchViewExecutorBase {
     static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
 
    public:
-    explicit ReadContext(aql::RegisterId docOutReg, InputAqlItemRow& inputRow,
-                         OutputAqlItemRow& outputRow);
+    explicit ReadContext(aql::RegisterId documentOutReg,
+                         aql::RegisterId collectionPointerReg,
+                         InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow);
 
-    aql::RegisterId const docOutReg;
+    aql::RegisterId const documentOutReg;
+    aql::RegisterId const collectionPointerReg;
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
 
-    aql::RegisterId getNmColPtrOutReg() const noexcept { return docOutReg; }
-
-    aql::RegisterId getNmDocIdOutReg() const noexcept { return docOutReg + 1; }
+    [[nodiscard]] auto getNmColPtrOutReg() const noexcept -> aql::RegisterId { return collectionPointerReg; }
+    [[nodiscard]] auto getNmDocIdOutReg() const noexcept -> aql::RegisterId { return documentOutReg; }
   };  // ReadContext
 
   template <typename ValueType>
@@ -212,8 +220,7 @@ class IResearchViewExecutorBase {
     class ScoreIterator {
      public:
       ScoreIterator() = delete;
-      ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx,
-                    size_t numScores) noexcept;
+      ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
 
       std::vector<AqlValue>::iterator begin() noexcept;
 
@@ -305,7 +312,8 @@ class IResearchViewExecutorBase {
 
   void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0);
 
-  bool getStoredValuesReaders(irs::sub_reader const& segmentReader, size_t storedValuesIndex = 0);
+  bool getStoredValuesReaders(irs::sub_reader const& segmentReader,
+                              size_t storedValuesIndex = 0);
 
  private:
   bool next(ReadContext& ctx);
@@ -415,8 +423,8 @@ class IResearchViewMergeExecutor
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
-    irs::bytes_ref sortValue{irs::bytes_ref::NIL};      // sort column value
-    irs::columnstore_reader::values_reader_f pkReader;  // primary key reader
+    irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
+    irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
     irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
     size_t storedValuesIndex;  // first stored values index
   };
