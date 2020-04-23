@@ -1412,6 +1412,7 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
+
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
@@ -1536,14 +1537,18 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
     if (isLateMaterialized()) {
-      writableOutputRegisters->reserve(variableToRegisterId(_outNonMaterializedColPtr));
-      writableOutputRegisters->reserve(variableToRegisterId(_outNonMaterializedDocId));
+      writableOutputRegisters->emplace(variableToRegisterId(_outNonMaterializedColPtr));
+      writableOutputRegisters->emplace(variableToRegisterId(_outNonMaterializedDocId));
     } else {
       writableOutputRegisters->emplace(outRegister);
     }
 
+
+    std::vector<aql::RegisterId> scoreRegisters;
+    scoreRegisters.reserve(numScoreRegisters);
     std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
-      writableOutputRegisters->emplace(scorer.var->id);
+      writableOutputRegisters->emplace(variableToRegisterId(scorer.var));
+      scoreRegisters.push_back(variableToRegisterId(scorer.var));
     });
 
     auto const& varInfos = getRegisterPlan()->varInfo;
@@ -1560,6 +1565,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       }
     }
 
+
+
     TRI_ASSERT(writableOutputRegisters->size() ==
                numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
@@ -1570,7 +1577,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         aql::IResearchViewExecutorInfos{std::move(registerInfos),
                                         std::move(reader),
                                         outRegister,
-                                        numScoreRegisters,
+                                        std::move(scoreRegisters),
                                         *engine.getQuery(),
                                         scorers(),
                                         _sort,
@@ -1586,7 +1593,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return std::make_pair(materializeType, std::move(executorInfos));
   };
 
-  auto [materializeType, executorInfos] = buildExecutorInfo(engine, reader);
+  auto [materializeType, executorInfos] = buildExecutorInfo(engine, std::move(reader));
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
   bool const ordered = !_scorers.empty();
@@ -1625,7 +1632,7 @@ aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
       vars.insert(_outNonMaterializedDocId->id);
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
-      vars.insert(aql::RegisterPlan::MaxRegisterId);
+      //vars.insert(aql::RegisterPlan::MaxRegisterId);
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {

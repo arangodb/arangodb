@@ -661,7 +661,6 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
 VariableIdSet IndexNode::getOutputVariables() const {
   VariableIdSet vars;
   if (isLateMaterialized()) {
-    LOG_DEVEL << "Index uses late materialization.";
     TRI_ASSERT(_outNonMaterializedDocId != nullptr);
     vars.insert(_outNonMaterializedDocId->id);
     // plan registers for index references

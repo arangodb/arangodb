@@ -107,7 +107,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
           TRI_ASSERT(it2 != plan->varInfo.end());
           RegisterId r = it2->second.registerId;
-          LOG_DEVEL << "Register " << r << " can be cleared";
           regsToClear.insert(r);
         }
       }

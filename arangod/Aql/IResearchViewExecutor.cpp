@@ -43,6 +43,7 @@
 #include <analysis/token_attributes.hpp>
 #include <search/boolean_filter.hpp>
 #include <search/score.hpp>
+#include <utility>
 
 // TODO Eliminate access to the plan if possible!
 // I think it is used for two things only:
@@ -101,20 +102,20 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
-    RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
+    RegisterId firstOutputRegister, std::vector<RegisterId> scoreRegisters, Query& query,
     std::vector<Scorer> const& scorers,
-    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
+    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t>  sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
     : ExecutorInfos(std::move(infos)),
       _firstOutputRegister(firstOutputRegister),
-      _numScoreRegisters(numScoreRegisters),
+      _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
       _scorers(scorers),
-      _sort(sort),
+      _sort(std::move(sort)),
       _storedValues(storedValues),
       _plan(plan),
       _outVariable(outVariable),
@@ -131,21 +132,12 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
 }
 
 RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
-  return _firstOutputRegister + getNumScoreRegisters();
-}
-
-RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const noexcept {
-  return _numScoreRegisters;
+  return _firstOutputRegister;
 }
 
 IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const
     noexcept {
   return _outNonMaterializedViewRegs;
-}
-
-RegisterId IResearchViewExecutorInfos::getFirstScoreRegister() const noexcept {
-  TRI_ASSERT(getNumScoreRegisters() > 0);
-  return _firstOutputRegister;
 }
 
 std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const
@@ -158,6 +150,10 @@ Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
 const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
     noexcept {
   return _scorers;
+}
+
+std::vector<RegisterId> const& IResearchViewExecutorInfos::getScoreRegisters() const noexcept {
+  return _scoreRegisters;
 }
 
 ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
@@ -194,11 +190,6 @@ const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearc
 
 IResearchViewStoredValues const& IResearchViewExecutorInfos::storedValues() const noexcept {
   return _storedValues;
-}
-
-bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const noexcept {
-  return getNumScoreRegisters() > 0 && getFirstScoreRegister() <= reg &&
-         reg < getFirstScoreRegister() + getNumScoreRegisters();
 }
 
 IResearchViewStats::IResearchViewStats() noexcept : _scannedIndex(0) {}
@@ -376,7 +367,7 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
     IResearchViewExecutorBase::Fetcher&, IResearchViewExecutorBase::Infos& infos)
     : _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
-      _indexReadBuffer(_infos.getNumScoreRegisters()),
+      _indexReadBuffer(_infos.getScoreRegisters().size()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
       _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
@@ -523,25 +514,25 @@ void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& /*ct
 
   // scorer registers are placed right before document output register
   // is used here currently only for assertions.
-  RegisterId scoreReg = infos().getFirstScoreRegister();
+  std::vector<RegisterId> const& scoreRegs = infos().getScoreRegisters();
+  size_t numScoreReg = 0;
 
   // copy scores, registerId's are sequential
-  for (; begin != end; ++begin, ++scoreReg) {
-    TRI_ASSERT(infos().isScoreReg(scoreReg));
+  for (; begin != end; ++begin, ++numScoreReg) {
+    TRI_ASSERT(numScoreReg < scoreRegs.size());
     _indexReadBuffer.pushScore(*begin);
   }
 
   // We should either have no _scrVals to evaluate, or all
-  TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
+  TRI_ASSERT(begin == nullptr || numScoreReg >= scoreRegs.size());
 
-  while (infos().isScoreReg(scoreReg)) {
+  while (numScoreReg < scoreRegs.size()) {
     _indexReadBuffer.pushScoreNone();
-    ++scoreReg;
+    ++numScoreReg;
   }
 
   // we should have written exactly all score registers by now
-  TRI_ASSERT(!infos().isScoreReg(scoreReg));
-  TRI_ASSERT(scoreReg == infos().getOutputRegister());
+  TRI_ASSERT(numScoreReg == scoreRegs.size());
 }
 
 template <typename Impl, typename Traits>
@@ -687,17 +678,18 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   // in the ordered case we have to write scores as well as a document
   if constexpr (Traits::Ordered) {
     // scorer register are placed right before the document output register
-    RegisterId scoreReg = infos().getFirstScoreRegister();
+    std::vector<RegisterId> const& scoreRegisters = infos().getScoreRegisters();
+    auto scoreRegIter = scoreRegisters.begin();
     for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
-      TRI_ASSERT(infos().isScoreReg(scoreReg));
+      TRI_ASSERT(scoreRegIter != scoreRegisters.end());
       AqlValueGuard guard{it, false};
 
-      ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
-      ++scoreReg;
+      ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, guard);
+      ++scoreRegIter;
     }
 
     // we should have written exactly all score registers by now
-    TRI_ASSERT(!infos().isScoreReg(scoreReg));
+    TRI_ASSERT(scoreRegIter == scoreRegisters.end());
   } else {
     UNUSED(bufferEntry);
   }
@@ -785,7 +777,6 @@ IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& 
       _readerOffset(0),
       _scr(&irs::score::no_score()),
       _scrVal() {
-  TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
   this->_storedValuesReaders.resize(this->_infos.getOutNonMaterializedViewRegs().size());
 }
 
@@ -1097,7 +1088,6 @@ IResearchViewMergeExecutor<ordered, materializeType>::IResearchViewMergeExecutor
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
   TRI_ASSERT(infos.sort().second);
-  TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
 }
 
 template <bool ordered, MaterializeType materializeType>

@@ -66,9 +66,9 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
   IResearchViewExecutorInfos(
       ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
-      RegisterId firstOutputRegister, RegisterId numScoreRegisters,
+      RegisterId firstOutputRegister, std::vector<RegisterId> scoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
-      std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
+      std::pair<iresearch::IResearchViewSort const*, size_t>  sort,
       iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
       Variable const& outVariable, aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
@@ -82,6 +82,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   Query& getQuery() const noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
+  std::vector<RegisterId> const& getScoreRegisters() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
@@ -100,7 +101,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
  private:
   RegisterId const _firstOutputRegister;
-  RegisterId const _numScoreRegisters;
+  std::vector<RegisterId> _scoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
   std::vector<iresearch::Scorer> const& _scorers;
