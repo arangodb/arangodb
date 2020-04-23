@@ -4039,14 +4039,16 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan, DistributeNode* nod
 //
 // parents[0] -> GATHER -> REMOTE -> `node` -> REMOTE -> DISTRIBUTE -> deps[0]
 //
+// We can only handle the above mentioned node types, because the setup of
+// distribute and gather requires knowledge from these nodes.
+//
 // Note that parents[0] might be `nullptr` if `node` is the root of the plan,
 // and we handle this case in here as well by resetting the root to the
-// inserted GATHER node
+// inserted GATHER node.
 //
-// TODO: at the moment only the distributeNode return value is used
 auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
                                                   ExecutionNode* at, SubqueryNode* snode)
-    -> std::pair<DistributeNode*, GatherNode*> {
+    -> DistributeNode* {
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
 
@@ -4100,21 +4102,22 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
     // and now make the plan consistent again by splicing in our snippet.
     parents[0]->replaceDependency(deps[0], gatherNode);
   }
-  return std::pair<DistributeNode*, GatherNode*>{ExecutionNode::castTo<DistributeNode*>(distNode),
-                                                 ExecutionNode::castTo<GatherNode*>(gatherNode)};
+  return ExecutionNode::castTo<DistributeNode*>(distNode);
 }
 
 auto extractSmartnessAndCollection(ExecutionNode* node)
-    -> std::pair<bool, Collection const*> {
+  -> std::tuple<bool, bool, Collection const*> {
   auto nodeType = node->getType();
   auto collection = (Collection const*){nullptr};
   auto isSmart = bool{false};
+  auto isDisjoint = bool{false};
 
   if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
       nodeType == ExecutionNode::K_SHORTEST_PATHS) {
     auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
 
     isSmart = graphNode->isSmart();
+    isDisjoint = graphNode->isDisjoint();
 
     // Note that here we are in the disjoint smart graph case and "collection()" will
     // give us any collection in the graph, but they're all sharded the same way.
@@ -4128,7 +4131,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
     collection = collectionAccessingNode->collection();
   }
 
-  return std::pair<bool, Collection const*>{isSmart, collection};
+  return std::tuple<bool, bool, Collection const*>{isSmart, isDisjoint, collection};
 }
 
 /// @brief distribute operations in cluster
@@ -4138,6 +4141,23 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 /// incoming row is only sent to one shard and not all as in scatterInCluster
 ///
 /// it will change plans in place
+
+
+auto isGraphNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
+  return nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+    nodeType == ExecutionNode::K_SHORTEST_PATHS;
+}
+
+auto isModificationNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
+  return nodeType == ExecutionNode::INSERT ||
+         nodeType == ExecutionNode::REMOVE || nodeType == ExecutionNode::UPDATE ||
+         nodeType == ExecutionNode::REPLACE || nodeType == ExecutionNode::UPSERT;
+}
+
+auto nodeEligibleForDistribute(ExecutionNode::NodeType nodeType) noexcept -> bool {
+  return isModificationNode(nodeType) || isGraphNode(nodeType);
+}
+
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                                             std::unique_ptr<ExecutionPlan> plan,
                                             OptimizerRule const& rule) {
@@ -4166,6 +4186,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     ExecutionNode* node = root;
     TRI_ASSERT(node != nullptr);
 
+    // TODO: we might be able to use a walker here?
     while (node != nullptr) {
       auto nodeType = node->getType();
 
@@ -4175,11 +4196,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         nodeType = node->getType();
 
         // check if there is a node type that needs distribution
-        if (nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
-            nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-            nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
-            nodeType == ExecutionNode::SHORTEST_PATH ||
-            nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+        if (nodeEligibleForDistribute(nodeType)) {
           // found a node!
           break;
         }
@@ -4196,7 +4213,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
 
       if (reachedEnd) {
-        // break loop for subqyery
+        // break loop for subquery
         break;
       }
 
@@ -4206,29 +4223,20 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
 
       // when we get here, we have found a matching data-modification or traversal/shortest_path/k_shortest_paths node!
-      TRI_ASSERT(nodeType == ExecutionNode::INSERT || nodeType == ExecutionNode::REMOVE ||
-                 nodeType == ExecutionNode::UPDATE || nodeType == ExecutionNode::REPLACE ||
-                 nodeType == ExecutionNode::UPSERT || nodeType == ExecutionNode::TRAVERSAL ||
-                 nodeType == ExecutionNode::SHORTEST_PATH ||
-                 nodeType == ExecutionNode::K_SHORTEST_PATHS);
+      TRI_ASSERT(nodeEligibleForDistribute(nodeType));
 
-      auto const [isSmart, collection] = extractSmartnessAndCollection(node);
+      auto const [isSmart, isDisjoint, collection] = extractSmartnessAndCollection(node);
 
       if (isSmart) {
 #ifdef USE_ENTERPRISE
+        LOG_DEVEL << "we determined to be smart with node type: "
+                  << node->getTypeString();
         node = distributeInClusterRuleSmart(plan.get(), snode, node, wasModified);
         // TODO: MARKUS CHECK WHEN YOU NEED TO CONTINUE HERE!
-        //       We want to just handle all smart collections here, so we probably
-        //       just want to always continue
-        continue;
+        //       We want to just handle all smart collections here, so we
+        //       probably just want to always continue
+        // continue;
 #endif
-      } else {
-        // Nothing to see here for the non-smart traversals
-        if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
-            nodeType == ExecutionNode::K_SHORTEST_PATHS) {
-          node = node->getFirstDependency();
-          continue;
-        }
       }
 
       TRI_ASSERT(collection != nullptr);
@@ -4245,10 +4253,12 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
 
       // For INSERT, REPLACE,
-      auto [distNode, gatherNode] = insertDistributeGatherSnippet(*plan, node, snode);
-
-      wasModified = true;
-      node = distNode;  // will be gatherNode or nulltpr
+      if (isModificationNode(nodeType) || (isGraphNode(nodeType) && isSmart && isDisjoint)) {
+        node = insertDistributeGatherSnippet(*plan, node, snode);
+        wasModified = true;
+      } else {
+        node = node->getFirstDependency();
+      }
     }                   // for node in subquery
   }                     // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);

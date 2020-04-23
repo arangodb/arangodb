@@ -301,7 +301,7 @@ auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNod
 
 //// @brief enclose a node in DISTRIBUTE/GATHER
 auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
-    -> std::pair<DistributeNode*, GatherNode*>;
+    -> DistributeNode*;
 
 }  // namespace aql
 }  // namespace arangodb
