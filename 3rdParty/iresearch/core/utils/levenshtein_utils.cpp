@@ -679,6 +679,7 @@ automaton make_levenshtein_automaton(
     fst::kILabelSorted | fst::kOLabelSorted |
     fst::kAcceptor;
   assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
+  UNUSED(EXPECTED_PROPERTIES);
 
   // ensure invalid state has no outbound transitions
   assert(0 == a.NumArcs(INVALID_STATE));
