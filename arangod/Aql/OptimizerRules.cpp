@@ -4229,8 +4229,6 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 
       if (isSmart) {
 #ifdef USE_ENTERPRISE
-        LOG_DEVEL << "we determined to be smart with node type: "
-                  << node->getTypeString();
         node = distributeInClusterRuleSmart(plan.get(), snode, node, wasModified);
         // TODO: MARKUS CHECK WHEN YOU NEED TO CONTINUE HERE!
         //       We want to just handle all smart collections here, so we
@@ -4259,8 +4257,8 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       } else {
         node = node->getFirstDependency();
       }
-    }                   // for node in subquery
-  }                     // for end subquery in plan
+    }  // for node in subquery
+  }    // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
