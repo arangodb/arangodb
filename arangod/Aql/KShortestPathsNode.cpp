@@ -238,6 +238,12 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode c
   other.kShortestPathsCloneHelper(plan, *this, false);
 }
 
+void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
+  TRI_ASSERT(_inStartVariable != nullptr);
+  _inStartVariable = inVariable;
+  _startVertexId = "";
+}
+
 void KShortestPathsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                             std::unordered_set<ExecutionNode const*>& seen) const {
   GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method

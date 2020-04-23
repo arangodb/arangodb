@@ -96,6 +96,8 @@ class ShortestPathNode : public virtual GraphNode {
 
   std::string const getStartVertex() const { return _startVertexId; }
 
+  void setStartInVariable(Variable const* inVariable);
+
   /// @brief Test if this node uses an in variable or constant for target
   bool usesTargetInVariable() const { return _inTargetVariable != nullptr; }
 
