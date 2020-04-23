@@ -756,7 +756,7 @@ void output_le(level_t level, log_appender_callback_t appender, void* context) {
 class stack_trace_printer {
  public:
   int start(level_t level) {
-    pipes_opened_ = pipe(pipefd_);
+    pipes_opened_ = 0 == pipe(pipefd_);
     if (!pipes_opened_) {
       IR_LOG_FORMATED(level, "Failed to output detailed stack trace to stream, outputting plain stack trace to stderr");
       return fileno(stderr);
