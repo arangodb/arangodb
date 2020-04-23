@@ -809,7 +809,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
+  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail() && res.isNot(TRI_ERROR_FORBIDDEN))
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
