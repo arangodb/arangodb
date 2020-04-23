@@ -1,5 +1,14 @@
 devel
 -----
+
+* Lower the default values for `--rocksdb.block-cache-size` and 
+  `--rocksdb.total-write-buffer-size` for systems with less than 1 GB of RAM.
+  For these systems the default value were presumably too high and needed manual
+  adjustment.
+
+* Allow to override the detected number of avaiable CPU cores via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES.
+
 * Fix a bug in the optimizer which handled combinations of smart joins with
   query components that had to run on a coordinator wrong.
 
