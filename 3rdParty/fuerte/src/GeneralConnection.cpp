@@ -66,6 +66,9 @@ void GeneralConnection<ST>::startConnection() {
     FUERTE_ASSERT(_config._maxConnectRetries > 0);
     tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now(),
                asio_ns::error_code());
+  } else {
+    FUERTE_LOG_DEBUG << "startConnection: this=" << this << " found unexpected state "
+      << static_cast<int>(state) << " not equal to 'Disconnected'";
   }
 }
 

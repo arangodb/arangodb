@@ -12,7 +12,7 @@ variables
   asyncRunning = "none",
   iocontext = << >>;
 
-procedure startConnection() {
+procedure startConnection() {   \* VERIFIED
  startConnectionBegin:
   assert /\ state = "Disconnected"
          /\ active
@@ -62,9 +62,9 @@ process(fuerte = "fuertethread") {
 
   loop:
     while (TRUE) {
-      either activate:
+      either activate:      \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "activate") {
-          assert state /= "Connecting";
+          assert active /\ state /= "Connecting";
           iocontext := Tail(iocontext);
           if (state = "Disconnected") {
             call startConnection();
@@ -78,9 +78,9 @@ process(fuerte = "fuertethread") {
       
       or connectOK:
         if (/\ Len(iocontext) >= 1
-            /\ Head(iocontext) = "connect"
-            /\ state = "Connecting") {
-          \* if connect timeout happened, we have to continue with connectBAD
+            /\ Head(iocontext) = "connect") {
+          \* if connect timeout happened, we have to continue with connectBAD,
+          \* because then the string posted on the iocontext is "connectBAD"
           iocontext := Tail(iocontext);
           assert state = "Connecting" /\ active;
           alarm := "off";
@@ -91,7 +91,8 @@ process(fuerte = "fuertethread") {
       or connectBAD:
         (* for the sake of simplicity we ignore the retries here and directly
            go to Failed state *)
-        if (Len(iocontext) >= 1 /\ Head(iocontext) = "connect") {
+        if (/\ Len(iocontext) >= 1 
+            /\ Head(iocontext) \in {"connect", "connectBAD"}) {
           assert active;
           iocontext := Tail(iocontext);
           alarm := "off";
@@ -127,10 +128,10 @@ process(fuerte = "fuertethread") {
       
       or readOK:
         if (/\ Len(iocontext) >= 1
-            /\ Head(iocontext) = "read"
-            /\ state = "Connected") {
-          \* if connect timeout happened, we have to continue with readBAD
-          assert active; 
+            /\ Head(iocontext) = "read") {
+          \* if connect timeout happened, we have to continue with readBAD,
+          \* then the string posted on the iocontext is "readBAD"
+          assert state = "Connected" /\ active; 
           iocontext := Tail(iocontext);
           alarm := "off";
           call asyncWriteNextRequest();
@@ -138,8 +139,8 @@ process(fuerte = "fuertethread") {
       
       or readBAD:
         if (/\ Len(iocontext) >= 1
-            /\ Head(iocontext) = "read") {
-          assert /\ state \in {"Connected", "Disconnected"}
+            /\ Head(iocontext) \in {"read", "readBAD"}) {
+          assert /\ state = "Connected"
                  /\ active
                  /\ alarm \in {"off", "requestAlarm"};
           iocontext := Tail(iocontext);
@@ -148,41 +149,41 @@ process(fuerte = "fuertethread") {
           call startConnection();
         };
       
-      or alarmTriggered:
+      or alarmTriggered:   \* VERIFIED
         if (alarm /= "off") {
           iocontext := Append(iocontext, alarm);
           alarm := "off";
         };
       
-      or asyncFinished:
+      or asyncFinished:    \* VERIFIED
         if (asyncRunning /= "none") {
           iocontext := Append(iocontext, asyncRunning);
           asyncRunning := "none";
         };
 
-      or handleConnectAlarm:
+      or handleConnectAlarm:   \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "connectAlarm") {
           iocontext := Tail(iocontext);
-          if (state = "Connecting") {
+          if (asyncRunning = "connect") {
+            asyncRunning := "connectBAD";    \* indicate error on socket
             assert alarm = "off";
-            state := "Disconnected";    \* indicate error on socket
           }
         };
       
       or handleRequestAlarm:
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "requestAlarm") {
           iocontext := Tail(iocontext);
-          if (state = "Connected") {
-            state := "Disconnected";      \* indicate error on socket
-            if (alarm /= "off") {
-              \* it is possible that the idle alarm was still set, since we have
-              \* gone to sleep and we have been posted on the iocontext beforehand
-              alarm := "off";
-            };
-          }
-          \* note that we might have been scheduled by an off-going alarm but
-          \* the writeOK or writeBAD which wants to disarm the alarm was scheduled
-          \* already earlier, in this case we must not interfere
+          if (asyncRunning = "write") {
+            asyncRunning := "writeBAD";
+          };
+          if (asyncRunning = "read") {
+            makeReadBad:
+              asyncRunning := "readBAD";
+          };
+          \* note that we might have been scheduled by an off-going
+          \* alarm but the writeOK or writeBAD which wants to disarm the
+          \* alarm was scheduled already earlier, in this case we must
+          \* not interfere
         };
       
       or handleIdleAlarm:
@@ -330,7 +331,7 @@ loop == /\ pc["fuertethread"] = "loop"
 
 activate == /\ pc["fuertethread"] = "activate"
             /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "activate"
-                  THEN /\ Assert(state /= "Connecting", 
+                  THEN /\ Assert(active /\ state /= "Connecting", 
                                  "Failure of assertion at line 67, column 11.")
                        /\ iocontext' = Tail(iocontext)
                        /\ IF state = "Disconnected"
@@ -360,7 +361,6 @@ activate == /\ pc["fuertethread"] = "activate"
 connectOK == /\ pc["fuertethread"] = "connectOK"
              /\ IF /\ Len(iocontext) >= 1
                    /\ Head(iocontext) = "connect"
-                   /\ state = "Connecting"
                    THEN /\ iocontext' = Tail(iocontext)
                         /\ Assert(state = "Connecting" /\ active, 
                                   "Failure of assertion at line 85, column 11.")
@@ -375,9 +375,10 @@ connectOK == /\ pc["fuertethread"] = "connectOK"
              /\ UNCHANGED << active, queueSize, asyncRunning >>
 
 connectBAD == /\ pc["fuertethread"] = "connectBAD"
-              /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "connect"
+              /\ IF /\ Len(iocontext) >= 1
+                    /\ Head(iocontext) \in {"connect", "connectBAD"}
                     THEN /\ Assert(active, 
-                                   "Failure of assertion at line 95, column 11.")
+                                   "Failure of assertion at line 96, column 11.")
                          /\ iocontext' = Tail(iocontext)
                          /\ alarm' = "off"
                          /\ state' = "Failed"
@@ -394,7 +395,7 @@ writeOK == /\ pc["fuertethread"] = "writeOK"
                  /\ Head(iocontext) = "write"
                  /\ state = "Connected"
                  THEN /\ Assert(active, 
-                                "Failure of assertion at line 108, column 11.")
+                                "Failure of assertion at line 109, column 11.")
                       /\ iocontext' = Tail(iocontext)
                       /\ asyncRunning' = "read"
                  ELSE /\ TRUE
@@ -408,7 +409,7 @@ writeBAD == /\ pc["fuertethread"] = "writeBAD"
                   THEN /\ Assert(/\ state \in {"Connected", "Disconnected"}
                                  /\ active
                                  /\ alarm \in {"off", "requestAlarm"}, 
-                                 "Failure of assertion at line 116, column 11.")
+                                 "Failure of assertion at line 117, column 11.")
                        /\ iocontext' = Tail(iocontext)
                        /\ alarm' = "off"
                        /\ state' = "Disconnected"
@@ -423,9 +424,8 @@ writeBAD == /\ pc["fuertethread"] = "writeBAD"
 readOK == /\ pc["fuertethread"] = "readOK"
           /\ IF /\ Len(iocontext) >= 1
                 /\ Head(iocontext) = "read"
-                /\ state = "Connected"
-                THEN /\ Assert(active, 
-                               "Failure of assertion at line 133, column 11.")
+                THEN /\ Assert(state = "Connected" /\ active, 
+                               "Failure of assertion at line 134, column 11.")
                      /\ iocontext' = Tail(iocontext)
                      /\ alarm' = "off"
                      /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
@@ -438,11 +438,11 @@ readOK == /\ pc["fuertethread"] = "readOK"
 
 readBAD == /\ pc["fuertethread"] = "readBAD"
            /\ IF /\ Len(iocontext) >= 1
-                 /\ Head(iocontext) = "read"
-                 THEN /\ Assert(/\ state \in {"Connected", "Disconnected"}
+                 /\ Head(iocontext) \in {"read", "readBAD"}
+                 THEN /\ Assert(/\ state = "Connected"
                                 /\ active
                                 /\ alarm \in {"off", "requestAlarm"}, 
-                                "Failure of assertion at line 142, column 11.")
+                                "Failure of assertion at line 143, column 11.")
                       /\ iocontext' = Tail(iocontext)
                       /\ alarm' = "off"
                       /\ state' = "Disconnected"
@@ -476,33 +476,36 @@ asyncFinished == /\ pc["fuertethread"] = "asyncFinished"
 handleConnectAlarm == /\ pc["fuertethread"] = "handleConnectAlarm"
                       /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "connectAlarm"
                             THEN /\ iocontext' = Tail(iocontext)
-                                 /\ IF state = "Connecting"
-                                       THEN /\ Assert(alarm = "off", 
-                                                      "Failure of assertion at line 167, column 13.")
-                                            /\ state' = "Disconnected"
+                                 /\ IF asyncRunning = "connect"
+                                       THEN /\ asyncRunning' = "connectBAD"
+                                            /\ Assert(alarm = "off", 
+                                                      "Failure of assertion at line 169, column 13.")
                                        ELSE /\ TRUE
-                                            /\ state' = state
+                                            /\ UNCHANGED asyncRunning
                             ELSE /\ TRUE
-                                 /\ UNCHANGED << state, iocontext >>
+                                 /\ UNCHANGED << asyncRunning, iocontext >>
                       /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
-                      /\ UNCHANGED << active, queueSize, alarm, asyncRunning, 
-                                      stack >>
+                      /\ UNCHANGED << state, active, queueSize, alarm, stack >>
 
 handleRequestAlarm == /\ pc["fuertethread"] = "handleRequestAlarm"
                       /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "requestAlarm"
                             THEN /\ iocontext' = Tail(iocontext)
-                                 /\ IF state = "Connected"
-                                       THEN /\ state' = "Disconnected"
-                                            /\ IF alarm /= "off"
-                                                  THEN /\ alarm' = "off"
-                                                  ELSE /\ TRUE
-                                                       /\ alarm' = alarm
+                                 /\ IF asyncRunning = "write"
+                                       THEN /\ asyncRunning' = "writeBAD"
                                        ELSE /\ TRUE
-                                            /\ UNCHANGED << state, alarm >>
-                            ELSE /\ TRUE
-                                 /\ UNCHANGED << state, alarm, iocontext >>
-                      /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
-                      /\ UNCHANGED << active, queueSize, asyncRunning, stack >>
+                                            /\ UNCHANGED asyncRunning
+                                 /\ IF asyncRunning' = "read"
+                                       THEN /\ pc' = [pc EXCEPT !["fuertethread"] = "makeReadBad"]
+                                       ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                            ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                                 /\ UNCHANGED << asyncRunning, iocontext >>
+                      /\ UNCHANGED << state, active, queueSize, alarm, stack >>
+
+makeReadBad == /\ pc["fuertethread"] = "makeReadBad"
+               /\ asyncRunning' = "readBAD"
+               /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+               /\ UNCHANGED << state, active, queueSize, alarm, iocontext, 
+                               stack >>
 
 handleIdleAlarm == /\ pc["fuertethread"] = "handleIdleAlarm"
                    /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm"
@@ -523,7 +526,7 @@ handleIdleAlarm == /\ pc["fuertethread"] = "handleIdleAlarm"
 fuerte == loop \/ activate \/ connectOK \/ connectBAD \/ writeOK
              \/ writeBAD \/ readOK \/ readBAD \/ alarmTriggered
              \/ asyncFinished \/ handleConnectAlarm \/ handleRequestAlarm
-             \/ handleIdleAlarm
+             \/ makeReadBad \/ handleIdleAlarm
 
 sendMessage == /\ pc["clientthread"] = "sendMessage"
                /\ queueSize < 16
@@ -562,7 +565,8 @@ TypeOK == /\ state \in {"Disconnected", "Connecting", "Connected", "Failed"}
           /\ active \in {FALSE, TRUE}
           /\ queueSize \in 0..16
           /\ alarm \in {"off", "connectAlarm", "requestAlarm", "idleAlarm"}
-          /\ asyncRunning \in {"none", "connect", "write", "read"}
+          /\ asyncRunning \in {"none", "connect", "connectBAD", "write",
+                               "writeBAD", "read", "readBAD"}
 
 (* When we are active, something has to be ongoing, either an async call, or
    something scheduled on the iocontext. However, there is the tiny moment when
@@ -594,5 +598,5 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Apr 23 16:03:24 CEST 2020 by neunhoef
+\* Last modified Thu Apr 23 17:19:14 CEST 2020 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
