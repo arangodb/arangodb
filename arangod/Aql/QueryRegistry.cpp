@@ -157,9 +157,10 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
     ei._queryInfo->_numOpen++;
 
     TRI_ASSERT(ei._queryInfo->_numOpen == 1 || !ei._queryInfo->_query->isModificationQuery());
+    LOG_TOPIC("b1cfd", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+  } else {
+    LOG_TOPIC("50eff", TRACE, arangodb::Logger::AQL) << "opening engine " << id << ", no query";
   }
-  
-  LOG_TOPIC("50eff", DEBUG, arangodb::Logger::AQL) << "Engine with id " << id << " is now in use";
 
   return ei._engine;
 }
@@ -186,13 +187,15 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   ei._isOpen = false;
   
   if (ei._queryInfo) {
-    ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
     TRI_ASSERT(ei._queryInfo->_numOpen > 0);
     ei._queryInfo->_numOpen--;
+    if (!ei._queryInfo->_query->killed()) {
+      ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
+    }
+    LOG_TOPIC("5ecdc", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", query id: " << ei._queryInfo->_query->id() << ", numOpen: " << ei._queryInfo->_numOpen;
+  } else {
+    LOG_TOPIC("ae981", TRACE, arangodb::Logger::AQL) << "closing engine " << engineId << ", no query";
   }
-
-  LOG_TOPIC("ae981", DEBUG, arangodb::Logger::AQL)
-  << "query with id " << engineId << " is now returned.";
 }
 
 /// @brief destroy

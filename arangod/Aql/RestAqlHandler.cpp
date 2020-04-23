@@ -23,6 +23,7 @@
 
 #include "RestAqlHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/AqlItemBlock.h"
@@ -557,13 +558,18 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
   // sleep for 10ms each time, wait for at most 30 seconds...
   static int64_t const SingleWaitPeriod = 10 * 1000;
   static int64_t const MaxIterations =
-      static_cast<int64_t>(30.0 * 1000000.0 / (double)SingleWaitPeriod);
+      static_cast<int64_t>(30.0 * 1000000.0 / static_cast<double>(SingleWaitPeriod));
 
   int64_t iterations = 0;
 
   ExecutionEngine* q = nullptr;
   // probably need to cycle here until we can get hold of the query
   while (++iterations < MaxIterations) {
+    if (server().isStopping()) {
+      // don't loop for long here if we are shutting down anyway
+      generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
+      break;
+    }
     try {
       q = _queryRegistry->openExecutionEngine(_qId);
       // we got the query (or it was not found - at least no one else
@@ -582,10 +588,9 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
     _qId = 0;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
                   "query ID " + idString + " not found");
-    return q;
   }
 
-  TRI_ASSERT(_qId > 0);
+  TRI_ASSERT(q == nullptr || _qId > 0);
 
   return q;
 }

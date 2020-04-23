@@ -150,14 +150,6 @@ class QueryRegistry {
         _isOpen(other._isOpen) {}
     EngineInfo& operator=(EngineInfo&& other) = delete;
     
-//    EngineInfo& operator=(EngineInfo&& other) {
-//      _engine = std::move(other._engine);
-//      _queryInfo = std::move(other._queryInfo);
-//      _type = other._type;
-//      _isOpen = std::move(other._isOpen);
-//      return *this;
-//    }
-    
     EngineInfo(ExecutionEngine* en, QueryInfo* qi)
       : _engine(en), _queryInfo(qi),
         _type(EngineType::Execution), _isOpen(false) {}
