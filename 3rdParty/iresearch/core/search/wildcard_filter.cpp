@@ -62,9 +62,7 @@ inline void executeWildcard(
       break;
     case WildcardType::TERM_ESCAPED:
       term = unescape(term, buf);
-#if IRESEARCH_CXX > IRESEARCH_CXX_14
-      [[fallthrough]];
-#endif
+    [[fallthrough]];
     case WildcardType::TERM:
       t(term);
       break;
@@ -74,9 +72,7 @@ inline void executeWildcard(
       break;
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
-#if IRESEARCH_CXX > IRESEARCH_CXX_14
-      [[fallthrough]];
-#endif
+    [[fallthrough]];
     case WildcardType::PREFIX: {
       assert(!term.empty());
       const auto* begin = term.c_str();

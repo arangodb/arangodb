@@ -128,10 +128,7 @@ inline uint32_t next(const byte_type*& it) noexcept {
   return cp;
 }
 
-#if IRESEARCH_CXX >= IRESEARCH_CXX_14
-constexpr
-#endif
-FORCE_INLINE size_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {
+FORCE_INLINE constexpr size_t utf32_to_utf8(uint32_t cp, byte_type* begin) noexcept {
   if (cp < 0x80) {
     begin[0] = static_cast<byte_type>(cp);
     return 1;
@@ -189,7 +186,7 @@ inline bool utf8_to_utf32(const byte_type* begin, size_t size, OutputIterator ou
   for (auto end = begin + size; begin < end; ) {
     const auto cp = Checked ? next_checked(begin, end) : next(begin);
 
-    if /*constexpr*/ (Checked) {
+    if constexpr (Checked) {
       if (cp == INVALID_CODE_POINT) {
         return false;
       }

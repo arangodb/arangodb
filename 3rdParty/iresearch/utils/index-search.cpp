@@ -240,8 +240,9 @@ irs::filter::prepared::ptr prepareFilter(
     }
 
     irs::by_term query;
-
-    query.field("body").term(terms);
+    *query.mutable_field() = "body";
+    irs::assign(query.mutable_options()->term,
+                irs::ref_cast<irs::byte_type>(terms));
 
     return query.prepare(reader, order);
    }
@@ -253,12 +254,13 @@ irs::filter::prepared::ptr prepareFilter(
     }
 
     irs::by_phrase query;
+    *query.mutable_field() = "body";
+    auto* opts = query.mutable_options();
 
-    query.field("body");
     analyzer->reset(terms);
 
     for (auto& term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
-      query.push_back(irs::by_phrase::simple_term{term->value()});
+      irs::assign(opts->push_back<irs::by_term_options>().term, term->value());
     }
 
     return query.prepare(reader, order);
@@ -270,16 +272,18 @@ irs::filter::prepared::ptr prepareFilter(
        return nullptr;
      }
      irs::by_ngram_similarity query;
+     *query.mutable_field() = "body";
+     auto* opts = query.mutable_options();
 
-     query.field("body");
      bool reading_threshold = true;
      // the first 'term' should be threshold in tenth - e.g. if value is 7 this means 0.7
      for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
        if (reading_threshold) {
          reading_threshold = false;
-         query.threshold(float_t(std::stoll(tmpBuf))/ 10.f);
+         opts->threshold = float_t(std::stoll(tmpBuf))/ 10.f;
        } else {
-         query.push_back(tmpBuf);
+         opts->ngrams.emplace_back(reinterpret_cast<const irs::byte_type*>(tmpBuf.c_str()),
+                                   tmpBuf.size());
        }
      }
      return query.prepare(reader, order);
@@ -294,7 +298,11 @@ irs::filter::prepared::ptr prepareFilter(
     irs::And query;
 
     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
-      query.add<irs::by_term>().field("body").term(tmpBuf.c_str() + 1); // +1 for skip '+' at the start of the term
+      auto& part = query.add<irs::by_term>();
+      *part.mutable_field() = "body";
+      irs::assign(
+        part.mutable_options()->term,
+        irs::ref_cast<irs::byte_type>(irs::string_ref(tmpBuf.c_str() + 1))); // +1 for skip '+' at the start of the term
     }
 
     return query.prepare(reader, order);
@@ -311,33 +319,42 @@ irs::filter::prepared::ptr prepareFilter(
     irs::Or query;
 
     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
-      query.add<irs::by_term>().field("body").term(tmpBuf);
+      auto& part = query.add<irs::by_term>();
+      *part.mutable_field() = "body";
+      irs::assign(
+        part.mutable_options()->term,
+        irs::ref_cast<irs::byte_type>(tmpBuf));
     }
 
     return query.prepare(reader, order);
    }
    case category_t::Prefix3: {
-    irs::by_prefix query;
-    query.scored_terms_limit(scored_terms_limit);
-
     terms = irs::string_ref(text, text.size() - 1); // cut '~' at the end of the text
-    query.field("body").term(terms);
+
+    irs::by_prefix query;
+    *query.mutable_field() = "body";
+    auto* opts = query.mutable_options();
+    opts->scored_terms_limit = scored_terms_limit;
+    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
 
     return query.prepare(reader, order);
    }
    case category_t::Wildcard: {
-    irs::by_wildcard query;
-    query.scored_terms_limit(scored_terms_limit);
-
     terms = irs::string_ref(text, text.size());
-    query.field("body").term(terms);
 
-    for (auto& b : const_cast<irs::bstring&>(query.term())) {
+    irs::by_wildcard query;
+    *query.mutable_field() = "body";
+    auto* opts = query.mutable_options();
+    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(terms));
+    opts->scored_terms_limit = scored_terms_limit;
+
+    for (auto& b : opts->term) {
       switch (b) {
         case '*': b = '%'; break; // '*' => '%'
         case '?': b = '_'; break; // '?' => '_'
       }
     }
+
 
     return query.prepare(reader, order);
    }
@@ -349,9 +366,11 @@ irs::filter::prepared::ptr prepareFilter(
        pos == std::string::npos ? text.size() : pos);
 
      irs::by_edit_distance query;
-     query.scored_terms_limit(scored_terms_limit);
-     query.max_distance(category == category_t::Fuzzy1 ? 1 : 2);
-     query.field("body").term(term);
+     *query.mutable_field() = "body";
+     auto* opts = query.mutable_options();
+     opts->max_terms = 50; // same as Lucene by default
+     opts->max_distance = (category == category_t::Fuzzy1 ? 1 : 2);
+     irs::assign(opts->term, irs::ref_cast<irs::byte_type>(term));
 
      return query.prepare(reader, order);
    }
@@ -367,7 +386,10 @@ irs::filter::prepared::ptr prepareFilter(
          reading_min_match = false;
          query.min_match_count(std::stoll(tmpBuf));
        } else {
-         query.add<irs::by_term>().field("body").term(tmpBuf);
+         auto& part = query.add<irs::by_term>();
+         *part.mutable_field() = "body";
+         irs::assign(part.mutable_options()->term,
+                     irs::ref_cast<irs::byte_type>(tmpBuf));
        }
      }
      return query.prepare(reader, order);

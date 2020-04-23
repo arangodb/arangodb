@@ -47,10 +47,6 @@ struct IRESEARCH_API by_term_options {
   size_t hash() const noexcept {
     return std::hash<bstring>()(term);
   }
-
-  friend size_t hash_value(const by_term_options& opts) noexcept {
-    return opts.hash();
-  }
 }; // by_term_options
 
 //////////////////////////////////////////////////////////////////////////////

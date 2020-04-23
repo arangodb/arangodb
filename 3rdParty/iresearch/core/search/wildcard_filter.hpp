@@ -69,11 +69,6 @@ struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
   }
 }; // by_wildcard_options
 
-// boost support
-inline size_t hash_value(const by_wildcard_options& opts) noexcept {
-  return opts.hash();
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter

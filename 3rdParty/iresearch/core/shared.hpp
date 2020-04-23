@@ -27,10 +27,10 @@
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
-#include <cstddef> //need this for wchar_t, size_t, NULL
-#include <stdint.h> //need this for int32_t, etc
-#include <math.h> //required for float_t
-#include <string> //need to include this really early...
+#include <cstddef>
+#include <stdint.h>
+#include <math.h>
+#include <string>
 
 #if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
   // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
@@ -54,26 +54,19 @@
   // MSVC doesn't honor __cplusplus macro,
   // it always equals to IRESEARCH_CXX_98
   // therefore we use _MSC_VER
-  #if _MSC_VER < 1800 // before MSVC2013
-    #error "at least C++11 is required"
-  #elif _MSC_VER >= 1800 && _MSC_VER < 1910 // MSVC2013-2015
-    // not MSVC2015 nor MSVC2017 are not c++14 compatible
-    #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif _MSC_VER >= 1910 && _MSC_VER < 1920  // MSVC2017 and later
-    #define IRESEARCH_CXX IRESEARCH_CXX_14
-  #elif _MSC_VER >= 1920 // MSVC2019 and later
+  #if _MSC_VER < 1910                       // before MSVC2017
+    #error "at least C++17 is required"
+  #elif _MSC_VER >= 1910 && _MSC_VER < 1920 // MSVC2017 and later
+    #define IRESEARCH_CXX IRESEARCH_CXX_17
+  #elif _MSC_VER >= 1920                    // MSVC2019 and later
     #define IRESEARCH_CXX IRESEARCH_CXX_17
   #endif
 #else // GCC/Clang
-  #if __cplusplus < IRESEARCH_CXX_11
-    #error "at least C++11 is required"
-  #elif __cplusplus >= IRESEARCH_CXX_11 && __cplusplus < IRESEARCH_CXX_14
-    #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif __cplusplus >= IRESEARCH_CXX_14 && __cplusplus < IRESEARCH_CXX_17
-    #define IRESEARCH_CXX IRESEARCH_CXX_14
-  #elif __cplusplus >= IRESEARCH_CXX_17
-    #define IRESEARCH_CXX IRESEARCH_CXX_17
+  #if __cplusplus < IRESEARCH_CXX_17
+    #error "at least C++17 is required"
   #endif
+
+  #define IRESEARCH_CXX IRESEARCH_CXX_17
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +94,7 @@
   #define RESTRICT __restrict 
   #define IRESEARCH_IGNORE_UNUSED /* unused */
 #else
-  #if defined(__GNUC__) && __GNUC__ >= 4
+  #if (defined(__GNUC__) && (__GNUC__ >= 4))
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
@@ -115,13 +108,6 @@
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
   #define IRESEARCH_IGNORE_UNUSED __attribute__ ((unused))
-#endif
-
-#if (defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ < 9)
-  // GCC4.8 doesn't have std::max_align_t
-  #define MAX_ALIGN_T ::max_align_t
-#else
-  #define MAX_ALIGN_T std::max_align_t
 #endif
 
 // hook for GCC 8.1/8.2 optimized code
@@ -324,4 +310,4 @@ namespace irs = ::iresearch;
 
 #include "types.hpp" // iresearch types
 
-#endif // IRESEACH_SHARED_H
+#endif // IRESEARCH_SHARED_H

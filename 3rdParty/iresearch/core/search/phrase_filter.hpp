@@ -24,9 +24,7 @@
 #define IRESEARCH_PHRASE_FILTER_H
 
 #include <map>
-
-#include <boost/variant.hpp>
-#include <boost/functional/hash.hpp>
+#include <variant>
 
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
@@ -47,7 +45,7 @@ class by_phrase;
 class IRESEARCH_API by_phrase_options {
  private:
   // switch to std::variant after moving to C++17
-  using phrase_part = boost::variant<
+  using phrase_part = std::variant<
     by_term_options,
     by_prefix_options,
     by_wildcard_options,
@@ -68,7 +66,7 @@ class IRESEARCH_API by_phrase_options {
   PhrasePart& insert(size_t pos) {
     is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
 
-    return boost::get<PhrasePart>(phrase_[pos]);
+    return std::get<PhrasePart>(phrase_[pos]);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -80,7 +78,7 @@ class IRESEARCH_API by_phrase_options {
     is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value; // constexpr
     auto& part = (phrase_[pos] = std::forward<PhrasePart>(t));
 
-    return boost::get<PhrasePart>(part);
+    return std::get<std::remove_reference_t<PhrasePart>>(part);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -117,7 +115,7 @@ class IRESEARCH_API by_phrase_options {
       return nullptr;
     }
 
-    return boost::get<PhrasePart>(&it->second);
+    return std::get_if<PhrasePart>(&it->second);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -134,7 +132,7 @@ class IRESEARCH_API by_phrase_options {
     size_t hash = 0;
     for (auto& part : phrase_) {
       hash = hash_combine(hash, part.first);
-      hash = hash_combine(hash, boost::hash_value(part.second));
+      hash = hash_combine(hash, part.second);
     }
     return hash;
   }

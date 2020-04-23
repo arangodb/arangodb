@@ -30,13 +30,6 @@
 #include <unordered_set>
 #include "parser_context.hpp"
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #if (__GNUC__ >= 7)
-    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
-  #endif
-#endif
-
 using namespace iresearch::iql;
 
 // -----------------------------------------------------------------------------
@@ -1422,7 +1415,3 @@ parser::semantic_type parser_context::try_eval(
 
     return value; // deterministic valuation not possible
 }
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif

@@ -43,18 +43,21 @@ struct sub_reader;
 /// @brief generic interface for accessing an index
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_reader {
-  class reader_iterator
-      : public std::iterator<std::forward_iterator_tag, const sub_reader> {
+  class reader_iterator {
    public:
-    typedef std::iterator<std::forward_iterator_tag, const sub_reader> iterator_t;
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const sub_reader;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = void;
 
-    iterator_t::reference operator*() const {
+    reference operator*() const {
       // can't mark noexcept because of virtual operator[]
       assert(i_ < reader_->size());
       return (*reader_)[i_];
     }
 
-    iterator_t::pointer operator->() const {
+    pointer operator->() const {
       return &(**this);
     }
 

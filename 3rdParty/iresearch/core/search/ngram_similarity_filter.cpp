@@ -199,7 +199,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base<doc_iterator>, sc
                 }
                 if (current_found_len) {
                   auto new_candidate = std::make_shared<search_state>(current_sequence->second, current_pos, pos_iterator.scr);
-                  auto res =  map_utils::try_emplace(search_buf_, current_pos, std::move(new_candidate));
+                  const auto res = search_buf_.try_emplace(current_pos, std::move(new_candidate));
                   if (!res.second) {
                     // pos already used. This could be if same ngram used several times.
                     // replace with new length through swap cache - to not spoil

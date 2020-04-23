@@ -185,8 +185,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       assert(term_itr);
 
       // find the stats for the current term
-      const auto res = map_utils::try_emplace(
-        term_stats,
+      const auto res = term_stats.try_emplace(
         make_hashed_ref(bytes_ref(scored_state.term)),
         index, field, order, stats_offset);
 

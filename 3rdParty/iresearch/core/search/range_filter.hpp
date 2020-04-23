@@ -47,11 +47,6 @@ struct IRESEARCH_API by_range_filter_options {
   size_t hash() const noexcept {
     return std::hash<range_type>()(range);
   }
-
-  // boost support
-  friend size_t hash_value(const by_range_filter_options& opts) noexcept {
-    return opts.hash();
-  }
 }; // by_range_filter_options
 
 ////////////////////////////////////////////////////////////////////////////////

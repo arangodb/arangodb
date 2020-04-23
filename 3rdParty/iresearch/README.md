@@ -573,7 +573,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 4.9, 5, 6, 7, 8.3
+- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3
 - MSVC: 17 (VS 2015), 19 (VS 2017)
 - Apple Clang: 9
 

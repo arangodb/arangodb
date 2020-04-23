@@ -118,6 +118,13 @@ using variadic_term_position = std::pair<
   compound_doc_iterator<variadic_phrase_adapter>*,
   position::value_t>; // desired offset in the phrase
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class variadic_phrase_frequency
+/// @tparam VolatileBoost boost is not a cont
+/// @brief helper for variadic phrase frequency evaluation for cases when
+///        only one term may be at a single position in a phrase (e.g. synonyms)
+////////////////////////////////////////////////////////////////////////////////
 template<bool VolatileBoost>
 class variadic_phrase_frequency {
  public:
@@ -135,7 +142,7 @@ class variadic_phrase_frequency {
 
     if (!ord.empty()) {
       attrs.emplace(phrase_freq_);
-      if /*constexpr*/ (VolatileBoost) {
+      if constexpr (VolatileBoost) {
         attrs.emplace(phrase_boost_);
       }
     }
@@ -143,45 +150,50 @@ class variadic_phrase_frequency {
 
   // returns frequency of the phrase
   frequency::value_t operator()() {
-    if /*constexpr*/ (VolatileBoost) {
-      lead_freq_ = 0;
-      lead_boost_ = {};
+    if constexpr (VolatileBoost) {
       phrase_boost_.value = {};
     }
-
     phrase_freq_.value = 0;
     pos_.front().first->visit(this, visit_lead);
 
-    if /*constexpr*/ (VolatileBoost && lead_freq_) {
-      phrase_boost_.value = (phrase_boost_.value + (lead_boost_ / lead_freq_)) / phrase_size_;
+    if constexpr (VolatileBoost) {
+      if(phrase_freq_.value) {
+        phrase_boost_.value = phrase_boost_.value / (phrase_size_ * phrase_freq_.value);
+      }
     }
 
     return phrase_freq_.value;
   }
 
  private:
+  struct sub_match_context {
+    position::value_t term_position{ pos_limits::eof() };
+    position::value_t min_sought{ pos_limits::eof() };
+    boost_t boost{};
+    bool match{false};
+  };
+
   static bool visit(void* ctx, variadic_phrase_adapter& it_adapter) {
     assert(ctx);
-    auto& self = *reinterpret_cast<variadic_phrase_frequency*>(ctx);
+    auto& match = *reinterpret_cast<sub_match_context*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
-    const auto sought = p->seek(self.term_position_);
+    const auto sought = p->seek(match.term_position);
     if (pos_limits::eof(sought)) {
       return true;
-    } else if (sought != self.term_position_) {
-      if (sought < self.min_sought_) {
-        self.min_sought_ = sought;
+    } else if (sought != match.term_position) {
+      if (sought < match.min_sought) {
+        match.min_sought = sought;
       }
       return true;
     }
 
-    ++self.pos_freq_;
-    if /*constexpr*/ (VolatileBoost) {
-      self.pos_boost_ += it_adapter.boost;
+    if constexpr (VolatileBoost) {
+      match.boost += it_adapter.boost;
     }
 
-    // can't break visitation in case if we need score
-    return false; //!self.order_empty_;
+    match.match = true;
+    return false;
   }
 
   static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
@@ -191,49 +203,191 @@ class variadic_phrase_frequency {
     auto* lead = lead_adapter.position;
     lead->next();
 
-    uint32_t phrase_freq = 0;  // phrase frequency for current lead_iterator
-    boost_t phrase_boost = {}; // phrase boost for current lead_iterator
-    uint32_t match_freq;
-    boost_t match_boost;
+    sub_match_context match;
+
     for (position::value_t base_position; !pos_limits::eof(base_position = lead->value()); ) {
-      match_freq = 1;
-      if /*constexpr*/ (VolatileBoost) {
-        match_boost = 0.f;
+      match.match = true;
+      if constexpr (VolatileBoost) {
+        match.boost = lead_adapter.boost;
       }
 
       for (auto it = self.pos_.begin() + 1; it != end; ++it) {
-        self.term_position_ = base_position + it->second;
-        if (!pos_limits::valid(self.term_position_)) {
+        match.term_position = base_position + it->second;
+        if (!pos_limits::valid(match.term_position)) {
           return false; // invalid for all
         }
 
-        self.pos_freq_ = 0;
-        if /*constexpr*/ (VolatileBoost) {
-          self.pos_boost_ = 0.f;
-        }
-        self.min_sought_ = pos_limits::eof();
+        match.match = false;
+        match.min_sought = pos_limits::eof();
 
-        it->first->visit(ctx, visit);
-        if (!self.pos_freq_) {
-          match_freq = 0;
+        it->first->visit(&match, visit);
 
-          if (!pos_limits::eof(self.min_sought_)) {
-            lead->seek(self.min_sought_ - it->second);
+        if (!match.match) {
+          if (!pos_limits::eof(match.min_sought)) {
+            lead->seek(match.min_sought - it->second);
             break;
-          }
-
-          //FIXME
-          if /*constexpr*/ (VolatileBoost && phrase_freq) {
-            ++self.lead_freq_;
-            self.lead_boost_ += lead_adapter.boost;
-            self.phrase_boost_.value += phrase_boost / phrase_freq;
           }
 
           return true; // eof for all
         }
-        match_freq *= self.pos_freq_;
-        if /*constexpr*/ (VolatileBoost) {
-          match_boost += self.pos_boost_ / self.pos_freq_;
+      }
+
+      if (match.match) {
+        ++self.phrase_freq_.value;
+        if (self.order_empty_) {
+          return false;
+        }
+        if constexpr (VolatileBoost) {
+          self.phrase_boost_.value += match.boost;
+        }
+        lead->next();
+      }
+    }
+
+    return true;
+  }
+
+  std::vector<term_position_t> pos_; // list of desired positions along with corresponding attributes
+  const size_t phrase_size_;         // size of the phrase (speedup phrase boost evaluation)
+  frequency phrase_freq_;            // freqency of the phrase in a document
+  filter_boost phrase_boost_;        // boost of the phrase in a document
+  const bool order_empty_;
+}; // variadic_phrase_frequency
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class variadic_phrase_frequency_overlapped
+/// @tparam VolatileBoost boost is not a const
+/// @brief helper for variadic phrase frequency evaluation for cases when
+///        different terms may be at the same position in a phrase (e.g. synonyms)
+////////////////////////////////////////////////////////////////////////////////
+template<bool VolatileBoost>
+class variadic_phrase_frequency_overlapped {
+ public:
+  using term_position_t = variadic_term_position;
+
+  variadic_phrase_frequency_overlapped(
+      std::vector<term_position_t>&& pos,
+      attribute_view& attrs,
+      const order::prepared& ord)
+    : pos_(std::move(pos)),
+      phrase_size_(pos_.size()),
+      order_empty_(ord.empty()) {
+    assert(!pos_.empty() && phrase_size_); // must not be empty
+    assert(0 == pos_.front().second); // lead offset is always 0
+
+    if (!ord.empty()) {
+      attrs.emplace(phrase_freq_);
+      if constexpr (VolatileBoost) {
+        attrs.emplace(phrase_boost_);
+      }
+    }
+  }
+
+  // returns frequency of the phrase
+  frequency::value_t operator()() {
+    if constexpr (VolatileBoost) {
+      lead_freq_ = 0;
+      lead_boost_ = {};
+      phrase_boost_.value = {};
+    }
+
+    phrase_freq_.value = 0;
+    pos_.front().first->visit(this, visit_lead);
+
+    if constexpr (VolatileBoost) {
+      if (lead_freq_) {
+        phrase_boost_.value = (phrase_boost_.value + (lead_boost_ / lead_freq_)) / phrase_size_;
+      }
+    }
+
+    return phrase_freq_.value;
+  }
+
+ private:
+  struct sub_match_context {
+    position::value_t term_position{ pos_limits::eof() };
+    position::value_t min_sought{ pos_limits::eof() };
+    boost_t boost{};
+    uint32_t freq{};
+  };
+
+  static bool visit(void* ctx, variadic_phrase_adapter& it_adapter) {
+    assert(ctx);
+    auto& match = *reinterpret_cast<sub_match_context*>(ctx);
+    auto* p = it_adapter.position;
+    p->reset();
+    const auto sought = p->seek(match.term_position);
+    if (pos_limits::eof(sought)) {
+      return true;
+    } else if (sought != match.term_position) {
+      if (sought < match.min_sought) {
+        match.min_sought = sought;
+      }
+      return true;
+    }
+
+    ++match.freq;
+    if constexpr (VolatileBoost) {
+      match.boost += it_adapter.boost;
+    }
+
+    return true; // continue iteration in overlapped case
+  }
+
+  static bool visit_lead(void* ctx, variadic_phrase_adapter& lead_adapter) {
+    assert(ctx);
+    auto& self = *reinterpret_cast<variadic_phrase_frequency_overlapped*>(ctx);
+    const auto end = self.pos_.end();
+    auto* lead = lead_adapter.position;
+    lead->next();
+
+    sub_match_context match;   // sub-match
+    uint32_t phrase_freq = 0;  // phrase frequency for current lead_iterator
+    uint32_t match_freq;       // accumulated match frequency for current lead_iterator
+    boost_t phrase_boost = {}; // phrase boost for current lead_iterator
+    boost_t match_boost;       // accumulated match boost for current lead_iterator
+    for (position::value_t base_position; !pos_limits::eof(base_position = lead->value()); ) {
+      match_freq = 1;
+      if constexpr (VolatileBoost) {
+        match_boost = 0.f;
+      }
+
+      for (auto it = self.pos_.begin() + 1; it != end; ++it) {
+        match.term_position = base_position + it->second;
+        if (!pos_limits::valid(match.term_position)) {
+          return false; // invalid for all
+        }
+
+        match.freq = 0;
+        if constexpr (VolatileBoost) {
+          match.boost = 0.f;
+        }
+        match.min_sought = pos_limits::eof();
+
+        it->first->visit(&match, visit);
+
+        if (!match.freq) {
+          match_freq = 0;
+
+          if (!pos_limits::eof(match.min_sought)) {
+            lead->seek(match.min_sought - it->second);
+            break;
+          }
+
+          if constexpr (VolatileBoost) {
+            if (phrase_freq) {
+              ++self.lead_freq_;
+              self.lead_boost_ += lead_adapter.boost;
+              self.phrase_boost_.value += phrase_boost / phrase_freq;
+            }
+          }
+
+          return true; // eof for all
+        }
+
+        match_freq *= match.freq;
+        if constexpr (VolatileBoost) {
+          match_boost += match.boost / match.freq;
         }
       }
 
@@ -243,17 +397,19 @@ class variadic_phrase_frequency {
           return false;
         }
         ++phrase_freq;
-        if /*constexpr*/ (VolatileBoost) {
+        if constexpr (VolatileBoost) {
           phrase_boost += match_boost;
         }
         lead->next();
       }
     }
 
-    if /*constexpr*/ (VolatileBoost && phrase_freq) {
-      ++self.lead_freq_;
-      self.lead_boost_ += lead_adapter.boost;
-      self.phrase_boost_.value += phrase_boost / phrase_freq;
+    if constexpr (VolatileBoost) {
+      if (phrase_freq) {
+        ++self.lead_freq_;
+        self.lead_boost_ += lead_adapter.boost;
+        self.phrase_boost_.value += phrase_boost / phrase_freq;
+      }
     }
 
     return true;
@@ -264,13 +420,9 @@ class variadic_phrase_frequency {
   frequency phrase_freq_;            // freqency of the phrase in a document
   filter_boost phrase_boost_;        // boost of the phrase in a document
   boost_t lead_boost_{0.f}; 				 // boost from all matched lead iterators
-  boost_t pos_boost_{0.f};           // boost from all matched non-lead iterators
   uint32_t lead_freq_{0};            // number of matched lead iterators
-  uint32_t pos_freq_{0};             // number of matched non-lead iterators
-  position::value_t term_position_{ pos_limits::eof() };
-  position::value_t min_sought_{ pos_limits::eof() };
   const bool order_empty_;
-}; // variadic_phrase_frequency
+}; // variadic_phrase_frequency_overlapped
 
 // implementation is optimized for frequency based similarity measures
 // for generic implementation see a03025accd8b84a5f8ecaaba7412fc92a1636be3

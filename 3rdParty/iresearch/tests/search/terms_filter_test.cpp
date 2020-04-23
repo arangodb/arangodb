@@ -254,7 +254,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", 0.5f}, {"abc", 1.f}, {"abcy", 0.5f}}),
+      (std::vector<std::pair<irs::string_ref, irs::boost_t>>{{"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
       visitor.term_refs<char>());
   }
 

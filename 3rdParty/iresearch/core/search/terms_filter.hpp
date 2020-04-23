@@ -81,11 +81,6 @@ struct IRESEARCH_API by_terms_options {
   }
 }; // by_terms_options
 
-// boost support
-inline size_t hash_value(const by_terms_options& opts) noexcept {
-  return opts.hash();
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_terms
 /// @brief user-side filter by a set of terms

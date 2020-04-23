@@ -67,11 +67,6 @@ struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), scored_terms_limit);
   }
-
-  // boost support
-  friend size_t hash_value(const by_prefix_options& opts) noexcept {
-    return opts.hash();
-  }
 }; // by_prefix_options
 
 ////////////////////////////////////////////////////////////////////////////////

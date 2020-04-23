@@ -194,8 +194,8 @@ class parametric_states {
   }
 
   uint32_t emplace(parametric_state&& state) {
-    const auto res = map_utils::try_emplace(
-      states_, std::move(state), states_.size());
+    const auto res = states_.try_emplace(std::move(state),
+                                         states_.size());
 
     if (res.second) {
       states_by_id_.emplace_back(&res.first->first);

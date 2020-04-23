@@ -72,11 +72,6 @@ struct IRESEARCH_API by_edit_distance_filter_options {
                         hash_combine(std::hash<bstring>()(term),
                                      std::hash<byte_type>()(max_distance)));
   }
-
-  // boost support
-  friend size_t hash_value(const by_edit_distance_filter_options& opts) noexcept {
-    return opts.hash();
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,6 +133,17 @@ class IRESEARCH_API by_edit_distance final
                    options().with_transpositions);
   }
 }; // by_edit_distance
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_edit_distance_filter_options> {
+  size_t operator()(const ::iresearch::by_edit_distance_filter_options& v) const noexcept {
+    return v.hash();
+  }
+};
 
 NS_END
 

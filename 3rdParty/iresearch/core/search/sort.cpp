@@ -140,11 +140,11 @@ order::prepared order::prepare() const {
     }
 
     const auto score_size = prepared->score_size();
-    assert(score_size.second <= alignof(MAX_ALIGN_T));
+    assert(score_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
     const auto stats_size = prepared->stats_size();
-    assert(stats_size.second <= alignof(MAX_ALIGN_T));
+    assert(stats_size.second <= alignof(std::max_align_t));
     assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, stats_size.second);
