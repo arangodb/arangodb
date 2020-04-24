@@ -355,7 +355,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
           execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
         }
 
-       abort(1);
+       abort();
       }
 
       int status;
