@@ -2398,8 +2398,6 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
