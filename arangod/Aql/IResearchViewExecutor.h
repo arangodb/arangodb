@@ -112,8 +112,8 @@ class IResearchViewExecutorInfos {
 
 
  private:
-  aql::RegisterId documentOutReg;
-  aql::RegisterId collectionPointerReg;
+  aql::RegisterId _documentOutReg;
+  aql::RegisterId _collectionPointerReg;
   std::vector<RegisterId> _scoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;

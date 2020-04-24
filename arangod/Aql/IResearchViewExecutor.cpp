@@ -125,15 +125,15 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
   std::visit(overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
-                        std::tie(documentOutReg, collectionPointerReg) =
+                        std::tie(_documentOutReg, _collectionPointerReg) =
                             std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
                       },
                       [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
-                        std::tie(documentOutReg, collectionPointerReg) =
+                        std::tie(_documentOutReg, _collectionPointerReg) =
                             std::pair{regs.documentOutReg, regs.collectionOutReg};
                       },
                       [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
-                        std::tie(documentOutReg, collectionPointerReg) =
+                        std::tie(_documentOutReg, _collectionPointerReg) =
                             std::pair{aql::RegisterPlan::MaxRegisterId,
                                       aql::RegisterPlan::MaxRegisterId};
                       }},
@@ -193,11 +193,11 @@ IResearchViewStoredValues const& IResearchViewExecutorInfos::storedValues() cons
 }
 
 auto IResearchViewExecutorInfos::getDocumentRegister() const noexcept -> RegisterId {
-  return documentOutReg;
+  return _documentOutReg;
 }
 
 auto IResearchViewExecutorInfos::getCollectionRegister() const noexcept -> RegisterId {
-  return collectionPointerReg;
+  return _collectionPointerReg;
 }
 
 IResearchViewStats::IResearchViewStats() noexcept : _scannedIndex(0) {}
