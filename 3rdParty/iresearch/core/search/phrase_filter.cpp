@@ -214,6 +214,9 @@ class phrase_term_visitor final : public filter_visitor,
   virtual void visit(boost_t boost) override {
     assert(terms_ && attrs_ && collectors_ && segment_ && reader_);
 
+    // disallow negative boost
+    boost = std::max(0.f, boost);
+
     if (stats_size_ <= term_offset_) {
       // variadic phrase case
       collectors_->push_back();
