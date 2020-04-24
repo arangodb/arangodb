@@ -2864,7 +2864,7 @@ void AstNode::setStringValue(std::string const& v) {
   auto length = size_t{v.length()};
   auto value = std::make_unique<char[]>(length);
 
-  std::memmove(value.get(), v.c_str(), length);
+  std::memcpy(value.get(), v.c_str(), length);
 
   setStringValue(value.release(), length);
 }
