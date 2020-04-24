@@ -2226,7 +2226,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
 
   // optional (3 - First) argument defines transpositions
   bool withTranspositions = false;
-  if (4 - First == argc) {
+  if (3 - First < argc) {
     res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
 
     if (res.fail()) {
@@ -2257,7 +2257,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
 
   // optional (4 - First) argument defines terms limit
   int64_t maxTerms = FilterConstants::DefaultLevenshteinTermsLimit;
-  if (5 - First == argc) {
+  if (4 - First < argc) {
     res = evaluateArg(maxTerms, tmpValue, funcName, args, 4 - First, isFilter, ctx);
 
     if (res.fail()) {
