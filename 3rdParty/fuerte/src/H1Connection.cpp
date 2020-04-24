@@ -254,7 +254,7 @@ void H1Connection<ST>::finishConnect() {
   FUERTE_ASSERT(_active.load());
   auto exp = Connection::State::Connecting;
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
-    this->startWriting();  // starts writing queue if non-empty
+    this->startWriting();  // starts writing if queue non-empty
   } else {
     FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting'";
     FUERTE_ASSERT(false);
