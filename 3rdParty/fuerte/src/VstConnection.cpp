@@ -44,7 +44,8 @@ VstConnection<ST>::VstConnection(
       _numMessages(0),
       _vstVersion(config._vstVersion),
       _reading(false),
-      _writing(false) {}
+      _writing(false) {
+}
 
 template <SocketType ST>
 VstConnection<ST>::~VstConnection() try {

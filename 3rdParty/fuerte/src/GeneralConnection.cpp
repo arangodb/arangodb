@@ -169,6 +169,11 @@ void GeneralConnection<ST>::restartConnection(const Error err) {
     FUERTE_LOG_DEBUG << "restartConnection this=" << this << "\n";
     // Terminate connection, restarts if required
     shutdownConnection(err, /*msg*/ "", /*mayRestart*/err != Error::Canceled);
+  } else {
+    FUERTE_LOG_ERROR << "restartConnection this=" << this
+                     << " found strange state not equal to 'Connected': "
+                     << static_cast<int>(exp) << "\n";
+    FUERTE_ASSERT(false);
   }
 }
 

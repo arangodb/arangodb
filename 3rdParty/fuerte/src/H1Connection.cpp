@@ -151,7 +151,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
 
   _parser.data = static_cast<void*>(this);
 
-  // preemtively cache
+  // preemptively cache
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
     _authHeader.append(
@@ -231,7 +231,7 @@ void H1Connection<ST>::activate() {
   // FUERTE_ASSERT(state != Connection::State::Connecting);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "activate: connected\n";
-    startWriting();
+    this->startWriting();
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
     this->startConnection();
@@ -248,10 +248,13 @@ void H1Connection<ST>::activate() {
 template <SocketType ST>
 void H1Connection<ST>::finishConnect() {
   // Note that the connection timeout alarm has already been disarmed.
-  // If it has already gone off, we
+  // If it has already gone off, we might have a completion handler
+  // already posted on the iocontext. However, this will not touch anything
+  // if we have first set the state to `Connected`.
+  FUERTE_ASSERT(_active.load());
   auto exp = Connection::State::Connecting;
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
-    startWriting();  // starts writing queue if non-empty
+    this->startWriting();  // starts writing queue if non-empty
   } else {
     FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting'";
     FUERTE_ASSERT(false);
@@ -259,21 +262,14 @@ void H1Connection<ST>::finishConnect() {
   }
 }
 
-// startWriting must only be executed on the IO thread
+// startWriting must only be executed on the IO thread and only with active==true
+// and with state `Connected`
 template <SocketType ST>
 void H1Connection<ST>::startWriting() {
   FUERTE_ASSERT(_active.load());
+  FUERTE_ASSERT(this->_state.load() == Connection::State::Connected);
   FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
-  // we might get in a race with shutdownConnection()
-  Connection::State state = this->_state.load();
-  if (state == Connection::State::Connected) {
-    this->asyncWriteNextRequest();
-  } else if (state == Connection::State::Disconnected) {
-    this->startConnection();
-  } else {
-    FUERTE_LOG_ERROR << "startWriting: found state other than 'Connected' or 'Disconnected': " << static_cast<int>(state);
-    FUERTE_ASSERT(false);
-  }
+  this->asyncWriteNextRequest();
 }
 
 // -----------------------------------------------------------------------------
@@ -351,7 +347,8 @@ std::string H1Connection<ST>::buildRequestBody(Request const& req) {
 template <SocketType ST>
 void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
-  FUERTE_ASSERT(_active.load());
+  FUERTE_ASSERT(this->_active.load());
+  FUERTE_ASSERT(this->_state.load() == Connection::State::Connected);
   FUERTE_ASSERT(_item == nullptr);
 
   RequestItem* ptr = nullptr;
