@@ -572,13 +572,15 @@ auto isLoop(ExecutionNode const& node) -> bool {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
+namespace {
+
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
-auto calculateAccessibleUserVariables(ExecutionNode const& node,
-                                      std::vector<Variable const*>& userVariables,
-                                      bool const encounteredLoop = false,
-                                      int const subqueryDepth = 0) -> bool {
+[[nodiscard]] auto calculateAccessibleUserVariables(ExecutionNode const& node,
+                                                    std::vector<Variable const*>& userVariables,
+                                                    bool const encounteredLoop,
+                                                    int const subqueryDepth) -> bool {
   TRI_ASSERT(subqueryDepth >= 0);
   auto const recSubqueryDepth = [&]() {
     if (node.getType() == ExecutionNode::SUBQUERY_END) {
@@ -633,6 +635,14 @@ auto calculateAccessibleUserVariables(ExecutionNode const& node,
   return isTopLevel;
 }
 
+}  // namespace
+
+void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
+                                                   std::vector<Variable const*>& userVariables) {
+  // This is just a wrapper around the static function with the same name:
+  std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
+}
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
@@ -647,22 +657,12 @@ void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable 
   }
 
   if (_outVariable != nullptr && !_count) {
-    if (_keepVariables.empty()) {
-      // Here we have to find all user defined variables in this query
-      // amongst our dependencies:
-
-      auto const dep = getFirstDependency();
-      TRI_ASSERT(dep != nullptr);
-      std::vector<Variable const*> userVars;
-      calculateAccessibleUserVariables(*dep, userVars);
-
-      for (auto& x : userVars) {
-        vars.emplace(x);
-      }
-    } else {
-      for (auto& x : _keepVariables) {
-        vars.emplace(x);
-      }
+    // Note that the keep variables can either be user-supplied via KEEP,
+    // or are calculated automatically in ExecutionPlan::fromNodeCollect
+    // during ExecutionPlan::instantiateFromAst in case of an all-embracing
+    // `INTO var`.
+    for (auto& x : _keepVariables) {
+      vars.emplace(x);
     }
   }
 }

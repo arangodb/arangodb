@@ -189,6 +189,9 @@ class CollectNode : public ExecutionNode {
 
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
+  static void calculateAccessibleUserVariables(ExecutionNode const& node,
+                                               std::vector<Variable const*>& userVariables);
+
  private:
   /// @brief options for the aggregation
   CollectOptions _options;
