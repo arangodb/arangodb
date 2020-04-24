@@ -1684,7 +1684,7 @@ function potentialErrorsSuite() {
       var result = x.toArray();
       var extra = x.getExtra();
       assertEqual(result, []);
-      assertEqual(extra.warnings.length, 0);
+      assertEqual(extra.warnings.length, 1);
     },
 
     testCrazyStart6: function () {
