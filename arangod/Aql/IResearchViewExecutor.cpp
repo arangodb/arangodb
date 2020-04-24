@@ -100,16 +100,14 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 ///////////////////////////////////////////////////////////////////////////////
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
-    RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
-    std::vector<Scorer> const& scorers,
+    std::shared_ptr<const IResearchView::Snapshot> reader, RegisterId firstOutputRegister,
+    RegisterId numScoreRegisters, Query& query, std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
-    : ExecutorInfos(std::move(infos)),
-      _firstOutputRegister(firstOutputRegister),
+    : _firstOutputRegister(firstOutputRegister),
       _numScoreRegisters(numScoreRegisters),
       _reader(std::move(reader)),
       _query(query),
@@ -126,8 +124,6 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-  TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
-             getOutputRegisters()->end());
 }
 
 RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
@@ -378,8 +374,7 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getNumScoreRegisters()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-      _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
-           infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
+      _ctx(&infos.getQuery(), infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
       _execCtx(*infos.getQuery().trx(), _ctx),

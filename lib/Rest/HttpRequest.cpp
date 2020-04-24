@@ -56,9 +56,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
 // avoids the need of a additional FakeRequest class.
 HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
                          std::unordered_map<std::string, std::string> const& headers)
-    : GeneralRequest(ConnectionInfo(), 1),
-      _allowMethodOverride(false),
-      _validatedPayload(false) {
+    : GeneralRequest(ConnectionInfo(), 1) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
   _payload.append(body, contentLength);

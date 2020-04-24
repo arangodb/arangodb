@@ -28,6 +28,7 @@
 #include "RocksDBOptionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
@@ -52,6 +53,37 @@ namespace {
 rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
+
+uint64_t defaultBlockCacheSize() {
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
+    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.3 
+    return static_cast<uint64_t>((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3);
+  }
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(2) << 30)) {
+    // if we have at least 2GB of RAM, the default size is 512MB
+    return (static_cast<uint64_t>(512) << 20);
+  }
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
+    // if we have at least 1GB of RAM, the default size is 256MB
+    return (static_cast<uint64_t>(256) << 20);
+  }
+  // for everything else the default size is 128MB
+  return (static_cast<uint64_t>(128) << 20);
+}
+
+uint64_t defaultTotalWriteBufferSize() {
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
+    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.4 
+    return static_cast<uint64_t>((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
+  } 
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
+    // if we have at least 1GB of RAM, the default size is 512MB
+    return (static_cast<uint64_t>(512) << 20);
+  }
+  // for everything else the default size is 256MB
+  return (static_cast<uint64_t>(256) << 20);
+}
+
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServer& server)
@@ -73,10 +105,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _numThreadsLow(0),
       _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
       _targetFileSizeMultiplier(rocksDBDefaults.target_file_size_multiplier),
-      _blockCacheSize((PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30))
-                          ? static_cast<uint64_t>(
-                                ((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3))
-                          : (256 << 20)),
+      _blockCacheSize(::defaultBlockCacheSize()),
       _blockCacheShardBits(-1),
       _tableBlockSize(
           std::max(rocksDBTableOptionsDefaults.block_size,
@@ -102,7 +131,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _exclusiveWrites(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
-      std::max((size_t)2, std::min(TRI_numberProcessors(), (size_t)8)));
+      std::max(static_cast<size_t>(2), std::min(NumberOfCores::getValue(), static_cast<size_t>(8))));
 #ifdef _WIN32
   // Windows code does not (yet) support lowering thread priority of
   //  compactions.  Therefore it is possible for rocksdb to use all
@@ -115,12 +144,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
 
   if (_totalWriteBufferSize == 0) {
     // unlimited write buffer size... now set to some fraction of physical RAM
-    if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
-      _totalWriteBufferSize = static_cast<uint64_t>(
-          (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
-    } else {
-      _totalWriteBufferSize = (512 << 20);
-    }
+    _totalWriteBufferSize = ::defaultTotalWriteBufferSize();
   }
 
   setOptional(true);
@@ -419,7 +443,7 @@ void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
 void RocksDBOptionFeature::start() {
   uint32_t max = _maxBackgroundJobs / 2;
-  uint32_t clamped = std::max(std::min((uint32_t)TRI_numberProcessors(), max), 1U);
+  uint32_t clamped = std::max(std::min(static_cast<uint32_t>(NumberOfCores::getValue()), max), 1U);
   // lets test this out
   if (_numThreadsHigh == 0) {
     _numThreadsHigh = clamped;

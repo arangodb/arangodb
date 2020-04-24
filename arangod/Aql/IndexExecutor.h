@@ -30,9 +30,9 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
@@ -44,7 +44,7 @@ struct OperationCursor;
 namespace aql {
 
 class ExecutionEngine;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class Query;
@@ -56,23 +56,21 @@ struct AstNode;
 struct Collection;
 struct NonConstExpression;
 
-class IndexExecutorInfos : public ExecutorInfos {
+class IndexExecutorInfos {
  public:
-  IndexExecutorInfos(
-      std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
-      RegisterId nrInputRegisters, RegisterId firstOutputRegister,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
-      Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter, std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions, 
-      std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
-      std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
-      bool hasV8Expression, AstNode const* condition,
-      std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-      IndexIteratorOptions options,
-      IndexNode::IndexValuesVars const& _outNonMaterializedIndVars,
-      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
+  IndexExecutorInfos(RegisterId outputRegister, ExecutionEngine* engine,
+                     Collection const* collection, Variable const* outVariable,
+                     bool produceResult, Expression* filter,
+                     std::vector<std::string> const& projections,
+                     std::vector<size_t> const& coveringIndexAttributePositions,
+                     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
+                     std::vector<Variable const*>&& expInVars,
+                     std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
+                     AstNode const* condition,
+                     std::vector<transaction::Methods::IndexHandle> indexes,
+                     Ast* ast, IndexIteratorOptions options,
+                     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
+                     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;

@@ -35,6 +35,7 @@
 
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 #include "MockScheduler.h"
@@ -137,8 +138,8 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_readonly_hotset_workload_LongR
   threads.clear();
 
   auto hitRates = manager.globalHitRates();
-  EXPECT_TRUE(hitRates.first >= 15.0);
-  EXPECT_TRUE(hitRates.second >= 30.0);
+  EXPECT_GE(hitRates.first, 15.0);
+  EXPECT_GE(hitRates.second, 30.0);
 
   RandomGenerator::shutdown();
 }
@@ -156,6 +157,7 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
   std::uint64_t batchSize = 1000;
   std::size_t readerCount = 4;
   std::size_t writerCount = 2;
+  std::atomic<std::size_t> documentsRead(0);
   std::atomic<std::size_t> writersDone(0);
   auto writeWaitInterval = std::chrono::milliseconds(10);
 
@@ -164,7 +166,9 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
-  auto readWorker = [&store, &writersDone, writerCount, totalDocuments]() -> void {
+  auto readWorker = [&store, &writersDone, &documentsRead, writerCount,
+                     totalDocuments]() -> void {
+    std::size_t localRead = 0;
     while (writersDone.load() < writerCount) {
       std::uint64_t choice = RandomGenerator::interval(totalDocuments);
       if (choice == 0) {
@@ -172,8 +176,10 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
       }
 
       auto d = store.lookup(nullptr, choice);
+      ++localRead;
       TRI_ASSERT(!d.empty());
     }
+    documentsRead += localRead;
   };
 
   auto writeWorker = [&store, &writersDone, batchSize,
@@ -214,8 +220,13 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
   threads.clear();
 
   auto hitRates = manager.globalHitRates();
-  EXPECT_TRUE(hitRates.first >= 0.1);
-  EXPECT_TRUE(hitRates.second >= 2.5);
+  double expected =
+      (static_cast<double>(documentsRead.load()) / static_cast<double>(totalDocuments)) - 2.0;
+  if (expected < 0.0) {
+    expected = 0.01;
+  }
+  EXPECT_GE(hitRates.first, expected);
+  EXPECT_GE(hitRates.second, expected);
 
   RandomGenerator::shutdown();
 }

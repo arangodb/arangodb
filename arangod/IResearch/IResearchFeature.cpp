@@ -35,6 +35,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -276,7 +277,7 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
   return threads ? threads
                  : std::max(MIN_THREADS,
                             std::min(maxThreads,
-                                     size_t(std::thread::hardware_concurrency()) / 4));
+                                     arangodb::NumberOfCores::getValue() / 4));
 }
 
 bool upgradeSingleServerArangoSearchView0_1(
