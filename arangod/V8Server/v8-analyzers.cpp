@@ -28,6 +28,8 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -76,6 +78,28 @@ v8::Handle<v8::Object> WrapAnalyzer(
   result->SetInternalField(SLOT_CLASS, entry.get());
 
   return scope.Escape<v8::Object>(result);
+}
+
+void StartPlanModyfing(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
+    auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    auto const res = engine.startModifyingAnalyzerCoordinator(databaseID);
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+}
+
+void FinishPlanModifying(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID, bool restore) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
+    auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    auto const res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
 }
 
 void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -305,7 +329,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       name, vocbase, *sysVocbase // args
     );
     name = nameBuf;
-  };
+  }
+
+  auto const databaseID = arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first;
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
@@ -371,15 +397,19 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
+  StartPlanModyfing(isolate, v8g, databaseID);
+
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto res = analyzers.emplace(result, name, type, propertiesSlice, features);
 
     if (!res.ok()) {
+      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION(res);
     }
 
     if (!result.first) {
+      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
         TRI_ERROR_INTERNAL, // code
         "problem creating view" // message
@@ -389,15 +419,21 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto v8Result = WrapAnalyzer(isolate, result.first);
 
     if (v8Result.IsEmpty()) {
+      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
+    FinishPlanModifying(isolate, v8g, databaseID, false);
+
     TRI_V8_RETURN(v8Result);
   } catch (arangodb::basics::Exception const& ex) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_INTERNAL, // code
       "cannot create analyzer" // message
@@ -620,7 +656,9 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
       name, vocbase, *sysVocbase // args
     );
     name = nameBuf;
-  };
+  }
+
+  auto const databaseID = arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first;
 
   bool force = false;
 
@@ -643,19 +681,27 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
+  StartPlanModyfing(isolate, v8g, databaseID);
+
   try {
     auto res = analyzers.remove(name, force);
 
     if (!res.ok()) {
+      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION(res);
     }
 
+    FinishPlanModifying(isolate, v8g, databaseID, false);
+
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_INTERNAL, // code
       "cannot remove analyzer" // message

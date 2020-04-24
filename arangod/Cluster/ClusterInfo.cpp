@@ -3116,9 +3116,15 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
     revisionBuilder.add(VPackValue(++revision));
 
     AgencyWriteTransaction const transaction{
-        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRevision,
-              restore ? AgencySimpleOperationType::DECREMENT_OP
-                      : AgencySimpleOperationType::INCREMENT_OP},
+        {
+          [restore, &databaseID]{
+            if (restore) {
+              return AgencyOperation{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
+                    AgencySimpleOperationType::DECREMENT_OP};
+            }
+            return AgencyOperation{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRevision,
+                  AgencySimpleOperationType::INCREMENT_OP};
+         }(),
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
         {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
               AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},

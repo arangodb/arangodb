@@ -1926,7 +1926,7 @@ static void JS_GetAnalyzersRevision(v8::FunctionCallbackInfo<v8::Value> const& a
     TRI_V8_THROW_EXCEPTION_PARAMETER("<databaseName> is invalid");
   }
 
-  auto result = analyzerRevision->toVelocyPack();
+  auto const result = analyzerRevision->toVelocyPack();
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   TRI_V8_TRY_CATCH_END

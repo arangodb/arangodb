@@ -33,7 +33,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {
@@ -107,7 +106,9 @@ void RestAnalyzerHandler::createAnalyzer( // create
   if (sysVocbase) {
     nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase); // normalize
     name = nameBuf;
-  };
+  }
+
+  auto const databaseID = IResearchAnalyzerFeature::splitAnalyzerName(name).first;
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
@@ -196,26 +197,26 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(server().hasFeature<arangodb::ClusterFeature>());
-    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
-    auto res = engine.startModifyingAnalyzerCoordinator(splittedAnalyzerName.first);
-    if (res.fail()) {
-      generateError(res);
-
-      return;
-    }
+  if (!startPlanModyfing(databaseID)) {
+    return;
   }
+
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
 
   if (res.fail()) {
+    if (!finishPlanModifying(databaseID, true)) {
+      return;
+    }
     generateError(res);
 
     return;
   }
 
   if (!result.first) {
+    if (!finishPlanModifying(databaseID, true)) {
+      return;
+    }
     generateError(
       arangodb::rest::ResponseCode::BAD,
       TRI_errno(),
@@ -229,15 +230,8 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
   pool->toVelocyPack(builder, false);
 
-  if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(server().hasFeature<arangodb::ClusterFeature>());
-    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
-    auto res = engine.finishModifyingAnalyzerCoordinator(splittedAnalyzerName.first, false);
-    if (res.fail()) {
-      generateError(res);
-
-      return;
-    }
+  if (!finishPlanModifying(databaseID, false)) {
+    return;
   }
 
   generateResult(
@@ -436,6 +430,9 @@ void RestAnalyzerHandler::removeAnalyzer(
   auto normalizedName =
       sysVocbase ? IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase)
                  : std::string(name);
+
+  auto const databaseID = IResearchAnalyzerFeature::splitAnalyzerName(normalizedName).first;
+
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
     generateError(arangodb::Result( 
       TRI_ERROR_FORBIDDEN, 
@@ -443,11 +440,24 @@ void RestAnalyzerHandler::removeAnalyzer(
     ));
     return;
   }
+
+  if (!startPlanModyfing(databaseID)) {
+    return;
+  }
+
   auto res = analyzers.remove(normalizedName, force);
   if (!res.ok()) {
+    if (!finishPlanModifying(databaseID, true)) {
+      return;
+    }
     generateError(res);
     return;
   }
+
+  if (!finishPlanModifying(databaseID, false)) {
+    return;
+  }
+
   arangodb::velocypack::Builder builder;
   builder.openObject();
   builder.add(StaticStrings::AnalyzerNameField, arangodb::velocypack::Value(normalizedName));
@@ -456,6 +466,34 @@ void RestAnalyzerHandler::removeAnalyzer(
   // generate result + 'error' field + 'code' field
   // 2nd param must be Builder and not Slice
   generateOk(arangodb::rest::ResponseCode::OK, builder);
+}
+
+bool RestAnalyzerHandler::startPlanModyfing(irs::string_ref const& databaseID) {
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(server().hasFeature<ClusterFeature>());
+    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
+    auto res = engine.startModifyingAnalyzerCoordinator(databaseID);
+    if (res.fail()) {
+      generateError(res);
+
+      return false;
+    }
+  }
+  return true;
+}
+
+bool RestAnalyzerHandler::finishPlanModifying(irs::string_ref const& databaseID, bool restore) {
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(server().hasFeature<ClusterFeature>());
+    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
+    auto res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
+    if (res.fail()) {
+      generateError(res);
+
+      return false;
+    }
+  }
+  return true;
 }
 
 } // iresearch

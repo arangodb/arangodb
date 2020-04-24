@@ -90,12 +90,6 @@ class AnalyzersRevision {
     : _revision(revision), _buildingRevision(buildingRevision),
       _serverID(std::move(serverID)), _rebootID(rebootID) {}
 
-  AnalyzersRevision() = default;
-  AnalyzersRevision(AnalyzersRevision const&) = default;
-  AnalyzersRevision(AnalyzersRevision&&) = default;
-  AnalyzersRevision& operator=(AnalyzersRevision const&) = default;
-  AnalyzersRevision& operator=(AnalyzersRevision&&) = default;
-
   Revision getRevision() const noexcept {
     return _revision;
   }

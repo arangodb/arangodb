@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_ANALYZER_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {
@@ -61,6 +62,8 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
     std::string const& requestedName, 
     bool force
   );
+  bool startPlanModyfing(irs::string_ref const& databaseID);
+  bool finishPlanModifying(irs::string_ref const& databaseID, bool restore);
 };
 
 } // iresearch
