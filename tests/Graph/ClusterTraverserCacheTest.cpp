@@ -47,19 +47,16 @@ namespace cluster_traverser_cache_test {
 
 class ClusterTraverserCacheTest : public ::testing::Test {
  protected:
-  ServerState* ss;
   ServerState::RoleEnum oldRole;
   
   graph::GraphTestSetup s;
   graph::MockGraphDatabase gdb;
 
   ClusterTraverserCacheTest()
-      : ss(ServerState::instance()), oldRole(ss->getRole()),
-        gdb(s.server, "testVocbase")  {
-//    ss->setRole(ServerState::ROLE_COORDINATOR);
+      : gdb(s.server, "testVocbase")  {
   }
 
-  ~ClusterTraverserCacheTest() { ss->setRole(oldRole); }
+  ~ClusterTraverserCacheTest() { }
 };
 
 TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not_cached) {

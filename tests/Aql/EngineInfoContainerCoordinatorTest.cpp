@@ -136,6 +136,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   // Section: Run the test
   // ------------------------------
   
+  auto oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(ServerState::RoleEnum::ROLE_COORDINATOR);
   
   // simon: we only use this query for the API
@@ -150,6 +151,8 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   // The last engine should not be stored
   // It is not added to the registry
   ASSERT_TRUE(queryIds.empty());
+  
+  ServerState::instance()->setRole(oldRole);
 }
 
 #if 0
