@@ -311,7 +311,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   if (!isDBServer) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
-    if (base.hasKey("graph") && base.get("graph").isString()) {
+    if (base.get("graph").isString()) {
       graphName = base.get("graph").copyString();
       if (base.hasKey("graphDefinition")) {
         // load graph and store pointer
@@ -359,12 +359,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    if (isDBServer) {
-      auto shard = collectionToShardName(name);
-      return query.collections().add(name, AccessMode::Type::READ);
-    } else {
-      return query.collections().add(name, AccessMode::Type::READ);
-    }
+    return query.collections().add(name, AccessMode::Type::READ);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);

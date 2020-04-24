@@ -175,6 +175,7 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
   }
   infoBuilder.close();  // edges
 
+#warning TODO
 //#ifdef USE_ENTERPRISE
 //  if (!_inaccessibleShards.empty()) {
 //    infoBuilder.add(VPackValue("inaccessible"));
@@ -533,11 +534,11 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
 
 // Insert a GraphNode that needs to generate TraverserEngines on
 // the DBServers. The GraphNode itself will retain on the coordinator.
-void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node) {
+void EngineInfoContainerDBServerServerBased::addGraphNode(GraphNode* node, bool pushToSingleServer) {
   node->prepareOptions();
   injectVertexCollections(node);
   // SnippetID does not matter on GraphNodes
-  _shardLocking.addNode(node, 0, false);
+  _shardLocking.addNode(node, 0, pushToSingleServer);
   _graphNodes.emplace_back(node);
 }
 

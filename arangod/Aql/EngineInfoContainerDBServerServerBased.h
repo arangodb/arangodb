@@ -157,7 +157,7 @@ class EngineInfoContainerDBServerServerBased {
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(GraphNode* node);
+  void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
   // Insert the Locking information into the message to be send to DBServers

@@ -420,7 +420,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
         case ExecutionNode::K_SHORTEST_PATHS:
-          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
+          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en), _pushToSingleServer);
           break;
         default:
           // Do nothing
@@ -430,7 +430,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       TRI_ASSERT((_lastGatherNode != nullptr) == (nodeType == ExecutionNode::GATHER));
     } else {
       // on dbserver
-      _dbserverParts.addNode(en, false);
+      _dbserverParts.addNode(en, _pushToSingleServer);
       // switch back from DB server to coordinator, if we are not pushing the
       // entire plan to the DB server
       if (ExecutionNode::REMOTE == nodeType) {
