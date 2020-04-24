@@ -170,12 +170,10 @@ void GeneralConnection<ST>::restartConnection(const Error err) {
     FUERTE_LOG_DEBUG << "restartConnection this=" << this << "\n";
     // Terminate connection, restarts if required
     shutdownConnection(err, /*msg*/ "", /*mayRestart*/err != Error::Canceled);
-  } else {
-    FUERTE_LOG_ERROR << "restartConnection this=" << this
-                     << " found strange state not equal to 'Connected': "
-                     << static_cast<int>(exp) << "\n";
-    FUERTE_ASSERT(false);
   }
+  // Note that it is possible that both the request timeout and the read or write
+  // completion handler call us. In that case, the second one finds `Disconnected`
+  // or even `Connecting` and that is totally fine.
 }
 
 // asyncReadSome reads the next bytes from the server.
