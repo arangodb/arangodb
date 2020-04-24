@@ -45,6 +45,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
                         detail::ConnectionConfiguration const&);
   ~H1Connection();
 
+  /// The following public methods can be called from any thread.
  public:
   /// Start an asynchronous request.
   void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
@@ -52,7 +53,12 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
 
+  /// All methods below here must only be called from the IO thread.
  protected:
+  /// This is posted by `sendRequest` to the _io_context thread, the `_active`
+  /// flag is already set to `true` by an exchange operation
+  void activate();
+
   void finishConnect() override;
 
   // Thread-Safe: activate the writer loop (if off and items are queud)

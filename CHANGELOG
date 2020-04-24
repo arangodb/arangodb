@@ -9,6 +9,9 @@ devel
   on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
   of LOW.
 
+* Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
+  is not another one hiding somewhere.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Lower the default values for `--rocksdb.block-cache-size` and 
