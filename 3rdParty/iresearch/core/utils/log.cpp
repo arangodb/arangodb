@@ -757,10 +757,10 @@ class stack_trace_printer {
       IR_LOG_FORMATED(level, "Failed to output detailed stack trace to stream, outputting plain stack trace to stderr");
       return fileno(stderr);
     }
-    size_t buf_len = 0;
-    constexpr size_t buf_size = 1024; // arbitrary size
-    char buf[buf_size];
-    pipe_reader_ = std::thread([this, level, &buf, &buf_len]()->void {
+    pipe_reader_ = std::thread([this, level]()->void {
+      size_t buf_len = 0;
+      constexpr size_t buf_size = 1024; // arbitrary size
+      char buf[buf_size];
       for (char ch; read(pipefd_[0], &ch, 1) > 0;) {
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
