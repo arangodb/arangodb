@@ -232,21 +232,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     // like a common collection:
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = true;
-      std::string distributeShardsLike;
-      for (auto const& n : eColls) {
-        auto c = ci.getCollection(_vocbase->name(), n);
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
-          _isSmart = false;
-          break;
-        }
-        if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
-          _isSmart = false;
-          break;
-        }
-      }
+      _isSmart = _graphObj->isSmart();
+      _isDisjoint = _graphObj->isDisjoint();
     }
 
     for (const auto& n : eColls) {

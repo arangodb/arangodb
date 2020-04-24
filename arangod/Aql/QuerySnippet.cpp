@@ -403,7 +403,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
           // OneShard case) because local graphs (on DBServers) only ever occur
           // in either OneShard or SatelliteGraphs.
           TRI_ASSERT(found->second == server || localGraphNode->isUsedAsSatellite() ||
-                     aqlCollection->isSatellite());
+                     aqlCollection->isSatellite() || localGraphNode->isDisjoint());
           // provide a correct translation from collection to shard
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
@@ -418,10 +418,12 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Could not find a shard to instantiate for graph node when expected to");
       }
 
-      auto foundEnoughShards = numShards == localGraphNode->collections().size();
-      TRI_ASSERT(foundEnoughShards);
-      if (!foundEnoughShards) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      if (localGraphNode->isEligibleAsSatelliteTraversal()) {
+        auto foundEnoughShards = numShards == localGraphNode->collections().size();
+        TRI_ASSERT(foundEnoughShards);
+        if (!foundEnoughShards) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+        }
       }
 #endif
     } else {

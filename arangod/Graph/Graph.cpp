@@ -722,6 +722,10 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
+bool Graph::isDisjoint() const {
+  return false;
+}
+
 bool Graph::isSatellite() const { return _isSatellite; }
 
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
