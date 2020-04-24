@@ -53,6 +53,7 @@
 
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -88,7 +89,8 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   std::vector<size_t> const coveringIndexAttributePositions;
   bool random;
 
-  EnumerateCollectionExecutorInfos infos;
+  RegisterInfos registerInfos;
+  EnumerateCollectionExecutorInfos executorInfos;
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
@@ -105,13 +107,14 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
-              &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
-              coveringIndexAttributePositions, random),
+        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({0}),
+                      1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep),
+        executorInfos(0 /*outReg*/, engine, &aqlCollection, &outVariable, varUsedLater,
+                      nullptr, projections, coveringIndexAttributePositions, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
-    } catch (std::exception const& e) {
+    } catch (std::exception const&) {
       // ignore, already created the collection
     }
   }
@@ -120,7 +123,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
-  EnumerateCollectionExecutor testee(fetcher, infos);
+  EnumerateCollectionExecutor testee(fetcher, executorInfos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateCollectionExecutor::produceRows().
@@ -128,8 +131,9 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
   SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
 
   auto const [state, stats, call] = testee.produceRows(inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
@@ -139,7 +143,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
 TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
-  EnumerateCollectionExecutor testee(fetcher, infos);
+  EnumerateCollectionExecutor testee(fetcher, executorInfos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateCollectionExecutor::produceRows().
@@ -147,8 +151,9 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
   SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
   AqlCall skipCall{1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
   auto const [state, stats, skipped, call] = testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
@@ -159,7 +164,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
 TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
-  EnumerateCollectionExecutor testee(fetcher, infos);
+  EnumerateCollectionExecutor testee(fetcher, executorInfos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateCollectionExecutor::produceRows().
@@ -187,8 +192,9 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
 
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
 
   auto const [state, stats, call] = testee.produceRows(inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
@@ -200,7 +206,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
 TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
-  EnumerateCollectionExecutor testee(fetcher, infos);
+  EnumerateCollectionExecutor testee(fetcher, executorInfos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
   // EnumerateCollectionExecutor::produceRows().
@@ -229,8 +235,9 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
   AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
    */
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
 
   AqlCall skipCall{1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
   auto const [state, stats, skipped, call] = testee.skipRowsRange(inputRange, skipCall);
@@ -269,7 +276,8 @@ class EnumerateCollectionExecutorTestProduce
   Collection aqlCollection;
   bool random;
 
-  EnumerateCollectionExecutorInfos infos;
+  RegisterInfos registerInfos;
+  EnumerateCollectionExecutorInfos executorInfos;
 
   EnumerateCollectionExecutorTestProduce()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
@@ -279,22 +287,33 @@ class EnumerateCollectionExecutorTestProduce
         ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(true),
-        engine(fakedQuery.get()->engine()),
+        engine(fakedQuery->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
-              projections, coveringIndexAttributePositions, random) {}
+        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({1}),
+                      1 /*nrIn*/, 1 /*nrOut*/, {}, {}),
+        executorInfos(1, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
+                      projections, coveringIndexAttributePositions, random) {}
 
-  auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                 RegisterId nrOutputRegister = 1,
-                 std::unordered_set<RegisterId> regToClear = {},
-                 std::unordered_set<RegisterId> regToKeep = {})
+  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
+                         RegisterId nrOutputRegister = 1,
+                         std::unordered_set<RegisterId> regToClear = {},
+                         std::unordered_set<RegisterId> regToKeep = {}) -> RegisterInfos {
+    auto inputRegisters = make_shared_unordered_set({});
+    auto outputRegisters = make_shared_unordered_set({outputRegister});
+    RegisterInfos registerInfos{inputRegisters,        outputRegisters,
+                                nrInputRegister,       nrOutputRegister,
+                                std::move(regToClear), std::move(regToKeep)};
+    return registerInfos;
+  }
+
+  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
-    EnumerateCollectionExecutorInfos infos{
-        outputRegister, nrInputRegister, nrOutputRegister,
-        regToClear,     regToKeep,       engine,
-        &aqlCollection, &outVariable,    varUsedLater,
-        nullptr,        projections,     coveringIndexAttributePositions,
+    auto infos = EnumerateCollectionExecutorInfos{
+        outputRegister, engine,
+        &aqlCollection, &outVariable,
+        varUsedLater,   nullptr,
+        projections,    coveringIndexAttributePositions,
         random};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
@@ -369,7 +388,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_all_documents) {
                               {R"(null)"},
                               {R"(null)"}})*/
       .expectedState(ExecutionState::DONE)
-      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
+      .addConsumer<EnumerateCollectionExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .run();
 }
 
@@ -390,7 +409,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
-      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
+      .addConsumer<EnumerateCollectionExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .run();
 }
 
@@ -410,7 +429,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
       .expectSkipped(5)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
-      .addConsumer<EnumerateCollectionExecutor>(makeInfos())
+      .addConsumer<EnumerateCollectionExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .run();
 }
 

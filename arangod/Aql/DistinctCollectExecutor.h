@@ -31,7 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -46,18 +46,13 @@ namespace aql {
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class DistinctCollectExecutorInfos : public ExecutorInfos {
+class DistinctCollectExecutorInfos {
  public:
-  DistinctCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep,
-                               std::unordered_set<RegisterId>&& readableInputRegisters,
-                               std::unordered_set<RegisterId>&& writeableInputRegisters,
-                               std::pair<RegisterId, RegisterId> groupRegister,
+  DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
                                transaction::Methods* trxPtr);
 
   DistinctCollectExecutorInfos() = delete;

@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
 #include "Basics/system-functions.h"
@@ -59,7 +60,7 @@ namespace {
 /// @brief return the default number of threads to use (upper bound)
 size_t defaultNumberOfThreads() {
   // use two times the number of hardware threads as the default
-  size_t result = TRI_numberProcessors() * 2;
+  size_t result = arangodb::NumberOfCores::getValue() * 2;
   // but only if higher than 64. otherwise use a default minimum value of 64
   if (result < 64) {
     result = 64;
@@ -125,7 +126,7 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
 }
 
 void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
-  auto const N = TRI_numberProcessors();
+  auto const N = NumberOfCores::getValue();
 
   LOG_TOPIC("2ef39", DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;

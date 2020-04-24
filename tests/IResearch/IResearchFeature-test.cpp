@@ -138,19 +138,19 @@ TEST_F(IResearchFeatureTest, test_start) {
   enum class FunctionType { FILTER = 0, SCORER };
 
   std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected = {
-      // filter functions
-      {"EXISTS", {".|.,.", FunctionType::FILTER}},
-      {"PHRASE", {".,.|.+", FunctionType::FILTER}},
-      {"STARTS_WITH", {".,.|.", FunctionType::FILTER}},
-      {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
+    // filter functions
+    { "EXISTS", { ".|.,.", FunctionType::FILTER } },
+    { "PHRASE", { ".,.|.+", FunctionType::FILTER } },
+    { "STARTS_WITH", { ".,.|.,.", FunctionType::FILTER } },
+    { "MIN_MATCH", { ".,.|.+", FunctionType::FILTER } },
 
-      // context functions
-      {"ANALYZER", {".,.", FunctionType::FILTER}},
-      {"BOOST", {".,.", FunctionType::FILTER}},
+    // context functions
+    { "ANALYZER", { ".,.", FunctionType::FILTER } },
+    { "BOOST", { ".,.", FunctionType::FILTER } },
 
-      // scorer functions
-      {"BM25", {".|+", FunctionType::SCORER}},
-      {"TFIDF", {".|+", FunctionType::SCORER}},
+    // scorer functions
+    { "BM25", { ".|+", FunctionType::SCORER } },
+    { "TFIDF", { ".|+", FunctionType::SCORER } },
   };
 
   functions.prepare();
