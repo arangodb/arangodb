@@ -716,6 +716,7 @@ bool parser_context::addOrder(
       if (!node.pFnOrder && !node.pFnSequence) {
         break; // no applicable functions
       }
+    [[fallthrough]];
     case query_node::NodeType::SEQUENCE:
       m_order.emplace_back(nodeId, bAscending);
 
@@ -765,6 +766,7 @@ bool parser_context::setQuery(parser::semantic_type const& value) {
       if (!node.pFnBoolean) {
         break; // only boolean functions allowed as query root
       }
+    [[fallthrough]];
     case query_node::NodeType::UNION: // fall through
     case query_node::NodeType::INTERSECTION: // fall through
     case query_node::NodeType::BOOL_TRUE: // fall through

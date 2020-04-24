@@ -763,6 +763,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
         break;
       }
+     [[fallthrough]];
      default:
       return UNKNOWN;
     }

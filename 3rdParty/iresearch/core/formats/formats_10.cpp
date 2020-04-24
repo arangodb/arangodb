@@ -1576,8 +1576,8 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
       const features& field,
       const attribute_view& attrs,
       const index_input* doc_in,
-      const index_input* pos_in,
-      const index_input* pay_in) {
+      [[maybe_unused]] const index_input* pos_in,
+      [[maybe_unused]] const index_input* pay_in) {
     features_ = field; // set field features
 
     assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == features_.freq());
