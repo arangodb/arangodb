@@ -4085,6 +4085,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   auto* gatherNode = createGatherNodeFor(plan, distNode);
   gatherNode->addDependency(remoteNode);
 
+TRI_ASSERT(parents.size() < 2);
   // Song and dance to deal with at being the root of a plan or a subquery
   if (parents.empty()) {
     if (snode) {
