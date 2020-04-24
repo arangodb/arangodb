@@ -1,4 +1,4 @@
-v3.4.10 (XXXX-XX-XX)
+v3.4.10 (2020-04-24)
 --------------------
 
 * Don't invoke collection key ranges compaction after performing a truncate
