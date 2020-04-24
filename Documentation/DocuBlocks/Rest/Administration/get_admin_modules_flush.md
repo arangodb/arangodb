@@ -141,7 +141,7 @@ One of the possible log levels (_Enterprise Edition only_).
 @RESTBODYPARAM{audit-database,string,optional,string}
 One of the possible log levels (_Enterprise Edition only_).
 
-@RESTBODYPARAM{audit-document,string,optional,string}
+@RESTBODYPARAM{audit-documentation,string,optional,string}
 One of the possible log levels (_Enterprise Edition only_).
 
 @RESTBODYPARAM{audit-view,string,optional,string}
@@ -276,4 +276,3 @@ is returned when an invalid HTTP method is used.
 is returned if the server cannot generate the result due to an out-of-memory
 error.
 @endDocuBlock
-
