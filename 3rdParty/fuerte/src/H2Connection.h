@@ -60,10 +60,6 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   std::size_t requestsLeft() const override;
 
  protected:
-  /// This is posted by `sendRequest` to the _io_context thread, the `_active`
-  /// flag is already set to `true` by an exchange operation
-  void activate();
-
   void finishConnect() override;
 
   // Thread-Safe: activate the writer loop (if off and items are queud)
