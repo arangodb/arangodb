@@ -241,14 +241,14 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry)
-    : _server(server),
-      _agency(server),
-      _agencyCallbackRegistry(agencyCallbackRegistry),
-      _rebootTracker(SchedulerFeature::SCHEDULER),
-      _planVersion(0),
-      _currentVersion(0),
-      _planLoader(std::thread::id()),
-      _uniqid() {
+  : _server(server),
+    _agency(server),
+    _agencyCallbackRegistry(agencyCallbackRegistry),
+    _rebootTracker(SchedulerFeature::SCHEDULER),
+    _planVersion(0),
+    _currentVersion(0),
+    _planLoader(std::thread::id()),
+    _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -530,565 +530,577 @@ void ClusterInfo::loadClusterId() {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
-  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
-  ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
-                              // reread from the agency!
+  std::shared_ptr<VPackBuilder> acb;
+  consensus::index_t idx = 0;
+  uint64_t newPlanVersion = 0;
+
+  do {
+    DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
+
+    ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
+    // reread from the agency!
+
+    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto tStart = TRI_microtime();
-  auto longPlanWaitLogger = scopeGuard([&tStart]() {
-    auto tExit = TRI_microtime();
-    if (tExit - tStart > 0.5) {
-      LOG_TOPIC("66666", WARN, Logger::CLUSTER) <<
-        "Loading the new plan took: " << (tExit - tStart);
-    }
-  });
+    auto tStart = TRI_microtime();
+    auto longPlanWaitLogger = scopeGuard([&tStart]() {
+                                           auto tExit = TRI_microtime();
+                                           if (tExit - tStart > 0.5) {
+                                             LOG_TOPIC("66666", WARN, Logger::CLUSTER) <<
+                                               "Loading the new plan took: " << (tExit - tStart);
+                                           }
+                                         });
 #endif
 
-  MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
+    MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
 
-  // For ArangoSearch views we need to get access to immediately created views
-  // in order to allow links to be created correctly.
-  // For the scenario above, we track such views in '_newPlannedViews' member
-  // which is supposed to be empty before and after 'ClusterInfo::loadPlan()'
-  // execution. In addition, we do the following "trick" to provide access to
-  // '_newPlannedViews' from outside 'ClusterInfo': in case if
-  // 'ClusterInfo::getView' has been called from within 'ClusterInfo::loadPlan',
-  // we redirect caller to search view in
-  // '_newPlannedViews' member instead of '_plannedViews'
+    // For ArangoSearch views we need to get access to immediately created views
+    // in order to allow links to be created correctly.
+    // For the scenario above, we track such views in '_newPlannedViews' member
+    // which is supposed to be empty before and after 'ClusterInfo::loadPlan()'
+    // execution. In addition, we do the following "trick" to provide access to
+    // '_newPlannedViews' from outside 'ClusterInfo': in case if
+    // 'ClusterInfo::getView' has been called from within 'ClusterInfo::loadPlan',
+    // we redirect caller to search view in
+    // '_newPlannedViews' member instead of '_plannedViews'
 
-  // set plan loader
-  TRI_ASSERT(_newPlannedViews.empty());
-  _planLoader = std::this_thread::get_id();
+    // set plan loader
+    TRI_ASSERT(_newPlannedViews.empty());
+    _planLoader = std::this_thread::get_id();
 
-  // ensure we'll eventually reset plan loader
-  auto resetLoader = scopeGuard([this]() {
-    _planLoader = std::thread::id();
-    _newPlannedViews.clear();
-  });
+    // ensure we'll eventually reset plan loader
+    auto resetLoader = scopeGuard([this]() {
+                                    _planLoader = std::thread::id();
+                                    _newPlannedViews.clear();
+                                  });
 
-  bool planValid = true;  // has the loadPlan compleated without skipping valid objects
-  uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
-                                                     // we will set in the end
+    bool planValid = true;  // has the loadPlan compleated without skipping valid objects
+    uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
+    // we will set in the end
 
-  LOG_TOPIC("eb0e4", DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("eb0e4", DEBUG, Logger::CLUSTER)
       << "loadPlan: wantedVersion=" << storedVersion
       << ", doneVersion=" << _planProt.doneVersion;
 
-  if (_planProt.doneVersion == storedVersion) {
-    // Somebody else did, what we intended to do, so just return
-    return;
-  }
-
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [planBuilder, index] = agencyCache.get(prefixPlan);
-  auto planSlice = planBuilder->slice();
-
-  if (!planSlice.isObject()) {
-    LOG_TOPIC("bc8e1", ERR, Logger::CLUSTER)
-        << "\"Plan\" is not an object in agency";
-    return;
-  }
-
-  uint64_t newPlanVersion = 0;
-  auto planVersionSlice = planSlice.get("Version");
-
-  if (planVersionSlice.isNumber()) {
-    try {
-      newPlanVersion = planVersionSlice.getNumber<uint64_t>();
-    } catch (...) {
+    if (_planProt.doneVersion == storedVersion) {
+      // Somebody else did, what we intended to do, so just return
+      return;
     }
-  }
 
-  LOG_TOPIC("c6303", TRACE, Logger::CLUSTER) << "loadPlan: newPlanVersion=" << newPlanVersion;
+    auto [planBuilder, index] = agencyCache.get(prefixPlan);
+    auto planSlice = planBuilder->slice();
 
-  if (newPlanVersion == 0) {
-    LOG_TOPIC("d68ae", WARN, Logger::CLUSTER)
+    if (!planSlice.isObject()) {
+      LOG_TOPIC("bc8e1", ERR, Logger::CLUSTER)
+        << "\"Plan\" is not an object in agency";
+      return;
+    }
+
+    auto planVersionSlice = planSlice.get("Version");
+
+    if (planVersionSlice.isNumber()) {
+      try {
+        newPlanVersion = planVersionSlice.getNumber<uint64_t>();
+      } catch (...) {
+      }
+    }
+
+    LOG_TOPIC("c6303", TRACE, Logger::CLUSTER) << "loadPlan: newPlanVersion=" << newPlanVersion;
+
+    if (newPlanVersion == 0) {
+      LOG_TOPIC("d68ae", WARN, Logger::CLUSTER)
         << "Attention: /arango/Plan/Version in the agency is not set or not a "
-           "positive number.";
-  }
+        "positive number.";
+    }
 
-  {
-    READ_LOCKER(guard, _planProt.lock);
+    {
+      READ_LOCKER(guard, _planProt.lock);
 
-    if (_planProt.isValid && newPlanVersion <= _planVersion) {
-      LOG_TOPIC("20450", DEBUG, Logger::CLUSTER)
+      if (_planProt.isValid && newPlanVersion <= _planVersion) {
+        LOG_TOPIC("20450", DEBUG, Logger::CLUSTER)
           << "We already know this or a later version, do not update. "
           << "newPlanVersion=" << newPlanVersion << " _planVersion=" << _planVersion;
 
-      return;
+        return;
+      }
     }
-  }
 
-  decltype(_plannedDatabases) newDatabases;
-  std::set<std::string> buildingDatabases;
-  decltype(_plannedCollections) newCollections;  // map<string /*database id*/
-                                                 //    ,map<string /*collection id*/
-                                                 //        ,shared_ptr<LogicalCollection>
-                                                 //        >
-                                                 //    >
-  decltype(_shards) newShards;
-  decltype(_shardServers) newShardServers;
-  decltype(_shardToName) newShardToName;
+    decltype(_plannedDatabases) newDatabases;
+    std::set<std::string> buildingDatabases;
+    decltype(_plannedCollections) newCollections;  // map<string /*database id*/
+    //    ,map<string /*collection id*/
+    //        ,shared_ptr<LogicalCollection>
+    //        >
+    //    >
+    decltype(_shards) newShards;
+    decltype(_shardServers) newShardServers;
+    decltype(_shardToName) newShardToName;
 
-  bool swapDatabases = false;
-  bool swapCollections = false;
-  bool swapViews = false;
+    bool swapDatabases = false;
+    bool swapCollections = false;
+    bool swapViews = false;
 
-  auto planDatabasesSlice = planSlice.get("Databases");
+    auto planDatabasesSlice = planSlice.get("Databases");
 
-  if (planDatabasesSlice.isObject()) {
-    swapDatabases = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+    if (planDatabasesSlice.isObject()) {
+      swapDatabases = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
 
-    std::string name;
+      std::string name;
 
-    for (auto const& database : velocypack::ObjectIterator(planDatabasesSlice)) {
-      try {
-        name = database.key.copyString();
-      } catch (arangodb::velocypack::Exception const& e) {
-        LOG_TOPIC("adc82", ERR, Logger::AGENCY)
+      for (auto const& database : velocypack::ObjectIterator(planDatabasesSlice)) {
+        try {
+          name = database.key.copyString();
+        } catch (arangodb::velocypack::Exception const& e) {
+          LOG_TOPIC("adc82", ERR, Logger::AGENCY)
             << "Failed to get database name from json, error '" << e.what()
             << "'. VelocyPack: " << database.key.toJson();
 
-        throw;
-      }
+          throw;
+        }
 
-      // We create the database object on the coordinator here, because
-      // it is used to create LogicalCollection instances further
-      // down in this function.
-      if (ServerState::instance()->isCoordinator() &&
-          !database.value.hasKey(StaticStrings::AttrIsBuilding)) {
-        TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
-        if (vocbase == nullptr) {
-          // database does not yet exist, create it now
+        // We create the database object on the coordinator here, because
+        // it is used to create LogicalCollection instances further
+        // down in this function.
+        if (ServerState::instance()->isCoordinator() &&
+            !database.value.hasKey(StaticStrings::AttrIsBuilding)) {
+          TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+          if (vocbase == nullptr) {
+            // database does not yet exist, create it now
 
-          // create a local database object...
-          arangodb::CreateDatabaseInfo info(_server);
-          Result res = info.load(database.value, VPackSlice::emptyArraySlice());
-          if (res.fail()) {
-            LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
+            // create a local database object...
+            arangodb::CreateDatabaseInfo info(_server);
+            Result res = info.load(database.value, VPackSlice::emptyArraySlice());
+            if (res.fail()) {
+              LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
                 << "validating data for local database '" << name
                 << "' failed: " << res.errorMessage();
-          } else {
-            res = databaseFeature.createDatabase(std::move(info), vocbase);
+            } else {
+              res = databaseFeature.createDatabase(std::move(info), vocbase);
 
-            if (res.fail()) {
-              LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
+              if (res.fail()) {
+                LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
                   << "creating local database '" << name
                   << "' failed: " << res.errorMessage();
+              }
             }
           }
         }
-      }
 
-      // On a coordinator we can only see databases that have been fully created
-      if (!(ServerState::instance()->isCoordinator() &&
-            database.value.hasKey(StaticStrings::AttrIsBuilding))) {
-        newDatabases.try_emplace(std::move(name), database.value);
-      } else {
-        buildingDatabases.emplace(std::move(name));
+        // On a coordinator we can only see databases that have been fully created
+        if (!(ServerState::instance()->isCoordinator() &&
+              database.value.hasKey(StaticStrings::AttrIsBuilding))) {
+          newDatabases.try_emplace(std::move(name), database.value);
+        } else {
+          buildingDatabases.emplace(std::move(name));
+        }
       }
     }
-  }
 
-  // Ensure views are being created BEFORE collections to allow
-  // links find them
-  // Immediate children of "Views" are database names, then ids
-  // of views, then one JSON object with the description:
+    // Ensure views are being created BEFORE collections to allow
+    // links find them
+    // Immediate children of "Views" are database names, then ids
+    // of views, then one JSON object with the description:
 
-  // "Plan":{"Views": {
-  //  "_system": {
-  //    "654321": {
-  //      "id": "654321",
-  //      "name": "v",
-  //      "collections": [
-  //        <list of cluster-wide collection IDs of linked collections>
-  //      ]
-  //    },...
-  //  },...
-  //  }}
+    // "Plan":{"Views": {
+    //  "_system": {
+    //    "654321": {
+    //      "id": "654321",
+    //      "name": "v",
+    //      "collections": [
+    //        <list of cluster-wide collection IDs of linked collections>
+    //      ]
+    //    },...
+    //  },...
+    //  }}
 
-  // Now the same for views:
-  auto planViewsSlice = planSlice.get("Views");  // format above
+    // Now the same for views:
+    auto planViewsSlice = planSlice.get("Views");  // format above
 
-  if (planViewsSlice.isObject()) {
-    swapViews = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+    if (planViewsSlice.isObject()) {
+      swapViews = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
 
-    for (auto const& databasePairSlice : velocypack::ObjectIterator(planViewsSlice)) {
-      auto const& viewsSlice = databasePairSlice.value;
+      for (auto const& databasePairSlice : velocypack::ObjectIterator(planViewsSlice)) {
+        auto const& viewsSlice = databasePairSlice.value;
 
-      if (!viewsSlice.isObject()) {
-        LOG_TOPIC("0ee7f", INFO, Logger::AGENCY)
+        if (!viewsSlice.isObject()) {
+          LOG_TOPIC("0ee7f", INFO, Logger::AGENCY)
             << "Views in the plan is not a valid json object."
             << " Views will be ignored for now and the invalid information"
             << " will be repaired. VelocyPack: " << viewsSlice.toJson();
 
-        continue;
-      }
+          continue;
+        }
 
-      auto const databaseName = databasePairSlice.key.copyString();
-      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+        auto const databaseName = databasePairSlice.key.copyString();
+        auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
-      if (!vocbase) {
-        // No database with this name found.
-        // We have an invalid state here.
-        LOG_TOPIC("f105f", WARN, Logger::AGENCY)
+        if (!vocbase) {
+          // No database with this name found.
+          // We have an invalid state here.
+          LOG_TOPIC("f105f", WARN, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding view will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
             << viewsSlice.toJson();
-        planValid &= !viewsSlice.length();  // cannot find vocbase for defined views (allow empty views for missing vocbase)
-
-        continue;
-      }
-
-      for (auto const& viewPairSlice : velocypack::ObjectIterator(viewsSlice)) {
-        auto const& viewSlice = viewPairSlice.value;
-
-        if (!viewSlice.isObject()) {
-          LOG_TOPIC("2487b", INFO, Logger::AGENCY)
-              << "View entry is not a valid json object."
-              << " The view will be ignored for now and the invalid "
-              << "information will be repaired. VelocyPack: " << viewSlice.toJson();
+          planValid &= !viewsSlice.length();  // cannot find vocbase for defined views (allow empty views for missing vocbase)
 
           continue;
         }
 
-        auto const viewId = viewPairSlice.key.copyString();
+        for (auto const& viewPairSlice : velocypack::ObjectIterator(viewsSlice)) {
+          auto const& viewSlice = viewPairSlice.value;
 
-        try {
-          LogicalView::ptr view;
-          auto res = LogicalView::instantiate(  // instantiate
-              view, *vocbase, viewPairSlice.value, newPlanVersion  // args
-          );
-
-          if (!res.ok() || !view) {
-            LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
-                << "Failed to create view '" << viewId
-                << "'. The view will be ignored for now and the invalid "
-                << "information will be repaired. VelocyPack: " << viewSlice.toJson();
-            planValid = false;  // view creation failure
+          if (!viewSlice.isObject()) {
+            LOG_TOPIC("2487b", INFO, Logger::AGENCY)
+              << "View entry is not a valid json object."
+              << " The view will be ignored for now and the invalid "
+              << "information will be repaired. VelocyPack: " << viewSlice.toJson();
 
             continue;
           }
 
-          auto& views = _newPlannedViews[databaseName];
+          auto const viewId = viewPairSlice.key.copyString();
 
-          // register with guid/id/name
-          views.reserve(views.size() + 3);
-          views[viewId] = view;
-          views[view->name()] = view;
-          views[view->guid()] = view;
-        } catch (std::exception const& ex) {
-          // The Plan contains invalid view information.
-          // This should not happen in healthy situations.
-          // If it happens in unhealthy situations the
-          // cluster should not fail.
-          LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
+          try {
+            LogicalView::ptr view;
+            auto res = LogicalView::instantiate(  // instantiate
+              view, *vocbase, viewPairSlice.value, newPlanVersion  // args
+              );
+
+            if (!res.ok() || !view) {
+              LOG_TOPIC("b0d48", ERR, Logger::AGENCY)
+                << "Failed to create view '" << viewId
+                << "'. The view will be ignored for now and the invalid "
+                << "information will be repaired. VelocyPack: " << viewSlice.toJson();
+              planValid = false;  // view creation failure
+
+              continue;
+            }
+
+            auto& views = _newPlannedViews[databaseName];
+
+            // register with guid/id/name
+            views.reserve(views.size() + 3);
+            views[viewId] = view;
+            views[view->name()] = view;
+            views[view->guid()] = view;
+          } catch (std::exception const& ex) {
+            // The Plan contains invalid view information.
+            // This should not happen in healthy situations.
+            // If it happens in unhealthy situations the
+            // cluster should not fail.
+            LOG_TOPIC("ec9e6", ERR, Logger::AGENCY)
               << "Failed to load information for view '" << viewId
               << "': " << ex.what() << ". invalid information in Plan. The "
               << "view will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << viewSlice.toJson();
 
-          TRI_ASSERT(false);
-          continue;
-        } catch (...) {
-          // The Plan contains invalid view information.
-          // This should not happen in healthy situations.
-          // If it happens in unhealthy situations the
-          // cluster should not fail.
-          LOG_TOPIC("660bf", ERR, Logger::AGENCY)
+            TRI_ASSERT(false);
+            continue;
+          } catch (...) {
+            // The Plan contains invalid view information.
+            // This should not happen in healthy situations.
+            // If it happens in unhealthy situations the
+            // cluster should not fail.
+            LOG_TOPIC("660bf", ERR, Logger::AGENCY)
               << "Failed to load information for view '" << viewId
               << ". invalid information in Plan. The view will "
               << "be ignored for now and the invalid information will "
               << "be repaired. VelocyPack: " << viewSlice.toJson();
 
-          TRI_ASSERT(false);
-          continue;
+            TRI_ASSERT(false);
+            continue;
+          }
         }
       }
     }
-  }
 
-  // Immediate children of "Collections" are database names, then ids
-  // of collections, then one JSON object with the description:
+    // Immediate children of "Collections" are database names, then ids
+    // of collections, then one JSON object with the description:
 
-  // "Plan":{"Collections": {
-  //  "_system": {
-  //    "3010001": {
-  //      "deleted": false,
-  //      DO_COMPACT: true,
-  //      "id": "3010001",
-  //      INDEX_BUCKETS: 8,
-  //      "indexes": [
-  //        {
-  //          "fields": [
-  //            "_key"
-  //          ],
-  //          "id": "0",
-  //          "sparse": false,
-  //          "type": "primary",
-  //          "unique": true
-  //        }
-  //      ],
-  //      "isSmart": false,
-  //      "isSystem": true,
-  //      "isVolatile": false,
-  //      JOURNAL_SIZE: 1048576,
-  //      "keyOptions": {
-  //        "allowUserKeys": true,
-  //        "lastValue": 0,
-  //        "type": "traditional"
-  //      },
-  //      "name": "_graphs",
-  //      "numberOfSh ards": 1,
-  //      "path": "",
-  //      "replicationFactor": 2,
-  //      "shardKeys": [
-  //        "_key"
-  //      ],
-  //      "shards": {
-  //        "s3010002": [
-  //          "PRMR-bf44d6fe-e31c-4b09-a9bf-e2df6c627999",
-  //          "PRMR-11a29830-5aca-454b-a2c3-dac3a08baca1"
-  //        ]
-  //      },
-  //      "status": 3,
-  //      "statusString": "loaded",
-  //      "type": 2,
-  //      StaticStrings::WaitForSyncString: false
-  //    },...
-  //  },...
-  // }}
+    // "Plan":{"Collections": {
+    //  "_system": {
+    //    "3010001": {
+    //      "deleted": false,
+    //      DO_COMPACT: true,
+    //      "id": "3010001",
+    //      INDEX_BUCKETS: 8,
+    //      "indexes": [
+    //        {
+    //          "fields": [
+    //            "_key"
+    //          ],
+    //          "id": "0",
+    //          "sparse": false,
+    //          "type": "primary",
+    //          "unique": true
+    //        }
+    //      ],
+    //      "isSmart": false,
+    //      "isSystem": true,
+    //      "isVolatile": false,
+    //      JOURNAL_SIZE: 1048576,
+    //      "keyOptions": {
+    //        "allowUserKeys": true,
+    //        "lastValue": 0,
+    //        "type": "traditional"
+    //      },
+    //      "name": "_graphs",
+    //      "numberOfSh ards": 1,
+    //      "path": "",
+    //      "replicationFactor": 2,
+    //      "shardKeys": [
+    //        "_key"
+    //      ],
+    //      "shards": {
+    //        "s3010002": [
+    //          "PRMR-bf44d6fe-e31c-4b09-a9bf-e2df6c627999",
+    //          "PRMR-11a29830-5aca-454b-a2c3-dac3a08baca1"
+    //        ]
+    //      },
+    //      "status": 3,
+    //      "statusString": "loaded",
+    //      "type": 2,
+    //      StaticStrings::WaitForSyncString: false
+    //    },...
+    //  },...
+    // }}
 
-  auto planCollectionsSlice = planSlice.get("Collections");  // format above
+    auto planCollectionsSlice = planSlice.get("Collections");  // format above
 
-  if (planCollectionsSlice.isObject()) {
-    swapCollections = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+    if (planCollectionsSlice.isObject()) {
+      swapCollections = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
 
-    bool const isCoordinator = ServerState::instance()->isCoordinator();
+      bool const isCoordinator = ServerState::instance()->isCoordinator();
 
-    for (auto const& databasePairSlice : velocypack::ObjectIterator(planCollectionsSlice)) {
-      auto const& collectionsSlice = databasePairSlice.value;
+      for (auto const& databasePairSlice : velocypack::ObjectIterator(planCollectionsSlice)) {
+        auto const& collectionsSlice = databasePairSlice.value;
 
-      if (!collectionsSlice.isObject()) {
-        LOG_TOPIC("e2e7a", INFO, Logger::AGENCY)
+        if (!collectionsSlice.isObject()) {
+          LOG_TOPIC("e2e7a", INFO, Logger::AGENCY)
             << "Collections in the plan is not a valid json object."
             << " Collections will be ignored for now and the invalid "
             << "information will be repaired. VelocyPack: " << collectionsSlice.toJson();
 
-        continue;
-      }
+          continue;
+        }
 
-      DatabaseCollections databaseCollections;
-      auto const databaseName = databasePairSlice.key.copyString();
+        DatabaseCollections databaseCollections;
+        auto const databaseName = databasePairSlice.key.copyString();
 
-      // Skip databases that are still building.
-      if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
-        continue;
-      }
-      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+        // Skip databases that are still building.
+        if (buildingDatabases.find(databaseName) != buildingDatabases.end()) {
+          continue;
+        }
+        auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
-      if (!vocbase) {
-        // No database with this name found.
-        // We have an invalid state here.
-        LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
+        if (!vocbase) {
+          // No database with this name found.
+          // We have an invalid state here.
+          LOG_TOPIC("83d4c", WARN, Logger::AGENCY)
             << "No database '" << databaseName << "' found,"
             << " corresponding collection will be ignored for now and the "
             << "invalid information will be repaired. VelocyPack: "
             << collectionsSlice.toJson();
-        planValid &= !collectionsSlice.length();  // cannot find vocbase for defined collections (allow empty collections for missing vocbase)
-
-        continue;
-      }
-
-      for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
-        auto const& collectionSlice = collectionPairSlice.value;
-
-        if (!collectionSlice.isObject()) {
-          LOG_TOPIC("0f689", WARN, Logger::AGENCY)
-              << "Collection entry is not a valid json object."
-              << " The collection will be ignored for now and the invalid "
-              << "information will be repaired. VelocyPack: " << collectionSlice.toJson();
+          planValid &= !collectionsSlice.length();  // cannot find vocbase for defined collections (allow empty collections for missing vocbase)
 
           continue;
         }
 
-        auto const collectionId = collectionPairSlice.key.copyString();
+        for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
+          auto const& collectionSlice = collectionPairSlice.value;
 
-        try {
-          std::shared_ptr<LogicalCollection> newCollection;
+          if (!collectionSlice.isObject()) {
+            LOG_TOPIC("0f689", WARN, Logger::AGENCY)
+              << "Collection entry is not a valid json object."
+              << " The collection will be ignored for now and the invalid "
+              << "information will be repaired. VelocyPack: " << collectionSlice.toJson();
 
-#ifdef USE_ENTERPRISE
-          auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
-
-          if (isSmart.isTrue()) {
-            auto type = collectionSlice.get(StaticStrings::DataSourceType);
-
-            if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-              newCollection = std::make_shared<VirtualSmartEdgeCollection>(  // create collection
-                  *vocbase, collectionSlice, newPlanVersion  // args
-              );
-            } else {
-              newCollection = std::make_shared<SmartVertexCollection>(  // create collection
-                  *vocbase, collectionSlice, newPlanVersion  // args
-              );
-            }
-          } else
-#endif
-          {
-            newCollection = std::make_shared<LogicalCollection>(  // create collection
-                *vocbase, collectionSlice, true, newPlanVersion  // args
-            );
+            continue;
           }
 
-          auto& collectionName = newCollection->name();
+          auto const collectionId = collectionPairSlice.key.copyString();
 
-          bool isBuilding = isCoordinator &&
-                            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                collectionSlice, StaticStrings::AttrIsBuilding, false);
-          if (isCoordinator) {
-            // copying over index estimates from the old version of the
-            // collection into the new one
-            LOG_TOPIC("7a884", TRACE, Logger::CLUSTER)
+          try {
+            std::shared_ptr<LogicalCollection> newCollection;
+
+#ifdef USE_ENTERPRISE
+            auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
+
+            if (isSmart.isTrue()) {
+              auto type = collectionSlice.get(StaticStrings::DataSourceType);
+
+              if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
+                newCollection = std::make_shared<VirtualSmartEdgeCollection>(  // create collection
+                  *vocbase, collectionSlice, newPlanVersion  // args
+                  );
+              } else {
+                newCollection = std::make_shared<SmartVertexCollection>(  // create collection
+                  *vocbase, collectionSlice, newPlanVersion  // args
+                  );
+              }
+            } else
+#endif
+            {
+              newCollection = std::make_shared<LogicalCollection>(  // create collection
+                *vocbase, collectionSlice, true, newPlanVersion  // args
+                );
+            }
+
+            auto& collectionName = newCollection->name();
+
+            bool isBuilding = isCoordinator &&
+              arangodb::basics::VelocyPackHelper::getBooleanValue(
+                collectionSlice, StaticStrings::AttrIsBuilding, false);
+            if (isCoordinator) {
+              // copying over index estimates from the old version of the
+              // collection into the new one
+              LOG_TOPIC("7a884", TRACE, Logger::CLUSTER)
                 << "copying index estimates";
 
-            // it is effectively safe to access _plannedCollections in
-            // read-only mode here, as the only places that modify
-            // _plannedCollections are the shutdown and this function
-            // itself, which is protected by a mutex
-            auto it = _plannedCollections.find(databaseName);
-            if (it != _plannedCollections.end()) {
-              auto it2 = (*it).second.find(collectionId);
+              // it is effectively safe to access _plannedCollections in
+              // read-only mode here, as the only places that modify
+              // _plannedCollections are the shutdown and this function
+              // itself, which is protected by a mutex
+              auto it = _plannedCollections.find(databaseName);
+              if (it != _plannedCollections.end()) {
+                auto it2 = (*it).second.find(collectionId);
 
-              if (it2 != (*it).second.end()) {
-                try {
-                  auto estimates = (*it2).second->clusterIndexEstimates(false);
+                if (it2 != (*it).second.end()) {
+                  try {
+                    auto estimates = (*it2).second->clusterIndexEstimates(false);
 
-                  if (!estimates.empty()) {
-                    // already have an estimate... now copy it over
-                    newCollection->setClusterIndexEstimates(std::move(estimates));
+                    if (!estimates.empty()) {
+                      // already have an estimate... now copy it over
+                      newCollection->setClusterIndexEstimates(std::move(estimates));
+                    }
+                  } catch (...) {
+                    // this may fail during unit tests, when mocks are used
                   }
-                } catch (...) {
-                  // this may fail during unit tests, when mocks are used
                 }
               }
             }
-          }
 
-          // NOTE: This is building has the following feature. A collection needs to be working on
-          // all DBServers to allow replication to go on, also we require to have the shards planned.
-          // BUT: The users should not be able to detect these collections.
-          // Hence we simply do NOT add the collection to the coordinator local vocbase, which happens
-          // inside the IF
+            // NOTE: This is building has the following feature. A collection needs to be working on
+            // all DBServers to allow replication to go on, also we require to have the shards planned.
+            // BUT: The users should not be able to detect these collections.
+            // Hence we simply do NOT add the collection to the coordinator local vocbase, which happens
+            // inside the IF
 
-          if (!isBuilding) {
-            // register with name as well as with id:
-            databaseCollections.try_emplace(collectionName, newCollection);
-            databaseCollections.try_emplace(collectionId, newCollection);
-          }
+            if (!isBuilding) {
+              // register with name as well as with id:
+              databaseCollections.try_emplace(collectionName, newCollection);
+              databaseCollections.try_emplace(collectionId, newCollection);
+            }
 
-          auto shardIDs = newCollection->shardIds();
-          auto shards = std::make_shared<std::vector<std::string>>();
-          shards->reserve(shardIDs->size());
-          newShardToName.reserve(shardIDs->size());
+            auto shardIDs = newCollection->shardIds();
+            auto shards = std::make_shared<std::vector<std::string>>();
+            shards->reserve(shardIDs->size());
+            newShardToName.reserve(shardIDs->size());
 
-          for (auto const& p : *shardIDs) {
-            TRI_ASSERT(p.first.size() >= 2);
-            shards->push_back(p.first);
-            newShardServers.try_emplace(p.first, p.second);
-            newShardToName.try_emplace(p.first, newCollection->name());
-          }
+            for (auto const& p : *shardIDs) {
+              TRI_ASSERT(p.first.size() >= 2);
+              shards->push_back(p.first);
+              newShardServers.try_emplace(p.first, p.second);
+              newShardToName.try_emplace(p.first, newCollection->name());
+            }
 
-          // Sort by the number in the shard ID ("s0000001" for example):
-          ShardingInfo::sortShardNamesNumerically(*shards);
-          newShards.try_emplace(collectionId, std::move(shards));
-        } catch (std::exception const& ex) {
-          // The plan contains invalid collection information.
-          // This should not happen in healthy situations.
-          // If it happens in unhealthy situations the
-          // cluster should not fail.
-          LOG_TOPIC("359f3", ERR, Logger::AGENCY)
+            // Sort by the number in the shard ID ("s0000001" for example):
+            ShardingInfo::sortShardNamesNumerically(*shards);
+            newShards.try_emplace(collectionId, std::move(shards));
+          } catch (std::exception const& ex) {
+            // The plan contains invalid collection information.
+            // This should not happen in healthy situations.
+            // If it happens in unhealthy situations the
+            // cluster should not fail.
+            LOG_TOPIC("359f3", ERR, Logger::AGENCY)
               << "Failed to load information for collection '" << collectionId
               << "': " << ex.what() << ". invalid information in plan. The "
               << "collection will be ignored for now and the invalid "
               << "information will be repaired. VelocyPack: " << collectionSlice.toJson();
 
-          TRI_ASSERT(false);
-          continue;
-        } catch (...) {
-          // The plan contains invalid collection information.
-          // This should not happen in healthy situations.
-          // If it happens in unhealthy situations the
-          // cluster should not fail.
-          LOG_TOPIC("5f3d5", ERR, Logger::AGENCY)
+            TRI_ASSERT(false);
+            continue;
+          } catch (...) {
+            // The plan contains invalid collection information.
+            // This should not happen in healthy situations.
+            // If it happens in unhealthy situations the
+            // cluster should not fail.
+            LOG_TOPIC("5f3d5", ERR, Logger::AGENCY)
               << "Failed to load information for collection '" << collectionId
               << ". invalid information in plan. The collection will "
               << "be ignored for now and the invalid information will "
               << "be repaired. VelocyPack: " << collectionSlice.toJson();
 
-          TRI_ASSERT(false);
-          continue;
+            TRI_ASSERT(false);
+            continue;
+          }
         }
-      }
 
-      newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
-    }
-    LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
+        newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
+      }
+      LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
         << ", doneVersion=" << _planProt.doneVersion;
-  }
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
-    if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
-      // sharding prototype of _system database defaults to _users nowadays
-      systemDB->setShardingPrototype(ShardingPrototype::Users);
-      // but for "old" databases it may still be "_graphs". we need to find out!
-      // find _system database in Plan
-      auto it = newCollections.find(StaticStrings::SystemDatabase);
-      if (it != newCollections.end()) {
-        // find _graphs collection in Plan
-        auto it2 = (*it).second.find(StaticStrings::GraphCollection);
-        if (it2 != (*it).second.end()) {
-          // found!
-          if ((*it2).second->distributeShardsLike().empty()) {
-            // _graphs collection has no distributeShardsLike, so it is
-            // the prototype!
-            systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+    if (ServerState::instance()->isCoordinator()) {
+      auto systemDB = _server.getFeature<arangodb::SystemDatabaseFeature>().use();
+      if (systemDB && systemDB->shardingPrototype() == ShardingPrototype::Undefined) {
+        // sharding prototype of _system database defaults to _users nowadays
+        systemDB->setShardingPrototype(ShardingPrototype::Users);
+        // but for "old" databases it may still be "_graphs". we need to find out!
+        // find _system database in Plan
+        auto it = newCollections.find(StaticStrings::SystemDatabase);
+        if (it != newCollections.end()) {
+          // find _graphs collection in Plan
+          auto it2 = (*it).second.find(StaticStrings::GraphCollection);
+          if (it2 != (*it).second.end()) {
+            // found!
+            if ((*it2).second->distributeShardsLike().empty()) {
+              // _graphs collection has no distributeShardsLike, so it is
+              // the prototype!
+              systemDB->setShardingPrototype(ShardingPrototype::Graphs);
+            }
           }
         }
       }
     }
-  }
 
-  WRITE_LOCKER(writeLocker, _planProt.lock);
+    WRITE_LOCKER(writeLocker, _planProt.lock);
 
-  _plan = std::move(planBuilder);
-  _planVersion = newPlanVersion;
+    _plan = std::move(planBuilder);
+    _planVersion = newPlanVersion;
 
-  if (swapDatabases) {
-    _plannedDatabases.swap(newDatabases);
-  }
+    if (swapDatabases) {
+      _plannedDatabases.swap(newDatabases);
+    }
 
-  if (swapCollections) {
-    _plannedCollections.swap(newCollections);
-    _shards.swap(newShards);
-    _shardServers.swap(newShardServers);
-    _shardToName.swap(newShardToName);
-  }
+    if (swapCollections) {
+      _plannedCollections.swap(newCollections);
+      _shards.swap(newShards);
+      _shardServers.swap(newShardServers);
+      _shardToName.swap(newShardToName);
+    }
 
-  if (swapViews) {
-    _plannedViews.swap(_newPlannedViews);
-  }
+    if (swapViews) {
+      _plannedViews.swap(_newPlannedViews);
+    }
 
-  // mark plan as fully loaded only if all incoming objects were fully loaded
-  // must still swap structures to allow creation of new vocbases and removal of stale datasources
-  if (planValid) {
-    _planProt.doneVersion = storedVersion;
-    _planProt.isValid = true;
-  }
+    // mark plan as fully loaded only if all incoming objects were fully loaded
+    // must still swap structures to allow creation of new vocbases and removal of stale datasources
+    if (planValid) {
+      _planProt.doneVersion = storedVersion;
+      _planProt.isValid = true;
+    }
+
+    std::tie(acb,idx) = agencyCache.get("Plan/Version");
+
+  } while (acb->slice().getNumber<uint64_t>() > newPlanVersion);
+
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1252,6 +1264,7 @@ void ClusterInfo::loadCurrent() {
 
   _currentProt.doneVersion = storedVersion;
   _currentProt.isValid = true;
+
 }
 
 /// @brief ask about a collection
@@ -3203,8 +3216,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (result.successful()) {
+    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   // This object watches whether the collection is still present in Plan
   // It assumes that the collection *is* present and only changes state
@@ -3252,7 +3267,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
       if (tmpRes < 0) {
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
-
+        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
         auto [acb, index] = cache.get(planIndexesKey);
         auto indexes = acb->slice();
 
@@ -3305,6 +3320,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               << "Could not remove isBuilding flag in new index "
               << indexId.id() << ", this will be repaired automatically.";
         }
+        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+        cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
 
         loadPlan();
 
@@ -3343,6 +3360,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
 
           if (update.successful()) {
+            auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+            cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+
             loadPlan();
 
             if (tmpRes < 0) {                 // timeout
@@ -3926,7 +3946,7 @@ void ClusterInfo::loadCurrentMappings() {
   // Now contact the agency:
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.get(
-    std::vector<std::string>{AgencyCommManager::path(prefixCurrentCoordinators)});
+    std::vector<std::string>{AgencyCommManager::path(prefixMappings)});
   auto result = acb->slice();
 
   if (result.isArray()) {
@@ -4482,6 +4502,9 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
                                 std::to_string(r.errorCode()));
     return result;
   }
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(r.slice().get("results")[0].getNumber<uint64_t>()).get();
+
 
   return arangodb::Result();
 }
@@ -4820,6 +4843,7 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
   }
   return rebootIds;
 }
+
 
 VPackSlice PlanCollectionReader::indexes() {
   VPackSlice res = _collection.get("indexes");

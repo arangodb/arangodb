@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -59,11 +60,14 @@ RestStatus RestClusterHandler::execute() {
     } else if (suffixes[0] == "agency-dump") {
       handleAgencyDump();
       return RestStatus::DONE;
+    } else if (suffixes[0] == "agency-cache") {
+      handleAgencyCache();
+      return RestStatus::DONE;
     }
   }
 
   generateError(
-    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump]"));
+    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
 
   return RestStatus::DONE;
 }
@@ -94,6 +98,30 @@ void RestClusterHandler::handleAgencyDump() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.agencyDump(body);
   generateResult(rest::ResponseCode::OK, body->slice());
+}
+
+void RestClusterHandler::handleAgencyCache() {
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce an agency dump");
+      return;
+    }
+  }
+
+
+  auto& ac = server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = ac.get();
+  generateResult(rest::ResponseCode::OK, acb->slice());
+
 }
 
 /// @brief returns information about all coordinator endpoints

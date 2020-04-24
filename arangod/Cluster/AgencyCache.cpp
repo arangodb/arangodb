@@ -161,6 +161,9 @@ void AgencyCache::run() {
                   std::lock_guard g(_callbacksLock);
                   for (auto i : _callbacks) {
                     if (key.find(i.first) != std::string::npos) {
+                      LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+                        << "Agency callback " << i.second << " triggered for "
+                        << i.first << " refetching!";
                       toCall.push_back(i.second);
                     }
                   }
@@ -176,10 +179,10 @@ void AgencyCache::run() {
             for (auto i : toCall) {
               auto cb = _callbackRegistry.getCallback(i);
               if (cb.get() != nullptr) {
-                LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
-                  << "Agency callback " << i << " has been triggered. refetching!";
                 try {
                   cb->refetchAndUpdate(true, false);
+                  LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+                    << "Agency callback " << i << " has been triggered. refetching!";
                 } catch (arangodb::basics::Exception const& e) {
                   LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
                     << "Error executing callback: " << e.message();

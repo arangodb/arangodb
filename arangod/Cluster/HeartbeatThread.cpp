@@ -441,9 +441,8 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
-  _planAgencyCallback = std::make_shared<AgencyCallback>(_server, "Plan/Version",
-                                                         updatePlan, true, false);
-
+  _planAgencyCallback =
+    std::make_shared<AgencyCallback>(_server, "Plan/Version", updatePlan, true, false);
   _currentAgencyCallback =
       std::make_shared<AgencyCallback>(_server, "Current/Version", updateCurrent, true, false);
 

@@ -288,9 +288,9 @@ class CollectionInfoCurrent {
 };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-class ClusterInfo {
+class ClusterInfo  {
 #else
-class ClusterInfo final {
+class ClusterInfo final  {
 #endif
  private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
@@ -995,6 +995,7 @@ class ClusterInfo final {
 
   arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
+
 };
 
 }  // end namespace arangodb
