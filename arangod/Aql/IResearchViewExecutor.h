@@ -88,9 +88,8 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
-  auto getOutputRegister() const noexcept -> RegisterId;
-  auto getLateMaterializeRegisters() const noexcept -> LateMaterializeRegister const&;
-  auto getOutRegisters() const noexcept -> OutRegisters const& { return _outRegisters; }
+  auto getDocumentRegister() const noexcept -> RegisterId;
+  auto getCollectionRegister() const noexcept -> RegisterId;
 
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   std::vector<RegisterId> const& getScoreRegisters() const noexcept;
@@ -114,7 +113,8 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
 
  private:
-  OutRegisters _outRegisters;
+  aql::RegisterId documentOutReg;
+  aql::RegisterId collectionPointerReg;
   std::vector<RegisterId> _scoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
@@ -189,7 +189,6 @@ class IResearchViewExecutorBase {
   using enabled_for_materialize_type_t = std::enable_if_t<(Traits::MaterializeType & type) == type>;
 
   class ReadContext {
-
    public:
     explicit ReadContext(aql::RegisterId documentOutReg,
                          aql::RegisterId collectionPointerReg,

@@ -110,7 +110,6 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
     : ExecutorInfos(std::move(infos)),
-      _outRegisters(outRegisters),
       _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -127,17 +126,21 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-}
 
-auto IResearchViewExecutorInfos::getOutputRegister() const noexcept -> RegisterId {
-  TRI_ASSERT(std::holds_alternative<MaterializeRegisters>(_outRegisters));
-  return std::get<MaterializeRegisters>(_outRegisters).documentOutReg;
-}
-
-auto IResearchViewExecutorInfos::getLateMaterializeRegisters() const noexcept
-    -> LateMaterializeRegister const& {
-  TRI_ASSERT(std::holds_alternative<LateMaterializeRegister>(_outRegisters));
-  return std::get<LateMaterializeRegister>(_outRegisters);
+  std::visit(
+      overload{
+          [&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
+            std::tie(documentOutReg, collectionPointerReg) =
+                std::pair{regs.documentOutReg, 0};
+          },
+          [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
+            std::tie(documentOutReg, collectionPointerReg) =
+                std::pair{regs.documentOutReg, regs.collectionOutReg};
+          },
+          [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
+            std::tie(documentOutReg, collectionPointerReg) = std::pair{0, 0};
+          }},
+      outRegisters);
 }
 
 IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
@@ -190,6 +193,14 @@ const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearc
 
 IResearchViewStoredValues const& IResearchViewExecutorInfos::storedValues() const noexcept {
   return _storedValues;
+}
+
+auto IResearchViewExecutorInfos::getDocumentRegister() const noexcept -> RegisterId {
+  return documentOutReg;
+}
+
+auto IResearchViewExecutorInfos::getCollectionRegister() const noexcept -> RegisterId {
+  return collectionPointerReg;
 }
 
 IResearchViewStats::IResearchViewStats() noexcept : _scannedIndex(0) {}
@@ -403,19 +414,7 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         static_cast<Impl&>(*this).reset();
       }
 
-      auto ctx = std::visit(
-          overload{// TODO this is horrible! We need to remove the lookup in the variant
-                   [&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
-                     return ReadContext(regs.documentOutReg, 0, _inputRow, output);
-                   },
-                   [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
-                     return ReadContext(regs.documentOutReg,
-                                        regs.collectionOutReg, _inputRow, output);
-                   },
-                   [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) -> ReadContext {
-                     return ReadContext(0, 0, _inputRow, output);
-                   }},
-          infos().getOutRegisters());
+      ReadContext ctx(infos().getDocumentRegister(), infos().getCollectionRegister(), _inputRow, output);
       documentWritten = next(ctx);
 
       if (documentWritten) {
@@ -687,7 +686,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     AqlValue v(VPackSlice::noneSlice());
     AqlValueGuard guard{v, true};
 
-    ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
+    ctx.outputRow.moveValueInto(infos().getDocumentRegister(), ctx.inputRow, guard);
   }
   // in the ordered case we have to write scores as well as a document
   if constexpr (Traits::Ordered) {
