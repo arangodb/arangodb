@@ -32,6 +32,7 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/RegisterInfos.h"
 
 #include <functional>
 #include <memory>
@@ -56,6 +57,7 @@ class ShadowAqlItemRow;
 class SkipResult;
 class ParallelUnsortedGatherExecutor;
 class MultiDependencySingleRowFetcher;
+class RegisterInfos;
 
 template <typename T, typename... Es>
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
@@ -113,7 +115,7 @@ template <class Executor>
 class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
-  using Infos = typename Executor::Infos;
+  using ExecutorInfos = typename Executor::Infos;
   using DataRange = typename Executor::Fetcher::DataRange;
 
   using DependencyProxy =
@@ -166,7 +168,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @param node The Node used to create this ExecutionBlock
    */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     typename Executor::Infos);
+                     RegisterInfos registerInfos, typename Executor::Infos);
 
   ~ExecutionBlockImpl() override;
 
@@ -182,7 +184,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
   auto injectConstantBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
 
-  [[nodiscard]] Infos const& infos() const;
+  [[nodiscard]] ExecutorInfos const& executorInfos() const;
+
+  [[nodiscard]] RegisterInfos const& registerInfos() const;
 
   /// @brief shutdown, will be called exactly once for the whole query
   /// Special implementation for all Executors that need to implement Shutdown
@@ -293,12 +297,14 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    */
   Fetcher _rowFetcher;
 
+  RegisterInfos _registerInfos;
+
   /**
    * @brief This is the working party of this implementation
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
-  Infos _infos;
+  ExecutorInfos _executorInfos;
 
   Executor _executor;
 

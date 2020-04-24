@@ -39,7 +39,7 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
 namespace {
-static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> ExecutorInfos {
+static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> RegisterInfos {
   auto readInput = make_shared_unordered_set();
   auto writeOutput = make_shared_unordered_set();
   std::unordered_set<RegisterId> toClear{};
