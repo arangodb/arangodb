@@ -1412,6 +1412,7 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
+
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
@@ -1475,18 +1476,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return reader;
   };
 
-  if (ServerState::instance()->isCoordinator()) {
-    // coordinator in a cluster: empty view case
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
-#endif
-    return createNoResultsExecutor(engine);
-  }
 
-  std::shared_ptr<IResearchView::Snapshot const> reader = createSnapshot(engine);
-  if (0 == reader->size()) {
-    return createNoResultsExecutor(engine);
-  }
 
   auto const buildExecutorInfo = [this](aql::ExecutionEngine& engine,
                                         std::shared_ptr<IResearchView::Snapshot const> reader) {
@@ -1503,7 +1493,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       materializeType = MaterializeType::NotMaterialize;
       // Register for a loop
       if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-        numDocumentRegs += 1;
+        //numDocumentRegs += 1; // TODO remove later? because its unused
       }
     } else {
       materializeType = MaterializeType::Materialize;
@@ -1529,38 +1519,43 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // the output register(s) for documents (one or two + vars, depending on
     // late materialization) These must of course fit in the available
     // registers. There may be unused registers reserved for later blocks.
-    TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <=
-               getNrOutputRegisters());
+    //TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <=
+    //           getNrOutputRegisters());
     std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
         aql::make_shared_unordered_set();
     writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
-    aql::IResearchViewExecutorInfos::OutRegisters outRegister;
-    if (isLateMaterialized()) {
-      aql::RegisterId documentRegId = variableToRegisterId(_outNonMaterializedDocId);
-      aql::RegisterId collectionRegId = variableToRegisterId(_outNonMaterializedColPtr);
+    auto const outRegister = std::invoke([&]() -> aql::IResearchViewExecutorInfos::OutRegisters {
+      if (isLateMaterialized()) {
+        LOG_DEVEL << "isLateMaterialized()";
+        aql::RegisterId documentRegId = variableToRegisterId(_outNonMaterializedDocId);
+        aql::RegisterId collectionRegId = variableToRegisterId(_outNonMaterializedColPtr);
 
-      writableOutputRegisters->emplace(documentRegId);
-      writableOutputRegisters->emplace(collectionRegId);
-      outRegister =
-          aql::IResearchViewExecutorInfos::LateMaterializeRegister{documentRegId, collectionRegId};
-    } else if (!noMaterialization()) {
-      auto outReg = variableToRegisterId(_outVariable);
+        writableOutputRegisters->emplace(documentRegId);
+        writableOutputRegisters->emplace(collectionRegId);
+        return aql::IResearchViewExecutorInfos::LateMaterializeRegister{documentRegId, collectionRegId};
+      } else if (noMaterialization()) {
+        return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
+      } else {
+        LOG_DEVEL << "!noMaterialization()";
+        auto outReg = variableToRegisterId(_outVariable);
 
-      writableOutputRegisters->emplace(outReg);
-      outRegister = outReg;
-    }
+        writableOutputRegisters->emplace(outReg);
+        return aql::IResearchViewExecutorInfos::MaterializeRegisters{outReg};
+      }
+    });
 
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);
     std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
-      writableOutputRegisters->emplace(variableToRegisterId(scorer.var));
-      scoreRegisters.push_back(variableToRegisterId(scorer.var));
+      auto registerId = variableToRegisterId(scorer.var);
+      writableOutputRegisters->emplace(registerId);
+      scoreRegisters.emplace_back(registerId);
     });
 
-    auto const& varInfos = getRegisterPlan()->varInfo;
-    ViewValuesRegisters outNonMaterializedViewRegs;
+    auto const& varInfos = getRegisterPlan()->varInfo;  // TODO remove if not needed
 
+    ViewValuesRegisters outNonMaterializedViewRegs;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldsVars : columnFieldsVars.second) {
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
@@ -1581,7 +1576,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     auto executorInfos =
         aql::IResearchViewExecutorInfos{std::move(registerInfos),
                                         std::move(reader),
-                                        std::move(outRegister),
+                                        outRegister,
                                         std::move(scoreRegisters),
                                         *engine.getQuery(),
                                         scorers(),
@@ -1591,12 +1586,25 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         outVariable(),
                                         filterCondition(),
                                         volatility(),
-                                        getRegisterPlan()->varInfo,
+                                        getRegisterPlan()->varInfo,   // ??? do we need this?
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs)};
 
     return std::make_pair(materializeType, std::move(executorInfos));
   };
+
+  if (ServerState::instance()->isCoordinator()) {
+    // coordinator in a cluster: empty view case
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+#endif
+    return createNoResultsExecutor(engine);
+  }
+
+  std::shared_ptr<IResearchView::Snapshot const> reader = createSnapshot(engine);
+  if (0 == reader->size()) {
+    return createNoResultsExecutor(engine);
+  }
 
   auto [materializeType, executorInfos] = buildExecutorInfo(engine, std::move(reader));
 

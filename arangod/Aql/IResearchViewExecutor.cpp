@@ -110,7 +110,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
     : ExecutorInfos(std::move(infos)),
-      _outRegisters(std::move(outRegisters)),
+      _outRegisters(outRegisters),
       _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -130,11 +130,12 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
 }
 
 auto IResearchViewExecutorInfos::getOutputRegister() const noexcept -> RegisterId {
-  TRI_ASSERT(std::holds_alternative<RegisterId>(_outRegisters));
-  return std::get<0>(_outRegisters);
+  TRI_ASSERT(std::holds_alternative<MaterializeRegisters>(_outRegisters));
+  return std::get<MaterializeRegisters>(_outRegisters).documentOutReg;
 }
 
-auto IResearchViewExecutorInfos::getLateMaterializeRegisters() const noexcept -> LateMaterializeRegister const& {
+auto IResearchViewExecutorInfos::getLateMaterializeRegisters() const noexcept
+    -> LateMaterializeRegister const& {
   TRI_ASSERT(std::holds_alternative<LateMaterializeRegister>(_outRegisters));
   return std::get<LateMaterializeRegister>(_outRegisters);
 }
@@ -208,6 +209,7 @@ ExecutionStats& aql::operator+=(ExecutionStats& executionStats,
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename Impl, typename Traits>
+template <arangodb::iresearch::MaterializeType, typename>
 IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
     ReadContext& ctx) {
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
@@ -216,7 +218,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
     return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
       AqlValue a{AqlValueHintCopy(doc.begin())};
       AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getNmDocIdOutReg(), ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, guard);
       return true;
     };
   }};
@@ -227,11 +229,14 @@ template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
     aql::RegisterId documentOutReg, aql::RegisterId collectionPointerReg,
     InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
-    : documentOutReg(documentOutReg),
-      collectionPointerReg(collectionPointerReg),
-      inputRow(inputRow),
+    : inputRow(inputRow),
       outputRow(outputRow),
-      callback(copyDocumentCallback(*this)) {}
+      documentOutReg(documentOutReg),
+      collectionPointerReg(collectionPointerReg) {
+  if constexpr (enabled_for_materialize_type<iresearch::MaterializeType::Materialize>) {
+    callback = copyDocumentCallback(*this);
+  }
+}
 
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
@@ -398,8 +403,19 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         static_cast<Impl&>(*this).reset();
       }
 
-      auto regs = infos().getLateMaterializeRegisters();
-      ReadContext ctx(regs.documentOutReg, regs.collectionOutReg, _inputRow, output);
+      auto ctx = std::visit(
+          overload{// TODO this is horrible! We need to remove the lookup in the variant
+                   [&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
+                     return ReadContext(regs.documentOutReg, 0, _inputRow, output);
+                   },
+                   [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
+                     return ReadContext(regs.documentOutReg,
+                                        regs.collectionOutReg, _inputRow, output);
+                   },
+                   [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) -> ReadContext {
+                     return ReadContext(0, 0, _inputRow, output);
+                   }},
+          infos().getOutRegisters());
       documentWritten = next(ctx);
 
       if (documentWritten) {
@@ -580,8 +596,10 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 }
 
 template <typename Impl, typename Traits>
+template <arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId, LogicalCollection const& collection) {
+
   // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
     {
@@ -591,12 +609,12 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
                     "Pointer not fits in uint64_t");
       AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
       AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getNmColPtrOutReg(), ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow, guard);
     }
     {
       AqlValue a(AqlValueHintUInt(documentId.id()));
       AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getNmDocIdOutReg(), ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, guard);
     }
     return true;
   } else {
@@ -642,7 +660,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(!collection.readDocumentWithCallback(infos().getQuery().trx(),
-                                                          documentId, ctx.callback))) {
+                                                          documentId, ctx.getDocumentCallback()))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==

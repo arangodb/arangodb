@@ -70,7 +70,13 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
     RegisterId collectionOutReg;
   };
 
-  using OutRegisters = std::variant<RegisterId, LateMaterializeRegister>;
+  struct MaterializeRegisters {
+    RegisterId documentOutReg;
+  };
+
+  struct NoMaterializeRegisters {};
+
+  using OutRegisters = std::variant<MaterializeRegisters, LateMaterializeRegister, NoMaterializeRegisters>;
 
   IResearchViewExecutorInfos(
       ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
@@ -84,6 +90,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
 
   auto getOutputRegister() const noexcept -> RegisterId;
   auto getLateMaterializeRegisters() const noexcept -> LateMaterializeRegister const&;
+  auto getOutRegisters() const noexcept -> OutRegisters const& { return _outRegisters; }
 
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   std::vector<RegisterId> const& getScoreRegisters() const noexcept;
@@ -175,23 +182,39 @@ class IResearchViewExecutorBase {
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  protected:
+  template<auto type>
+  static constexpr bool enabled_for_materialize_type = (Traits::MaterializeType & type) == type;
+
+  template<auto type>
+  using enabled_for_materialize_type_t = std::enable_if_t<(Traits::MaterializeType & type) == type>;
+
   class ReadContext {
-   private:
-    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
 
    public:
     explicit ReadContext(aql::RegisterId documentOutReg,
                          aql::RegisterId collectionPointerReg,
                          InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow);
 
-    aql::RegisterId const documentOutReg;
-    aql::RegisterId const collectionPointerReg;
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
-    IndexIterator::DocumentCallback const callback;
 
-    [[nodiscard]] auto getNmColPtrOutReg() const noexcept -> aql::RegisterId { return collectionPointerReg; }
-    [[nodiscard]] auto getNmDocIdOutReg() const noexcept -> aql::RegisterId { return documentOutReg; }
+    template<iresearch::MaterializeType t = iresearch::MaterializeType::LateMaterialize, typename E = enabled_for_materialize_type_t<t>>
+    [[nodiscard]] auto getCollectionPointerReg() const noexcept -> aql::RegisterId { return collectionPointerReg; }
+    template<iresearch::MaterializeType t = iresearch::MaterializeType::LateMaterialize, typename E = enabled_for_materialize_type_t<t>>
+    [[nodiscard]] auto getDocumentIdReg() const noexcept -> aql::RegisterId { return documentOutReg; }
+
+    template<iresearch::MaterializeType t = iresearch::MaterializeType::Materialize, typename E = enabled_for_materialize_type_t<t>>
+    auto getDocumentReg() const noexcept -> aql::RegisterId { return documentOutReg; }
+    template<iresearch::MaterializeType t = iresearch::MaterializeType::Materialize, typename E = enabled_for_materialize_type_t<t>>
+    auto getDocumentCallback() const noexcept -> IndexIterator::DocumentCallback const& { return callback; }
+
+   private:
+    template<iresearch::MaterializeType t = iresearch::MaterializeType::Materialize, typename E = enabled_for_materialize_type_t<t>>
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+
+    aql::RegisterId documentOutReg;
+    aql::RegisterId collectionPointerReg;
+    IndexIterator::DocumentCallback callback;
   };  // ReadContext
 
   template <typename ValueType>
@@ -300,6 +323,7 @@ class IResearchViewExecutorBase {
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
                 LocalDocumentId const& documentId, LogicalCollection const& collection);
 
+  template<iresearch::MaterializeType t = iresearch::MaterializeType::LateMaterialize, typename E = enabled_for_materialize_type_t<t>>
   bool writeLocalDocumentId(ReadContext& ctx, LocalDocumentId const& documentId,
                             LogicalCollection const& collection);
 
