@@ -338,7 +338,6 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
 
   #if defined(__APPLE__)
     bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
-      std::cerr << "starting stack_trace_gdb " << std::endl;//!!!!!
       auto pid = fork();
 
       if (!pid) {
@@ -353,18 +352,14 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
           // The exec() functions only return if an error has occurred.
           dup2(fd, 1); // redirect stdout to fd
           dup2(fd, 2); // redirect stderr to fd
-          execlp("lldb", "lldb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
+          execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
         }
 
         exit(1);
       }
 
-      std::cerr << "waiting  " << pid << std::endl;///!!!!!
       int status;
-
-      auto result = 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
-      std::cerr << "waiting  " << pid << " ended with status " << status << std::endl;///!!!!!
-      return result;
+      return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
     bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
@@ -766,9 +761,7 @@ class stack_trace_printer {
     constexpr size_t buf_size = 1024; // arbitrary size
     char buf[buf_size];
     pipe_reader_ = std::thread([this, level, &buf, &buf_len]()->void {
-      std::cerr << "Starting out pipe reading" << std::endl;//!!!!
       for (char ch; read(pipefd_[0], &ch, 1) > 0;) {
-        std::cerr << "Read:" << ch << std::endl;//!!!!!
         if (ch != '\n') {
           if (buf_len < buf_size - 1) {
             buf[buf_len++] = ch;
@@ -786,7 +779,6 @@ class stack_trace_printer {
         buf[buf_len] = 0;
         IR_LOG_FORMATED(level, "%s", buf);
       }
-      std::cerr << "Ended out pipe reading" << std::endl;//!!!!
     });
     return pipefd_[1];
   }
@@ -830,13 +822,17 @@ void stack_trace(level_t level) {
     stack_trace_win32(level, nullptr);
   #else
     stack_trace_printer printer;
-    int fd = printer.start(level);
     try {
-      if (!stack_trace_libunwind(level, fd) && !stack_trace_gdb(level, fd)) {
-        stack_trace_posix(level, fd);
+      if (!stack_trace_libunwind(level, printer.start(level))) {
+        printer.stop();
+        if (!stack_trace_gdb(level, printer.start(level))) {
+          printer.stop();
+          stack_trace_posix(level, printer.start(level));
+        }
       }
     } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(level, fd, 2); // +2 to skip stack_trace()
+      printer.stop();
+      stack_trace_nomalloc(level, printer.start(level), 2); // +2 to skip stack_trace()
       throw;
     }
   #endif
@@ -845,32 +841,7 @@ void stack_trace(level_t level) {
 
 void stack_trace(level_t level, const std::exception_ptr& eptr) {
   UNUSED(eptr); // no known way to get original instruction pointer from exception_ptr
-
-  if (!enabled(level)) {
-    return; // skip generating trace if logging is disabled for this level altogether
-  }
-
-  // copy of stack_trace() for proper ignored-frames calculation
-  #if defined(_MSC_VER)
-    __try {
-      RaiseException(1, 0, 0, NULL);
-    } __except(stack_trace_win32(level, GetExceptionInformation())) {
-      return;
-    }
-
-    stack_trace_win32(level, nullptr);
-  #else
-    stack_trace_printer printer;
-    int fd = printer.start(level);
-    try {
-      if (!stack_trace_libunwind(level, fd) && !stack_trace_gdb(level, fd)) {
-        stack_trace_posix(level, fd);
-      }
-    } catch(std::bad_alloc&) {
-      stack_trace_nomalloc(level, fd, 2); // +2 to skip stack_trace()
-      throw;
-    }
-  #endif
+  stack_trace(level);
 }
 
 #ifndef _MSC_VER
