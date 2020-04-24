@@ -29,9 +29,9 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <iosfwd>
@@ -41,16 +41,13 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class LimitExecutorInfos : public ExecutorInfos {
+class LimitExecutorInfos {
  public:
-  LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     std::unordered_set<RegisterId> registersToKeep,
-                     size_t offset, size_t limit, bool fullCount);
+  LimitExecutorInfos(size_t offset, size_t limit, bool fullCount);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;

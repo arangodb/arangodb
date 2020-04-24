@@ -108,10 +108,6 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 
-size_t InAndOutRowExpressionContext::numRegisters() const {
-  return _regs.size();
-}
-
 bool InAndOutRowExpressionContext::needsVertexValue() const {
   return _vertexVarIdx < _regs.size();
 }

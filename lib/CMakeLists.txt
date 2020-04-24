@@ -123,6 +123,7 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/NumberOfCores.cpp
   Basics/NumberUtils.cpp
   Basics/PageSize.cpp
   Basics/PhysicalMemory.cpp

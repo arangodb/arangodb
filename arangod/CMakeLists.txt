@@ -281,7 +281,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
   Aql/ExecutorExpressionContext.cpp
-  Aql/ExecutorInfos.cpp
+  Aql/RegisterInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
   Aql/FixedVarExpressionContext.cpp
