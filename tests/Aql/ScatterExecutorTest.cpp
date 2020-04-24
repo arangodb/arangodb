@@ -84,7 +84,7 @@ class SharedScatterExecutionBlockTest {
    */
   auto generateNodeDummy() -> ExecutionNode* {
     auto dummy = std::make_unique<SingletonNode>(
-      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->rootEngine()->root()->getPlanNode()->plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
       ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
@@ -93,7 +93,7 @@ class SharedScatterExecutionBlockTest {
 
   auto generateScatterNode() -> ScatterNode* {
     auto dummy = std::make_unique<ScatterNode>(
-            const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->rootEngine()->root()->getPlanNode()->plan()),
+            const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
             ExecutionNodeId{_execNodes.size()},
             ScatterNode::ScatterType::SHARD);
     auto res = dummy.get();

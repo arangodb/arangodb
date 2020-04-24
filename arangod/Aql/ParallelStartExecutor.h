@@ -25,7 +25,6 @@
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SingleRowFetcher.h"
 
@@ -52,8 +51,7 @@ class ParallelStartExecutor final {};
 template <>
 class ExecutionBlockImpl<ParallelStartExecutor> : public ExecutionBlock {
  public:
-  ExecutionBlockImpl(ExecutionEngine* engine, ParallelStartNode const* node,
-                     ExecutorInfos&& infos);
+  ExecutionBlockImpl(ExecutionEngine* engine, ParallelStartNode const* node);
 
   ~ExecutionBlockImpl() override = default;
   
@@ -68,10 +66,8 @@ class ExecutionBlockImpl<ParallelStartExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-  ExecutorInfos const& infos() const { return _infos; }
 
  private:
-  ExecutorInfos _infos;
   std::mutex _mutex;
   bool _isShutdown;
 };

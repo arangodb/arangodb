@@ -157,7 +157,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     notSplicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
-    auto notSplicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(notSplicedQuery.rootEngine()->root()->getPlanNode()->plan());
+    auto notSplicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(notSplicedQuery.plan());
     ASSERT_NE(notSplicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
@@ -177,7 +177,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     splicedQuery.prepareQuery(SerializationFormat::SHADOWROWS);
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
-    auto splicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery.rootEngine()->root()->getPlanNode()->plan());
+    auto splicedPlan = const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery.plan());
     ASSERT_NE(splicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*> splicedSubqueryNodes{a};

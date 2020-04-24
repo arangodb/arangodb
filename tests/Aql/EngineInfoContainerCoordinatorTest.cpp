@@ -37,6 +37,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Cluster/RebootTracker.h"
+#include "Mocks/Servers.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -87,32 +88,29 @@ TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
 // 3. query->engine();
 
 TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_snippet) {
-  std::unordered_set<std::string> const restrictToShards;
   MapRemoteToSnippet queryIds;
   std::string const dbname = "TestDB";
+  
+  mocks::MockAqlServer server;
 
   // ------------------------------
   // Section: Create Mock Instances
   // ------------------------------
-  fakeit::Mock<ExecutionNode> singletonMock;
-  ExecutionNode& sNode = singletonMock.get();
-  fakeit::When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-
-  fakeit::Mock<ExecutionEngine> mockEngine;
-  // ExecutionEngine& myEngine = mockEngine.get();
-
-  fakeit::Mock<ExecutionBlock> rootBlockMock;
-  ExecutionBlock& rootBlock = rootBlockMock.get();
-
-  fakeit::Mock<Query> mockQuery;
-  Query& query = mockQuery.get();
-
-  fakeit::Mock<QueryRegistry> mockRegistry;
-  fakeit::When(Method(mockRegistry, defaultTTL)).AlwaysReturn(600.0);
-  // TODO QueryRegistry& registry = mockRegistry.get();
-
-  fakeit::Mock<transaction::Methods> mockTrx;
-  // transaction::Methods& trx = mockTrx.get();
+//  fakeit::Mock<ExecutionNode> singletonMock;
+//  ExecutionNode& sNode = singletonMock.get();
+//  fakeit::When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+//
+//  fakeit::Mock<ExecutionEngine> mockEngine;
+//  // ExecutionEngine& myEngine = mockEngine.get();
+//
+//  fakeit::Mock<ExecutionBlock> rootBlockMock;
+//  ExecutionBlock& rootBlock = rootBlockMock.get();
+//
+//  fakeit::Mock<Query> mockQuery;
+//  Query& query = mockQuery.get();
+//
+//  fakeit::Mock<transaction::Methods> mockTrx;
+//   transaction::Methods& trx = mockTrx.get();
 
   // ------------------------------
   // Section: Mock Functions
@@ -128,45 +126,33 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
       delete eng;
     }
   );
-*/
   //fakeit::When(Method(mockQuery, trx)).Return(&trx);
   /// fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
   fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
   fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&rootBlock);
+ */
 
   // ------------------------------
   // Section: Run the test
   // ------------------------------
-
-  EngineInfoContainerCoordinator testee;
-  testee.addNode(&sNode);
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
-  std::vector<uint64_t> coordinatorQueryIds{};
-  SnippetList coordSnippets;
-  auto result =
-      testee.buildEngines(query,
-                          // &registry,
-                          mgr,
-                          // dbname,
-                          restrictToShards,
-                          queryIds,
-                          coordSnippets
-                          // coordinatorQueryIds
-        );
-  ASSERT_TRUE(result.ok());
-  ASSERT_TRUE(coordSnippets.size() == 1);
+  
+  ServerState::instance()->setRole(ServerState::RoleEnum::ROLE_COORDINATOR);
+  
+  // simon: we only use this query for the API
+  auto q = server.createFakeQuery("RETURN 1");
+  ASSERT_EQ(q->rootEngine()->blocksForTesting().size(), 3);
+  
+  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2];
+  ASSERT_EQ(block->getPlanNode()->getType(), ExecutionNode::RETURN);
+  
+  ASSERT_EQ(q->snippets().size(), 1);
   
   // The last engine should not be stored
   // It is not added to the registry
   ASSERT_TRUE(queryIds.empty());
-
-  // Validate that the query is wired up with the engine
-  // fakeit::Verify(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine *))).Exactly(1);
-  // Validate that createBlocks has been called!
-  fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 }
 
+#if 0
 TEST(EngineInfoContainerTest,
      it_should_create_a_new_engine_and_register_it_for_the_second_snippet) {
   std::unordered_set<std::string> const restrictToShards;
@@ -751,13 +737,10 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   SnippetList coordSnippets;
   auto result =
       testee.buildEngines(query,
-                          // &registry,
                           mgr,
-                          // dbname,
                           restrictToShards,
                           queryIds,
                           coordSnippets
-                          // coordinatorQueryIds
         );
   ASSERT_FALSE(result.ok());
   // Make sure we check the right thing here
@@ -963,6 +946,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
       .Exactly(1);
   */
 }
+#endif
 
 }  // namespace engine_info_container_coordinator_test
 }  // namespace tests

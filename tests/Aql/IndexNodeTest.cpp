@@ -478,7 +478,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
       createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
 
@@ -492,7 +492,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       }
 
       arangodb::aql::IndexNode indNodeDeserialized(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()), createJson->slice());
+        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()), createJson->slice());
       ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
     }
 
@@ -502,7 +502,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       {
         auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
           indNode.clone(
-            const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+            const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
             true, false));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
@@ -524,7 +524,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
         indNode.invalidateVarUsage();
         auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(
           indNode.clone(
-            const_cast<arangodb::aql::ExecutionPlan*>(queryClone.rootEngine()->root()->getPlanNode()->plan()), true, true));
+            const_cast<arangodb::aql::ExecutionPlan*>(queryClone.plan()), true, true));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
         EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
@@ -559,7 +559,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  auto vars = query.rootEngine()->root()->getPlanNode()->plan()->getAst()->variables();
+  auto vars = query.plan()->getAst()->variables();
   auto const& v = std::make_unique<arangodb::aql::Variable>("5", 6, false);
   if (vars->getVariable(v->id) == nullptr) {
     vars->createVariable(v.get());
@@ -609,7 +609,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     );
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
       createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized());
   }
@@ -657,7 +657,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -712,7 +712,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -767,7 +767,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -820,7 +820,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "}"
     );
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
       createJson->slice());
     ASSERT_TRUE(indNode.isLateMaterialized()); // do not read the name
   }
@@ -870,7 +870,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     // deserialization
     try {
       arangodb::aql::IndexNode indNode(
-        const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+        const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
         createJson->slice());
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
@@ -920,7 +920,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     );
     // deserialization
     arangodb::aql::IndexNode indNode(
-      const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan()),
+      const_cast<arangodb::aql::ExecutionPlan*>(query.plan()),
       createJson->slice());
     ASSERT_FALSE(indNode.isLateMaterialized());
   }

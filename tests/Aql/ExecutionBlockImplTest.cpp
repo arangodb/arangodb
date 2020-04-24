@@ -83,7 +83,7 @@ class SharedExecutionBlockImplTest {
    */
   ExecutionNode* generateNodeDummy() {
     auto dummy = std::make_unique<SingletonNode>(
-      const_cast<ExecutionPlan*>(fakedQuery->rootEngine()->root()->getPlanNode()->plan()), ExecutionNodeId{_execNodes.size()});
+      const_cast<ExecutionPlan*>(fakedQuery->plan()), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;

@@ -174,18 +174,6 @@ void EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::serializ
     infoBuilder.close();
   }
   infoBuilder.close();  // edges
-
-#warning TODO
-//#ifdef USE_ENTERPRISE
-//  if (!_inaccessibleShards.empty()) {
-//    infoBuilder.add(VPackValue("inaccessible"));
-//    infoBuilder.openArray();
-//    for (ShardID const& shard : _inaccessibleShards) {
-//      infoBuilder.add(VPackValue(shard));
-//    }
-//    infoBuilder.close();  // inaccessible
-//  }
-//#endif
   infoBuilder.close();  // shards
 
   _node->enhanceEngineInfo(infoBuilder);

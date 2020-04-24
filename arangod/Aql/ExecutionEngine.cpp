@@ -89,10 +89,7 @@ struct TraverserEngineShardLists {
  */
 Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
                                      MapRemoteToSnippet const& queryIds) {
-#warning remove ifndef
-#ifndef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-#endif
   
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;

@@ -566,8 +566,8 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
                              bindVars, options);
 
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  EXPECT_TRUE(query.rootEngine()->root()->getPlanNode()->plan());
-  auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query.rootEngine()->root()->getPlanNode()->plan());
+  EXPECT_TRUE(query.plan());
+  auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query.plan());
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};

@@ -199,6 +199,10 @@ class Query : public QueryContext {
     return _itemBlockManager;
   }
 #endif
+  
+  SnippetList const& snippets() const {
+    return _snippets;
+  }
 
  protected:
   /// @brief initializes the query
@@ -308,10 +312,6 @@ class ClusterQuery final : public Query {
   ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                std::shared_ptr<arangodb::velocypack::Builder> const& options);
   ~ClusterQuery();
-  
-  SnippetList const& snippets() const {
-    return _snippets;
-  }
   
   traverser::GraphEngineList const& traversers() const {
     return _traversers;

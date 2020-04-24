@@ -42,9 +42,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ExecutionBlockImpl<ParallelStartExecutor>::ExecutionBlockImpl(
-    ExecutionEngine* engine, ParallelStartNode const* node, ExecutorInfos&& infos)
-    : ExecutionBlock(engine, node),
-      _infos(std::move(infos)), _isShutdown(false) {}
+    ExecutionEngine* engine, ParallelStartNode const* node)
+    : ExecutionBlock(engine, node), _isShutdown(false) {}
 
 //std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::getSome(size_t atMost) {
 //  traceGetSomeBegin(atMost);

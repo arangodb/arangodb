@@ -42,7 +42,7 @@ AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
 
 template <bool enableQueryTrace>
 auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy() -> ExecutionNode* {
-  auto dummy = std::make_unique<SingletonNode>(const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->rootEngine()->root()->getPlanNode()->plan()),
+  auto dummy = std::make_unique<SingletonNode>(const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
                                                ExecutionNodeId{_execNodes.size()});
   auto res = dummy.get();
   _execNodes.emplace_back(std::move(dummy));

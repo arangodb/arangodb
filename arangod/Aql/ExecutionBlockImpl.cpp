@@ -28,7 +28,6 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AsyncExecutor.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
@@ -1884,7 +1883,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<AsyncExecutor>;
 
 // IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;

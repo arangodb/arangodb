@@ -147,6 +147,12 @@ class ExecutionEngine {
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::vector<ExecutionBlock*> const& blocksForTesting() const {
+    return _blocks;
+  }
+#endif
+  
  private:
   
   ExecutionState shutdownDBServerQueries(int errorCode);

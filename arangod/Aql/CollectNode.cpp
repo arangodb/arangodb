@@ -289,7 +289,6 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       auto executorInfos =
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),

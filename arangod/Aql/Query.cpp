@@ -1127,6 +1127,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
     std::shared_ptr<SharedQueryState> ss;
     if (sync) {
       ss = engine->sharedState();
+      ss->resetWakeupHandler();
     }
     try {
       while (true) {
