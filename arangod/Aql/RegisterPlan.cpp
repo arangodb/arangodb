@@ -56,7 +56,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->increaseDepth();
   }
 
-  LOG_DEVEL << en->getTypeString() << ":" << en->id() << " isPassthrough = " << isPassthrough;
   if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
     plan->addSubqueryNode(en);
   }
@@ -70,7 +69,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    */
   auto const planRegistersForCurrentNode = [&](T* en, bool isBefore) -> void {
     if (isBefore == isPassthrough) {
-      auto outputVariables = en->getOutputVariables()._set;
+      auto const outputVariables = en->getOutputVariables();
       for (VariableId const& v : outputVariables) {
         TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
         plan->registerVariable(v, unusedRegisters);
@@ -228,12 +227,10 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<Registe
 
   if (unusedRegisters.empty()) {
     regId = totalNrRegs;
-    LOG_DEVEL << "adding new register " << regId << " for variable " << v;
     addRegister();
   } else {
     auto iter = unusedRegisters.begin();
     regId = *iter;
-    LOG_DEVEL << "reusing register " << regId << " for variable " << v;
     unusedRegisters.erase(iter);
   }
 

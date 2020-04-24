@@ -120,16 +120,7 @@ struct SortElement {
 
 typedef std::vector<SortElement> SortElementVector;
 
-struct VariableIdSet {
-
-  VariableIdSet() = default;
-  VariableIdSet(std::initializer_list<VariableId> list) : _set(list) {}
-  void insert(VariableId id) {
-    _set.push_back(id);
-  }
-
-  std::vector<VariableId> _set;
-};
+using VariableIdSet = std::unordered_set<VariableId>;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {

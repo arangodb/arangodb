@@ -1532,7 +1532,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     auto const outRegister = std::invoke([&]() -> aql::IResearchViewExecutorInfos::OutRegisters {
       if (isLateMaterialized()) {
-        LOG_DEVEL << "isLateMaterialized()";
         aql::RegisterId documentRegId = variableToRegisterId(_outNonMaterializedDocId);
         aql::RegisterId collectionRegId = variableToRegisterId(_outNonMaterializedColPtr);
 
@@ -1542,7 +1541,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       } else if (noMaterialization()) {
         return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
       } else {
-        LOG_DEVEL << "!noMaterialization()";
         auto outReg = variableToRegisterId(_outVariable);
 
         writableOutputRegisters->emplace(outReg);
