@@ -163,14 +163,7 @@ std::vector<std::string> Collection::shardKeys(bool normalize) const {
     // now normalize it this to _key
     return std::vector<std::string>{StaticStrings::KeyString};
   }
-
-  std::vector<std::string> keys;
-  keys.reserve(originalKeys.size());
-  for (auto const& key : originalKeys) {
-    keys.emplace_back(key);
-  }
-
-  return keys;
+  return {originalKeys.begin(), originalKeys.end()};
 }
 
 size_t Collection::numberOfShards() const {
@@ -256,7 +249,7 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
   }
   
   return idx;
- }
+}
 
 std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   auto coll = this->getCollection();
@@ -266,7 +259,7 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
-    coll->clusterIndexEstimates(true);  // TODO breaks on mmfiles
+    coll->clusterIndexEstimates(true); 
   }
   
   std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
