@@ -44,7 +44,7 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 class FilterStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
