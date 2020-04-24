@@ -38,9 +38,6 @@ class term_query final : public filter::prepared {
   /// @brief cached per reader term state
   //////////////////////////////////////////////////////////////////////////////
   struct term_state {
-    term_state() = default;
-    term_state(term_state&& rhs) = default;
-
     const term_reader* reader{};
     seek_term_iterator::cookie_ptr cookie;
   }; // term_state

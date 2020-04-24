@@ -36,6 +36,9 @@ NS_ROOT
 
 template<typename State>
 class states_cache : private util::noncopyable {
+ private:
+  using states_map = std::unordered_map<const sub_reader*, State>;
+
  public:
   using state_type = State;
 
@@ -43,11 +46,13 @@ class states_cache : private util::noncopyable {
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs) noexcept
+  states_cache(states_cache&& rhs)
+      noexcept(std::is_nothrow_move_constructible_v<states_map>)
     : states_(std::move(rhs.states_)) {
   }
 
-  states_cache& operator=(states_cache&& rhs) noexcept {
+  states_cache& operator=(states_cache&& rhs)
+      noexcept(std::is_nothrow_move_assignable_v<states_map>) {
     if (this != &rhs) {
       states_ = std::move(rhs.states_);
     }
@@ -55,8 +60,7 @@ class states_cache : private util::noncopyable {
   }
 
   State& insert(const sub_reader& rdr) {
-    auto it = states_.emplace(&rdr, State()).first;
-    return it->second;    
+    return states_[&rdr];
   }
 
   const State* find(const sub_reader& rdr) const noexcept {
@@ -67,10 +71,8 @@ class states_cache : private util::noncopyable {
   bool empty() const noexcept { return states_.empty(); }
 
 private:
-  typedef std::unordered_map<const sub_reader*, State> states_map_t;
-
   // FIXME use vector instead?
-  states_map_t states_;
+  states_map states_;
 }; // states_cache
 
 struct index_reader;

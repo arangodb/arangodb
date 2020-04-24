@@ -44,7 +44,6 @@ class by_phrase;
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API by_phrase_options {
  private:
-  // switch to std::variant after moving to C++17
   using phrase_part = std::variant<
     by_term_options,
     by_prefix_options,

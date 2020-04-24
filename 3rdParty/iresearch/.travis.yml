@@ -43,8 +43,8 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=14
-        - CMAKE_VERSION=3.2.3 # supports c++14
+        - CXX_STANDARD=17
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -58,8 +58,8 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=14
-        - CMAKE_VERSION=3.2.3 # supports c++14
+        - CXX_STANDARD=17
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Release" STATIC_LIB="true"
 
     ############################################################################
@@ -73,8 +73,8 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=14
-        - CMAKE_VERSION=3.2.3 # supports c++14
+        - CXX_STANDARD=17
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
@@ -88,8 +88,8 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - CXX_STANDARD=14
-        - CMAKE_VERSION=3.2.3 # supports c++14
+        - CXX_STANDARD=17
+        - CMAKE_VERSION=3.8.2 # supports c++17
         - BUILD_TYPE="Release"
 
     ############################################################################

@@ -54,22 +54,20 @@ inline bytes_ref unescape(const bytes_ref& in, bstring& out) {
 }
 
 template<typename Invalid, typename Term, typename Prefix, typename WildCard>
-inline void executeWildcard(
-    bstring& buf, bytes_ref term, Invalid inv, Term t, Prefix p, WildCard w) {
+inline auto executeWildcard(
+    bstring& buf, bytes_ref term,
+    Invalid inv, Term t, Prefix p, WildCard w) {
   switch (wildcard_type(term)) {
     case WildcardType::INVALID:
-      inv();
-      break;
+      return inv();
     case WildcardType::TERM_ESCAPED:
       term = unescape(term, buf);
     [[fallthrough]];
     case WildcardType::TERM:
-      t(term);
-      break;
+      return t(term);
     case WildcardType::MATCH_ALL:
       term = bytes_ref::EMPTY;
-      p(term);
-      break;
+      return p(term);
     case WildcardType::PREFIX_ESCAPED:
       term = unescape(term, buf);
     [[fallthrough]];
@@ -83,15 +81,13 @@ inline void executeWildcard(
       assert(pos != end);
 
       term = bytes_ref(begin, size_t(pos - begin)); // remove trailing '%'
-      p(term);
-      break;
+      return p(term);
     }
     case WildcardType::WILDCARD:
-      w(term);
-      break;
+      return w(term);
     default:
       assert(false);
-      inv();
+      return inv();
   }
 }
 
@@ -107,31 +103,31 @@ DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
 field_visitor by_wildcard::visitor(const bytes_ref& term) {
-  field_visitor res = [](const sub_reader&, const term_reader&, filter_visitor&) { };
-
   bstring buf;
-  executeWildcard(
+  return executeWildcard(
     buf, term,
-    [](){ },
-    [&res](const bytes_ref& term) {
+    []() -> field_visitor {
+      return [](const sub_reader&, const term_reader&, filter_visitor&) { };
+    },
+    [](const bytes_ref& term) -> field_visitor {
       // must copy term as it may point to temporary string
-      res = [term = bstring(term)](
+      return [term = bstring(term)](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) {
         by_term::visit(segment, field, term, visitor);
       };
     },
-    [&res](const bytes_ref& term) {
+    [](const bytes_ref& term) -> field_visitor {
       // must copy term as it may point to temporary string
-      res = [term = bstring(term)](
+      return [term = bstring(term)](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) {
         by_prefix::visit(segment, field, term, visitor);
       };
     },
-    [&res](const bytes_ref& term) {
+    [](const bytes_ref& term) -> field_visitor{
       struct automaton_context : util::noncopyable {
         automaton_context(const bytes_ref& term)
           : acceptor(from_wildcard(term)),
@@ -146,10 +142,10 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
       auto ctx = memory::make_shared<automaton_context>(term);
 
       if (!validate(ctx->acceptor)) {
-        return;
+        return [](const sub_reader&, const term_reader&, filter_visitor&) { };
       }
 
-      res = [ctx](
+      return [ctx](
           const sub_reader& segment,
           const term_reader& field,
           filter_visitor& visitor) mutable {
@@ -157,8 +153,6 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
       };
     }
   );
-
-  return res;
 }
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
@@ -169,21 +163,22 @@ field_visitor by_wildcard::visitor(const bytes_ref& term) {
     const bytes_ref& term,
     size_t scored_terms_limit) {
   bstring buf;
-  filter::prepared::ptr res;
-  executeWildcard(
+  return executeWildcard(
     buf, term,
-    [&res]() {
-      res = prepared::empty(); },
-    [&res, &index, &order, boost, &field](const bytes_ref& term) {
-      res = by_term::prepare(index, order, boost, field, term);},
-    [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
-      res = by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);},
-    [&res, &index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) {
-      res = prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit,
-                                     index, order, boost);
+    []() -> filter::prepared::ptr {
+      return prepared::empty();
+    },
+    [&index, &order, boost, &field](const bytes_ref& term) -> filter::prepared::ptr {
+      return by_term::prepare(index, order, boost, field, term);
+    },
+    [&index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) -> filter::prepared::ptr {
+      return by_prefix::prepare(index, order, boost, field, term, scored_terms_limit);
+    },
+    [&index, &order, boost, &field, scored_terms_limit](const bytes_ref& term) -> filter::prepared::ptr {
+      return prepare_automaton_filter(field, from_wildcard(term), scored_terms_limit,
+                                      index, order, boost);
     }
   );
-  return res;
 }
 
 NS_END

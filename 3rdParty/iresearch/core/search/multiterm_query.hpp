@@ -42,17 +42,11 @@ struct multiterm_state {
         stat_offset(stat_offset),
         boost(boost) {
     }
-    term_state(term_state&& rhs) = default;
-    term_state& operator=(term_state&& rhs) = default;
 
     seek_term_iterator::seek_cookie::ptr cookie;
     uint32_t stat_offset{};
     float_t boost{ no_boost() };
   };
-
-  multiterm_state() = default;
-  multiterm_state(multiterm_state&& rhs) = default;
-  multiterm_state& operator=(multiterm_state&& rhs) = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if state is empty

@@ -27,7 +27,7 @@
 
 NS_ROOT
 
-struct boost_sort final : public sort {
+struct IRESEARCH_API boost_sort final : public sort {
   DECLARE_SORT_TYPE();
   DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
 

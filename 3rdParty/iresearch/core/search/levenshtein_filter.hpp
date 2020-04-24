@@ -118,7 +118,8 @@ class IRESEARCH_API by_edit_distance final
     options_type::pdp_f provider,
     bool with_transpositions);
 
-  static field_visitor visitor(const options_type::filter_options& options);
+  static field_visitor visitor(
+    const options_type::filter_options& options);
 
   using filter::prepare;
 
