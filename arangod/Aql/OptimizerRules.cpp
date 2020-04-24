@@ -3990,9 +3990,6 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       TRI_ASSERT(shortestPathNode->isDisjoint());
       collection = shortestPathNode->collection();
       inputVariable = shortestPathNode->startInVariable();
-      // TODO:
-      // If the traversal node uses a constant start vertex, then this will be
-      // nullptr, hence we'll have to stunt around this.
       TRI_ASSERT(inputVariable);
       alternativeVariable = inputVariable;
       allowSpecifiedKeys = true;
