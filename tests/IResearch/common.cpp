@@ -21,8 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/utf8_path.hpp"
-
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
@@ -52,13 +50,14 @@
 #include "VocBase/KeyGenerator.h"
 #include "common.h"
 #include "gtest/gtest.h"
-#include "search/scorers.hpp"
 
+#include "index/index_reader.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/term_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/scorers.hpp"
+#include "search/term_filter.hpp"
 #include "utils/string.hpp"
-
+#include "utils/utf8_path.hpp"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -588,7 +587,8 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
 
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{&trx, &plan, plan.getAst(),
-                                                exprCtx, &viewNode->outVariable()};
+                                                exprCtx, &irs::sub_reader::empty(),
+                                                &viewNode->outVariable()};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx,
                                                            viewNode->filterCondition())
                     .ok());
@@ -644,7 +644,7 @@ void assertExpressionFilter(
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        {}, {}, {}, arangodb::transaction::Options());
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
     EXPECT_TRUE(
         (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
   }
@@ -662,7 +662,8 @@ void assertExpressionFilter(
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                &ExpressionContextMock::EMPTY, ref};
+                                                &ExpressionContextMock::EMPTY,
+                                                &irs::sub_reader::empty(), ref};
     EXPECT_TRUE(
         (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
     EXPECT_EQ(expected, actual);
@@ -754,7 +755,7 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
 
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok());
   }
 
@@ -764,7 +765,7 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
                                         {}, {}, {}, arangodb::transaction::Options());
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(dynamic_cast<irs::boolean_filter*>(&actual), ctx, *filterNode).ok());
   }
 }
@@ -820,7 +821,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
 
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
     EXPECT_TRUE(
         (parseOk ==
          arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
@@ -834,7 +835,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     irs::Or actual;
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
     EXPECT_TRUE(
         (execOk ==
          arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));

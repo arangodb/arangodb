@@ -134,7 +134,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
   if (searchCondition.root()) {
     auto filterCreated = FilterFactory::filter(
       nullptr,
-      { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
+      { query.trx(), nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
       *searchCondition.root());
 
     if (filterCreated.fail()) {

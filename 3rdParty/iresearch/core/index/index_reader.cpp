@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_meta.hpp"
 #include "index_reader.hpp"
 #include "segment_reader.hpp"
 #include "index_meta.hpp"

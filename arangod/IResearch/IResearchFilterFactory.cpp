@@ -32,14 +32,16 @@
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
+#include "search/filter_visitor.hpp"
 #include "search/granular_range_filter.hpp"
-#include "search/phrase_filter.hpp"
 #include "search/levenshtein_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
+#include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/top_terms_collector.hpp"
 #include "search/wildcard_filter.hpp"
-#include "search/ngram_similarity_filter.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
@@ -2160,9 +2162,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                          arangodb::aql::AstNode const& args,
                                          arangodb::aql::AstNode const** field,
                                          ScopedAqlValue& targetValue,
-                                         irs::string_ref& target,
-                                         size_t& scoringLimit, int64_t& maxDistance,
-                                         bool& withTranspositions,
+                                         irs::by_edit_distance_options& opts,
                                          std::string const& errorSuffix = std::string()) {
   if (!args.isDeterministic()) {
     auto res = error::nondeterministicArgs(funcName);
@@ -2193,6 +2193,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // (1 - First) argument defines a target
+  irs::string_ref target;
   auto res = evaluateArg(target, targetValue, funcName, args, 1 - First, isFilter, ctx);
 
   if (res.fail()) {
@@ -2205,6 +2206,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
 
   // (2 - First) argument defines a max distance
+  int64_t maxDistance;
   res = evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
 
   if (res.fail()) {
@@ -2223,6 +2225,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // optional (3 - First) argument defines transpositions
+  bool withTranspositions = false;
   if (4 - First == argc) {
     res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3 - First, isFilter, ctx);
 
@@ -2252,7 +2255,24 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
     };
   }
 
-  scoringLimit = FilterConstants::DefaultScoringTermsLimit;
+  // optional (4 - First) argument defines terms limit
+  int64_t maxTerms = FilterConstants::DefaultLevenshteinTermsLimit;
+  if (5 - First == argc) {
+    res = evaluateArg(maxTerms, tmpValue, funcName, args, 4 - First, isFilter, ctx);
+
+    if (res.fail()) {
+      return {
+        res.errorNumber(),
+        res.errorMessage().append(errorSuffix)
+      };
+    }
+  }
+
+  irs::assign(opts.term, irs::ref_cast<irs::byte_type>(target));
+  opts.with_transpositions = withTranspositions;
+  opts.max_distance = static_cast<irs::byte_type>(maxDistance);
+  opts.max_terms = static_cast<size_t>(maxTerms);
+  opts.provider = &arangodb::iresearch::getParametricDescription;
 
   return {};
 }
@@ -2277,26 +2297,50 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
   }
 
   ScopedAqlValue targetValue;
-  irs::string_ref target;
-  size_t scoringLimit = 0;
-  int64_t maxDistance = 0;
-  auto withTranspositions = false;
-  auto res = getLevenshteinArguments<1>(subFuncName, filter != nullptr, ctx, array, nullptr,
-                                        targetValue, target, scoringLimit, maxDistance,
-                                        withTranspositions,
+  irs::by_edit_distance_options opts;
+  auto res = getLevenshteinArguments<1>(subFuncName, filter != nullptr, ctx,
+                                        array, nullptr, targetValue, opts,
                                         getSubFuncErrorSuffix(funcName, funcArgumentPosition));
   if (res.fail()) {
     return res;
   }
 
   if (filter) {
-    // FIXME handle scoring limit
+    auto* phrase = filter->mutable_options();
 
-    auto& opts = filter->mutable_options()->push_back<irs::by_edit_distance_filter_options>(firstOffset);
-    irs::assign(opts.term, irs::ref_cast<irs::byte_type>(target));
-    opts.with_transpositions = withTranspositions;
-    opts.max_distance = static_cast<irs::byte_type>(maxDistance);
-    opts.provider = &arangodb::iresearch::getParametricDescription;
+    if (0 != opts.max_terms) {
+      TRI_ASSERT(ctx.index);
+
+      struct top_term_visitor final : irs::filter_visitor {
+        explicit top_term_visitor(size_t size)
+          : collector(size) {
+        }
+
+        virtual void prepare(const irs::sub_reader& segment,
+                             const irs::term_reader& field,
+                             const irs::seek_term_iterator& terms) {
+          collector.prepare(segment, field, terms);
+        }
+
+        virtual void visit(irs::boost_t boost) {
+          collector.visit(boost);
+        }
+
+        irs::top_terms_collector<irs::top_term<irs::boost_t>> collector;
+      } collector(opts.max_terms);
+
+      irs::visit(*ctx.index, filter->field(),
+                 irs::by_phrase::required(),
+                 irs::by_edit_distance::visitor(opts),
+                 collector);
+
+      auto& terms = phrase->push_back<irs::by_terms_options>(firstOffset).terms;
+      collector.collector.visit([&terms](const irs::top_term<irs::boost_t>& term) {
+        terms.emplace(term.term, term.key);
+      });
+    }
+
+    phrase->push_back<irs::by_edit_distance_filter_options>(std::move(opts), firstOffset);
   }
   return {};
 }
@@ -3192,7 +3236,7 @@ arangodb::Result fromFuncLike(
   return {};
 }
 
-// LEVENSHTEIN_MATCH(<attribute>, <target>, <max-distance> [, <include-transpositions>])
+// LEVENSHTEIN_MATCH(<attribute>, <target>, <max-distance> [, <include-transpositions>, <max-terms>])
 arangodb::Result fromFuncLevenshteinMatch(
     char const* funcName,
     irs::boolean_filter* filter,
@@ -3203,13 +3247,9 @@ arangodb::Result fromFuncLevenshteinMatch(
 
   arangodb::aql::AstNode const* field = nullptr;
   ScopedAqlValue targetValue;
-  irs::string_ref target;
-  size_t scoringLimit = 0;
-  int64_t maxDistance = 0;
-  auto withTranspositions = false;
+  irs::by_edit_distance_options opts;
   auto res = getLevenshteinArguments<0>(funcName, filter != nullptr, ctx, args, &field,
-                                        targetValue, target, scoringLimit, maxDistance,
-                                        withTranspositions);
+                                        targetValue, opts);
   if (res.fail()) {
     return res;
   }
@@ -3225,15 +3265,9 @@ arangodb::Result fromFuncLevenshteinMatch(
     kludge::mangleStringField(name, filterCtx.analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
-    *levenshtein_filter.mutable_field() = std::move(name);
-
-    auto* opts = levenshtein_filter.mutable_options();
-    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(target));
-    opts->max_distance = irs::byte_type(maxDistance);
-    opts->with_transpositions = withTranspositions;
-    opts->provider = &arangodb::iresearch::getParametricDescription;
-    opts->max_terms = scoringLimit; // FIXME separate option
     levenshtein_filter.boost(filterCtx.boost);
+    *levenshtein_filter.mutable_field() = std::move(name);
+    *levenshtein_filter.mutable_options() = std::move(opts);
   }
 
   return {};
