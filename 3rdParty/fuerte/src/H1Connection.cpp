@@ -351,6 +351,12 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   // The following assertion should be possible according to the TLA+
   // model. However, Jenkins found violations. This needs to be investigated.
   // FUERTE_ASSERT(this->_state.load() == Connection::State::Connected);
+  auto state = this->_state.load();
+  if (state != Connection::State::Connected) {
+    FUERTE_LOG_ERROR << "asyncWriteNextRequest found an unexpected state: "
+                     << static_cast<int>(state)
+                     << " instead of the expected 'Connected'\n";
+  }
   FUERTE_ASSERT(_item == nullptr);
 
   RequestItem* ptr = nullptr;
