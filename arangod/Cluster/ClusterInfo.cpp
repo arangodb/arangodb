@@ -1111,6 +1111,12 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
+
+  std::shared_ptr<VPackBuilder> acb;
+  consensus::index_t idx = 0;
+  uint64_t newCurrentVersion = 0;
+
+  do {
   // We need to update ServersKnown to notice rebootId changes for all servers.
   // To keep things simple and separate, we call loadServers here instead of
   // trying to integrate the servers upgrade code into loadCurrent, even if that
@@ -1142,7 +1148,6 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  uint64_t newCurrentVersion = 0;
   auto currentVersionSlice = currentSlice.get("Version");
 
   if (currentVersionSlice.isNumber()) {
@@ -1264,6 +1269,10 @@ void ClusterInfo::loadCurrent() {
 
   _currentProt.doneVersion = storedVersion;
   _currentProt.isValid = true;
+
+  std::tie(acb,idx) = agencyCache.get("Current/Version");
+
+  } while (acb->slice().getNumber<uint64_t>() > newCurrentVersion);
 
 }
 
