@@ -407,7 +407,10 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
           // provide a correct translation from collection to shard
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
-          localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
+          if (found->second == server || !localGraphNode->isDisjoint()) {
+            // TODO: Optimize this, we're looking into to many collections here
+            localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
+          }
 
           numShards++;
         }
