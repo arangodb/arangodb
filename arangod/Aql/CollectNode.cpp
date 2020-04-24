@@ -575,8 +575,10 @@ auto isLoop(ExecutionNode const& node) -> bool {
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
-auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& groupVariables,
-                       bool const encounteredLoop = false, int const subqueryDepth = 0) -> bool {
+auto calculateAccessibleUserVariables(ExecutionNode const& node,
+                                      std::vector<Variable const*>& userVariables,
+                                      bool const encounteredLoop = false,
+                                      int const subqueryDepth = 0) -> bool {
   TRI_ASSERT(subqueryDepth >= 0);
   auto const recSubqueryDepth = [&]() {
     if (node.getType() == ExecutionNode::SUBQUERY_END) {
@@ -592,7 +594,8 @@ auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& 
   // Skip nodes inside a subquery, except for SUBQUERY_END!
   if (subqueryDepth > 0) {
     if (dep != nullptr) {
-      return getGroupVariables(*dep, groupVariables, encounteredLoop, recSubqueryDepth);
+      return calculateAccessibleUserVariables(*dep, userVariables,
+                                              encounteredLoop, recSubqueryDepth);
     } else {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
@@ -603,8 +606,9 @@ auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& 
   bool const depIsTopLevel = [&]() {
     // Abort recursion on invalidating nodes
     if (dep != nullptr && !isVariableInvalidatingNode(node)) {
-      return getGroupVariables(*dep, groupVariables,
-                               encounteredLoop || isLoop(node), recSubqueryDepth);
+      return calculateAccessibleUserVariables(*dep, userVariables,
+                                              encounteredLoop || isLoop(node),
+                                              recSubqueryDepth);
     } else {
       return isStartNode(node);
     }
@@ -621,7 +625,7 @@ auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& 
     // Add all variables of the current node
     for (auto const& v : node.getVariablesSetHere()) {
       if (v->isUserDefined()) {
-        groupVariables.emplace_back(v);
+        userVariables.emplace_back(v);
       }
     }
   }
@@ -650,7 +654,7 @@ void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable 
       auto const dep = getFirstDependency();
       TRI_ASSERT(dep != nullptr);
       std::vector<Variable const*> userVars;
-      getGroupVariables(*dep, userVars);
+      calculateAccessibleUserVariables(*dep, userVars);
 
       for (auto& x : userVars) {
         vars.emplace(x);
