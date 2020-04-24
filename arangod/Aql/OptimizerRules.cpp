@@ -4058,6 +4058,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   // create, and register a distribute node
   DistributeNode* distNode = createDistributeNodeFor(plan, at);
   TRI_ASSERT(distNode != nullptr);
+TRI_ASSERT(deps.size() == 1);
   distNode->addDependency(deps[0]);
 
   // TODO: This dance is only needed to extract vocbase for
