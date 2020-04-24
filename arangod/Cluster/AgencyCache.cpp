@@ -161,7 +161,7 @@ void AgencyCache::run() {
                   std::lock_guard g(_callbacksLock);
                   for (auto i : _callbacks) {
                     if (key.find(i.first) != std::string::npos) {
-                      LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+                      LOG_TOPIC("76ff8", DEBUG, Logger::CLUSTER)
                         << "Agency callback " << i.second << " triggered for "
                         << i.first << " refetching!";
                       toCall.push_back(i.second);
