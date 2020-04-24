@@ -786,8 +786,16 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
-void CollectNode::setKeepVariables(std::vector<Variable const*>&& variables) {
-  _keepVariables = std::move(variables);
+void CollectNode::restrictKeepVariables(std::unordered_set<const Variable*> const& variables) {
+  auto remainingKeepVariables = decltype(this->_keepVariables){};
+  remainingKeepVariables.reserve(std::min(_keepVariables.size(), variables.size()));
+
+  std::copy_if(_keepVariables.begin(), _keepVariables.end(),
+               std::back_inserter(remainingKeepVariables), [&](auto const& var) {
+                 return variables.find(var) != variables.end();
+               });
+
+  _keepVariables = std::move(remainingKeepVariables);
 }
 
 std::unordered_map<VariableId, std::string const> const& CollectNode::variableMap() const {

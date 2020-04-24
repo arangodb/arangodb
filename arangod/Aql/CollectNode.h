@@ -163,8 +163,9 @@ class CollectNode : public ExecutionNode {
   /// @brief return the keep variables
   std::vector<Variable const*> const& keepVariables() const;
 
-  /// @brief set list of variables to keep if INTO is used
-  void setKeepVariables(std::vector<Variable const*>&& variables);
+  /// @brief restrict the KEEP variables (which may also be the auto-collected
+  /// variables of an unrestricted `INTO var`) to the passed `variables`.
+  void restrictKeepVariables(std::unordered_set<const Variable*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
