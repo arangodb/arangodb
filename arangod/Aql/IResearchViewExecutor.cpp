@@ -101,16 +101,14 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 ///////////////////////////////////////////////////////////////////////////////
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
-    OutRegisters outRegisters, std::vector<RegisterId> scoreRegisters,
-    Query& query, std::vector<Scorer> const& scorers,
+    std::shared_ptr<const IResearchView::Snapshot> reader, OutRegisters outRegisters,
+    std::vector<RegisterId> scoreRegisters, Query& query, std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
-    : ExecutorInfos(std::move(infos)),
-      _scoreRegisters(std::move(scoreRegisters)),
+    : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
       _scorers(scorers),
@@ -126,21 +124,20 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-
-  std::visit(
-      overload{
-          [&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
-            std::tie(documentOutReg, collectionPointerReg) =
-                std::pair{regs.documentOutReg, 0};
-          },
-          [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
-            std::tie(documentOutReg, collectionPointerReg) =
-                std::pair{regs.documentOutReg, regs.collectionOutReg};
-          },
-          [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
-            std::tie(documentOutReg, collectionPointerReg) = std::pair{0, 0};
-          }},
-      outRegisters);
+  std::visit(overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
+                        std::tie(documentOutReg, collectionPointerReg) =
+                            std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
+                      },
+                      [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
+                        std::tie(documentOutReg, collectionPointerReg) =
+                            std::pair{regs.documentOutReg, regs.collectionOutReg};
+                      },
+                      [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
+                        std::tie(documentOutReg, collectionPointerReg) =
+                            std::pair{aql::RegisterPlan::MaxRegisterId,
+                                      aql::RegisterPlan::MaxRegisterId};
+                      }},
+             outRegisters);
 }
 
 IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
@@ -379,8 +376,7 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-      _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
-           infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
+      _ctx(&infos.getQuery(), infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
       _execCtx(*infos.getQuery().trx(), _ctx),
@@ -414,7 +410,8 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         static_cast<Impl&>(*this).reset();
       }
 
-      ReadContext ctx(infos().getDocumentRegister(), infos().getCollectionRegister(), _inputRow, output);
+      ReadContext ctx(infos().getDocumentRegister(),
+                      infos().getCollectionRegister(), _inputRow, output);
       documentWritten = next(ctx);
 
       if (documentWritten) {
@@ -598,7 +595,6 @@ template <typename Impl, typename Traits>
 template <arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId, LogicalCollection const& collection) {
-
   // we will need collection Id also as View could produce documents from multiple collections
   if (ADB_LIKELY(documentId.isSet())) {
     {
@@ -658,8 +654,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(infos().getQuery().trx(),
-                                                          documentId, ctx.getDocumentCallback()))) {
+    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(infos().getQuery().trx(), documentId,
+                                                          ctx.getDocumentCallback()))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==
@@ -683,10 +679,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     }
   } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize &&
                        !Traits::Ordered) {
-    AqlValue v(VPackSlice::noneSlice());
-    AqlValueGuard guard{v, true};
-
-    ctx.outputRow.moveValueInto(infos().getDocumentRegister(), ctx.inputRow, guard);
+    ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
   if constexpr (Traits::Ordered) {

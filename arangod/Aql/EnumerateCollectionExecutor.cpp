@@ -31,10 +31,10 @@
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
@@ -52,19 +52,11 @@ std::vector<size_t> const emptyAttributePositions;
 }
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    RegisterId outputRegister, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions, bool random)
-    : ExecutorInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _engine(engine),
+    : _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),

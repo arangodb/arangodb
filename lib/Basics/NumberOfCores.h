@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,21 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentIndexExpressionContext.h"
-#include "Aql/AqlValue.h"
+#ifndef ARANGODB_BASICS_NUMBER_OF_CORES_H
+#define ARANGODB_BASICS_NUMBER_OF_CORES_H 1
 
-using namespace arangodb::aql;
+#include <cstddef>
 
-DocumentIndexExpressionContext::DocumentIndexExpressionContext(
-    Query* query, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
-    void const* ctx)
-  : QueryExpressionContext(query), _getValue(getValue), _ctx(ctx) {}
+namespace arangodb {
+namespace NumberOfCores {
 
-AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
-                                                          bool& mustDestroy) const {
-  mustDestroy = doCopy;  // as we are copying
-  return _getValue(_ctx, variable, doCopy);
+/// @brief return number of available CPU cores
+std::size_t getValue();
+bool overridden();
+
 }
+}  // namespace arangodb
+
+#endif

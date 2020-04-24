@@ -36,8 +36,6 @@ class DocumentIndexExpressionContext final : public QueryExpressionContext {
 
   ~DocumentIndexExpressionContext() = default;
 
-  virtual size_t numRegisters() const override;
-
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const override;
 

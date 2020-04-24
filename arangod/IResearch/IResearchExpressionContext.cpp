@@ -36,10 +36,6 @@ using namespace arangodb::aql;
 // --SECTION--                              ViewExpressionContext implementation
 // -----------------------------------------------------------------------------
 
-size_t ViewExpressionContext::numRegisters() const {
-  return _numRegs;
-}
-
 AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(var);

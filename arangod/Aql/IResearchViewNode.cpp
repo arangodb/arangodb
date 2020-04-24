@@ -27,12 +27,14 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
@@ -807,26 +809,31 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
 
 template <MaterializeType materializeType>
 constexpr std::unique_ptr<aql::ExecutionBlock> (*executors[])(
-    aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&) = {
+    aql::ExecutionEngine*, IResearchViewNode const*, aql::RegisterInfos&&,
+    aql::IResearchViewExecutorInfos&&) = {
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
-       aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, materializeType>>>(
-          engine, viewNode, std::move(infos));
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
-       aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, materializeType>>>(
-          engine, viewNode, std::move(infos));
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
-       aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, materializeType>>>(
-          engine, viewNode, std::move(infos));
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
-       aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+       aql::RegisterInfos&& registerInfos,
+       aql::IResearchViewExecutorInfos&& executorInfos) -> std::unique_ptr<aql::ExecutionBlock> {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, materializeType>>>(
-          engine, viewNode, std::move(infos));
+          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
     }};
 
 constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
@@ -1413,17 +1420,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
 
+
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
+    auto emptyRegisterInfos = createRegisterInfos(aql::make_shared_unordered_set(),
+                                                  aql::make_shared_unordered_set());
+
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
-    aql::ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
-                             arangodb::aql::make_shared_unordered_set(),
-                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                             getRegisterPlan()->nrRegs[getDepth()],
-                             getRegsToClear(), calcRegsToKeep());
 
-    return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
-                                                                             std::move(infos));
+    return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(
+        &engine, this, emptyRegisterInfos, aql::RegisterInfos{emptyRegisterInfos});
   };
 
   auto const createSnapshot = [this](aql::ExecutionEngine& engine) {
@@ -1476,8 +1482,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return reader;
   };
 
-
-
   auto const buildExecutorInfo = [this](aql::ExecutionEngine& engine,
                                         std::shared_ptr<IResearchView::Snapshot const> reader) {
     ;
@@ -1499,6 +1503,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
     }
+
     // We have one output register for documents, which is always the first
     // after the input registers.
 
@@ -1570,12 +1575,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     TRI_ASSERT(writableOutputRegisters->size() ==
                numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
-    aql::ExecutorInfos registerInfos =
+    aql::RegisterInfos registerInfos =
         createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
 
     auto executorInfos =
-        aql::IResearchViewExecutorInfos{std::move(registerInfos),
-                                        std::move(reader),
+        aql::IResearchViewExecutorInfos{std::move(reader),
                                         outRegister,
                                         std::move(scoreRegisters),
                                         *engine.getQuery(),
@@ -1590,7 +1594,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                         getDepth(),
                                         std::move(outNonMaterializedViewRegs)};
 
-    return std::make_pair(materializeType, std::move(executorInfos));
+    return std::make_tuple(materializeType, std::move(executorInfos), std::move(registerInfos));
   };
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1606,26 +1610,28 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  auto [materializeType, executorInfos] = buildExecutorInfo(engine, std::move(reader));
+  auto [materializeType, executorInfos, registerInfos] = buildExecutorInfo(engine, std::move(reader));
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty());  // guaranteed by optimizer rule
   bool const ordered = !_scorers.empty();
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
       return ::executors<MaterializeType::NotMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(executorInfos));
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::LateMaterialize:
       return ::executors<MaterializeType::LateMaterialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(executorInfos));
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::Materialize:
       return ::executors<MaterializeType::Materialize>[getExecutorIndex(_sort.first != nullptr, ordered)](
-          &engine, this, std::move(executorInfos));
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
       return ::executors<MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(executorInfos));
+          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                            std::move(executorInfos));
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
       return ::executors<MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sort.first != nullptr, ordered)](&engine, this, std::move(executorInfos));
+          _sort.first != nullptr, ordered)](&engine, this, std::move(registerInfos),
+                                            std::move(executorInfos));
     default:
       ADB_UNREACHABLE;
   }
