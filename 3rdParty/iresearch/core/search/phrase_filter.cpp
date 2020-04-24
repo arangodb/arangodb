@@ -228,12 +228,11 @@ class phrase_term_visitor final : public filter_visitor,
 
   void reset() noexcept {
     volatile_boost_ = false;
-    found_ = false;
-    terms_ = nullptr;
   }
 
   void reset(term_collectors& collectors) noexcept {
-    reset();
+    found_ = false;
+    terms_ = nullptr;
     term_offset_ = 0;
     collectors_ = &collectors;
     stats_size_ = collectors.size();
@@ -546,7 +545,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
   for (const auto& segment : index) {
     // get term dictionary for field
-    const term_reader* reader = segment.field(field);
+    const auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
@@ -658,6 +657,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
       continue;
     }
 
+    ptv.reset(); // reset boost volaitility mark
     field_stats.collect(segment, *reader); // collect field statistics once per segment
 
     size_t part_offset = 0;

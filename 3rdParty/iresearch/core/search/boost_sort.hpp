@@ -31,6 +31,8 @@ struct IRESEARCH_API boost_sort final : public sort {
   DECLARE_SORT_TYPE();
   DECLARE_FACTORY(); // for use with irs::order::add<T>() and default args
 
+  static void init();
+
   boost_sort() noexcept;
 
   virtual sort::prepared::ptr prepare() const override;

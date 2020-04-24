@@ -2173,7 +2173,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
   auto const argc = args.numMembers();
   constexpr size_t min = 3 - First;
-  constexpr size_t max = 4 - First;
+  constexpr size_t max = 5 - First;
   if (argc < min || argc > max) {
     auto res = error::invalidArgsCount<error::Range<min, max>>(funcName);
     return {
@@ -2338,9 +2338,9 @@ arangodb::Result fromFuncPhraseLevenshteinMatch(char const* funcName,
       collector.collector.visit([&terms](const irs::top_term<irs::boost_t>& term) {
         terms.emplace(term.term, term.key);
       });
+    } else {
+      phrase->push_back<irs::by_edit_distance_filter_options>(std::move(opts), firstOffset);
     }
-
-    phrase->push_back<irs::by_edit_distance_filter_options>(std::move(opts), firstOffset);
   }
   return {};
 }

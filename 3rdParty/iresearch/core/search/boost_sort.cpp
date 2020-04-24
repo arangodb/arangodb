@@ -26,6 +26,10 @@ NS_LOCAL
 
 using namespace irs;
 
+sort::ptr make_json(const string_ref& /*args*/) {
+  return memory::make_shared<boost_sort>();
+}
+
 struct boost_score_ctx : score_ctx {
   explicit boost_score_ctx(boost_t boost)
     : boost(boost) {
@@ -84,8 +88,12 @@ NS_END
 
 NS_ROOT
 
-DEFINE_SORT_TYPE(irs::boost_sort);
+DEFINE_SORT_TYPE_NAMED(irs::boost_sort, "boostscore");
 DEFINE_FACTORY_DEFAULT(irs::boost_sort);
+
+/*static*/ void boost_sort::init() {
+  REGISTER_SCORER_JSON(boost_sort, make_json);
+}
 
 boost_sort::boost_sort() noexcept
   : sort(boost_sort::type()) {
