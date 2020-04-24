@@ -849,6 +849,10 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 
 ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   TRI_ASSERT(!_wasShutdown);
+  if (_serverToQueryId.empty()) { // happens during tests
+    return ExecutionState::DONE;
+  }
+  
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
