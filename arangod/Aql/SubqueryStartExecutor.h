@@ -36,7 +36,7 @@ namespace aql {
 template <BlockPassthrough allowsPassThrough>
 class SingleRowFetcher;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 class OutputAqlItemRow;
 
 class SubqueryStartExecutor {
@@ -48,7 +48,7 @@ class SubqueryStartExecutor {
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = RegisterInfos;
   using Stats = NoStats;
   SubqueryStartExecutor(Fetcher&, Infos& infos);
   ~SubqueryStartExecutor() = default;

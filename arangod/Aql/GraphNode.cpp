@@ -526,6 +526,8 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
+  nodes.add("isSatelliteNode", VPackValue(isSatelliteNode()));
+  nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
 
   // Graph Definition
   if (_graphObj != nullptr) {
@@ -622,7 +624,7 @@ CostEstimate GraphNode::estimateCost() const {
     size_t estDepth = _options->estimateDepth();
     double tmpNrItems = incoming * std::pow(baseNumItems, estDepth);
     // Protect against size_t overflow, just to be sure.
-    if (tmpNrItems > std::numeric_limits<size_t>::max()) {
+    if (tmpNrItems > static_cast<double>(std::numeric_limits<size_t>::max())) {
       // This will be an expensive query...
       estimate.estimatedNrItems = std::numeric_limits<size_t>::max();
     } else {
@@ -772,21 +774,26 @@ std::vector<aql::Collection*> const& GraphNode::vertexColls() const {
 
 graph::Graph const* GraphNode::graph() const noexcept { return _graphObj; }
 
-bool GraphNode::isUsedAsSatellite() const {
-#ifndef USE_ENTERPRISE
-  return false;
-#else
-  auto const* collectionAccessingNode =
-      dynamic_cast<CollectionAccessingNode const*>(this);
-  TRI_ASSERT((collectionAccessingNode != nullptr) ==
-             (nullptr != dynamic_cast<LocalTraversalNode const*>(this) ||
-              nullptr != dynamic_cast<LocalShortestPathNode const*>(this) ||
-              nullptr != dynamic_cast<LocalKShortestPathsNode const*>(this)));
-  return collectionAccessingNode != nullptr &&
-         collectionAccessingNode->isUsedAsSatellite();
-#endif
-}
-
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
+}
+
+/* Enterprise features */
+
+#ifndef USE_ENTERPRISE
+
+bool GraphNode::isUsedAsSatellite() const { return false; }
+
+bool GraphNode::isSatelliteNode() const { return false; }
+
+void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
+
+#endif
+
+VariableIdSet GraphNode::getOutputVariables() const {
+  VariableIdSet vars;
+  for (auto const& it : getVariablesSetHere()) {
+    vars.insert(it->id);
+  }
+  return vars;
 }

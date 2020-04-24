@@ -26,8 +26,8 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -42,22 +42,19 @@ namespace aql {
 struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 class NoStats;
 
 template <typename T>
-class MaterializerExecutorInfos : public ExecutorInfos {
+class MaterializerExecutorInfos {
  public:
-  MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep,
-                            T collectionSource, RegisterId inNmDocId,
+  MaterializerExecutorInfos(T collectionSource, RegisterId inNmDocId,
                             RegisterId outDocRegId, transaction::Methods* trx);
 
   MaterializerExecutorInfos() = delete;
-  MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
+  MaterializerExecutorInfos(MaterializerExecutorInfos&&) noexcept = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 
@@ -74,16 +71,6 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   T collectionSource() const { return _collectionSource; }
 
  private:
-  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(
-      T const collectionSource, RegisterId inNmDocId) {
-    if constexpr (std::is_same<T, RegisterId>::value) {
-      return make_shared_unordered_set(
-          std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
-    } else {
-      return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
-    }
-  }
-
   /// @brief register to store raw collection pointer or collection name
   T const _collectionSource;
   /// @brief register to store local document id

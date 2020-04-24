@@ -60,16 +60,12 @@ struct ViewExpressionContextBase : public aql::QueryExpressionContext {
 struct ViewExpressionContext final : public ViewExpressionContextBase {
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
-  ViewExpressionContext(aql::Query* query, aql::RegisterId numRegs,
-                        aql::Variable const& outVar,
+  ViewExpressionContext(aql::Query* query, aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(query),
-        _numRegs(numRegs),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
-
-  virtual size_t numRegisters() const override;
 
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                          bool& mustDestroy) const override;
@@ -79,7 +75,6 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   inline int nodeDepth() const noexcept { return _nodeDepth; }
 
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
-  aql::RegisterId const _numRegs;
   aql::Variable const& _outVar;
   VarInfoMap const& _varInfoMap;
   int const _nodeDepth;

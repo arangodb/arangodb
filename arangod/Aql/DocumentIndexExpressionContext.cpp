@@ -30,11 +30,6 @@ DocumentIndexExpressionContext::DocumentIndexExpressionContext(
     void const* ctx)
   : QueryExpressionContext(query), _getValue(getValue), _ctx(ctx) {}
 
-size_t DocumentIndexExpressionContext::numRegisters() const {
-  // hard-coded
-  return 1;
-}
-
 AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                           bool& mustDestroy) const {
   mustDestroy = doCopy;  // as we are copying

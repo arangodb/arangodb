@@ -26,48 +26,40 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/TraversalStats.h"
 #include "Aql/Variable.h"
+#include "Graph/Traverser.h"
 
 namespace arangodb {
 class Result;
-
-namespace traverser {
-class Traverser;
-}
 
 namespace aql {
 
 class Query;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TraversalExecutorInfos : public ExecutorInfos {
+class TraversalExecutorInfos {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
   struct OutputNameHash {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                         std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                         RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                         std::unordered_set<RegisterId> registersToClear,
-                         std::unordered_set<RegisterId> registersToKeep,
-                         std::unique_ptr<traverser::Traverser>&& traverser,
+  TraversalExecutorInfos(std::unique_ptr<traverser::Traverser>&& traverser,
                          std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
                          std::string fixedSource, RegisterId inputRegister,
                          std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
 
   TraversalExecutorInfos() = delete;
 
-  TraversalExecutorInfos(TraversalExecutorInfos&&);
+  TraversalExecutorInfos(TraversalExecutorInfos&&) = default;
   TraversalExecutorInfos(TraversalExecutorInfos const&) = delete;
-  ~TraversalExecutorInfos();
+  ~TraversalExecutorInfos() = default;
 
   traverser::Traverser& traverser();
 
@@ -101,7 +93,7 @@ class TraversalExecutorInfos : public ExecutorInfos {
  private:
   std::unique_ptr<traverser::Traverser> _traverser;
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
-  std::string const _fixedSource;
+  std::string _fixedSource;
   RegisterId _inputRegister;
   std::vector<std::pair<Variable const*, RegisterId>> _filterConditionVariables;
 };

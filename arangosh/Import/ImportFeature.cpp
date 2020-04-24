@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
@@ -222,12 +223,12 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
     _threadCount = 1;
   }
-  if (_threadCount > TRI_numberProcessors() * 2) {
+  if (_threadCount > NumberOfCores::getValue() * 2) {
     // it's not sensible to use just one thread ...
     //  and import's CPU usage is negligible, real limit is cluster cores
     LOG_TOPIC("aca46", WARN, arangodb::Logger::FIXME)
-        << "capping --threads value to " << TRI_numberProcessors() * 2;
-    _threadCount = (uint32_t)TRI_numberProcessors() * 2;
+        << "capping --threads value to " << NumberOfCores::getValue() * 2;
+    _threadCount = static_cast<uint32_t>(NumberOfCores::getValue()) * 2;
   }
 
   for (auto const& it : _translations) {
