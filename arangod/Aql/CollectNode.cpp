@@ -552,6 +552,9 @@ namespace {
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
+// TODO As this is now called in instantiateFromAst, thus earliest possible,
+//      the whole spliced subquery handling could be removed here to simplify
+//      the code.
 [[nodiscard]] auto calculateAccessibleUserVariables(ExecutionNode const& node,
                                                     std::vector<Variable const*>& userVariables,
                                                     bool const encounteredLoop,
