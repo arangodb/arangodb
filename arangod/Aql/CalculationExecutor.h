@@ -24,9 +24,9 @@
 #define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegexCache.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
@@ -51,12 +51,9 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
-struct CalculationExecutorInfos : public ExecutorInfos {
-  CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
-                           RegisterId nrOutputRegisters,
-                           std::unordered_set<RegisterId> registersToClear,
-                           std::unordered_set<RegisterId> registersToKeep, QueryContext& query,
-                           Expression& expression, std::vector<Variable const*>&& expInVars,
+struct CalculationExecutorInfos {
+  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query, Expression& expression,
+                           std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
   CalculationExecutorInfos() = delete;

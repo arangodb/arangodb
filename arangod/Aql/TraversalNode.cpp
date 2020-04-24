@@ -529,16 +529,15 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     }
   }
 
-  TRI_ASSERT(traverser != nullptr);
-  TraversalExecutorInfos infos(inputRegisters, outputRegisters,
-                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                               getRegisterPlan()->nrRegs[getDepth()],
-                               getRegsToClear(), calcRegsToKeep(), std::move(traverser),
-                               outputRegisterMapping, getStartVertex(),
-                               inputRegister, std::move(filterConditionVariables));
+  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(&engine, this,
-                                                                 std::move(infos));
+  TRI_ASSERT(traverser != nullptr);
+  auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+                                              getStartVertex(), inputRegister,
+                                              std::move(filterConditionVariables));
+
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively

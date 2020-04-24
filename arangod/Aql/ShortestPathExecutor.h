@@ -26,8 +26,8 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
 
@@ -54,7 +54,7 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
-class ShortestPathExecutorInfos : public ExecutorInfos {
+class ShortestPathExecutorInfos {
  public:
   struct InputVertex {
     enum class Type { CONSTANT, REGISTER };
@@ -75,12 +75,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                            std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep,
-                            std::unique_ptr<graph::ShortestPathFinder>&& finder,
+  ShortestPathExecutorInfos(std::unique_ptr<graph::ShortestPathFinder>&& finder,
                             std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
                             InputVertex&& source, InputVertex&& target);
 
@@ -144,10 +139,10 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
 
   /// @brief Information about the source vertex
-  InputVertex const _source;
+  InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex const _target;
+  InputVertex _target;
 };
 
 /**

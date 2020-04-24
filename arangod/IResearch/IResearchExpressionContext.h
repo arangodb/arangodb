@@ -64,11 +64,9 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
   ViewExpressionContext(arangodb::transaction::Methods& trx,
                         aql::QueryContext& query,
-                        aql::RegexCache& cache, aql::RegisterId numRegs,
-                        aql::Variable const& outVar,
+                        aql::RegexCache& cache, aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(trx, query, cache),
-        _numRegs(numRegs),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
@@ -85,7 +83,6 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   inline int nodeDepth() const noexcept { return _nodeDepth; }
 
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
-  aql::RegisterId const _numRegs;
   aql::Variable const& _outVar;
   VarInfoMap const& _varInfoMap;
   int const _nodeDepth;

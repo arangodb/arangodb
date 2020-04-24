@@ -26,8 +26,8 @@
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 
 #include <optional>
 
@@ -47,20 +47,15 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class SortingGatherExecutorInfos : public ExecutorInfos {
+class SortingGatherExecutorInfos {
  public:
-  SortingGatherExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep,
-                             std::vector<SortRegister>&& sortRegister,
+  SortingGatherExecutorInfos(std::vector<SortRegister>&& sortRegister,
                              arangodb::aql::QueryContext& query, GatherNode::SortMode sortMode,
                              size_t limit, GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
-  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&);
+  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) noexcept = default;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
-  ~SortingGatherExecutorInfos();
+  ~SortingGatherExecutorInfos() = default;
 
   std::vector<SortRegister>& sortRegister() { return _sortRegister; }
 

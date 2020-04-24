@@ -32,9 +32,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -46,27 +46,22 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SortedCollectExecutorInfos : public ExecutorInfos {
+class SortedCollectExecutorInfos {
  public:
-  SortedCollectExecutorInfos(
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep,
-      std::unordered_set<RegisterId>&& readableInputRegisters,
-      std::unordered_set<RegisterId>&& writeableOutputRegisters,
-      std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-      RegisterId collectRegister, RegisterId expressionRegister,
-      Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-      std::vector<std::pair<std::string, RegisterId>>&& variables,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      velocypack::Options const*, bool count);
+  SortedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+                             RegisterId collectRegister, RegisterId expressionRegister,
+                             Variable const* expressionVariable,
+                             std::vector<std::string>&& aggregateTypes,
+                             std::vector<std::pair<std::string, RegisterId>>&& variables,
+                             std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+                             velocypack::Options const*, bool count);
 
   SortedCollectExecutorInfos() = delete;
-  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
+  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) noexcept = default;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos const&) = delete;
   ~SortedCollectExecutorInfos() = default;
 
@@ -87,8 +82,9 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
     return _expressionRegister;
   };
   Variable const* getExpressionVariable() const { return _expressionVariable; }
-  std::vector<std::pair<std::string, RegisterId>> const& getVariables() const {
-    return _variables;
+
+  std::vector<std::pair<std::string, RegisterId>> const& getInputVariables() const {
+    return _inputVariables;
   }
 
  private:
@@ -113,6 +109,8 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
 
   /// @brief list of variables names for the registers
   std::vector<std::pair<std::string, RegisterId>> _variables;
+
+  std::vector<std::pair<std::string, RegisterId>> _inputVariables;
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;

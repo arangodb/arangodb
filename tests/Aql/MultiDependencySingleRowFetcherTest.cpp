@@ -31,9 +31,9 @@
 #include "gtest/gtest.h"
 
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/ShadowAqlItemRow.h"
 

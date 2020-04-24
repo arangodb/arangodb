@@ -30,44 +30,20 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_list<RegisterId> regList) {
-  auto rv = make_shared_unordered_set();
-  for (RegisterId regId : regList) {
-    if (regId < RegisterPlan::MaxRegisterId) {
-      rv->insert(regId);
-    }
-  }
-  return rv;
-}
-
-}  // namespace
-
-namespace arangodb {
-namespace aql {
-
 ModificationExecutorInfos::ModificationExecutorInfos(
     RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
     RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
-    RegisterId outputRegisterId, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, arangodb::aql::QueryContext& query,
-    OperationOptions options, aql::Collection const* aqlCollection,
-    ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
-    IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-    IgnoreDocumentNotFound ignoreDocumentNotFound)
-    : ExecutorInfos(makeSet({input1RegisterId, input2RegisterId, input3RegisterId}) /*input registers*/,
-                    makeSet({outputOldRegisterId, outputNewRegisterId, outputRegisterId}) /*output registers*/,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _query(query),
+    RegisterId outputRegisterId, arangodb::aql::QueryContext& query, OperationOptions options,
+    aql::Collection const* aqlCollection, ProducesResults producesResults,
+    ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+    DoCount doCount, IsReplace isReplace, IgnoreDocumentNotFound ignoreDocumentNotFound)
+    : _query(query),
       _options(options),
       _aqlCollection(aqlCollection),
       _producesResults(ProducesResults(producesResults._value || !_options.silent)),
       _consultAqlWriteFilter(consultAqlWriteFilter),
       _ignoreErrors(ignoreErrors),
       _doCount(doCount),
-
       _isReplace(isReplace),
       _ignoreDocumentNotFound(ignoreDocumentNotFound),
       _input1RegisterId(input1RegisterId),
@@ -83,6 +59,3 @@ ModificationExecutorInfos::ModificationExecutorInfos(
   _producesResults = ProducesResults(_producesResults || !_options.silent ||
                                      (isDBServer && _ignoreDocumentNotFound));
 }
-
-}  // namespace aql
-}  // namespace arangodb

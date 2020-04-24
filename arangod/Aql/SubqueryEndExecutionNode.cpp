@@ -102,15 +102,14 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto outReg = variableToRegisterId(_outVariable);
   outputRegisters->emplace(outReg);
 
-  auto const& vpackOptions = engine.getQuery().vpackOptions();
-  SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
-                                 getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                 getRegisterPlan()->nrRegs[getDepth()],
-                                 getRegsToClear(), calcRegsToKeep(), &vpackOptions,
-                                 inReg, outReg, isModificationNode());
+  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
-  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
-                                                                   std::move(infos));
+  auto const& vpackOptions = engine.getQuery().vpackOptions();
+  auto executorInfos =
+      SubqueryEndExecutorInfos(&vpackOptions, inReg, outReg, isModificationNode());
+
+  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,

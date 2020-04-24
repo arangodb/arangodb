@@ -53,33 +53,15 @@ static bool isValidId(VPackSlice id) {
   arangodb::velocypack::StringRef tester(id);
   return tester.find('/') != std::string::npos;
 }
-static RegisterId selectOutputRegister(
-    std::shared_ptr<std::unordered_set<RegisterId> const> const& outputRegisters) {
-  TRI_ASSERT(outputRegisters != nullptr);
-  TRI_ASSERT(outputRegisters->size() == 1);
-  RegisterId reg = *(outputRegisters->begin());
-  TRI_ASSERT(reg != RegisterPlan::MaxRegisterId);
-  return reg;
-}
 }  // namespace
 
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unique_ptr<graph::KShortestPathsFinder>&& finder, InputVertex&& source,
-    InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _finder(std::move(finder)),
+    RegisterId outputRegister, std::unique_ptr<graph::KShortestPathsFinder>&& finder,
+    InputVertex&& source, InputVertex&& target)
+    : _finder(std::move(finder)),
       _source(std::move(source)),
       _target(std::move(target)),
-      _outputRegister(::selectOutputRegister(_outRegs)) {}
-
-KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
-KShortestPathsExecutorInfos::~KShortestPathsExecutorInfos() = default;
+      _outputRegister(outputRegister) {}
 
 arangodb::graph::KShortestPathsFinder& KShortestPathsExecutorInfos::finder() const {
   TRI_ASSERT(_finder);

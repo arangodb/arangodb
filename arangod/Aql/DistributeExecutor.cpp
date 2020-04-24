@@ -42,17 +42,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 DistributeExecutorInfos::DistributeExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
-                    nrOutputRegisters, registersToClear, registersToKeep),
-      ClientsExecutorInfos(std::move(clientIds)),
+    : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
       _allowKeyConversionToObject(allowKeyConversionToObject),
@@ -61,13 +54,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
       _allowSpecifiedKeys(allowSpecifiedKeys),
       _collection(collection),
       _logCol(collection->getCollection()),
-      _type(type) {
-  TRI_ASSERT(readableInputRegisters->find(_regId) != readableInputRegisters->end());
-  if (hasAlternativeRegister()) {
-    TRI_ASSERT(readableInputRegisters->find(_alternativeRegId) !=
-               readableInputRegisters->end());
-  }
-}
+      _type(type) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
   TRI_ASSERT(_regId != RegisterPlan::MaxRegisterId);
@@ -122,25 +109,22 @@ auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
   return _logCol->createKey(input);
 }
 
-// TODO
-// This section is not implemented yet
-
 DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                      ScatterNode const* node,
-                                                     ExecutorInfos const& scatterInfos)
-    : _blockManager(engine.itemBlockManager()), _infos(scatterInfos) {
+                                                     RegisterInfos const& registerInfos)
+    : _blockManager(engine.itemBlockManager()), registerInfos(registerInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
-  IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
-                        *scatterInfos.registersToKeep(),
-                        *scatterInfos.registersToClear(),
-                        false,
-                        0,
-                        "",
-                        false};
+  auto executorInfos = IdExecutorInfos{false, 0, "", false};
+  auto idExecutorRegisterInfos =
+      RegisterInfos{{},
+                    {},
+                    registerInfos.numberOfInputRegisters(),
+                    registerInfos.numberOfOutputRegisters(),
+                    *registerInfos.registersToClear(),
+                    *registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
-  _executor =
-      std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, node,
-                                                                     std::move(infos));
+  _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
+      &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
 }
 
 auto DistributeExecutor::ClientBlockData::clear() -> void {
@@ -190,11 +174,12 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
   }
 
   SharedAqlItemBlockPtr newBlock =
-      _blockManager.requestBlock(numRows, _infos.numberOfOutputRegisters());
+      _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
   OutputAqlItemRow output{newBlock, make_shared_unordered_set(),
-                          _infos.registersToKeep(), _infos.registersToClear()};
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear()};
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct
     TRI_ASSERT(!_queue.empty());
@@ -397,5 +382,7 @@ auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
 
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                            DistributeNode const* node,
-                                                           DistributeExecutorInfos&& infos)
-    : BlocksWithClientsImpl(engine, node, std::move(infos)) {}
+                                                           RegisterInfos registerInfos,
+                                                           DistributeExecutorInfos&& executorInfos)
+    : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
+                            std::move(executorInfos)) {}

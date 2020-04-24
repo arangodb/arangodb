@@ -26,7 +26,7 @@
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 
 #include <fuerte/message.h>
 
@@ -58,7 +58,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // non-standard arguments (server, ownName and queryId) should probably be
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
-                     ExecutorInfos&& infos, std::string const& server,
+                     RegisterInfos&& infos, std::string const& server,
                      std::string const& ownName, std::string const& queryId, Api);
 
   ~ExecutionBlockImpl() override = default;
@@ -98,7 +98,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
       -> velocypack::Buffer<uint8_t>;
 
-  ExecutorInfos const& infos() const { return _infos; }
+  RegisterInfos const& registerInfos() const { return _registerInfos; }
 
   QueryContext const& getQuery() const { return _query; }
 
@@ -118,8 +118,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
-  
-  ExecutorInfos _infos;
+
+  RegisterInfos _registerInfos;
 
   QueryContext const& _query;
 

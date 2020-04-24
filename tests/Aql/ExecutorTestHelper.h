@@ -136,7 +136,7 @@ struct ExecutorTestHelper {
     static_assert(inputColumns == 1);
     _input.clear();
     for (auto i = size_t{0}; i < rows; ++i) {
-      _input.emplace_back(RowBuilder<1>{i});
+      _input.emplace_back(RowBuilder<1>{static_cast<int>(i)});
     }
     return *this;
   }
@@ -234,15 +234,16 @@ struct ExecutorTestHelper {
    * @brief Add a dependency, i.e. add an ExecutionBlock to the *end* of the execution pipeline
    *
    * @tparam E The executor template parameter
-   * @param infos to build the executor
+   * @param executorInfos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
   template <typename E>
-  auto addDependency(typename E::Infos infos,
+  auto addDependency(RegisterInfos registerInfos, typename E::Infos executorInfos,
                      ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addDependency(createExecBlock<E>(std::move(infos), nodeType));
+    _pipeline.addDependency(createExecBlock<E>(std::move(registerInfos),
+                                               std::move(executorInfos), nodeType));
     return *this;
   }
 
@@ -250,15 +251,16 @@ struct ExecutorTestHelper {
    * @brief Add a consumer, i.e. add an ExecutionBlock to the *beginning* of the execution pipeline
    *
    * @tparam E The executor template parameter
-   * @param infos to build the executor
+   * @param executorInfos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
   template <typename E>
-  auto addConsumer(typename E::Infos infos,
+  auto addConsumer(RegisterInfos registerInfos, typename E::Infos executorInfos,
                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addConsumer(createExecBlock<E>(std::move(infos), nodeType));
+    _pipeline.addConsumer(createExecBlock<E>(std::move(registerInfos),
+                                             std::move(executorInfos), nodeType));
     return *this;
   }
 
@@ -343,23 +345,22 @@ struct ExecutorTestHelper {
    * @brief create an ExecutionBlock without tying it into the pipeline.
    *
    * @tparam E The executor template parameter
-   * @param infos to build the executor
+   * @param executorInfos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecBlock
    *
    * Now private to prevent us from leaking memory
    */
   template <typename E>
-  auto createExecBlock(typename E::Infos infos,
+  auto createExecBlock(RegisterInfos registerInfos, typename E::Infos executorInfos,
                        ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
     auto& testeeNode = _execNodes.emplace_back(
-        std::make_unique<MockTypedNode>(
-          const_cast<ExecutionPlan*>(_query.rootEngine()->root()->getPlanNode()->plan()),
-          ExecutionNodeId{_execNodes.size()},
-          nodeType));
+        std::make_unique<MockTypedNode>(_query.rootEngine()->root()->getPlanNode()->plan(),
+                                        ExecutionNodeId{_execNodes.size()}, nodeType));
     return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(), testeeNode.get(),
-                                                   std::move(infos));
+                                                   std::move(registerInfos),
+                                                   std::move(executorInfos));
   }
 
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)

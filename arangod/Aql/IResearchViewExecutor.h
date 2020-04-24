@@ -25,10 +25,10 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegexCache.h"
+#include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
@@ -62,18 +62,27 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 class QueryContext;
 
-class IResearchViewExecutorInfos : public ExecutorInfos {
+class IResearchViewExecutorInfos {
  public:
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
   IResearchViewExecutorInfos(
-      ExecutorInfos&& infos, std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+      std::shared_ptr<const iresearch::IResearchView::Snapshot> reader,
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
+<<<<<<< HEAD
       aql::QueryContext& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
       iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
       Variable const& outVariable, aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
+=======
+      Query& query, std::vector<iresearch::Scorer> const& scorers,
+      std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
+      iresearch::IResearchViewStoredValues const& storedValues,
+      ExecutionPlan const& plan, Variable const& outVariable,
+      aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
+      IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
+>>>>>>> 3538732d606e3ed1130b692a8b6c51b733272bdc
       iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
   RegisterId getOutputRegister() const noexcept;

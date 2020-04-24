@@ -28,9 +28,10 @@
 
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Transaction/Methods.h"
+#include "Aql/RegisterInfos.h"
+#include "DocumentProducingHelper.h"
 
 #include <memory>
 #include <string>
@@ -46,10 +47,10 @@ namespace aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
-class Collection;
+struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
@@ -59,15 +60,14 @@ struct Variable;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateCollectionExecutorInfos : public ExecutorInfos {
+class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, aql::QueryContext& query,
-      Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter, std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions, bool random);
+  EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
+                                   Collection const* collection, Variable const* outVariable,
+                                   bool produceResult, Expression* filter,
+                                   std::vector<std::string> const& projections,
+                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;

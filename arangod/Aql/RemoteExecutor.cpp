@@ -28,9 +28,9 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RestAqlHandler.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
@@ -63,11 +63,11 @@ constexpr std::chrono::seconds kDefaultTimeOutSecs(3600);
 }  // namespace
 
 ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
-    ExecutionEngine* engine, RemoteNode const* node, ExecutorInfos&& infos,
+    ExecutionEngine* engine, RemoteNode const* node, RegisterInfos&& registerInfos,
     std::string const& server, std::string const& ownName,
     std::string const& queryId, Api const api)
     : ExecutionBlock(engine, node),
-      _infos(std::move(infos)),
+      _registerInfos(std::move(registerInfos)),
       _query(engine->getQuery()),
       _server(server),
       _ownName(ownName),

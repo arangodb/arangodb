@@ -231,24 +231,29 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   std::vector<SortRegister> sortRegs;
+  auto inputRegs = make_shared_unordered_set();
   for (auto const& element : _elements) {
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
     sortRegs.emplace_back(id, element);
+    inputRegs->emplace(id);
   }
-  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
-                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                          getRegisterPlan()->nrRegs[getDepth()],
-                          getRegsToClear(), calcRegsToKeep(),
-                          &engine.getQuery().vpackOptions(),
-                          _stable);
+  auto registerInfos = createRegisterInfos(inputRegs, make_shared_unordered_set());
+  auto executorInfos =
+      SortExecutorInfos(registerInfos.numberOfInputRegisters(),
+                        registerInfos.numberOfOutputRegisters(),
+                        registerInfos.registersToClear(), std::move(sortRegs),
+                        _limit, engine.itemBlockManager(),
+                        &engine.getQuery().vpackOptions(),
+                        _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
-                                                              std::move(infos));
+                                                              std::move(registerInfos),
+                                                              std::move(executorInfos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this,
-                                                                         std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 
