@@ -264,8 +264,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearm(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
-             IndexIteratorOptions const& opts) override {
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
     TRI_ASSERT(!_index->isSorted() || opts.sorted);
 
     TRI_ASSERT(node != nullptr);

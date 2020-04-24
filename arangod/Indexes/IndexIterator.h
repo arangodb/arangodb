@@ -79,19 +79,17 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, transaction::Methods*);
+  IndexIterator(LogicalCollection* collection, transaction::Methods* trx);
 
   virtual ~IndexIterator() = default;
 
-  virtual char const* typeName() const = 0;
-
   /// @brief return the underlying collection
   /// this is guaranteed to be a non-nullptr
-  LogicalCollection* collection() const { return _collection; }
+  LogicalCollection* collection() const noexcept { return _collection; }
 
-  transaction::Methods* transaction() const { return _trx; }
+  transaction::Methods* transaction() const noexcept { return _trx; }
   
-  bool hasMore() const { return _hasMore; }
+  bool hasMore() const noexcept { return _hasMore; }
   
   void reset();
 
@@ -129,6 +127,16 @@ class IndexIterator {
   void allDocuments(IndexIterator::DocumentCallback const& callback, uint64_t batchSize) {
     while (nextDocument(callback, batchSize)) { /* intentionally empty */ }
   }
+  
+  /// @brief rearm the iterator with a new condition
+  /// requires that canRearm() is true!
+  /// if returns true it means that rearming has worked, and the iterator
+  /// is ready to be used
+  /// if returns false it means that the iterator does not support
+  /// the provided condition and would only produce an empty result
+  [[nodiscard]] bool rearm(arangodb::aql::AstNode const* node,
+                           arangodb::aql::Variable const* variable,
+                           IndexIteratorOptions const& opts);
 
   /// @brief skip the next toSkip many elements.
   ///        skipped will be increased by the amount of skipped elements
@@ -141,19 +149,11 @@ class IndexIterator {
   ///        afterwards Check hasMore()==true before using this NOTE: This will
   ///        throw on OUT_OF_MEMORY
   void skipAll(uint64_t& skipped);
+  
+  virtual char const* typeName() const = 0;
 
   /// @brief whether or not the index iterator supports rearming
   virtual bool canRearm() const { return false; }
-
-  /// @brief rearm the iterator with a new condition
-  /// requires that canRearm() is true!
-  /// if returns true it means that rearming has worked, and the iterator
-  /// is ready to be used
-  /// if returns false it means that the iterator does not support
-  /// the provided condition and would only produce an empty result
-  virtual bool rearm(arangodb::aql::AstNode const* node,
-                     arangodb::aql::Variable const* variable,
-                     IndexIteratorOptions const& opts);
 
   /// @brief The default index has no extra information
   virtual bool hasExtra() const { return false; }
@@ -164,6 +164,10 @@ class IndexIterator {
   virtual bool hasCovering() const { return false; }
  
  protected:
+  virtual bool rearmImpl(arangodb::aql::AstNode const* node,
+                         arangodb::aql::Variable const* variable,
+                         IndexIteratorOptions const& opts);
+
   virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit);
   virtual bool nextDocumentImpl(DocumentCallback const& callback, size_t limit);
   virtual bool nextExtraImpl(ExtraCallback const& callback, size_t limit);
@@ -175,8 +179,7 @@ class IndexIterator {
   virtual void resetImpl() {}
 
   virtual void skipImpl(uint64_t count, uint64_t& skipped);
-  
- protected:
+
   LogicalCollection* _collection;
   transaction::Methods* _trx;
   bool _hasMore;
@@ -204,8 +207,10 @@ class EmptyIndexIterator final : public IndexIterator {
   bool nextDocumentImpl(DocumentCallback const&, size_t) override { return false; }
   bool nextExtraImpl(ExtraCallback const&, size_t) override { return false; }
   bool nextCoveringImpl(DocumentCallback const&, size_t) override { return false; }
+  
+  void resetImpl() override { _hasMore = false; }
 
-  void skipImpl(uint64_t, uint64_t& skipped) override { skipped = 0; }
+  void skipImpl(uint64_t /*count*/, uint64_t& skipped) override { skipped = 0; }
 };
 
 /// @brief a wrapper class to iterate over several IndexIterators.
@@ -216,7 +221,7 @@ class EmptyIndexIterator final : public IndexIterator {
 class MultiIndexIterator final : public IndexIterator {
  public:
   MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                     arangodb::Index const* index, std::vector<std::unique_ptr<IndexIterator>>&& iterators)
+                     arangodb::Index const* index, std::vector<std::unique_ptr<IndexIterator>> iterators)
       : IndexIterator(collection, trx),
         _iterators(std::move(iterators)),
         _currentIdx(0),

@@ -38,35 +38,31 @@ IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods
 }
   
 void IndexIterator::reset() {
-  resetImpl();
   _hasMore = true;
+  resetImpl();
 }
 
 /// @brief Calls cb for the next batchSize many elements
 ///        NOTE: This will throw on OUT_OF_MEMORY
 bool IndexIterator::next(LocalDocumentIdCallback const& callback,
                          uint64_t batchSize) {
-  if (!hasMore()) {
-    return false;
+  if (_hasMore) {
+    TRI_ASSERT(batchSize != UINT64_MAX);
+
+    size_t atMost = static_cast<size_t>(batchSize);
+    _hasMore = nextImpl(callback, atMost);
   }
-
-  TRI_ASSERT(batchSize != UINT64_MAX);
-
-  size_t atMost = static_cast<size_t>(batchSize);
-  _hasMore = nextImpl(callback, atMost);
   return _hasMore;
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& callback,
                                  uint64_t batchSize) {
-  if (!hasMore()) {
-    return false;
+  if (_hasMore) {
+    TRI_ASSERT(batchSize != UINT64_MAX);
+
+    size_t atMost = static_cast<size_t>(batchSize);
+    _hasMore = nextDocumentImpl(callback, atMost);
   }
-
-  TRI_ASSERT(batchSize != UINT64_MAX);
-
-  size_t atMost = static_cast<size_t>(batchSize);
-  _hasMore = nextDocumentImpl(callback, atMost);
   return _hasMore;
 }
 
@@ -74,21 +70,18 @@ bool IndexIterator::nextDocument(DocumentCallback const& callback,
 /// @brief Calls cb for the next batchSize many elements
 ///        Uses the getExtra feature of indexes. Can only be called on those
 ///        who support it.
-///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
 bool IndexIterator::nextExtra(ExtraCallback const& callback,
                               uint64_t batchSize) {
   TRI_ASSERT(hasExtra());
 
-  if (!hasMore()) {
-    return false;
+  if (_hasMore) {
+    TRI_ASSERT(batchSize != UINT64_MAX);
+
+    size_t atMost = static_cast<size_t>(batchSize);
+    _hasMore = nextExtraImpl(callback, atMost);
   }
-
-  TRI_ASSERT(batchSize != UINT64_MAX);
-
-  size_t atMost = static_cast<size_t>(batchSize);
-  _hasMore = nextExtraImpl(callback, atMost);
   return _hasMore;
 }
 
@@ -96,15 +89,24 @@ bool IndexIterator::nextCovering(DocumentCallback const& callback,
                                  uint64_t batchSize) {
   TRI_ASSERT(hasCovering());
 
-  if (!hasMore()) {
-    return false;
+  if (_hasMore) {
+    TRI_ASSERT(batchSize != UINT64_MAX);
+
+    size_t atMost = static_cast<size_t>(batchSize);
+    _hasMore = nextCoveringImpl(callback, atMost);
   }
-
-  TRI_ASSERT(batchSize != UINT64_MAX);
-
-  size_t atMost = static_cast<size_t>(batchSize);
-  _hasMore = nextCoveringImpl(callback, atMost);
   return _hasMore;
+}
+
+bool IndexIterator::rearm(arangodb::aql::AstNode const* node,
+                          arangodb::aql::Variable const* variable,
+                          IndexIteratorOptions const& opts) {
+  _hasMore = true;
+  if (rearmImpl(node, variable, opts)) {
+    reset();
+    return true;
+  }
+  return false;
 }
 
 /// @brief Skip the next toSkip many elements.
@@ -112,7 +114,7 @@ bool IndexIterator::nextCovering(DocumentCallback const& callback,
 ///        afterwards Check hasMore()==true before using this NOTE: This will
 ///        throw on OUT_OF_MEMORY
 void IndexIterator::skip(uint64_t toSkip, uint64_t& skipped) {
-  if (hasMore()) {
+  if (_hasMore) {
     skipImpl(toSkip, skipped);
     if (skipped != toSkip) {
       _hasMore = false;
@@ -140,9 +142,9 @@ void IndexIterator::skipAll(uint64_t& skipped) {
 /// @brief default implementation for rearm
 /// specialized index iterators can implement this method with some
 /// sensible behavior
-bool IndexIterator::rearm(arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*,
-                          IndexIteratorOptions const&) {
+bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
+                              arangodb::aql::Variable const*,
+                              IndexIteratorOptions const&) {
   TRI_ASSERT(canRearm());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested rearming of an index iterator that does not support it");
 }
@@ -154,7 +156,6 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&, size_t /*limit*/) {
 }
 
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb, size_t limit) {
-  TRI_ASSERT(_collection != nullptr);
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
         return _collection->readDocumentWithCallback(_trx, token, cb);

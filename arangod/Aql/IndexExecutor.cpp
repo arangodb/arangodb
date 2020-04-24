@@ -443,9 +443,7 @@ void IndexExecutor::CursorReader::reset() {
   if (_cursor->canRearm()) {
     bool didRearm =
         _cursor->rearm(_condition, _infos.getOutVariable(), _infos.getOptions());
-    if (didRearm) {
-      _cursor->reset();
-    } else {
+    if (!didRearm) {
       // iterator does not support the condition
       // It will not create any results
       _cursor = std::make_unique<EmptyIndexIterator>(_cursor->collection(), &_trx);

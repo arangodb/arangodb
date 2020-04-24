@@ -291,8 +291,9 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
       // check if the underlying index iterator supports rearming
       if (cursor->canRearm()) {
         // rearming supported
-        cursor->rearm(node, _tmpVar, ::defaultIndexIteratorOptions);
-        cursor->reset();
+        if (!cursor->rearm(node, _tmpVar, ::defaultIndexIteratorOptions)) {
+          cursor = std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
+        }
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one

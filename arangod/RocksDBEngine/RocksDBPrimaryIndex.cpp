@@ -102,8 +102,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearm(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
-             IndexIteratorOptions const& opts) override {
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
@@ -197,8 +197,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearm(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
-             IndexIteratorOptions const& opts) override {
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
