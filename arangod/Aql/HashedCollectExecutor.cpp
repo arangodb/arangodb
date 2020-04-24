@@ -29,9 +29,9 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 
@@ -43,22 +43,13 @@ using namespace arangodb::aql;
 static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
+    : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _count(count),
       _trxPtr(trxPtr) {

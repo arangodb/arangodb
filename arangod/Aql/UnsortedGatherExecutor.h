@@ -25,8 +25,8 @@
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <string>

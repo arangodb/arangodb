@@ -174,23 +174,13 @@ SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow, 
     : dependencyIndex{index}, row{std::move(prow)}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,
     GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _sortRegister(std::move(sortRegister)),
+    : _sortRegister(std::move(sortRegister)),
       _trx(trx),
       _sortMode(sortMode),
       _parallelism(p),
       _limit(limit) {}
-
-SortingGatherExecutorInfos::SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) = default;
-SortingGatherExecutorInfos::~SortingGatherExecutorInfos() = default;
 
 SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
     : _numberDependencies(0),
