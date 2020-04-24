@@ -1250,6 +1250,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       // outVariable not used later
       if (!collectNode->count()) {
         collectNode->clearOutVariable();
+        collectNode->clearKeepVariables();
       }
       modified = true;
     } else if (outVariable != nullptr && !collectNode->count() &&

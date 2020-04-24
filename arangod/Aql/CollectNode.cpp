@@ -213,44 +213,24 @@ void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& a
   }
 }
 
-void CollectNode::calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const {
+std::vector<std::pair<std::string, RegisterId>> CollectNode::calcInputVariableNames() const {
+  std::vector<std::pair<std::string, RegisterId>> variableNames;
+
   if (_outVariable != nullptr) {
-    auto const& registerPlan = getRegisterPlan()->varInfo;
-    auto it = registerPlan.find(_outVariable->id);
-    TRI_ASSERT(it != registerPlan.end());
+    auto const& varInfo = getRegisterPlan()->varInfo;
+    TRI_ASSERT(varInfo.find(_outVariable->id) != varInfo.end());
 
     // iterate over all our variables
-    if (_keepVariables.empty()) {
-      auto usedVariableIds(getVariableIdsUsedHere());
+    for (auto const& x : _keepVariables) {
+      auto const it = varInfo.find(x->id);
 
-      for (auto const& vi : registerPlan) {
-        if (vi.second.depth > 0 || getDepth() == 1) {
-          // Do not keep variables from depth 0, unless we are depth 1 ourselves
-          // (which means no FOR in which we are contained)
-
-          if (usedVariableIds.find(vi.first) == usedVariableIds.end()) {
-            // variable is not visible to the CollectBlock
-            continue;
-          }
-
-          // find variable in the global variable map
-          auto itVar = _variableMap.find(vi.first);
-
-          if (itVar != _variableMap.end()) {
-            variableNames.emplace_back(std::make_pair((*itVar).second, vi.second.registerId));
-          }
-        }
-      }
-    } else {
-      for (auto const& x : _keepVariables) {
-        auto it = registerPlan.find(x->id);
-
-        if (it != registerPlan.end()) {
-          variableNames.emplace_back(std::make_pair(x->name, (*it).second.registerId));
-        }
+      if (it != varInfo.end()) {
+        variableNames.emplace_back(std::make_pair(x->name, (*it).second.registerId));
       }
     }
   }
+
+  return variableNames;
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -326,13 +306,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::unique_ptr<Aggregator>> aggregateValues;
       calcAggregateTypes(aggregateValues);
 
-      // calculate the variable names
-      std::vector<std::pair<std::string, RegisterId>> variables;
-      calcVariableNames(variables);
-      auto inputVariables = std::vector<std::pair<std::string, RegisterId>>();
-      // TODO We should be provided with a list of input variables instead!
-      std::copy_if(variables.begin(), variables.end(), std::back_inserter(inputVariables),
-                   [this](auto it) { return it.second < getNrInputRegisters(); });
+      // calculate the input variable names
+      auto inputVariables = calcInputVariableNames();
 
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
@@ -656,14 +631,15 @@ void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable 
     vars.emplace(_expressionVariable);
   }
 
-  if (_outVariable != nullptr && !_count) {
-    // Note that the keep variables can either be user-supplied via KEEP,
-    // or are calculated automatically in ExecutionPlan::fromNodeCollect
-    // during ExecutionPlan::instantiateFromAst in case of an all-embracing
-    // `INTO var`.
-    for (auto& x : _keepVariables) {
-      vars.emplace(x);
-    }
+  // !_keepVariables.empty() => _outVariable != nullptr && !_count
+  TRI_ASSERT(_keepVariables.empty() || (_outVariable != nullptr && !_count));
+
+  // Note that the keep variables can either be user-supplied via KEEP,
+  // or are calculated automatically in ExecutionPlan::fromNodeCollect
+  // during ExecutionPlan::instantiateFromAst in case of an all-embracing
+  // `INTO var`.
+  for (auto& x : _keepVariables) {
+    vars.emplace(x);
   }
 }
 
@@ -757,6 +733,10 @@ void CollectNode::clearOutVariable() {
   TRI_ASSERT(_outVariable != nullptr);
   _outVariable = nullptr;
   _count = false;
+}
+
+void CollectNode::clearKeepVariables() {
+  _keepVariables.clear();
 }
 
 void CollectNode::clearAggregates(

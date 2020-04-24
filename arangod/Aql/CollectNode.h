@@ -113,7 +113,8 @@ class CollectNode : public ExecutionNode {
                               std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
-  void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;
+
+  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames() const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -142,6 +143,9 @@ class CollectNode : public ExecutionNode {
 
   /// @brief clear the out variable
   void clearOutVariable();
+
+  /// @brief clear all keep variables
+  void clearKeepVariables();
 
   void setAggregateVariables(
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
