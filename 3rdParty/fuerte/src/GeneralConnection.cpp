@@ -69,6 +69,7 @@ void GeneralConnection<ST>::startConnection() {
   } else {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << " found unexpected state "
       << static_cast<int>(exp) << " not equal to 'Disconnected'";
+    FUERTE_ASSERT(false);
   }
 }
 
