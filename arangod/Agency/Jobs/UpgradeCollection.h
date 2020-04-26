@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AGENCY_JOB_UPGRADE_COLLECTION_H
 #define ARANGOD_AGENCY_JOB_UPGRADE_COLLECTION_H 1
 
+#include <velocypack/Builder.h>
+
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
 
@@ -47,9 +49,16 @@ struct UpgradeCollection : public Job {
   virtual JOB_STATUS status() override final;
   virtual Result abort(std::string const& reason) override final;
 
+ private:
+  std::string jobPrefix() const;
+  velocypack::Slice job() const;
+  bool writeTransaction(velocypack::Builder const&, std::string const&);
+  bool registerError(std::string const&);
+
   std::string _database;
   std::string _collection;
   std::chrono::system_clock::time_point _created;
+  std::string _error;
 };
 }  // namespace consensus
 }  // namespace arangodb

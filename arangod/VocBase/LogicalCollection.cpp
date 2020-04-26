@@ -173,8 +173,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
-      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)),
-      _upgradeStatus(*this) {
+      _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
 
   TRI_ASSERT(info.isObject());
 
@@ -309,24 +308,6 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
 
 LogicalCollection::~LogicalCollection() = default;
 
-LogicalCollection::UpgradeStatus::UpgradeStatus(UpgradeStatus const& other)
-    : _collection(other._collection), _map(other._map) {}
-
-LogicalCollection::UpgradeStatus::UpgradeStatus(UpgradeStatus&& other)
-    : _collection(other._collection), _map(std::move(other._map)) {}
-
-LogicalCollection::UpgradeStatus::UpgradeStatus(LogicalCollection& c) : _collection(c) {}
-
-LogicalCollection::UpgradeStatus::UpgradeStatus(LogicalCollection& c, Map const& m) : _collection(c), _map(m) {}
-
-LogicalCollection::UpgradeStatus& LogicalCollection::UpgradeStatus::operator=(UpgradeStatus&& other) {
-  if (other._collection.id() != _collection.id()) {
-    throw std::invalid_argument("expecting collections to match");
-  }
-  _map = std::move(other._map);
-  return *this;
-}
-
 LogicalCollection::UpgradeStatus::Map const& LogicalCollection::UpgradeStatus::map() const {
   return _map;
 }
@@ -363,6 +344,26 @@ LogicalCollection::UpgradeStatus LogicalCollection::UpgradeStatus::fetch(Logical
   auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
   auto& ci = feature.clusterInfo();
   return ci.getCurrentShardUpgradeStatus(collection);
+}
+
+std::pair<LogicalCollection::UpgradeStatus, bool> LogicalCollection::UpgradeStatus::fromSlice(
+    velocypack::Slice slice) {
+  UpgradeStatus status;
+  bool error = false;
+
+  if (slice.isObject()) {
+    for (velocypack::ObjectIteratorPair pair : velocypack::ObjectIterator(slice)) {
+      if (!pair.key.isString() || !pair.value.isInteger()) {
+        error = true;
+        continue;
+      }
+      std::string server = pair.key.copyString();
+      State state = stateFromSlice(pair.value);
+      status.set(server, state);
+    }
+  }
+
+  return std::make_pair(status, error);
 }
 
 ::UpgradeState LogicalCollection::UpgradeStatus::stateFromSlice(velocypack::Slice stateSlice) {

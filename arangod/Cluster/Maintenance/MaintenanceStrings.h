@@ -51,6 +51,7 @@ constexpr char const* INDEXES = "indexes";
 constexpr char const* JOURNAL_SIZE = "journalSize";
 constexpr char const* KEY = "key";
 constexpr char const* LOCAL_LEADER = "localLeader";
+constexpr char const* LOCK = "Lock";
 constexpr char const* NAME = "name";
 constexpr char const* OBJECT_ID = "objectId";
 constexpr char const* OP = "op";

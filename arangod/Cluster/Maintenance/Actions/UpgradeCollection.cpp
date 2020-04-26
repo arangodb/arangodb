@@ -210,6 +210,7 @@ bool UpgradeCollection::first() {
 
       if (!_planStatus) {
         // no status found in the plan, clear the local status to report later
+        // TODO trigger rollback/cleanup
         {
           WRITE_LOCKER(lock, config.collection->statusLock());
           LogicalCollection::UpgradeStatus& status = config.collection->upgradeStatus();
@@ -261,7 +262,7 @@ bool UpgradeCollection::next() {
   });
 
   TRI_ASSERT(_planStatus);
-  ::UpgradeState targetState =
+  ::UpgradeState targetPhase =
       LogicalCollection::UpgradeStatus::stateFromSlice(_planStatus->slice());
 
   try {
@@ -286,26 +287,27 @@ bool UpgradeCollection::next() {
 
       std::unordered_map<::UpgradeState, std::vector<std::string>> servers =
           ::serversByStatus(*config.collection);
-      switch (targetState) {
+      switch (targetPhase) {
         case ::UpgradeState::Prepare: {
           [[maybe_unused]] bool haveServers =
-              processPhase(servers, ::UpgradeState::ToDo,
-                           ::UpgradeState::Prepare, *config.collection);
+              processPhase(servers, ::UpgradeState::ToDo, targetPhase, *config.collection);
           break;
         }
         case ::UpgradeState::Finalize: {
+          // first prepare any servers that are still ToDo
           bool haveServers = processPhase(servers, ::UpgradeState::ToDo,
                                           ::UpgradeState::Prepare, *config.collection);
+          // if everything was already prepared, proceed to finalize
           if (!haveServers && _result.ok()) {
             haveServers = processPhase(servers, ::UpgradeState::Prepare,
-                                       ::UpgradeState::Finalize, *config.collection);
+                                       targetPhase, *config.collection);
           }
           break;
         }
         case ::UpgradeState::Rollback: {
           [[maybe_unused]] bool haveServers =
-              processPhase(servers, ::UpgradeState::Finalize,
-                           ::UpgradeState::Rollback, *config.collection);
+              processPhase(servers, ::UpgradeState::Finalize, targetPhase,
+                           *config.collection);
           break;
         }
         case ::UpgradeState::Cleanup: {
@@ -315,11 +317,11 @@ bool UpgradeCollection::next() {
               processPhase(servers, ::UpgradeState::ToDo,
                            ::UpgradeState::Cleanup, *config.collection);
           haveServers = processPhase(servers, ::UpgradeState::Prepare,
-                                     ::UpgradeState::Cleanup, *config.collection);
+                                     targetPhase, *config.collection);
           haveServers = processPhase(servers, ::UpgradeState::Finalize,
-                                     ::UpgradeState::Cleanup, *config.collection);
+                                     targetPhase, *config.collection);
           haveServers = processPhase(servers, ::UpgradeState::Rollback,
-                                     ::UpgradeState::Cleanup, *config.collection);
+                                     targetPhase, *config.collection);
           break;
         }
         case ::UpgradeState::ToDo:

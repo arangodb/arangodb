@@ -4329,7 +4329,17 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
 }
 
 LogicalCollection::UpgradeStatus ClusterInfo::getCurrentShardUpgradeStatus(LogicalCollection& collection) {
-  LogicalCollection::UpgradeStatus status(collection);
+  LogicalCollection::UpgradeStatus status;
+  bool hasError = false;
+  auto guard = scopeGuard([&hasError, &collection]() -> void {
+    if (hasError) {
+      std::string badFormat =
+          "found malformed data while trying to check upgrade "
+          "status for shard '" +
+          collection.name() + "', reported information may not be accurate";
+      LOG_TOPIC("dc3f1", WARN, Logger::CLUSTER) << badFormat;
+    }
+  });
 
   CollectionID parentName = getCollectionNameForShard(collection.name());
   std::shared_ptr<LogicalCollection> parent = getCollectionNT(collection.vocbase().name(), parentName);
@@ -4349,47 +4359,25 @@ LogicalCollection::UpgradeStatus ClusterInfo::getCurrentShardUpgradeStatus(Logic
     return status;
   }
 
-  std::string badFormat = "found malformed data while trying to check upgrade "
-                          "status for shard '" + collection.name() +
-                          "', reported information may not be accurate";
   velocypack::Slice collectionsSlice = current->slice().get("Collections");
   if (!collectionsSlice.isObject()) {
-    LOG_TOPIC("dc3f1", WARN, Logger::CLUSTER) << badFormat;
     return status;
   }
   velocypack::Slice databaseSlice = collectionsSlice.get(collection.vocbase().name());
   if (!databaseSlice.isObject()) {
-    LOG_TOPIC("dc3f2", WARN, Logger::CLUSTER) << badFormat;
     return status;
   }
   velocypack::Slice collectionSlice = databaseSlice.get(std::to_string(parentId));
   if (!collectionSlice.isObject()) {
-    LOG_TOPIC("dc3f3", WARN, Logger::CLUSTER) << badFormat;
     return status;
   }
   velocypack::Slice shardSlice = collectionSlice.get(collection.name());
   if (!shardSlice.isObject()) {
-    LOG_TOPIC("dc3f4", WARN, Logger::CLUSTER) << badFormat;
     return status;
   }
 
   velocypack::Slice statusSlice = shardSlice.get(maintenance::UPGRADE_STATUS);
-  LOG_DEVEL << "STATUS: '" << statusSlice.toJson() << "'";
-  using state_t = std::underlying_type<LogicalCollection::UpgradeStatus::State>::type;
-  if (statusSlice.isObject()) {
-    for (velocypack::ObjectIteratorPair pair : velocypack::ObjectIterator(statusSlice)) {
-      if (!pair.key.isString() || !pair.value.isInteger()) {
-        LOG_TOPIC("dc3f5", WARN, Logger::CLUSTER) << badFormat;
-      }
-      std::string server = pair.key.copyString();
-      VPackValueLength l;
-      char const* p = pair.value.getStringUnchecked(l);
-      state_t raw = NumberUtils::atoi_zero<state_t>(p, p + l);
-      LogicalCollection::UpgradeStatus::State state{raw};
-
-      status.set(server, state);
-    }
-  }
+  std::tie(status, hasError) = LogicalCollection::UpgradeStatus::fromSlice(statusSlice);
 
   return status;
 }

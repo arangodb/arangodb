@@ -101,12 +101,6 @@ class LogicalCollection : public LogicalDataSource {
      using Map = std::unordered_map<std::string, State>;
 
     public:
-     UpgradeStatus(UpgradeStatus const&);
-     UpgradeStatus(UpgradeStatus&&);
-     explicit UpgradeStatus(LogicalCollection&);
-     UpgradeStatus(LogicalCollection&, Map const&);
-     UpgradeStatus& operator=(UpgradeStatus&&);
-
      Map const& map() const;
      void set(Map::key_type const&, Map::mapped_type const&);
      void remove(Map::key_type const&);
@@ -116,11 +110,11 @@ class LogicalCollection : public LogicalDataSource {
 
     public:
      static UpgradeStatus fetch(LogicalCollection&);
+     static std::pair<UpgradeStatus, bool> fromSlice(velocypack::Slice);
      static State stateFromSlice(velocypack::Slice);
      static velocypack::Value stateToValue(State);
 
     private:
-     LogicalCollection& _collection;
      Map _map;
   };
 
