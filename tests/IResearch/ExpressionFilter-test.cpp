@@ -403,7 +403,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -478,7 +478,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
     
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -553,7 +553,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -645,7 +645,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -737,7 +737,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -830,7 +830,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -905,7 +905,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -981,7 +981,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -1119,7 +1119,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -1242,7 +1242,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx;
+    ExpressionContextMock ctx(query);
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
       arangodb::aql::AqlValueGuard guard(value, true);

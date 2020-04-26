@@ -274,16 +274,16 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
+  auto cleanupGuard = scopeGuard([this, &snippetIds]() {
+    cleanupEngines(TRI_ERROR_INTERNAL, _query.vocbase().name(), snippetIds);
+  });
+  
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
-
-  auto cleanupGuard = scopeGuard([this, pool, &snippetIds]() {
-    cleanupEngines(pool, TRI_ERROR_INTERNAL, _query.vocbase().name(), snippetIds);
-  });
 
   // Build Lookup Infos
   VPackBuilder infoBuilder;
@@ -475,8 +475,12 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * -> queryid.
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
-    network::ConnectionPool* pool, int errorCode, std::string const& dbname,
+    int errorCode, std::string const& dbname,
     MapRemoteToSnippet& snippetIds) const {
+  
+  NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily

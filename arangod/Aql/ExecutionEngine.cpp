@@ -478,13 +478,6 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     // QueryIds are filled by responses of DBServer parts.
     MapRemoteToSnippet snippetIds{};
 
-    NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-    auto cleanupGuard = scopeGuard([this, pool, &snippetIds]() {
-      _dbserverParts.cleanupEngines(pool, TRI_ERROR_INTERNAL,
-                                    _query.vocbase().name(), snippetIds);
-    });
-
     std::map<std::string, QueryId> serverToQueryId;
     std::map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
     Result res =
@@ -498,7 +491,6 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     res = _coordinatorParts.buildEngines(_query, mgr, snippetIds, snippets);
 
     if (res.ok()) {
-      cleanupGuard.cancel();
       TRI_ASSERT(snippets.size() > 0);
       TRI_ASSERT(snippets[0].first == 0);
       snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));

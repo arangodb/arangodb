@@ -41,22 +41,38 @@ struct Variable; // forward decl
 } // aql
 } // arangodb
 
-struct ExpressionContextMockBase : public arangodb::iresearch::ViewExpressionContextBase {
-  ExpressionContextMockBase(arangodb::transaction::Methods* trx,
-                            arangodb::aql::QueryContext* query,
-                            arangodb::aql::RegexCache* cache)
-      : ViewExpressionContextBase(*trx, *query, *cache) {}
+struct ExprCtxMockQuery final : public arangodb::aql::QueryContext {
+  
+  virtual QueryOptions const& queryOptions() const = 0;
+  
+  /// @brief pass-thru a resolver object from the transaction context
+  virtual CollectionNameResolver const& resolver() const = 0;
+  
+  virtual velocypack::Options const& vpackOptions() const = 0;
+  
+  /// @brief create a transaction::Context
+  virtual std::shared_ptr<aralgndob::transaction::Context> newTrxContext() const {
+    return nullptr;
+  }
+  
+  virtual transaction::Methods& trxForOptimization() = 0;
+    
+  virtual bool killed() const { return false; }
+
+  virtual void setKilled() {}
+  
+private:
+  std::shared_ptr<arangodb::transaction::StandaloneContext> _ctx;
+  arangodb::aql::QueryOptions _queryOptions;
 };
 
-struct ExpressionContextMock final : public ExpressionContextMockBase {
+struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionContextBase {
 
+  static std::unique_ptr<arangodb::aql::QueryContext> EMPTY_QUERY;
   static ExpressionContextMock EMPTY;
   
-  ExpressionContextMock() : ExpressionContextMockBase(nullptr, nullptr, nullptr) {}
-
-//  ExpressionContextMock(arangodb::aql::QueryContext& query) noexcept
-//  : arangodb::iresearch::ViewExpressionContextBase(_trx, query, _regexCache),
-//    _trx(arangodb::transaction::StandaloneConte) {}
+  ExpressionContextMock(arangodb::aql::QueryContext& query)
+  : ViewExpressionContextBase(_trx, query, _regexCache), _trx(query.newTrxContext()) {}
 
   virtual ~ExpressionContextMock();
 
@@ -70,6 +86,8 @@ struct ExpressionContextMock final : public ExpressionContextMockBase {
     bool& mustDestroy
   ) const override;
 
+  arangodb::transaction::Methods _trx;
+  arangodb::aql::RegexCache _regexCache;
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock
 

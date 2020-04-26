@@ -337,10 +337,6 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
 
   // reference as an argument
   {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("withNorms",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
-
     std::string query =
         "LET withNorms=true FOR d IN collection FILTER '1' SORT tfidf(d, "
         "withNorms) DESC RETURN d";
@@ -348,15 +344,16 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     irs::order expected;
 
     expected.add(true, scorer);
+    
+    ExpressionContextMock ctx(query);
+    ctx.vars.emplace("withNorms",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
 
   // deterministic expression as an argument
   {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
-
     std::string query =
         "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, 1+x > 3) DESC "
         "RETURN d";
@@ -364,6 +361,10 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     irs::order expected;
 
     expected.add(true, scorer);
+    
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
+
 
     assertOrderSuccess(server, query, expected, &ctx);
   }

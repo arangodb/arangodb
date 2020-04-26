@@ -27,6 +27,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Cluster/ServerState.h"
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -44,6 +45,8 @@ class IndexNodeTest
   arangodb::tests::mocks::MockAqlServer server;
 
   IndexNodeTest() : server(false) {
+     // otherwise asserts fail
+    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
     server.startFeatures();
   }
 

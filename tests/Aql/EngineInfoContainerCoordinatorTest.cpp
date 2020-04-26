@@ -138,6 +138,9 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   
   auto oldRole = ServerState::instance()->getRole();
   ServerState::instance()->setRole(ServerState::RoleEnum::ROLE_COORDINATOR);
+  auto guard = scopeGuard([=] {
+    ServerState::instance()->setRole(oldRole);
+  });
   
   // simon: we only use this query for the API
   auto q = server.createFakeQuery("RETURN 1");
@@ -152,7 +155,6 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   // It is not added to the registry
   ASSERT_TRUE(queryIds.empty());
   
-  ServerState::instance()->setRole(oldRole);
 }
 
 #if 0
