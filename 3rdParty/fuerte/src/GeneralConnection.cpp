@@ -171,9 +171,6 @@ void GeneralConnection<ST>::restartConnection(const Error err) {
     // Terminate connection, restarts if required
     shutdownConnection(err, /*msg*/ "", /*mayRestart*/err != Error::Canceled);
   }
-  // Note that it is possible that both the request timeout and the read or write
-  // completion handler call us. In that case, the second one finds `Disconnected`
-  // or even `Connecting` and that is totally fine.
 }
 
 // asyncReadSome reads the next bytes from the server.

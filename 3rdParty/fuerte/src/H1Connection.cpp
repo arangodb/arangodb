@@ -135,6 +135,9 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
     : GeneralConnection<ST>(loop, config),
       _queue(),
       _active(false),
+      _reading(false),
+      _writing(false),
+      _writeStart(),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageComplete(false) {
@@ -228,10 +231,10 @@ template <SocketType ST>
 void H1Connection<ST>::activate() {
   FUERTE_ASSERT(_active.load());
   Connection::State state = this->_state.load();
-  // FUERTE_ASSERT(state != Connection::State::Connecting);
+  FUERTE_ASSERT(state != Connection::State::Connecting);
   if (state == Connection::State::Connected) {
     FUERTE_LOG_HTTPTRACE << "activate: connected\n";
-    this->startWriting();
+    this->asyncWriteNextRequest();
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_HTTPTRACE << "activate: not connected\n";
     this->startConnection();
@@ -254,14 +257,18 @@ void H1Connection<ST>::finishConnect() {
   FUERTE_ASSERT(_active.load());
   auto exp = Connection::State::Connecting;
   if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
-    this->startWriting();  // starts writing if queue non-empty
+    this->asyncWriteNextRequest();  // starts writing if queue non-empty
   } else {
-    FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting'";
+    FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting': " << static_cast<int>(exp);
     FUERTE_ASSERT(false);
     // If this happens, we probably have a sleeping barber
   }
 }
 
+// This is no longer used, we call directly `asyncWriteNextRequest` if we need
+// to start writing. We will remove it once H2Connection and VstConnection
+// have also lost it (if possible).
+//
 // startWriting must only be executed on the IO thread and only with active==true
 // and with state `Connected`
 template <SocketType ST>
@@ -352,7 +359,8 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   // model. However, Jenkins found violations. This needs to be investigated.
   // FUERTE_ASSERT(this->_state.load() == Connection::State::Connected);
   auto state = this->_state.load();
-  if (state != Connection::State::Connected) {
+  if (state != Connection::State::Connected &&
+      state != Connection::State::Failed) {
     FUERTE_LOG_ERROR << "asyncWriteNextRequest found an unexpected state: "
                      << static_cast<int>(state)
                      << " instead of the expected 'Connected'\n";
@@ -368,7 +376,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
-        setTimeout(this->_config._idleTimeout);
+        setTimeout(this->_config._idleTimeout, TimeoutType::IDLE);
       } else {
         this->shutdownConnection(Error::CloseRequested);
       }
@@ -386,7 +394,9 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_ASSERT(q > 0);
   
   _item.reset(ptr);
-  setTimeout(_item->request->timeout());
+  setTimeout(_item->request->timeout(), TimeoutType::WRITE);
+  _writeStart = std::chrono::steady_clock::now();
+  _writing = true;
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] =
@@ -410,10 +420,17 @@ void H1Connection<ST>::asyncWriteNextRequest() {
 template <SocketType ST>
 void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
-  if (ec || _item == nullptr) {
+  this->_writing = false;       // indicate that no async write is ongoing any more
+  this->_proto.timer.cancel();  // cancel alarm for timeout
+  std::chrono::milliseconds timeoutLeft =
+      _item->request->timeout() -
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - _writeStart);
+  if (ec || _item == nullptr || timeoutLeft.count() <= 0) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
-                     << "', this=" << this << "\n";
+                     << "', timeout: " << (timeoutLeft.count() <= 0)
+                     << " this=" << this << "\n";
     auto item = std::move(_item);
 
     // keepalive timeout may have expired
@@ -444,8 +461,11 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   // request is written we no longer need data for that
   _item->requestHeader.clear();
 
-  setTimeout(_item->request->timeout());      // extend timeout
+  // Continue with a read, use the remaining part of the timeout as
+  // timeout:
+  setTimeout(timeoutLeft, TimeoutType::READ);    // extend timeout
 
+  _reading = true;
   this->asyncReadSome();  // listen for the response
 }
 
@@ -456,7 +476,11 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 // called by the async_read handler (called from IO thread)
 template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
+  this->_reading = false;
+  // Do not cancel timeout now, because we might be going on to read!
   if (ec) {
+    this->_proto.timer.cancel();
+
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
                      << ec.message() << "' , this=" << this << "\n";
 
@@ -510,13 +534,15 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     return;
   }
 
+  _reading = true;
   FUERTE_LOG_HTTPTRACE << "asyncReadCallback: response not complete yet\n";
   this->asyncReadSome();  // keep reading from socket
+  // leave read timeout in place!
 }
 
 /// Set timeout accordingly
 template <SocketType ST>
-void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis) {
+void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType type) {
   if (millis.count() == 0) {
     this->_proto.timer.cancel();
     return;
@@ -525,19 +551,26 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis) {
   // expires_after cancels pending ops
   this->_proto.timer.expires_after(millis);
   this->_proto.timer.async_wait(
-      [self = Connection::weak_from_this()](auto const& ec) {
+      [type, self = Connection::weak_from_this()](auto const& ec) {
         std::shared_ptr<Connection> s;
         if (ec || !(s = self.lock())) {  // was canceled / deallocated
           return;
         }
         auto* me = static_cast<H1Connection<ST>*>(s.get());
-
-        FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-        if (me->_active) {
-          me->restartConnection(Error::Timeout);
-        } else {  // close an idle connection
-          me->shutdownConnection(Error::CloseRequested);
+        if ((type == TimeoutType::WRITE && me->_writing) ||
+            (type == TimeoutType::READ && me->_reading)) {
+          FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
+          me->_proto.cancel();
+          // We simply cancel all ongoing asynchronous operations, the completion
+          // handlers will do the rest.
+          return;
+        } else if (type == TimeoutType::IDLE) {
+          if (me->_state == Connection::State::Connected) {
+            me->shutdownConnection(Error::CloseRequested);
+          }
         }
+        // In all other cases we do nothing, since we have been posted to the
+        // iocontext but the thing we should be timing out has already completed.
       });
 }
 
