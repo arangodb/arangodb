@@ -1107,7 +1107,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
 }
 
 AstNode* Ast::createNodeValueString(std::string const &value) {
-  if (value.length() == 0) {
+  if (value.empty()) {
     // performance optimization:
     // return a pointer to the singleton empty string node
     // note: these nodes are never registered nor freed
