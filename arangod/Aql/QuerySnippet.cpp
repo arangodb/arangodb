@@ -401,7 +401,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
           // We should never have shards on other servers, except for satellite
           // graphs which are used that way, or satellite collections (in a
           // OneShard case) because local graphs (on DBServers) only ever occur
-          // in either OneShard or SatelliteGraphs.
+          // in either OneShard, SatelliteGraphs or DisjointSmartGraphs.
           TRI_ASSERT(found->second == server || localGraphNode->isUsedAsSatellite() ||
                      aqlCollection->isSatellite() || localGraphNode->isDisjoint());
           // provide a correct translation from collection to shard
