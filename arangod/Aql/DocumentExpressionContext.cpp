@@ -30,11 +30,6 @@ DocumentExpressionContext::DocumentExpressionContext(Query* query,
                                                      arangodb::velocypack::Slice document)
     : QueryExpressionContext(query), _document(document) {}
 
-size_t DocumentExpressionContext::numRegisters() const {
-  // hard-coded
-  return 1;
-}
-
 AqlValue DocumentExpressionContext::getVariableValue(Variable const*, bool doCopy,
                                                      bool& mustDestroy) const {
   if (doCopy) {

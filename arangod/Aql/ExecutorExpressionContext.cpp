@@ -30,10 +30,6 @@
 
 using namespace arangodb::aql;
 
-size_t ExecutorExpressionContext::numRegisters() const {
-  return _inputRow.getNrRegisters();
-}
-
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
