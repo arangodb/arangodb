@@ -83,6 +83,10 @@ static inline std::string collectionPath(std::string const& dbName,
   return "Plan/Collections/" + dbName + "/" + collection;
 }
 
+inline std::string analyzersPath(std::string const& dbName) {
+  return "Plan/Analyzers/" + dbName;
+}
+
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
                                                               std::string const& collection,
                                                               VPackSlice const& info) {
@@ -1753,7 +1757,7 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
       {AgencyPrecondition("Plan/Databases/" + database.getName(),
                           AgencyPrecondition::Type::EMPTY, true),
-       AgencyPrecondition("Plan/Analyzers/" + database.getName(),
+       AgencyPrecondition(analyzersPath(database.getName()),
                           AgencyPrecondition::Type::EMPTY, true)});
 
   // TODO: Should this never timeout?
@@ -1807,10 +1811,10 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
       {AgencyOperation("Plan/Databases/" + database.getName(),
                        AgencyValueOperationType::SET, entryBuilder.slice()),
        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
-       AgencyOperation("Plan/Analyzers/" + database.getName(), AgencyValueOperationType::SET, analyzersBuilder.slice())},
+       AgencyOperation(analyzersPath(database.getName()), AgencyValueOperationType::SET, analyzersBuilder.slice())},
       {AgencyPrecondition("Plan/Databases/" + database.getName(),
                           AgencyPrecondition::Type::VALUE, pcBuilder.slice()),
-       AgencyPrecondition("Plan/Analyzers/" + database.getName(),
+       AgencyPrecondition(analyzersPath(database.getName()),
                           AgencyPrecondition::Type::EMPTY, true)});
 
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
@@ -1929,12 +1933,12 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanViews("Plan/Views/" + name, AgencySimpleOperationType::DELETE_OP);
-  AgencyOperation delPlanAnalyzers("Plan/Analyzers/" + name, AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanAnalyzers(analyzersPath(name), AgencySimpleOperationType::DELETE_OP);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
-  AgencyWriteTransaction trans({delPlanDatabases, delPlanCollections, delPlanViews, incrementVersion},
-                               databaseExists);
+  AgencyWriteTransaction trans({delPlanDatabases, delPlanCollections, delPlanViews,
+                                delPlanAnalyzers, incrementVersion}, databaseExists);
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (!res.successful()) {
@@ -3020,7 +3024,7 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
       // Get current revision for precondition
       loadPlan();
       READ_LOCKER(readLocker, _planProt.lock);
-      auto it = _dbAnalyzersRevision.find(databaseID);
+      auto const it = _dbAnalyzersRevision.find(databaseID);
       if (it == _dbAnalyzersRevision.cend()) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
                       "start modifying analyzer: unknown database name '" + databaseID + "'");
@@ -3031,15 +3035,16 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
     VPackBuilder revisionBuilder;
     revisionBuilder.add(VPackValue(revision));
 
+    auto const anPath = analyzersPath(databaseID) + "/";
     AgencyWriteTransaction const transaction{
-        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{anPath + StaticStrings::AnalyzersBuildingRevision,
               AgencySimpleOperationType::INCREMENT_OP},
-         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersCoordinator,
+         {anPath + StaticStrings::AnalyzersCoordinator,
               AgencyValueOperationType::SET, serverIDBuilder.slice()},
-         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRebootID,
+         {anPath + StaticStrings::AnalyzersRebootID,
               AgencyValueOperationType::SET, rebootIDBuilder.slice()},
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{anPath + StaticStrings::AnalyzersBuildingRevision,
               AgencyPrecondition::Type::VALUE, revisionBuilder.slice()}}};
 
     auto const res = ac.sendTransactionWithFailover(transaction);
@@ -3104,7 +3109,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
       // Get current revision for precondition
       loadPlan();
       READ_LOCKER(readLocker, _planProt.lock);
-      auto it = _dbAnalyzersRevision.find(databaseID);
+      auto const it = _dbAnalyzersRevision.find(databaseID);
       if (it == _dbAnalyzersRevision.cend()) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
                       "finish modifying analyzer: unknown database name '" + databaseID + "'");
@@ -3115,22 +3120,23 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
     VPackBuilder revisionBuilder;
     revisionBuilder.add(VPackValue(++revision));
 
+    auto const anPath = analyzersPath(databaseID) + "/";
     AgencyWriteTransaction const transaction{
         {
-          [restore, &databaseID]{
+          [restore, &anPath]{
             if (restore) {
-              return AgencyOperation{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
+              return AgencyOperation{anPath + StaticStrings::AnalyzersBuildingRevision,
                     AgencySimpleOperationType::DECREMENT_OP};
             }
-            return AgencyOperation{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRevision,
+            return AgencyOperation{anPath + StaticStrings::AnalyzersRevision,
                   AgencySimpleOperationType::INCREMENT_OP};
          }(),
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-        {{"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersBuildingRevision,
+        {{anPath + StaticStrings::AnalyzersBuildingRevision,
               AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
-         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersCoordinator,
+         {anPath + StaticStrings::AnalyzersCoordinator,
               AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
-         {"Plan/Analyzers/" + databaseID + "/" + StaticStrings::AnalyzersRebootID,
+         {anPath + StaticStrings::AnalyzersRebootID,
               AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
 
     auto const res = ac.sendTransactionWithFailover(transaction);
