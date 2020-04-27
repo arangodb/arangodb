@@ -2487,19 +2487,22 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   }
 
   // dummy query
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString("RETURN 1"),
+  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.initForTests();
+//  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-//  arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionPlan plan(query.ast());
 
   arangodb::aql::Variable const outVariable("variable", 0, false);
 
   // no filter condition, no sort condition
   {
-    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
-    arangodb::iresearch::IResearchViewNode node(*query.plan(),
+    arangodb::aql::SingletonNode singleton(&plan, arangodb::aql::ExecutionNodeId{0});
+    arangodb::iresearch::IResearchViewNode node(plan,
                                                 arangodb::aql::ExecutionNodeId{42},
                                                 vocbase,      // database
                                                 logicalView,  // view
@@ -2519,13 +2522,13 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     // before transaction has started (no snapshot)
     try {
-      auto block = node.createBlock(*query.rootEngine(), EMPTY);
+      auto block = node.createBlock(engine, EMPTY);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_INTERNAL, e.code());
     }
     
-    arangodb::transaction::Methods trx(query.newTrxContext());
+    arangodb::transaction::Methods trx(ctx);
     ASSERT_TRUE(trx.state());
 
     // start transaction (put snapshot into)
@@ -2551,7 +2554,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     // after transaction has started
     {
-      auto block = node.createBlock(*query.rootEngine(), EMPTY);
+      auto block = node.createBlock(engine, EMPTY);
       EXPECT_NE(nullptr, block);
       EXPECT_NE(nullptr,
                   (dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>*>(
@@ -2574,14 +2577,19 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   // dummy query
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString("RETURN 1"),
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    query.initForTests();
+  //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   // dummy engine
-  arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
+  arangodb::aql::ExecutionEngine engine(query, query.itemBlockManager(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionPlan plan(query.ast());
+
+  // dummy engine
+  arangodb::aql::SingletonNode singleton(&plan, arangodb::aql::ExecutionNodeId{0});
   arangodb::aql::Variable const outVariable("variable", 0, false);
 
   // no filter condition, no sort condition
-  arangodb::iresearch::IResearchViewNode node(*query.plan(),
+  arangodb::iresearch::IResearchViewNode node(plan,
                                               arangodb::aql::ExecutionNodeId{42},
                                               vocbase,      // database
                                               logicalView,  // view
@@ -2597,7 +2605,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   singleton.planRegisters(nullptr);
   node.planRegisters(nullptr);
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  auto emptyBlock = node.createBlock(*query.rootEngine(), EMPTY);
+  auto emptyBlock = node.createBlock(engine, EMPTY);
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
   EXPECT_NE(nullptr, emptyBlock);
   EXPECT_TRUE(nullptr !=

@@ -664,10 +664,12 @@ void assertExpressionFilter(
     irs::Or expected;
     expected.add<arangodb::iresearch::ByExpression>().init(*dummyPlan, *ast,
                                                            *expressionExtractor(filterNode));
+    
+    ExpressionContextMock exprCtx;
+    exprCtx.setTrx(&trx);
 
     irs::Or actual;
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                &ExpressionContextMock::EMPTY, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, &exprCtx, ref};
     EXPECT_TRUE(
         (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
     EXPECT_EQ(expected, actual);
@@ -831,6 +833,11 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
     EXPECT_TRUE(

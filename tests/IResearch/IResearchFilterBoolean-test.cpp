@@ -1311,10 +1311,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1389,10 +1392,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1464,10 +1470,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1541,10 +1550,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1618,10 +1630,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1695,10 +1710,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       expr.init(*dummyPlan, *ast,
                 *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1771,10 +1789,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a < 1+d.b
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2589,9 +2610,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           .include<irs::Bound::MAX>(false)
           .term<irs::Bound::MAX>("40");  // d.a.b.c < 40
 
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
+      
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2671,9 +2695,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           .include<irs::Bound::MAX>(false)
           .term<irs::Bound::MAX>("40");  // d.a.b.c < 40
 
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
+      
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2961,10 +2988,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // not d.c.b.a == '2'
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3306,10 +3336,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3390,10 +3423,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3713,10 +3749,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3873,10 +3912,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -5654,10 +5696,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           .field(mangleStringIdentity("a.b.c"))
           .include<irs::Bound::MAX>(false)
           .term<irs::Bound::MAX>("40");  // d.a.b.c < 40
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY, ref};
+                                                  &exprCtx, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
