@@ -1283,10 +1283,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1389,10 +1392,14 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
+
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1496,9 +1503,12 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
+        
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1601,10 +1611,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -2731,10 +2744,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -2838,10 +2854,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -2945,10 +2964,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 

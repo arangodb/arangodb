@@ -198,6 +198,9 @@ class Query : public QueryContext {
   AqlItemBlockManager& itemBlockManager() {
     return _itemBlockManager;
   }
+  void initForTests() {
+    this->init();
+  }
 #endif
   
   SnippetList const& snippets() const {
