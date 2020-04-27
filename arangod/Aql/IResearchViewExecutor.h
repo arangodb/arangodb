@@ -182,9 +182,6 @@ class IResearchViewExecutorBase {
 
  protected:
   template<auto type>
-  static constexpr bool enabled_for_materialize_type = (Traits::MaterializeType & type) == type;
-
-  template<auto type>
   using enabled_for_materialize_type_t = std::enable_if_t<(Traits::MaterializeType & type) == type>;
 
   class ReadContext {

@@ -241,7 +241,7 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
       outputRow(outputRow),
       documentOutReg(documentOutReg),
       collectionPointerReg(collectionPointerReg) {
-  if constexpr (enabled_for_materialize_type<iresearch::MaterializeType::Materialize>) {
+  if constexpr ((Traits::MaterializeType & iresearch::MaterializeType::Materialize) == iresearch::MaterializeType::Materialize) {
     callback = this->copyDocumentCallback(*this);
   }
 }
