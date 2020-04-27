@@ -283,7 +283,11 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
       close(pipe_child_to_server[0]);
       close(pipe_child_to_server[1]);
     } else {
-      close(0);
+      { // "close" stdin, but avoid fd 0 being reused!
+        int fd = open("/dev/null", O_RDONLY);
+        dup2(fd, 0);
+        close(fd);
+      }
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
     }
