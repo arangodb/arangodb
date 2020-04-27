@@ -936,10 +936,6 @@ void ExecutionNode::removeDependencies() {
 }
 
 std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  ExecutionNode const* const previousNode = getFirstDependency();
-  // Only the Singleton has no previousNode, and it does not call this method.
-  TRI_ASSERT(previousNode != nullptr);
-
   std::unordered_set<RegisterId> regsToKeep{};
   regsToKeep.reserve(getVarsUsedLater().size());
 
@@ -1228,23 +1224,10 @@ bool ExecutionNode::isPassthrough() const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  // number in == number out
-  // Other nodes get the nrInRegs from the previous node.
-  // That is why we do not use `calcRegsToKeep()`
+
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
-
-  std::unordered_set<RegisterId> regsToKeep;
-  if (isInSubquery()) {
-    for (auto const& var : this->getVarsUsedLater()) {
-      auto val = variableToRegisterId(var);
-      if (val < nrRegs) {
-        auto rv = regsToKeep.insert(val);
-        TRI_ASSERT(rv.second);
-      }
-    }
-  }
-
   auto regsToClear = getRegsToClear();
+  auto regsToKeep = calcRegsToKeep();
 
   auto registerInfos = RegisterInfos{make_shared_unordered_set(),
                                      make_shared_unordered_set(),
