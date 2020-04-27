@@ -113,7 +113,8 @@ class CollectNode : public ExecutionNode {
                               std::unordered_set<RegisterId>& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
-  void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;
+
+  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames() const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -143,6 +144,9 @@ class CollectNode : public ExecutionNode {
   /// @brief clear the out variable
   void clearOutVariable();
 
+  /// @brief clear all keep variables
+  void clearKeepVariables();
+
   void setAggregateVariables(
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
 
@@ -163,8 +167,9 @@ class CollectNode : public ExecutionNode {
   /// @brief return the keep variables
   std::vector<Variable const*> const& keepVariables() const;
 
-  /// @brief set list of variables to keep if INTO is used
-  void setKeepVariables(std::vector<Variable const*>&& variables);
+  /// @brief restrict the KEEP variables (which may also be the auto-collected
+  /// variables of an unrestricted `INTO var`) to the passed `variables`.
+  void restrictKeepVariables(std::unordered_set<const Variable*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
@@ -188,6 +193,9 @@ class CollectNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const final;
 
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+
+  static void calculateAccessibleUserVariables(ExecutionNode const& node,
+                                               std::vector<Variable const*>& userVariables);
 
  private:
   /// @brief options for the aggregation

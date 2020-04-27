@@ -156,18 +156,20 @@ class TraversalNode : public virtual GraphNode {
   }
 
   /// @brief checks if the path out variable is used
-  bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
+  bool usesPathOutVariable() const;
 
   /// @brief return the path out variable
-  Variable const* pathOutVariable() const { return _pathOutVariable; }
+  Variable const* pathOutVariable() const;
 
   /// @brief set the path out variable
-  void setPathOutput(Variable const* outVar) { _pathOutVariable = outVar; }
+  void setPathOutput(Variable const* outVar);
 
   /// @brief return the in variable
-  Variable const* inVariable() const { return _inVariable; }
+  Variable const* inVariable() const;
 
-  std::string const getStartVertex() const { return _vertexId; }
+  std::string const getStartVertex() const;
+
+  void setInVariable(Variable const* inVariable);
 
   /// @brief remember the condition to execute for early traversal abortion.
   void setCondition(std::unique_ptr<Condition> condition);
