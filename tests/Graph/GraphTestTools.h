@@ -127,25 +127,11 @@ struct GraphTestSetup
 
 struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
-  std::vector<arangodb::aql::Query*> queries;
-  std::vector<arangodb::graph::ShortestPathOptions*> spos;
-
+  
   MockGraphDatabase(application_features::ApplicationServer& server, std::string name)
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server, name, 1)) {}
 
-  ~MockGraphDatabase() {
-    for (auto& q : queries) {
-      /* TODO
-      if (q->_trx != nullptr) {
-        /// TODO q->trx()->abort();
-      }
-      */
-      delete q;
-    }
-    for (auto& o : spos) {
-      delete o;
-    }
-  }
+  ~MockGraphDatabase() {}
 
   // Create a collection with name <name> and <n> vertices
   // with ids 0..n-1
@@ -243,25 +229,22 @@ struct MockGraphDatabase {
     EXPECT_TRUE(insertedDocs.size() == edgedef.size());
   }
 
-  arangodb::aql::Query* getQuery(std::string qry, std::vector<std::string> collections) {
+  std::unique_ptr<arangodb::aql::Query> getQuery(std::string qry, std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    arangodb::aql::Query* query =
-      new arangodb::aql::Query(ctx, queryString, nullptr,
+    auto query =
+      std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr,
                                  arangodb::velocypack::Parser::fromJson("{}"));
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ);
     }
     query->prepareQuery(SerializationFormat::SHADOWROWS);
 
-    queries.emplace_back(query);
-
     return query;
   }
 
-  arangodb::graph::ShortestPathOptions* getShortestPathOptions(arangodb::aql::Query* query) {
-    arangodb::graph::ShortestPathOptions* spo;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> getShortestPathOptions(arangodb::aql::Query* query) {
 
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
@@ -292,12 +275,11 @@ struct MockGraphDatabase {
       _fromCondition->addMember(cond);
     }
         
-    spo = new ShortestPathOptions(*query);
+    auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));
     spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString, _toCondition->clone(ast));
 
-    spos.emplace_back(spo);
     return spo;
   }
 };  // namespace graph

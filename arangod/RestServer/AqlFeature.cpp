@@ -93,6 +93,7 @@ void AqlFeature::stop() {
   // Wait until all AQL queries are done
   auto queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
+  unsigned i = 0;
   while (true) {
     try {
       queryRegistry->destroyAll();
@@ -108,7 +109,7 @@ void AqlFeature::stop() {
     if (n == 0 && m == 0) {
       break;
     }
-    LOG_TOPIC("63d54", DEBUG, Logger::QUERIES)
+    LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i % 64) == 0)
         << "AQLFeature shutdown, waiting for " << n
         << " registered queries to terminate and for " << m
         << " feature leases to be released";

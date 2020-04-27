@@ -69,8 +69,8 @@ class KShortestPathsFinderTest : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  arangodb::aql::Query* query;
-  arangodb::graph::ShortestPathOptions* spo;
+  std::unique_ptr<arangodb::aql::Query> query;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;
 
@@ -87,11 +87,8 @@ class KShortestPathsFinderTest : public ::testing::Test {
          {50, 46}, {40, 60}, {60, 61}, {61, 62}, {62, 63}, {63, 64}, {64, 47},
          {70, 71}, {70, 71}, {70, 71}});
 
-    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"UnitTest"});
-    query->collections().add("v", AccessMode::Type::READ);
-    query->collections().add("e", AccessMode::Type::READ);
-
-    spo = gdb.getShortestPathOptions(query);
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+    spo = gdb.getShortestPathOptions(query.get());
 
     finder = new KShortestPathsFinder(*spo);
   }
@@ -130,7 +127,7 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -143,7 +140,7 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"1", "2", "3", "4"},
+  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
                        {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
@@ -168,14 +165,14 @@ TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"21", "22", "23", "24", "25"},
+  auto cpr = checkPath(spo.get(), result, {"21", "22", "23", "24", "25"},
                        {{},
                         {"v/21", "v/22"},
                         {"v/22", "v/23"},
                         {"v/23", "v/24"},
                         {"v/24", "v/25"}},
                        msgs) ||
-             checkPath(spo, result, {"21", "26", "27", "28", "25"},
+             checkPath(spo.get(), result, {"21", "26", "27", "28", "25"},
                        {{},
                         {"v/21", "v/26"},
                         {"v/26", "v/27"},
@@ -184,14 +181,14 @@ TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
                        msgs);
   ASSERT_TRUE(cpr) << msgs;
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  cpr = checkPath(spo, result, {"21", "22", "23", "24", "25"},
+  cpr = checkPath(spo.get(), result, {"21", "22", "23", "24", "25"},
                   {{},
                    {"v/21", "v/22"},
                    {"v/22", "v/23"},
                    {"v/23", "v/24"},
                    {"v/24", "v/25"}},
                   msgs) ||
-        checkPath(spo, result, {"21", "26", "27", "28", "25"},
+        checkPath(spo.get(), result, {"21", "26", "27", "28", "25"},
                   {{},
                    {"v/21", "v/26"},
                    {"v/26", "v/27"},
@@ -219,8 +216,8 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  arangodb::aql::Query* query;
-  arangodb::graph::ShortestPathOptions* spo;
+  std::unique_ptr<arangodb::aql::Query> query;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;
 
@@ -238,7 +235,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
 
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
 
-    spo = gdb.getShortestPathOptions(query);
+    spo = gdb.getShortestPathOptions(query.get());
     spo->weightAttribute = "cost";
 
     finder = new KShortestPathsFinder(*spo);
@@ -256,7 +253,7 @@ TEST_F(KShortestPathsFinderTestWeights, diamond_path) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"1", "2", "4"},
+  auto cpr = checkPath(spo.get(), result, {"1", "2", "4"},
                        {{}, {"v/1", "v/2"}, {"v/2", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }

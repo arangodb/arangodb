@@ -64,7 +64,7 @@ TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not
   std::string vertexId = "UnitTest/Vertex";
   std::string expectedMessage = "vertex '" + vertexId + "' not found";
   
-  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{"UnitTest"});
+  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
 
   traverser::TraverserOptions opts{*q};
   ClusterTraverserCache testee(*q, &engines, &opts);
@@ -83,7 +83,7 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
   std::string vertexId = "UnitTest/Vertex";
   std::string expectedMessage = "vertex '" + vertexId + "' not found";
 
-  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{"UnitTest"});
+  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
   VPackBuilder result;
   traverser::TraverserOptions opts{*q};
   ClusterTraverserCache testee(*q, &engines, &opts);
