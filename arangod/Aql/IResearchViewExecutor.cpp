@@ -124,18 +124,15 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-  std::visit(overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
-                        std::tie(_documentOutReg, _collectionPointerReg) =
-                            std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
+  std::tie(_documentOutReg, _collectionPointerReg) =
+    std::visit(overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
+                        return std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
                       },
                       [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
-                        std::tie(_documentOutReg, _collectionPointerReg) =
-                            std::pair{regs.documentOutReg, regs.collectionOutReg};
+                        return std::pair{regs.documentOutReg, regs.collectionOutReg};
                       },
                       [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
-                        std::tie(_documentOutReg, _collectionPointerReg) =
-                            std::pair{aql::RegisterPlan::MaxRegisterId,
-                                      aql::RegisterPlan::MaxRegisterId};
+                        return std::pair{aql::RegisterPlan::MaxRegisterId, aql::RegisterPlan::MaxRegisterId};
                       }},
              outRegisters);
 }

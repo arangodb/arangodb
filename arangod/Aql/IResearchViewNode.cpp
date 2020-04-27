@@ -1484,7 +1484,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const buildExecutorInfo = [this](aql::ExecutionEngine& engine,
                                         std::shared_ptr<IResearchView::Snapshot const> reader) {
-    ;
     // We could be asked to produce only document/collection ids for later materialization or full document body at once
     aql::RegisterCount numDocumentRegs = 0;
     MaterializeType materializeType = MaterializeType::Undefined;
@@ -1495,10 +1494,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     } else if (noMaterialization()) {
       TRI_ASSERT(options().noMaterialization);
       materializeType = MaterializeType::NotMaterialize;
-      // Register for a loop
-      if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-        //numDocumentRegs += 1; // TODO remove later? because its unused
-      }
     } else {
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
@@ -1524,8 +1519,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // the output register(s) for documents (one or two + vars, depending on
     // late materialization) These must of course fit in the available
     // registers. There may be unused registers reserved for later blocks.
-    //TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <=
-    //           getNrOutputRegisters());
     std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
         aql::make_shared_unordered_set();
     writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
@@ -1649,7 +1642,6 @@ aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
       vars.insert(_outNonMaterializedDocId->id);
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
-      // vars.insert(aql::RegisterPlan::MaxRegisterId);
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {
