@@ -1225,17 +1225,7 @@ bool ExecutionNode::isPassthrough() const {
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
 
-  RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
-  auto regsToClear = getRegsToClear();
-  auto regsToKeep = calcRegsToKeep();
-
-  auto registerInfos = RegisterInfos{make_shared_unordered_set(),
-                                     make_shared_unordered_set(),
-                                     nrRegs,
-                                     nrRegs,
-                                     regsToClear,
-                                     regsToKeep};
-
+  auto registerInfos = createRegisterInfos(make_shared_unordered_set(), make_shared_unordered_set());
   IdExecutorInfos infos(false);
 
   auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(

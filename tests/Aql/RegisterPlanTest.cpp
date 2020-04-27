@@ -317,19 +317,19 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
 TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) {
   auto vars = generateVars(5);
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, true, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, true, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[1]}, {&vars[2]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, true, {&vars[2]}, {&vars[3]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, false, {&vars[3]}, {&vars[4]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, true, {&vars[4]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[1]}, {&vars[2]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[2]}, {&vars[3]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[3]}, {&vars[4]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[4]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 3);
+  EXPECT_EQ(plan->getTotalNrRegs(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
-  assertVariableInRegister(plan, vars[2], 2);
+  assertVariableInRegister(plan, vars[2], 0);
   assertVariableInRegister(plan, vars[3], 0);
   assertVariableInRegister(plan, vars[4], 1);
   assertPlanKeepsAllVariables(plan, myList);

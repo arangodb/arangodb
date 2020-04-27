@@ -140,17 +140,20 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
              outRegisters);
 }
 
-IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
+IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const
+    noexcept {
   return _outNonMaterializedViewRegs;
 }
 
-std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const noexcept {
+std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const
+    noexcept {
   return _reader;
 }
 
 Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
 
-const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const noexcept {
+const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
+    noexcept {
   return _scorers;
 }
 
@@ -170,7 +173,8 @@ aql::AstNode const& IResearchViewExecutorInfos::filterCondition() const noexcept
   return _filterCondition;
 }
 
-const IResearchViewExecutorInfos::VarInfoMap& IResearchViewExecutorInfos::varInfoMap() const noexcept {
+const IResearchViewExecutorInfos::VarInfoMap& IResearchViewExecutorInfos::varInfoMap() const
+    noexcept {
   return _varInfoMap;
 }
 
@@ -184,7 +188,8 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
   return _volatileFilter;
 }
 
-const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearchViewExecutorInfos::sort() const noexcept {
+const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearchViewExecutorInfos::sort() const
+    noexcept {
   return _sort;
 }
 
@@ -241,7 +246,8 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
       outputRow(outputRow),
       documentOutReg(documentOutReg),
       collectionPointerReg(collectionPointerReg) {
-  if constexpr ((Traits::MaterializeType & iresearch::MaterializeType::Materialize) == iresearch::MaterializeType::Materialize) {
+  if constexpr ((Traits::MaterializeType & iresearch::MaterializeType::Materialize) ==
+                iresearch::MaterializeType::Materialize) {
     callback = this->copyDocumentCallback(*this);
   }
 }
@@ -311,7 +317,8 @@ std::vector<irs::bytes_ref>& IResearchViewExecutorBase<Impl, Traits>::IndexReadB
 template <typename Impl, typename Traits>
 template <typename ValueType>
 std::vector<irs::bytes_ref> const&
-IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() const noexcept {
+IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() const
+    noexcept {
   return _storedValuesBuffer;
 }
 
@@ -340,14 +347,16 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset(
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-size_t IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::size() const noexcept {
+size_t IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::size() const
+    noexcept {
   assertSizeCoherence();
   return _keyBuffer.size() - _keyBaseIdx;
 }
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-bool IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::empty() const noexcept {
+bool IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::empty() const
+    noexcept {
   return size() == 0;
 }
 
@@ -365,7 +374,8 @@ IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pop_front()
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::assertSizeCoherence() const noexcept {
+void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::assertSizeCoherence() const
+    noexcept {
   TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
 }
 

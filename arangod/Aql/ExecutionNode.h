@@ -57,6 +57,7 @@
 
 #include <memory>
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -120,7 +121,7 @@ struct SortElement {
 
 typedef std::vector<SortElement> SortElementVector;
 
-using VariableIdSet = std::unordered_set<VariableId>;
+using VariableIdSet = std::set<VariableId>;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
