@@ -422,15 +422,17 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
   this->_writing = false;       // indicate that no async write is ongoing any more
   this->_proto.timer.cancel();  // cancel alarm for timeout
-  std::chrono::milliseconds timeoutLeft =
-      _item->request->timeout() -
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::steady_clock::now() - _writeStart);
-  if (ec || _item == nullptr || timeoutLeft.count() <= 0) {
+  auto timePassed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - _writeStart);
+  if (ec || _item == nullptr || _item->request->timeout() <= timePassed) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
-                     << "', timeout: " << (timeoutLeft.count() <= 0)
-                     << " this=" << this << "\n";
+                     << "', this=" << this << "\n";
+    if (_item != nullptr) {
+      FUERTE_LOG_DEBUG << "asyncWriteCallback (http): timeoutLeft: "
+                       << (_item->request->timeout() - timePassed).count()
+                       << " milliseconds\n";
+    }
     auto item = std::move(_item);
 
     // keepalive timeout may have expired
@@ -463,7 +465,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
   // Continue with a read, use the remaining part of the timeout as
   // timeout:
-  setTimeout(timeoutLeft, TimeoutType::READ);    // extend timeout
+  setTimeout(_item->request->timeout() - timePassed, TimeoutType::READ);    // extend timeout
 
   _reading = true;
   this->asyncReadSome();  // listen for the response
