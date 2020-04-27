@@ -213,44 +213,24 @@ void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& a
   }
 }
 
-void CollectNode::calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const {
+std::vector<std::pair<std::string, RegisterId>> CollectNode::calcInputVariableNames() const {
+  std::vector<std::pair<std::string, RegisterId>> variableNames;
+
   if (_outVariable != nullptr) {
-    auto const& registerPlan = getRegisterPlan()->varInfo;
-    auto it = registerPlan.find(_outVariable->id);
-    TRI_ASSERT(it != registerPlan.end());
+    auto const& varInfo = getRegisterPlan()->varInfo;
+    TRI_ASSERT(varInfo.find(_outVariable->id) != varInfo.end());
 
     // iterate over all our variables
-    if (_keepVariables.empty()) {
-      auto usedVariableIds(getVariableIdsUsedHere());
+    for (auto const& x : _keepVariables) {
+      auto const it = varInfo.find(x->id);
 
-      for (auto const& vi : registerPlan) {
-        if (vi.second.depth > 0 || getDepth() == 1) {
-          // Do not keep variables from depth 0, unless we are depth 1 ourselves
-          // (which means no FOR in which we are contained)
-
-          if (usedVariableIds.find(vi.first) == usedVariableIds.end()) {
-            // variable is not visible to the CollectBlock
-            continue;
-          }
-
-          // find variable in the global variable map
-          auto itVar = _variableMap.find(vi.first);
-
-          if (itVar != _variableMap.end()) {
-            variableNames.emplace_back(std::make_pair((*itVar).second, vi.second.registerId));
-          }
-        }
-      }
-    } else {
-      for (auto const& x : _keepVariables) {
-        auto it = registerPlan.find(x->id);
-
-        if (it != registerPlan.end()) {
-          variableNames.emplace_back(std::make_pair(x->name, (*it).second.registerId));
-        }
+      if (it != varInfo.end()) {
+        variableNames.emplace_back(std::make_pair(x->name, (*it).second.registerId));
       }
     }
   }
+
+  return variableNames;
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -326,13 +306,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::unique_ptr<Aggregator>> aggregateValues;
       calcAggregateTypes(aggregateValues);
 
-      // calculate the variable names
-      std::vector<std::pair<std::string, RegisterId>> variables;
-      calcVariableNames(variables);
-      auto inputVariables = std::vector<std::pair<std::string, RegisterId>>();
-      // TODO We should be provided with a list of input variables instead!
-      std::copy_if(variables.begin(), variables.end(), std::back_inserter(inputVariables),
-                   [this](auto it) { return it.second < getNrInputRegisters(); });
+      // calculate the input variable names
+      auto inputVariables = calcInputVariableNames();
 
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
@@ -572,11 +547,18 @@ auto isLoop(ExecutionNode const& node) -> bool {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
+namespace {
+
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
-auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& groupVariables,
-                       bool const encounteredLoop = false, int const subqueryDepth = 0) -> bool {
+// TODO As this is now called in instantiateFromAst, thus earliest possible,
+//      the whole spliced subquery handling could be removed here to simplify
+//      the code.
+[[nodiscard]] auto calculateAccessibleUserVariables(ExecutionNode const& node,
+                                                    std::vector<Variable const*>& userVariables,
+                                                    bool const encounteredLoop,
+                                                    int const subqueryDepth) -> bool {
   TRI_ASSERT(subqueryDepth >= 0);
   auto const recSubqueryDepth = [&]() {
     if (node.getType() == ExecutionNode::SUBQUERY_END) {
@@ -592,7 +574,8 @@ auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& 
   // Skip nodes inside a subquery, except for SUBQUERY_END!
   if (subqueryDepth > 0) {
     if (dep != nullptr) {
-      return getGroupVariables(*dep, groupVariables, encounteredLoop, recSubqueryDepth);
+      return calculateAccessibleUserVariables(*dep, userVariables,
+                                              encounteredLoop, recSubqueryDepth);
     } else {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
@@ -603,8 +586,9 @@ auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& 
   bool const depIsTopLevel = [&]() {
     // Abort recursion on invalidating nodes
     if (dep != nullptr && !isVariableInvalidatingNode(node)) {
-      return getGroupVariables(*dep, groupVariables,
-                               encounteredLoop || isLoop(node), recSubqueryDepth);
+      return calculateAccessibleUserVariables(*dep, userVariables,
+                                              encounteredLoop || isLoop(node),
+                                              recSubqueryDepth);
     } else {
       return isStartNode(node);
     }
@@ -621,12 +605,20 @@ auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& 
     // Add all variables of the current node
     for (auto const& v : node.getVariablesSetHere()) {
       if (v->isUserDefined()) {
-        groupVariables.emplace_back(v);
+        userVariables.emplace_back(v);
       }
     }
   }
 
   return isTopLevel;
+}
+
+}  // namespace
+
+void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
+                                                   std::vector<Variable const*>& userVariables) {
+  // This is just a wrapper around the static function with the same name:
+  std::ignore = ::calculateAccessibleUserVariables(node, userVariables, false, 0);
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
@@ -642,24 +634,15 @@ void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable 
     vars.emplace(_expressionVariable);
   }
 
-  if (_outVariable != nullptr && !_count) {
-    if (_keepVariables.empty()) {
-      // Here we have to find all user defined variables in this query
-      // amongst our dependencies:
+  // !_keepVariables.empty() => _outVariable != nullptr && !_count
+  TRI_ASSERT(_keepVariables.empty() || (_outVariable != nullptr && !_count));
 
-      auto const dep = getFirstDependency();
-      TRI_ASSERT(dep != nullptr);
-      std::vector<Variable const*> userVars;
-      getGroupVariables(*dep, userVars);
-
-      for (auto& x : userVars) {
-        vars.emplace(x);
-      }
-    } else {
-      for (auto& x : _keepVariables) {
-        vars.emplace(x);
-      }
-    }
+  // Note that the keep variables can either be user-supplied via KEEP,
+  // or are calculated automatically in ExecutionPlan::fromNodeCollect
+  // during ExecutionPlan::instantiateFromAst in case of an all-embracing
+  // `INTO var`.
+  for (auto& x : _keepVariables) {
+    vars.emplace(x);
   }
 }
 
@@ -755,6 +738,10 @@ void CollectNode::clearOutVariable() {
   _count = false;
 }
 
+void CollectNode::clearKeepVariables() {
+  _keepVariables.clear();
+}
+
 void CollectNode::clearAggregates(
     std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb) {
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
@@ -782,8 +769,16 @@ std::vector<Variable const*> const& CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
-void CollectNode::setKeepVariables(std::vector<Variable const*>&& variables) {
-  _keepVariables = std::move(variables);
+void CollectNode::restrictKeepVariables(std::unordered_set<const Variable*> const& variables) {
+  auto remainingKeepVariables = decltype(this->_keepVariables){};
+  remainingKeepVariables.reserve(std::min(_keepVariables.size(), variables.size()));
+
+  std::copy_if(_keepVariables.begin(), _keepVariables.end(),
+               std::back_inserter(remainingKeepVariables), [&](auto const& var) {
+                 return variables.find(var) != variables.end();
+               });
+
+  _keepVariables = std::move(remainingKeepVariables);
 }
 
 std::unordered_map<VariableId, std::string const> const& CollectNode::variableMap() const {
