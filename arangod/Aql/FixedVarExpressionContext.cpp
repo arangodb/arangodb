@@ -31,8 +31,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-size_t FixedVarExpressionContext::numRegisters() const { return 0; }
-
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;

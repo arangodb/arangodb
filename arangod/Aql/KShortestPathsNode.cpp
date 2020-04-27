@@ -45,6 +45,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -288,9 +290,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     inputRegisters->emplace(varToRegUnchecked(targetInVariable()));
   }
 
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
-  outputRegisters->emplace(varToRegUnchecked(pathOutVariable()));
+  auto outputRegister = varToRegUnchecked(pathOutVariable());
+  auto outputRegisters = make_shared_unordered_set({outputRegister});
+
+  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -302,16 +306,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 #endif
 
   std::unique_ptr<KShortestPathsFinder> finder;
-  finder.reset(new graph::KShortestPathsFinder(*opts));
+  finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
 
   TRI_ASSERT(finder != nullptr);
-  KShortestPathsExecutorInfos infos(inputRegisters, outputRegisters,
-                                    getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                    getRegisterPlan()->nrRegs[getDepth()],
-                                    getRegsToClear(), calcRegsToKeep(), std::move(finder),
-                                    std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor>>(&engine, this,
-                                                                      std::move(infos));
+  auto executorInfos =
+      KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+                                  std::move(sourceInput), std::move(targetInput));
+  return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependencies,

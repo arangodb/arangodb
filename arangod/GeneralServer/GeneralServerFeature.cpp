@@ -30,6 +30,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -136,7 +137,7 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
   startsAfter<UpgradeFeature>();
 
   _numIoThreads = (std::max)(static_cast<uint64_t>(1),
-                             static_cast<uint64_t>(TRI_numberProcessors() / 4));
+                             static_cast<uint64_t>(NumberOfCores::getValue() / 4));
   if (_numIoThreads > _maxIoThreads) {
     _numIoThreads = _maxIoThreads;
   }

@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
@@ -246,14 +247,13 @@ void EnvironmentFeature::prepare() {
     // file not found or value not convertible into integer
   }
 
-  // Report memory found:
-  uint64_t ram = PhysicalMemory::getValue();
-  std::string overriddenmsg;
-  if (PhysicalMemory::overridden()) {
-    overriddenmsg = " (overridden by environment variable)";
-  }
+  // Report memory and CPUs found:
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
-  << "Available physical memory: " << ram << overriddenmsg << " bytes";
+    << "Available physical memory: " 
+    << PhysicalMemory::getValue() << " bytes" 
+    << (PhysicalMemory::overridden() ? " (overriden by environment variable)" : "")
+    << ", available cores: " << NumberOfCores::getValue()
+    << (NumberOfCores::overridden() ? " (overriden by environment variable)" : "");
 
   // test local ipv6 support
   try {

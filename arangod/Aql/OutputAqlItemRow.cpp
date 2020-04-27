@@ -36,7 +36,7 @@ The following conditions need to hold true, we need to add c++ tests for this.
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Builder.h>

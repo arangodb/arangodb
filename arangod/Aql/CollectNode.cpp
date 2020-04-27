@@ -278,6 +278,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 
+      auto registerInfos = createRegisterInfos(
+          std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
+          std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
+
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
                      std::back_inserter(aggregateTypes),
@@ -285,15 +289,13 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-      HashedCollectExecutorInfos infos(
-          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
-          std::move(aggregateRegisters), trxPtr, _count);
+      auto executorInfos =
+          HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
+                                     std::move(aggregateTypes),
+                                     std::move(aggregateRegisters), trxPtr, _count);
 
-      return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(&engine, this,
-                                                                         std::move(infos));
+      return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::SORTED: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -316,6 +318,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
       calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
 
+      auto registerInfos = createRegisterInfos(
+          std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
+          std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
+
       // calculate the aggregate type // TODO refactor nicely
       std::vector<std::unique_ptr<Aggregator>> aggregateValues;
       calcAggregateTypes(aggregateValues);
@@ -323,6 +329,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       // calculate the variable names
       std::vector<std::pair<std::string, RegisterId>> variables;
       calcVariableNames(variables);
+      auto inputVariables = std::vector<std::pair<std::string, RegisterId>>();
+      // TODO We should be provided with a list of input variables instead!
+      std::copy_if(variables.begin(), variables.end(), std::back_inserter(inputVariables),
+                   [this](auto it) { return it.second < getNrInputRegisters(); });
 
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
@@ -334,16 +344,15 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-      SortedCollectExecutorInfos infos(
-          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
-          std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-          std::move(groupRegisters), collectRegister, expressionRegister,
-          _expressionVariable, std::move(aggregateTypes), std::move(variables),
-          std::move(aggregateRegisters), trxPtr, _count);
+      auto executorInfos =
+          SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
+                                     expressionRegister, _expressionVariable,
+                                     std::move(aggregateTypes), std::move(inputVariables),
+                                     std::move(aggregateRegisters), trxPtr, _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
-                                                                         std::move(infos));
+                                                                         std::move(registerInfos),
+                                                                         std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::COUNT: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -353,13 +362,13 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       RegisterId collectRegister = (*it).second.registerId;
 
-      CountCollectExecutorInfos infos(collectRegister,
-                                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                      getRegisterPlan()->nrRegs[getDepth()],
-                                      getRegsToClear(), calcRegsToKeep());
+      auto registerInfos =
+          createRegisterInfos({}, make_shared_unordered_set({collectRegister}));
 
-      return std::make_unique<ExecutionBlockImpl<CountCollectExecutor>>(&engine, this,
-                                                                        std::move(infos));
+      auto executorInfos = CountCollectExecutorInfos(collectRegister);
+
+      return std::make_unique<ExecutionBlockImpl<CountCollectExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::DISTINCT: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -372,18 +381,17 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       // calculate the group registers
       calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
 
+      auto registerInfos = createRegisterInfos(
+          std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
+          std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
+
       transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
       TRI_ASSERT(groupRegisters.size() == 1);
-      DistinctCollectExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                         getRegisterPlan()->nrRegs[getDepth()],
-                                         getRegsToClear(), calcRegsToKeep(),
-                                         std::move(readableInputRegisters),
-                                         std::move(writeableOutputRegisters),
-                                         groupRegisters.front(), trxPtr);
+      auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(), trxPtr);
 
-      return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(&engine, this,
-                                                                           std::move(infos));
+      return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

@@ -97,7 +97,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   WaitingBehaviour _variant;
   bool _doesContainShadowRows{false};
   bool _shouldLieOnLastRow{false};
-  arangodb::aql::ExecutorInfos _infos;
+  arangodb::aql::RegisterInfos _infos;
   typename arangodb::aql::ScatterExecutor::ClientBlockData _blockData;
 };
 }  // namespace aql

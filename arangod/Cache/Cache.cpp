@@ -299,7 +299,8 @@ bool Cache::reportInsert(bool hadEviction) {
   if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
     std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
     std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
-    if ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold) {
+    if (total > 0 && total > evictions &&
+        ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold)) {
       shouldMigrate = true;
       cache::Table* table = _table.load(std::memory_order_relaxed);
       TRI_ASSERT(table != nullptr);
