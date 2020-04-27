@@ -143,22 +143,23 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
-    AgencyComm agency(server());
 
-    AgencyReadTransaction trx(std::vector<std::string>(
-        {AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)}));
-    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 5.0);
+    auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb, idx] = cache.get(std::vector<std::string>{
+        AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)});
+    auto result = acb->slice();
 
-    if (!result.successful()) {
-      generateError(ResponseCode::SERVER_ERROR, result.errorCode(), result.errorMessage());
+    if (!result.isArray()) {
+      generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                    "Failed to acquire endpoints from agency cache");
       return;
     }
 
     std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
-    VPackSlice slice = result.slice()[0].get(path);
+    VPackSlice slice = result[0].get(path);
     ServerID leaderId = slice.isString() ? slice.copyString() : "";
     path = AgencyCommManager::slicePath(healthPath);
-    VPackSlice healthMap = result.slice()[0].get(path);
+    VPackSlice healthMap = result[0].get(path);
 
     if (leaderId.empty()) {
       generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,

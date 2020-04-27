@@ -772,7 +772,7 @@ class ClusterInfo final  {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
-  
+
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(ShardID const& shardId);
 

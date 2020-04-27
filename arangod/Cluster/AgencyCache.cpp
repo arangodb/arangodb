@@ -239,7 +239,7 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
         pp->setValue(Result());
       }
     } else {
-      pp->setValue(Result());
+      pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
     }
     pit = _waiting.erase(pit);
   }

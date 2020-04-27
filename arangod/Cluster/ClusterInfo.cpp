@@ -1834,7 +1834,6 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyWriteTransaction trans({delPlanDatabases, delPlanCollections, delPlanViews, incrementVersion},
                                databaseExists);
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
-
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1842,6 +1841,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // Load our own caches:
   loadPlan();
@@ -1856,6 +1857,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         res = ac.removeValues(where, true);
 
         if (res.successful()) {
+          cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
           return Result(TRI_ERROR_NO_ERROR);
         }
 
@@ -2234,8 +2236,11 @@ Result ClusterInfo::createCollectionsCoordinator(
       // into precondition failed, the collections were successfully created, so
       // we're fine too.
       if (res.successful() || res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+        cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
         return;
       }
+
       // exponential backoff, just to be safe,
       auto const durationSinceStart = steady_clock::now() - begin;
       auto constexpr maxWaitTime = 2min;
@@ -2292,7 +2297,6 @@ Result ClusterInfo::createCollectionsCoordinator(
           return {TRI_ERROR_REQUEST_CANCELED,
                   "operation aborted due to precondition failure"};
         }
-
         std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
         errorMsg += " error message: " + res.errorMessage();
         errorMsg += " error details: " + res.errorDetails();
@@ -2305,8 +2309,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
 
       auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-      auto r = cache.waitFor(
-        res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
       loadPlan();
     }
   }
@@ -2588,8 +2591,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(
-    res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
 
   // Update our own cache:
   loadPlan();
@@ -2608,7 +2610,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
-        ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
+        //res = ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
+        //cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+
         loadCurrent();
 
         events::DropCollection(dbName, collectionID, *dbServerResult);

@@ -130,7 +130,7 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   } else {
     // key not there yet.
     LOG_TOPIC("5b00d", DEBUG, arangodb::Logger::CLUSTER)
-      << "did not find previous cluster upgrade version in agency"; 
+      << "did not find previous cluster upgrade version in agency";
   }
 
   if (arangodb::methods::Version::current() <= latestUpgradeVersion) {
@@ -150,16 +150,19 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   // try to register ourselves as responsible for the upgrade
   AgencyOperation operation(::upgradeExecutedByKey, AgencyValueOperationType::SET, ServerState::instance()->getId());
   // make the key expire automatically in case we crash
-  // operation._ttl = TRI_microtime() + 1800.0;  
+  // operation._ttl = TRI_microtime() + 1800.0;
   AgencyWriteTransaction transaction(operation, precs);
 
   AgencyComm agency(server());
   AgencyCommResult result = agency.sendTransactionWithFailover(transaction);
   if (result.successful()) {
+    auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+
     // we are responsible for the upgrade!
-    LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER) 
-        << "running cluster upgrade from " 
-        << (latestUpgradeVersion == 0 ? std::string("an unknown version") : std::string("version ") + std::to_string(latestUpgradeVersion)) 
+    LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER)
+        << "running cluster upgrade from "
+        << (latestUpgradeVersion == 0 ? std::string("an unknown version") : std::string("version ") + std::to_string(latestUpgradeVersion))
         << " to version " << arangodb::methods::Version::current() << "...";
 
     bool success = false;
@@ -185,8 +188,8 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
 
     result = agency.sendTransactionWithFailover(transaction);
     if (result.successful()) {
-      LOG_TOPIC("853de", INFO, arangodb::Logger::CLUSTER) 
-          << "cluster upgrade to version " << arangodb::methods::Version::current() 
+      LOG_TOPIC("853de", INFO, arangodb::Logger::CLUSTER)
+          << "cluster upgrade to version " << arangodb::methods::Version::current()
           << " completed successfully";
     } else {
       LOG_TOPIC("a0b4f", ERR, arangodb::Logger::CLUSTER) << "unable to store cluster upgrade information in agency: " << result.errorMessage();
@@ -201,10 +204,10 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
 
 bool ClusterUpgradeFeature::upgradeCoordinator() {
   LOG_TOPIC("a2d65", TRACE, arangodb::Logger::FIXME) << "starting coordinator upgrade";
- 
+
   bool success = true;
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
-  
+
   for (auto& name : databaseFeature.getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
 
@@ -225,7 +228,7 @@ bool ClusterUpgradeFeature::upgradeCoordinator() {
       success = false;
     }
   }
-  
+
   LOG_TOPIC("efd49", TRACE, arangodb::Logger::FIXME) << "finished coordinator upgrade";
   return success;
 }
