@@ -2883,13 +2883,13 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     std::vector<std::string>{
       AgencyCommManager::path("Plan/Views/" + databaseName + "/" + viewID)});
 
-  if (acb->slice()[0].hasKey(
+  if (!acb->slice()[0].hasKey(
         {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
-  auto const view = acb->slice()[0].get<std::string>(
-    {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
+  auto const view = acb->slice()[0].get(std::vector<std::string>{
+      AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
 
   if (!view.isObject()) {
     logAgencyDump();

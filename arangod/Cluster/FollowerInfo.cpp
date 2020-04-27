@@ -413,7 +413,10 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           << curPath << " in agency.";
     }
 
-    std::this_thread::sleep_for(wait += waitMore);
+    std::this_thread::sleep_for(wait);
+    if(wait < 500ms) {
+      wait += waitMore;
+    }
   } while (!_docColl->vocbase().server().isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
 }
