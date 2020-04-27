@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
