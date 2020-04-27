@@ -284,7 +284,6 @@ class Ast {
 
   /// @brief create an AST string value node
   AstNode* createNodeValueString(char const*, size_t);
-  AstNode* createNodeValueString(std::string const&);
 
   /// @brief create an AST array node
   AstNode* createNodeArray();

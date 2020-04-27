@@ -1106,13 +1106,6 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   return node;
 }
 
-AstNode* Ast::createNodeValueString(std::string const &value) {
-  auto const length = value.length();
-  auto registeredString = query()->registerString(value.c_str(), length);
-
-  return createNodeValueString(registeredString, length);
-}
-
 /// @brief create an AST array node
 AstNode* Ast::createNodeArray() { return createNode(NODE_TYPE_ARRAY); }
 
