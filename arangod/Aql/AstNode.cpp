@@ -2860,15 +2860,6 @@ void AstNode::setStringValue(char const* v, size_t length) {
   value.length = static_cast<uint32_t>(length);
 }
 
-void AstNode::setStringValue(std::string const& v) {
-  auto length = size_t{v.length()};
-  auto value = std::make_unique<char[]>(length);
-
-  std::memcpy(value.get(), v.c_str(), length);
-
-  setStringValue(value.release(), length);
-}
-
 bool AstNode::stringEqualsCaseInsensitive(std::string const& other) const {
   // Since we're not sure in how much trouble we are with unicode
   // strings, we assert here that strings we use are 7-bit ASCII

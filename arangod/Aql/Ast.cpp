@@ -1114,9 +1114,12 @@ AstNode* Ast::createNodeValueString(std::string const &value) {
     return const_cast<AstNode*>(&EmptyStringNode);
   }
 
+  auto const length = value.length();
+  auto registeredString = query()->registerString(value.c_str(), length);
+
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
-  node->setStringValue(value);
+  node->setStringValue(registeredString, length);
   node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
   node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
   node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
