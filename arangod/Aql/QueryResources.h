@@ -54,7 +54,7 @@ class QueryResources {
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(std::string const& p) {
+  char* registerString(std::string_view const p) {
     return registerString(p.data(), p.size());
   }
 
