@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Lower the default values for `--rocksdb.block-cache-size` and 
