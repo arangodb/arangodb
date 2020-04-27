@@ -135,6 +135,12 @@ void substituteClusterSingleDocumentOperationsRule(Optimizer* opt,
 void clusterOneShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 
+#ifdef USE_ENTERPRISE
+void clusterLiftConstantsForDisjointGraphNodes(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
+                                               OptimizerRule const& rule);
+#endif
+
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

@@ -1551,6 +1551,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
       TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
       keepVariables.emplace_back(static_cast<Variable const*>(ref->getData()));
     }
+  } else if (into->type != NODE_TYPE_NOP && expression->type == NODE_TYPE_NOP) {
+    // `COLLECT ... INTO var ...` with neither an explicit expression
+    // (INTO var = <expr>), nor an explicit `KEEP`.
+    // In this case, we look for all previously defined user-defined variables
+    // , which are in our scope, and which aren't top-level variables in the
+    // (sub)query the COLLECT resides in.
+    CollectNode::calculateAccessibleUserVariables(*previous, keepVariables);
   }
 
   auto collectNode =

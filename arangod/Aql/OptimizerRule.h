@@ -241,6 +241,10 @@ struct OptimizerRule {
     clusterOneShardRule,
 #endif
 
+#ifdef USE_ENTERPRISE
+    clusterLiftConstantsForDisjointGraphNodes,
+#endif
+
     // make operations on sharded collections use distribute
     distributeInClusterRule,
 
