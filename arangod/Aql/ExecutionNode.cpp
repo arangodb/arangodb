@@ -986,8 +986,8 @@ RegisterInfos ExecutionNode::createRegisterInfos(
 
 RegisterId ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // in case of the SingletonNode, there are no input registers
+  return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
 RegisterId ExecutionNode::getNrOutputRegisters() const {
