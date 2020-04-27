@@ -226,8 +226,7 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<Registe
   RegisterId regId;
 
   if (unusedRegisters.empty()) {
-    regId = totalNrRegs;
-    addRegister();
+    regId = addRegister();
   } else {
     auto iter = unusedRegisters.begin();
     regId = *iter;
@@ -247,8 +246,7 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<Registe
 
 template <typename T>
 void RegisterPlanT<T>::registerVariable(VariableId v) {
-  auto regId = totalNrRegs;
-  addRegister();
+  auto regId = addRegister();
 
   varInfo.try_emplace(v, VarInfo(depth, regId));
 }

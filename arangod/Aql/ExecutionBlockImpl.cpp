@@ -185,9 +185,6 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     for (auto const& reg : *_registerInfos.getOutputRegisters()) {
       for (size_t row = 0; row < newBlock->size(); row++) {
         AqlValue const& val = newBlock->getValueReference(row, reg);
-        if (!val.isEmpty()) {
-          LOG_DEVEL << "register " << reg << " not empty, found: " << val.slice().toJson();
-        }
         TRI_ASSERT(val.isEmpty());
       }
     }
