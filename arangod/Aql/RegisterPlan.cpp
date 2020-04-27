@@ -222,7 +222,7 @@ RegisterId RegisterPlanT<T>::addRegister() {
 }
 
 template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v, std::unordered_set<RegisterId>& unusedRegisters) {
+void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
 
   if (unusedRegisters.empty()) {

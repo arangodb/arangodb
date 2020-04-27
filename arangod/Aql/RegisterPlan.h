@@ -70,7 +70,7 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
     return false;  // do not walk into subquery
   }
 
-  std::unordered_set<RegisterId> unusedRegisters;
+  std::set<RegisterId> unusedRegisters;
   std::shared_ptr<RegisterPlanT<T>> plan;
 };
 
@@ -105,7 +105,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(VariableId v, std::unordered_set<RegisterId>& unusedRegisters);
+  void registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters);
   void registerVariable(VariableId v);
   void increaseDepth();
   auto addRegister() -> RegisterId;
