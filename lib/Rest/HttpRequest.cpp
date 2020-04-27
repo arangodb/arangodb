@@ -56,7 +56,8 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
 // avoids the need of a additional FakeRequest class.
 HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
                          std::unordered_map<std::string, std::string> const& headers)
-    : GeneralRequest(ConnectionInfo(), 1) {
+    : GeneralRequest(ConnectionInfo(), 1),
+      _validatedPayload(false) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
   _payload.append(body, contentLength);
@@ -875,22 +876,22 @@ VPackStringRef HttpRequest::rawPayload() const {
   return VPackStringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 };
 
-VPackSlice HttpRequest::payload(VPackOptions const* options) {
-  TRI_ASSERT(options != nullptr);
+VPackSlice HttpRequest::payload(bool strictValidation) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
-        VPackParser parser(&basics::VelocyPackHelper::requestValidationOptions);
-        parser.parse(_payload.data(),
-                     _payload.size());
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackParser parser(options);
+        parser.parse(_payload.data(), _payload.size());
         _vpackBuilder = parser.steal();
       }
       return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
   } else if (_contentType == ContentType::VPACK) {
-    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
     if (!_validatedPayload) {
+      VPackOptions const* options = validationOptions(strictValidation);
+      VPackValidator validator(options);
       _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
     }
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));

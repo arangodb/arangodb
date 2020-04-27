@@ -851,11 +851,11 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
   auto res =  ::checkHttpResponse(httpClient, response, "check status", body);
   if (res.ok() && response) {
     try {
-        if(!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
-          LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
-                  << "skipping foxx self-healing because Foxx API is disabled";
-          return { };
-        }
+      if (!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
+        LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
+          << "skipping foxx self-healing because Foxx API is disabled";
+        return { };
+      }
     } catch (...) {
       //API Not available because of older version or whatever
     }
