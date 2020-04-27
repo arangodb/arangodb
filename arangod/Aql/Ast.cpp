@@ -1107,24 +1107,10 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
 }
 
 AstNode* Ast::createNodeValueString(std::string const &value) {
-  if (value.empty()) {
-    // performance optimization:
-    // return a pointer to the singleton empty string node
-    // note: these nodes are never registered nor freed
-    return const_cast<AstNode*>(&EmptyStringNode);
-  }
-
   auto const length = value.length();
   auto registeredString = query()->registerString(value.c_str(), length);
 
-  AstNode* node = createNode(NODE_TYPE_VALUE);
-  node->setValueType(VALUE_TYPE_STRING);
-  node->setStringValue(registeredString, length);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
-  return node;
+  return createNodeValueString(registeredString, length);
 }
 
 /// @brief create an AST array node
