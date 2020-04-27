@@ -1534,7 +1534,7 @@ void ClusterInfo::buildFinalSlice(CreateDatabaseInfo const& database,
 }
 
 // This waits for the database described in `database` to turn up in `Current`
-// and no DBServer is allowed to report an error.
+// and no DBSserver is allowed to report an error.
 Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database) {
   AgencyComm ac(_server);
   AgencyCommResult res;
@@ -3326,7 +3326,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             AgencyPrecondition(planIndexesKey, AgencyPrecondition::Type::EMPTY, false));
         IndexId indexId{arangodb::basics::StringUtils::uint64(
             newIndexBuilder.slice().get("id").copyString())};
-        if (!_agency.sendTransactionWithFailover(trx, 0.0).successful()) {
+        result = _agency.sendTransactionWithFailover(trx, 0.0);
+        if (!result.successful()) {
           // We just log the problem and move on, the Supervision will repair
           // things in due course:
           LOG_TOPIC("d9420", INFO, Logger::CLUSTER)
@@ -3374,7 +3375,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
           if (update.successful()) {
             auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-            cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+            cache.waitFor(update.slice().get("results")[0].getNumber<uint64_t>()).get();
 
             loadPlan();
 
