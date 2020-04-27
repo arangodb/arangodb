@@ -287,7 +287,7 @@ class Ast {
 
   /// @brief register a string with the query and create
   ///        an AST string value node for it.
-  AstNode* createNodeValueStringAndRegister(std::string const&);
+  AstNode* createNodeValueStringAndRegister(std::string_view const);
 
   /// @brief create an AST array node
   AstNode* createNodeArray();

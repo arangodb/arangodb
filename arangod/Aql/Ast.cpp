@@ -1107,7 +1107,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
 }
 
 /// @brief register value with query and create a node value string
-AstNode* Ast::createNodeValueStringAndRegister(std::string const& value) {
+AstNode* Ast::createNodeValueStringAndRegister(std::string_view const value) {
   auto registeredString = query()->registerString(value);
   return createNodeValueString(registeredString, value.length());
 }
