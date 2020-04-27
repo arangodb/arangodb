@@ -7395,7 +7395,7 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   bool _isParallelizable;
 
   explicit ParallelizableFinder(bool parallelizeWrites)
-      : _parallelizeWrites(parallelizeWrites && false),
+      : _parallelizeWrites(parallelizeWrites),
         _isParallelizable(true) {}
 
   ~ParallelizableFinder() = default;
