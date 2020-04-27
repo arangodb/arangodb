@@ -403,7 +403,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -455,7 +455,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -478,7 +478,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
     
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -530,7 +530,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -553,7 +553,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -605,7 +605,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -645,7 +645,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -697,7 +697,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -737,7 +737,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -789,7 +789,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = nullptr;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -830,7 +830,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -882,7 +882,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = nullptr;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -905,7 +905,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -957,7 +957,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = nullptr;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -981,7 +981,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -1028,7 +1028,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -1119,7 +1119,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -1166,7 +1166,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -1242,7 +1242,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                arangodb::aql::QueryString(queryString),
                                bindVars, options);
 
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{2});
       arangodb::aql::AqlValueGuard guard(value, true);
@@ -1289,7 +1289,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);

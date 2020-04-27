@@ -24,7 +24,7 @@
 #include "QueryExpressionContext.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegexCache.h"
 #include "Transaction/Methods.h"
 

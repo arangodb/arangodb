@@ -25,8 +25,7 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
-std::unique_ptr<arangodb::aql::QueryContext> ExpressionContextMock::EMPTY_QUERY(nullptr);
-ExpressionContextMock ExpressionContextMock::EMPTY(*ExpressionContextMock::EMPTY_QUERY);
+ExpressionContextMock ExpressionContextMock::EMPTY;
 
 ExpressionContextMock::~ExpressionContextMock() {
   for (auto& entry : vars) {

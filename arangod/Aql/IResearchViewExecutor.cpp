@@ -380,7 +380,7 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
-      _execCtx(_trx, _ctx),
+      _execCtx(_ctx),
       _isInitialized(false) {
 
   // add expression execution context

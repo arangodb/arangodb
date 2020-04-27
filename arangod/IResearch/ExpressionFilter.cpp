@@ -69,7 +69,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base<i
     : max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)),
       expr_(cctx.ast, cctx.node.get()),
       ctx_(ectx) {
-    TRI_ASSERT(ctx_.ctx && ctx_.trx);
+    TRI_ASSERT(ctx_.ctx);
 
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);

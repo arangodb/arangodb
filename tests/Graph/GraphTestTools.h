@@ -243,13 +243,16 @@ struct MockGraphDatabase {
     EXPECT_TRUE(insertedDocs.size() == edgedef.size());
   }
 
-  arangodb::aql::Query* getQuery(std::string qry) {
+  arangodb::aql::Query* getQuery(std::string qry, std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
     auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
     arangodb::aql::Query* query =
       new arangodb::aql::Query(ctx, queryString, nullptr,
                                  arangodb::velocypack::Parser::fromJson("{}"));
+    for (auto const& c : collections) {
+      query->collections().add(c, AccessMode::Type::READ);
+    }
     query->prepareQuery(SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);
@@ -260,7 +263,7 @@ struct MockGraphDatabase {
   arangodb::graph::ShortestPathOptions* getShortestPathOptions(arangodb::aql::Query* query) {
     arangodb::graph::ShortestPathOptions* spo;
 
-    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->rootEngine()->root()->getPlanNode()->plan());
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
 
     auto _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -288,6 +291,7 @@ struct MockGraphDatabase {
           ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
       _fromCondition->addMember(cond);
     }
+        
     spo = new ShortestPathOptions(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));

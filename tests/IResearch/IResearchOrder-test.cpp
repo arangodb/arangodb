@@ -345,7 +345,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
 
     expected.add(true, scorer);
     
-    ExpressionContextMock ctx(query);
+    ExpressionContextMock ctx;
     ctx.vars.emplace("withNorms",
                      arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
 

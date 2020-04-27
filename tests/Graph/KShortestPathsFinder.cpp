@@ -87,7 +87,10 @@ class KShortestPathsFinderTest : public ::testing::Test {
          {50, 46}, {40, 60}, {60, 61}, {61, 62}, {62, 63}, {63, 64}, {64, 47},
          {70, 71}, {70, 71}, {70, 71}});
 
-    query = gdb.getQuery("RETURN 1");
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"UnitTest"});
+    query->collections().add("v", AccessMode::Type::READ);
+    query->collections().add("e", AccessMode::Type::READ);
+
     spo = gdb.getShortestPathOptions(query);
 
     finder = new KShortestPathsFinder(*spo);
@@ -233,7 +236,8 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
                            {8, 3, 10},
                            {9, 3, 10}});
 
-    query = gdb.getQuery("RETURN 1");
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+
     spo = gdb.getShortestPathOptions(query);
     spo->weightAttribute = "cost";
 

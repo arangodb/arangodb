@@ -585,6 +585,11 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{&trx, plan, plan->getAst(),
@@ -763,6 +768,11 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
     arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
@@ -832,6 +842,11 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 

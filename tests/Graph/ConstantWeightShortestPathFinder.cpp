@@ -83,7 +83,10 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
                            {12, 4},  {12, 5},  {21, 22}, {22, 23}, {23, 24},
                            {24, 25}, {21, 26}, {26, 27}, {27, 28}, {28, 25}});
 
-    query = gdb.getQuery("RETURN 1");
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+    query->collections().add("v", AccessMode::Type::READ);
+    query->collections().add("e", AccessMode::Type::READ);
+
     spo = gdb.getShortestPathOptions(query);
 
     finder = new ConstantWeightShortestPathFinder(*spo);
