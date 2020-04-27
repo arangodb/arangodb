@@ -174,6 +174,7 @@ class Graph {
       std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+  virtual bool isDisjoint() const;
   virtual bool isSatellite() const;
 
   uint64_t numberOfShards() const;
