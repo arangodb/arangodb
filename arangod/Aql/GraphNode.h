@@ -69,7 +69,7 @@ class GraphNode : public ExecutionNode {
  public:
   bool isUsedAsSatellite() const;
   bool isSatelliteNode() const;
-  void waitForSatelliteIfRequired(ExecutionEngine const *engine) const;
+  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
 
   bool isEligibleAsSatelliteTraversal() const;
 
@@ -104,6 +104,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const;
+
+  /// @brief flag, if the graph is a disjoint smart graph (enterprise edition only!)
+  bool isDisjoint() const;
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
@@ -235,6 +238,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart (enterprise edition only!)
   bool _isSmart;
+
+  /// @brief flag, if graph is smart *and* disjoint (enterprise edition only!)
+  bool _isDisjoint;
 
   /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
