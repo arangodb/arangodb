@@ -47,10 +47,8 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
       std::string key, bool hasParent, bool replaceIndex)
       : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
-                                  outputOldRegisterId, outputRegisterId,
-                                  nrInputRegisters, nrOutputRegisters,
-                                  registersToClear, std::move(registersToKeep),
-                                  trx, std::move(options), aqlCollection,
+                                  outputOldRegisterId, outputRegisterId, trx,
+                                  std::move(options), aqlCollection,
                                   ProducesResults(false), consultAqlWriteFilter,
                                   ignoreErrors, DoCount(true), IsReplace(false),
                                   ignoreDocumentNotFound),

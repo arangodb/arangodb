@@ -41,8 +41,6 @@ BaseExpressionContext::BaseExpressionContext(Query* query, size_t startPos,
       _vars(&vars),
       _regs(&regs) {}
 
-size_t BaseExpressionContext::numRegisters() const { return _regs->size(); }
-
 AqlValue BaseExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(_vars != nullptr);

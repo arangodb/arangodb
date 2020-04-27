@@ -17,21 +17,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentIndexExpressionContext.h"
-#include "Aql/AqlValue.h"
+#ifndef ARANGOD_AQL_EMPTYEXECUTORINFOS_H
+#define ARANGOD_AQL_EMPTYEXECUTORINFOS_H 1
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
-DocumentIndexExpressionContext::DocumentIndexExpressionContext(
-    Query* query, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
-    void const* ctx)
-  : QueryExpressionContext(query), _getValue(getValue), _ctx(ctx) {}
+/// @brief Dummy argument to ExecutionBlockImpl for Executors that don't need
+///        additional arguments.
+class EmptyExecutorInfos {};
 
-AqlValue DocumentIndexExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
-                                                          bool& mustDestroy) const {
-  mustDestroy = doCopy;  // as we are copying
-  return _getValue(_ctx, variable, doCopy);
-}
+}  // namespace arangodb::aql
+
+#endif  // ARANGOD_AQL_EMPTYEXECUTORINFOS_H
