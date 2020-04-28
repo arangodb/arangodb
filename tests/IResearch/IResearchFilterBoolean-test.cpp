@@ -488,7 +488,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
-    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -1782,7 +1782,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a");
+      *filter.mutable_field() = mangleStringIdentity("b");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
@@ -1947,8 +1947,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     }
     {
       auto& filter = root.add<irs::by_term>();
-      filter.boost(0.5);
-      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
@@ -2017,7 +2016,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     }
     {
       auto& filter = subRoot.add<irs::by_term>();
-      *filter.mutable_field() = mangleString("a", "test_analyzer");
+      *filter.mutable_field() = mangleStringIdentity("a");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
@@ -2814,7 +2813,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a");
+      *filter.mutable_field() = mangleStringIdentity("b");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
@@ -2903,7 +2902,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
@@ -2920,7 +2919,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     auto& root = expected.add<irs::And>();
     {
       auto& filter = root.add<irs::by_range>();
-      filter.boost(2.5);
+      filter.boost(0.5);
       *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -2929,7 +2928,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     {
       auto& filter = root.add<irs::by_term>();
       filter.boost(0.5);
-      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
 
@@ -4363,14 +4362,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     root.boost(0.5);
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
       auto* opts = filter.mutable_options();
       opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
@@ -4605,7 +4604,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     }
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
       auto* opts = filter.mutable_options();
       opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
@@ -4731,7 +4730,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     auto& root = expected.add<irs::And>();
     {
       auto& filter = root.add<irs::by_range>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
@@ -5893,7 +5892,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     }
     {
       auto& filter = root.add<irs::by_granular_range>();
-      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
       auto* opts = filter.mutable_options();
       irs::set_granular_term(opts->range.max, maxTerm);
       opts->range.max_type = irs::BoundType::INCLUSIVE;

@@ -3352,6 +3352,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
       auto& filter = root.add<irs::by_term>();
+      filter.boost(1.5);
       *filter.mutable_field() = mangleNumeric("quick.brown.fox");
       filter.mutable_options()->term = term->value();
     }

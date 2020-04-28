@@ -607,17 +607,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     root.boost(2.5);
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
 
@@ -649,17 +649,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     root.boost(2.5);
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
 
@@ -691,17 +691,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     root.boost(2.5);
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
       auto& filter = root.add<irs::by_term>();
-      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
 
@@ -2796,7 +2796,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
     }
 
     assertFilterSuccess(

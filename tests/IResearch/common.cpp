@@ -836,12 +836,10 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
-    EXPECT_TRUE(
-        (execOk ==
-         arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-    EXPECT_TRUE(!execOk || (expected == actual));
+    EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok());
 
     if (execOk) {
+      EXPECT_EQ(expected, actual);
       assertFilterBoost(expected, actual);
     }
   }
