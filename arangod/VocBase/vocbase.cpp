@@ -591,6 +591,9 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
                                         DropState& state, double timeout) {
   state = DROP_EXIT;
   std::string const colName(collection->name());
+      
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->prepareDropCollection(*this, *collection);
 
   double endTime = TRI_microtime() + timeout;
 
@@ -655,7 +658,6 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     }
     case TRI_VOC_COL_STATUS_UNLOADED: {
       // collection is unloaded
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool doSync = !engine->inRecovery() &&
                     server().getFeature<DatabaseFeature>().forceSyncProperties();
 

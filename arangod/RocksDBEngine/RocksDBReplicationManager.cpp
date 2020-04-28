@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -307,6 +308,28 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
   }
 
   garbageCollect(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop contexts by collection (at least mark them as deleted)
+////////////////////////////////////////////////////////////////////////////////
+
+void RocksDBReplicationManager::drop(LogicalCollection* collection) {
+  LOG_TOPIC("ce3b0", TRACE, Logger::REPLICATION)
+      << "dropping all replication contexts for collection " << collection->name();
+
+  bool found = false;
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    for (auto& context : _contexts) {
+      found |= context.second->removeCollection(*collection);
+    }
+  }
+
+  if (found) {
+    garbageCollect(false);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

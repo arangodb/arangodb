@@ -701,7 +701,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }  // release _databaseCreateLock
 
   // write marker into log
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
 
   if (!engine->inRecovery()) {
     res = engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
@@ -813,7 +813,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
-    engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
+    res = engine->prepareDropDatabase(*vocbase, !engine->inRecovery()).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
