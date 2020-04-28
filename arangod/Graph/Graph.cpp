@@ -68,7 +68,7 @@ std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase, VPackSlice
   if (document.isExternal()) {
     document = document.resolveExternal();
   }
-  std::unique_ptr<Graph> result{new Graph{document, vocbase}};
+  std::unique_ptr<Graph> result(new Graph(document, ServerDefaults(vocbase.server())));
   return result;
 }
 
