@@ -688,7 +688,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     });
   });
   
-  _engine->getQuery().incHttpRequests(1);
+  _engine->getQuery().incHttpRequests(unsigned(1));
 
   return {TRI_ERROR_NO_ERROR};
 }
