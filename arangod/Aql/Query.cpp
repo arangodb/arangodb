@@ -1212,6 +1212,19 @@ transaction::Methods& Query::trxForOptimization() {
   return *_trx;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void Query::initForTests() {
+  this->init();
+  _trx = AqlTransaction::create(_transactionContext, _collections,
+                                _queryOptions.transactionOptions,
+                                std::unordered_set<std::string>{});
+  // create the transaction object, but do not start it yet
+  _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
+  auto res = _trx->begin();
+  TRI_ASSERT(res.ok());
+}
+#endif
+
 /// @brief return the query's shared state
 std::shared_ptr<SharedQueryState> Query::sharedState() const {
   if (!_snippets.empty()) {

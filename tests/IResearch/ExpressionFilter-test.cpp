@@ -958,7 +958,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
     ctx.setTrx(&trx);
-    execCtx.ctx = &ctx;
+    execCtx.ctx = nullptr;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
 
