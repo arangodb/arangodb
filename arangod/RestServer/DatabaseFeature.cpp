@@ -708,7 +708,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }
 
   result = vocbase.release();
-  events::CreateDatabase(name, res);
+  events::CreateDatabase(name, res.errorNumber());
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -813,7 +813,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
-    res = engine->prepareDropDatabase(*vocbase, !engine->inRecovery()).errorNumber();
+    res = engine->prepareDropDatabase(*vocbase).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
