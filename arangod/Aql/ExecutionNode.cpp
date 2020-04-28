@@ -1200,20 +1200,22 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
-bool ExecutionNode::isPassthrough() const {
-  switch (getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::INDEX:
-    case ExecutionNode::ENUMERATE_LIST:
-    case ExecutionNode::COLLECT:
+bool ExecutionNode::isPassthrough() const { return isPassthrough(getType()); }
 
-    case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+bool ExecutionNode::isPassthrough(ExecutionNode::NodeType type) {
+  switch (type) {
+    case ENUMERATE_COLLECTION:
+    case INDEX:
+    case ENUMERATE_LIST:
+    case COLLECT:
 
-    case ExecutionNode::REMOTESINGLE:
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::MATERIALIZE:
+    case TRAVERSAL:
+    case SHORTEST_PATH:
+    case K_SHORTEST_PATHS:
+
+    case REMOTESINGLE:
+    case ENUMERATE_IRESEARCH_VIEW:
+    case MATERIALIZE:
       return false;
 
     default:

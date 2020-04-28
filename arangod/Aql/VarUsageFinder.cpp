@@ -11,23 +11,18 @@ bool VarUsageFinder<T>::before(T* en) {
   en->plan()->increaseCounter(en->getType());
 
   en->invalidateVarUsage();
-  en->setVarsUsedLater(usedLaterStack);
-  //en->setVarsUsedLater(_usedLater);
-
+  en->setVarsUsedLater(_usedLaterStack);
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_END: {
-      // auto* node  = ExecutionNode::castTo<SubqueryEndNode*>(en);
-      usedLaterStack.emplace_back(std::unordered_set<Variable const*>{});
+      _usedLaterStack.emplace_back(std::unordered_set<Variable const*>{});
       break;
     }
 
     case ExecutionNode::SUBQUERY_START: {
-      // auto* node  = ExecutionNode::castTo<SubqueryStartNode*>(en);
-
-      auto top = std::move(usedLaterStack.back());
-      usedLaterStack.pop_back();
-      TRI_ASSERT(!usedLaterStack.empty());
-      usedLaterStack.back().merge(top);
+      auto top = std::move(_usedLaterStack.back());
+      _usedLaterStack.pop_back();
+      TRI_ASSERT(!_usedLaterStack.empty());
+      _usedLaterStack.back().merge(top);
       break;
     }
 
@@ -35,45 +30,36 @@ bool VarUsageFinder<T>::before(T* en) {
       break;
   }
 
-  LOG_DEVEL "VarUsageFinder::before " << en->getTypeString() << ":"
-                                      << en->id() << " vars used later: ";
-  for (auto const [idx, level] : enumerate(usedLaterStack)) {
-    LOG_DEVEL << "Level " << idx;
-    for (auto const& var : level) {
-      LOG_DEVEL << "Variable " << var->id << " name = " << var->name;
-    }
-  }
-
   // Add variables used here to _usedLater:
-  en->getVariablesUsedHere(usedLaterStack.back());
-  /*en->getVariablesUsedHere(_usedLater);
-  {
-    ::arangodb::containers::HashSet<Variable const*> dummy;
-    en->getVariablesUsedHere(dummy);
-    for (auto const var : dummy) {
-      usedLaterStack.back().emplace(var);
-    }
-  }*/
+  en->getVariablesUsedHere(_usedLaterStack.back());
 
   return false;
 }
 
 template <class T>
 void VarUsageFinder<T>::after(T* en) {
-  LOG_DEVEL "VarUsageFinder::after " << en->getTypeString() << ":" << en->id()
-                                     << " vars valid here: ";
+  switch (en->getType()) {
+    case ExecutionNode::SUBQUERY_START: {
+      _varsValidStack.emplace_back(_varsValidStack.back());
+      break;
+    }
+
+    case ExecutionNode::SUBQUERY_END: {
+      _varsValidStack.pop_back();
+      break;
+    }
+
+    default:
+      break;
+  }
 
   // Add variables set here to _valid:
   for (auto const& v : en->getVariablesSetHere()) {
-    _valid.insert(v);
+    _varsValidStack.back().emplace(v);
     _varSetBy->insert({v->id, en});
   }
 
-  for (auto const var : _valid) {
-    LOG_DEVEL << var->id << " name = " << var->name;
-  }
-
-  en->setVarsValid(_valid);
+  en->setVarsValid(_varsValidStack);
   en->setVarUsageValid();
 }
 

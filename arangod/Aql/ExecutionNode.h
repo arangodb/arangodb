@@ -388,7 +388,9 @@ class ExecutionNode {
 
   /// @brief setVarsUsedLater
   void setVarsUsedLater(::arangodb::containers::HashSet<Variable const*> const& v);
-  void setVarsUsedLater(VarUsageFinder<ExecutionNode>::Stack s) {};
+  void setVarsUsedLater(VarUsageFinder<ExecutionNode>::Stack s) {
+    // TODO
+  };
 
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
@@ -397,6 +399,10 @@ class ExecutionNode {
 
   /// @brief setVarsValid
   void setVarsValid(::arangodb::containers::HashSet<Variable const*> const& v);
+  void setVarsValid(VarUsageFinder<ExecutionNode>::Stack s) {
+    // TODO
+    //_usedLaterStack = std::move(s);
+  }
 
   /// @brief set regs to be deleted
   void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
@@ -447,6 +453,7 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
+  [[nodiscard]] static bool isPassthrough(NodeType type);
   [[nodiscard]] bool isPassthrough() const;
   [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;

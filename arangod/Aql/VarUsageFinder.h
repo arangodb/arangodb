@@ -37,7 +37,8 @@ template <class T>
 struct VarUsageFinder final : public WalkerWorker<T> {
   using Stack = std::vector<std::unordered_set<Variable const*>>;
 
-  Stack usedLaterStack;
+  Stack _usedLaterStack = Stack{{}};
+  Stack _varsValidStack = Stack{{}};
   ::arangodb::containers::HashSet<Variable const*> _usedLater;
   ::arangodb::containers::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, T*>* _varSetBy;
@@ -51,7 +52,7 @@ struct VarUsageFinder final : public WalkerWorker<T> {
   }
 
   explicit VarUsageFinder(std::unordered_map<VariableId, T*>* varSetBy)
-      : usedLaterStack({{}}), _varSetBy(varSetBy), _ownsVarSetBy(false) {
+      : _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }
 
@@ -78,8 +79,6 @@ struct VarUsageFinder final : public WalkerWorker<T> {
    * |
    * o used: z   usedLater = (...)
    */
-
-  //
 
   void after(T* en) override final;
 

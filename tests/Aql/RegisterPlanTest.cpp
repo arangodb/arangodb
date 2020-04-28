@@ -27,9 +27,13 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.cpp"
+#include "Aql/VarUsageFinder.cpp"
 #include "Aql/VarUsageFinder.h"
 #include "Basics/StringUtils.h"
-#include "Aql/VarUsageFinder.cpp"
+
+#include <optional>
+#include <unordered_set>
+#include <vector>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -55,9 +59,11 @@ struct PlanMiniMock {
 };
 
 struct ExecutionNodeMock {
-  ExecutionNodeMock(ExecutionNode::NodeType type, bool isPassthrough,
-                    std::vector<Variable const*> input, std::vector<Variable const*> output)
-      : _type(type), _isPassthrough(isPassthrough), _input(), _output(), _plan(type) {
+  using VarStack = VarUsageFinder<ExecutionNodeMock>::Stack;
+
+  ExecutionNodeMock(ExecutionNode::NodeType type, std::vector<Variable const*> input,
+                    std::vector<Variable const*> output)
+      : _type(type), _input(), _output(), _plan(type) {
     for (auto const& v : input) {
       _input.emplace(v);
     }
@@ -70,7 +76,9 @@ struct ExecutionNodeMock {
 
   auto id() -> ExecutionNodeId { return ExecutionNodeId{0}; }
 
-  auto isPassthrough() -> bool { return _isPassthrough; }
+  auto isPassthrough() -> bool {
+    return ExecutionNode::isPassthrough(getType());
+  }
 
   auto getType() -> ExecutionNode::NodeType { return _type; }
 
@@ -89,7 +97,9 @@ struct ExecutionNodeMock {
   }
 
   auto setVarsUsedLater(VarSet& v) -> void { _usedLater = v; }
-  auto setVarsUsedLater(VarUsageFinder<ExecutionNodeMock>::Stack& s) -> void { _usedLaterStack = s; }
+  auto setVarsUsedLater(VarStack& s) -> void {
+    _usedLaterStack = s;
+  }
 
   auto invalidateVarUsage() -> void {
     _usedLater.clear();
@@ -116,10 +126,20 @@ struct ExecutionNodeMock {
   }
 
   auto setVarsValid(VarSet const& v) -> void { _varsValid = v; }
+  auto setVarsValid(VarStack varsValidStack) -> void {
+    _varsValidStack = std::move(varsValidStack);
+  }
+  auto getVarsValid() const -> VarSet const&;
+  auto getVarsValidStack() const -> VarStack const&;
 
   auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto getUsedLaterStack() const noexcept
+      -> VarStack const& {
+    return _usedLaterStack;
   }
 
   // Will be modified by walker worker
@@ -128,15 +148,22 @@ struct ExecutionNodeMock {
 
  private:
   ExecutionNode::NodeType _type;
-  bool _isPassthrough;
   VarSet _input;
   VarSet _output;
   VarSet _usedLater;
-  VarUsageFinder<ExecutionNodeMock>::Stack _usedLaterStack;
+  VarStack _usedLaterStack;
+  VarStack _varsValidStack;
   VarSet _varsValid{};
   bool _varUsageValid{false};
   PlanMiniMock _plan;
 };
+
+auto ExecutionNodeMock::getVarsValid() const -> VarSet const& {
+  return _varsValid;
+}
+auto ExecutionNodeMock::getVarsValidStack() const -> ExecutionNodeMock::VarStack const& {
+  return _varsValidStack;
+}
 
 class RegisterPlanTest : public ::testing::Test {
  protected:
@@ -156,12 +183,17 @@ class RegisterPlanTest : public ::testing::Test {
     return registerPlan;
   }
 
-  auto generateVars(size_t amount) -> std::vector<Variable> {
-    std::vector<Variable> res;
+  template <size_t amount>
+  auto generateVars() -> std::pair<std::vector<Variable>, std::array<Variable*, amount>> {
+    std::vector<Variable> vars;
+    vars.reserve(amount);
+    std::array<Variable*, amount> ptrs{};
     for (size_t i = 0; i < amount; ++i) {
-      res.emplace_back("var" + arangodb::basics::StringUtils::itoa(i), i);
+      vars.emplace_back("var" + arangodb::basics::StringUtils::itoa(i), i);
+      ptrs[i] = &vars[i];
     }
-    return res;
+
+    return {std::move(vars), ptrs};
   }
 
   auto assertVariableInRegister(std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> plan,
@@ -258,7 +290,6 @@ class RegisterPlanTest : public ::testing::Test {
     std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
     ::VarUsageFinder finder(&varSetBy);
     applyWalkerToNodes(nodes, finder);
-    return std::move(finder.usedLaterStack);
   }
 
  private:
@@ -275,9 +306,9 @@ class RegisterPlanTest : public ::testing::Test {
 };
 
 TEST_F(RegisterPlanTest, walker_should_plan_registers) {
-  auto vars = generateVars(1);
+  auto&& [vars, ptrs] = generateVars<1>();
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {&vars[0]}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   EXPECT_EQ(plan->getTotalNrRegs(), 1);
@@ -286,12 +317,12 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed) {
-  auto vars = generateVars(2);
+  auto&& [vars, ptrs] = generateVars<2>();
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[0], &vars[1]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {&vars[0], &vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   EXPECT_EQ(plan->getTotalNrRegs(), 2);
@@ -301,12 +332,12 @@ TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
-  auto vars = generateVars(2);
+  auto&& [vars, ptrs] = generateVars<2>();
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[1]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   EXPECT_EQ(plan->getTotalNrRegs(), 1);
@@ -316,12 +347,12 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_passthrough) {
-  auto vars = generateVars(2);
+  auto&& [vars, ptrs] = generateVars<2>();
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[1]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   EXPECT_EQ(plan->getTotalNrRegs(), 2);
@@ -331,15 +362,15 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
 }
 
 TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) {
-  auto vars = generateVars(5);
+  auto&& [vars, ptrs] = generateVars<5>();
   std::vector<ExecutionNodeMock> myList{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[1]}, {&vars[2]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[2]}, {&vars[3]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[3]}, {&vars[4]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[4]}, {}}};
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {&vars[1]}, {&vars[2]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, {&vars[2]}, {&vars[3]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {&vars[3]}, {&vars[4]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {&vars[4]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
   EXPECT_EQ(plan->getTotalNrRegs(), 2);
@@ -352,17 +383,109 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) 
 }
 
 TEST_F(RegisterPlanTest, variable_usage) {
-  auto vars = generateVars(5);
+  auto&& [vars, ptrs] = generateVars<5>();
+  auto [nicole, doris, shawn, ronald, maria] = ptrs;
   std::vector<ExecutionNodeMock> nodes{
-      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
-      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[1]}, {&vars[2]}},
-      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[2]}, {&vars[3]}},
-      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[3]}, {&vars[4]}},
-      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[4]}, {}}};
-  auto const usageStack = getVarUsage(nodes);
-  EXPECT_EQ(usageStack.size(), 1);
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {nicole}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {nicole}, {doris}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {doris}, {shawn}},
+      ExecutionNodeMock{ExecutionNode::INDEX, {shawn}, {ronald}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {ronald}, {maria}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {maria}, {}}};
+  getVarUsage(nodes);
+
+  using Stack = VarUsageFinder<ExecutionNodeMock>::Stack;
+
+  { // Check varsUsedLater
+
+    // SINGLETON
+    EXPECT_EQ((Stack{{nicole, doris, shawn, ronald, maria}}), nodes[0].getUsedLaterStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((Stack{{nicole, doris, shawn, ronald, maria}}), nodes[1].getUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{doris, shawn, ronald, maria}}), nodes[2].getUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{shawn, ronald, maria}}), nodes[3].getUsedLaterStack());
+    // INDEX
+    EXPECT_EQ((Stack{{ronald, maria}}), nodes[4].getUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{maria}}), nodes[5].getUsedLaterStack());
+    // RETURN
+    EXPECT_EQ((Stack{{}}), nodes[6].getUsedLaterStack());
+  }
+
+  { // Check varsValid
+
+    // SINGLETON
+    EXPECT_EQ((Stack{{}}), nodes[0].getVarsValidStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((Stack{{nicole}}), nodes[1].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{nicole, doris}}), nodes[2].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{nicole, doris, shawn}}), nodes[3].getVarsValidStack());
+    // INDEX
+    EXPECT_EQ((Stack{{nicole, doris, shawn, ronald}}), nodes[4].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{nicole, doris, shawn, ronald, maria}}), nodes[5].getVarsValidStack());
+    // RETURN
+    EXPECT_EQ((Stack{{nicole, doris, shawn, ronald, maria}}), nodes[6].getVarsValidStack());
+  }
+}
+
+TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
+  auto&& [vars, ptrs] = generateVars<5>();
+  auto [mark, debra, tina, mary, jesse] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {mark}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark}, {debra}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {debra}, {tina}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {tina}, {mary}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, mary}, {jesse}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {jesse}, {}}};
+  getVarUsage(nodes);
+  using Stack = VarUsageFinder<ExecutionNodeMock>::Stack;
+  { // Check varsUsedLater
+
+    // SINGLETON
+    EXPECT_EQ((Stack{{jesse, mary, mark, tina, debra}}), nodes[0].getUsedLaterStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((Stack{{jesse, mary, mark, tina, debra}}), nodes[1].getUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{jesse, mary, mark, tina, debra}}), nodes[2].getUsedLaterStack());
+    // SUBQUERY_START
+    EXPECT_EQ((Stack{{jesse, mary, mark}, {tina, debra}}), nodes[3].getUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{jesse, mary, mark}, {tina}}), nodes[4].getUsedLaterStack());
+    // SUBQUERY_END
+    EXPECT_EQ((Stack{{jesse, mary, mark}}), nodes[5].getUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{jesse}}), nodes[6].getUsedLaterStack());
+    // RETURN
+    EXPECT_EQ((Stack{{}}), nodes[7].getUsedLaterStack());
+  }
+
+  {  // Check varsValid
+    // SINGLETON
+    EXPECT_EQ((Stack{{}}), nodes[0].getVarsValidStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((Stack{{mark}}), nodes[1].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{mark, debra}}), nodes[2].getVarsValidStack());
+    // SUBQUERY_START
+    EXPECT_EQ((Stack{{mark, debra}, {mark, debra}}), nodes[3].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{mark, debra}, {mark, debra, tina}}), nodes[4].getVarsValidStack());
+    // SUBQUERY_END
+    EXPECT_EQ((Stack{{mark, debra, mary}}), nodes[5].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((Stack{{mark, debra, mary, jesse}}), nodes[6].getVarsValidStack());
+    // RETURN
+    EXPECT_EQ((Stack{{mark, debra, mary, jesse}}), nodes[7].getVarsValidStack());
+  }
 }
 
 }  // namespace aql
