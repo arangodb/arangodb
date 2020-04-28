@@ -621,20 +621,27 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     using UpgradeState = LogicalCollection::UpgradeStatus::State;
     velocypack::Slice stateSlice = body.get(maintenance::UPGRADE_STATUS);
     UpgradeState phase = LogicalCollection::UpgradeStatus::stateFromSlice(stateSlice);
-    return waitForFuture(
-        methods::Collections::upgrade(_vocbase, *coll, phase).thenValue([this, coll](Result&& res) {
-          if (res.fail()) {
-            generateTransactionError(coll->name(), res, "");
-            return;
-          }
+    velocypack::Slice timeoutSlice = body.get(maintenance::TIMEOUT);
+    constexpr std::size_t defaultTimeout = 600;
+    std::size_t timeout = timeoutSlice.isInteger() ? std::max(timeoutSlice.getNumber<std::size_t>(), defaultTimeout) : defaultTimeout;
+    
+    auto [res, builder] = methods::Collections::upgrade(_vocbase, *coll, phase, timeout);
+    if (res.fail()) {
+      generateTransactionError(coll->name(), res, "");
+      return RestStatus::DONE;
+    }
 
-          {
-            VPackObjectBuilder obj(&_builder, true);
-            obj->add("result", VPackValue(res.ok()));
-          }
+    {
+      VPackObjectBuilder obj(&_builder, true);
+      if (!builder) {
+        obj->add("result", VPackValue(res.ok()));
+      } else {
+        obj->add("result", builder->slice());
+      }
+    }
 
-          standardResponse();
-        }));
+    standardResponse();
+    return RestStatus::DONE;
   }
 
   res = handleExtraCommandPut(*coll, sub, _builder);

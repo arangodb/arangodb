@@ -40,6 +40,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Maintenance/MaintenanceStrings.h"
 #include "Futures/Utilities.h"
 #include "Graph/Traverser.h"
 #include "Network/ClusterUtils.h"
@@ -875,50 +876,94 @@ std::string getExtendedIsoString(std::chrono::system_clock::time_point time_poin
 }
 }  // namespace
 
-futures::Future<Result> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& collection) {
+std::pair<Result, std::shared_ptr<velocypack::Builder>> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& collection,
+                                             std::size_t timeout) {
   ClusterFeature& feature = vocbase.server().getFeature<ClusterFeature>();
   ClusterInfo& ci = feature.clusterInfo();
   std::uint64_t jobId = ci.uniqid();
   auto timeCreated = std::chrono::system_clock::now();
 
-  velocypack::Builder job;
+  std::shared_ptr<velocypack::Builder> job = std::make_shared<velocypack::Builder>();
+
+  bool existingJob = false;
+
   {
-    velocypack::ObjectBuilder guard(&job);
-    job.add("type", velocypack::Value("upgradeCollection"));
-    job.add("database", velocypack::Value(vocbase.name()));
-    job.add("collection", velocypack::Value(std::to_string(collection.id())));
-    job.add("jobId", velocypack::Value(std::to_string(jobId)));
-    job.add("timeCreated", velocypack::Value(getExtendedIsoString(timeCreated)));
-    job.add("creator", velocypack::Value(ServerState::instance()->getId()));
+    auto matchExistingInList = [&vocbase, &collection, &existingJob,
+                                &job](velocypack::Slice list) -> void {
+      for (velocypack::ObjectIteratorPair it : velocypack::ObjectIterator(list)) {
+        velocypack::Slice dbSlice = it.value.get(maintenance::DATABASE);
+        velocypack::Slice cSlice = it.value.get(maintenance::COLLECTION);
+        if (dbSlice.isString() && dbSlice.isEqualString(vocbase.name()) &&
+            cSlice.isString() && cSlice.isEqualString(std::to_string(collection.id()))) {
+          existingJob = true;
+          job->add(it.value);
+        }
+      }
+    };
+
+    AgencyReadTransaction trx(std::vector<std::string>(
+        {AgencyCommManager::path("Target/ToDo"),
+         AgencyCommManager::path("Target/Pending")}));
+
+    AgencyComm agency(vocbase.server());
+    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 60.0);
+    if (!result.successful()) {
+      return std::make_pair(Result(TRI_ERROR_INTERNAL, "could not check for existing job in agency"), nullptr);
+    } else {
+      velocypack::Slice toDo = result.slice()[0].get(std::vector<std::string>({
+        AgencyCommManager::path(), "Target", "ToDo"
+      }));
+      matchExistingInList(toDo);
+
+      if (!existingJob) {
+        velocypack::Slice pending = result.slice()[0].get(std::vector<std::string>({
+          AgencyCommManager::path(), "Target", "Pending"
+        }));
+        matchExistingInList(pending);
+      }
+    }
   }
 
-  std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);
+  if (!existingJob) {
+    {
+      velocypack::ObjectBuilder guard(job.get());
+      job->add("type", velocypack::Value("upgradeCollection"));
+      job->add("database", velocypack::Value(vocbase.name()));
+      job->add("collection", velocypack::Value(std::to_string(collection.id())));
+      job->add("jobId", velocypack::Value(std::to_string(jobId)));
+      job->add("timeCreated", velocypack::Value(getExtendedIsoString(timeCreated)));
+      job->add("creator", velocypack::Value(ServerState::instance()->getId()));
+      job->add("timeout", velocypack::Value(timeout));
+    }
 
-  auto trx = AgencyWriteTransaction{
-      AgencyOperation{agencyKey, AgencyValueOperationType::SET, job.slice()},
-      AgencyPrecondition{agencyKey, AgencyPrecondition::Type::EMPTY, true}};
+    std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);
 
-  AgencyComm comm(vocbase.server());
-  AgencyCommResult result = comm.sendTransactionWithFailover(trx);
-  ci.loadPlan();
-  if (!result.successful()) {
-    return futures::makeFuture(
-        Result(TRI_ERROR_INTERNAL, "failed to send and execute transaction"));
+    auto trx = AgencyWriteTransaction{
+        AgencyOperation{agencyKey, AgencyValueOperationType::SET, job->slice()},
+        AgencyPrecondition{agencyKey, AgencyPrecondition::Type::EMPTY, true}};
+
+    AgencyComm comm(vocbase.server());
+    AgencyCommResult result = comm.sendTransactionWithFailover(trx);
+    ci.loadPlan();
+    if (!result.successful()) {
+      return std::make_pair(Result(TRI_ERROR_INTERNAL,
+                                   "failed to send and execute transaction"),
+                            nullptr);
+    }
   }
 
-  return futures::makeFuture(Result());
+  return std::make_pair(Result(), job);
 }
 
-futures::Future<Result> upgradeOnDBServer(TRI_vocbase_t& vocbase,
-                                          LogicalCollection const& collection,
-                                          LogicalCollection::UpgradeStatus::State phase) {
+Result upgradeOnDBServer(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
+                         LogicalCollection::UpgradeStatus::State phase) {
   Result res{TRI_ERROR_BAD_PARAMETER, "expecting valid upgrade phase"};  // default for fallthrough
   PhysicalCollection* physical = collection.getPhysical();
   if (!physical) {
     res.reset(TRI_ERROR_INTERNAL,
               "could not get physical collection for upgrade");
-    return futures::makeFuture(res);
+    return res;
   }
   using UpgradeState = LogicalCollection::UpgradeStatus::State;
   switch (phase) {
@@ -941,7 +986,7 @@ futures::Future<Result> upgradeOnDBServer(TRI_vocbase_t& vocbase,
     default:
       break;
   }
-  return futures::makeFuture(res);
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

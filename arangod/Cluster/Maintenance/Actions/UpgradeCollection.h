@@ -45,7 +45,7 @@ class UpgradeCollection : public ActionBase,
   virtual bool next() override final;
 
  private:
-  bool hasMore() const;
+  bool hasMore(LogicalCollection::UpgradeStatus::State) const;
 
   futures::Future<Result> sendRequest(LogicalCollection&, std::string const&,
                                       LogicalCollection::UpgradeStatus::State);
@@ -58,10 +58,13 @@ class UpgradeCollection : public ActionBase,
                     LogicalCollection::UpgradeStatus::State targetPhase,
                     LogicalCollection& collection);
 
+  bool refreshPlanStatus();
+
  private:
-  std::shared_ptr<velocypack::Builder> _planStatus;
+  velocypack::Builder _planStatus;
+  std::size_t _timeout;
   std::unique_ptr<transaction::Methods> _trx;
-  std::unordered_map<std::string, futures::Future<Result>> _futures;
+  std::unordered_map<std::string, std::pair<LogicalCollection::UpgradeStatus::State, futures::Future<Result>>> _futures;
   mutable std::size_t _iteration = 0;
 };
 

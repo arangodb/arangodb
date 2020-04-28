@@ -893,33 +893,34 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
-futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& coll,
-                                             LogicalCollection::UpgradeStatus::State phase) {
+std::pair<Result, std::shared_ptr<velocypack::Builder>> Collections::upgrade(
+    TRI_vocbase_t& vocbase, LogicalCollection const& coll,
+    LogicalCollection::UpgradeStatus::State phase,
+    std::size_t timeout) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+    return std::make_pair(Result(TRI_ERROR_FORBIDDEN), nullptr);
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return upgradeOnCoordinator(vocbase, coll);
+    return upgradeOnCoordinator(vocbase, coll, timeout);
   }
 
   if (ServerState::instance()->isDBServer()) {
-    return upgradeOnDBServer(vocbase, coll, phase);
+    return std::make_pair(upgradeOnDBServer(vocbase, coll, phase), nullptr);
   }
 
   if (!ServerState::instance()->isSingleServer()) {
-    return futures::makeFuture(
+    return std::make_pair(
         Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "collection upgrade in cluster not supported yet"));
+               "collection upgrade in cluster not supported yet"), nullptr);
   }
 
   Result res;
   PhysicalCollection* physical = coll.getPhysical();
   if (!physical) {
     res.reset(TRI_ERROR_INTERNAL, "collection not found");
-    return futures::makeFuture(res);
+    return std::make_pair(res, nullptr);
   }
 
   // start an exclusive transaction to block access to the collection
@@ -928,7 +929,7 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
   SingleCollectionTransaction trx(context, coll, AccessMode::Type::EXCLUSIVE);
   res = trx.begin();
   if (res.fail()) {
-    return res;
+    return std::make_pair(res, nullptr);
   }
 
   auto cleanupGuard = arangodb::scopeGuard([physical]() -> void {
@@ -937,18 +938,18 @@ futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
 
   res = physical->prepareUpgrade();
   if (res.fail()) {
-    return res;
+    return std::make_pair(res, nullptr);
   }
 
   res = physical->finalizeUpgrade();
   if (res.fail()) {
-    return res;
+    return std::make_pair(res, nullptr);
   }
 
   cleanupGuard.cancel();
   res = physical->cleanupUpgrade();
 
-  return futures::makeFuture(res);
+  return std::make_pair(res, nullptr);
 }
 
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {

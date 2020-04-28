@@ -454,6 +454,7 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
         trx.add("op", Value("delete"));
       }
 
+      LOG_DEVEL << "trying to clear statuses from current";
       std::string currentPath = "/Current/Collections/" + database + "/" + collection;
       Builder builder;
       auto [garbage, found] = snapshot.hasAsBuilder(currentPath, builder);
@@ -465,6 +466,7 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
               std::string const statusPath =
                   currentPath + "/" + pair.key.copyString() + "/" +
                   arangodb::maintenance::UPGRADE_STATUS;
+              LOG_DEVEL << "added operation to clear " << statusPath;
               trx.add(Value(statusPath));
               {
                 ObjectBuilder status(&trx);
@@ -483,6 +485,7 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
 
       // make sure we don't try to rewrite history
       arangodb::consensus::Job::addIncreasePlanVersion(trx);
+      arangodb::consensus::Job::addIncreaseCurrentVersion(trx);
     }
     {
       ObjectBuilder preconditions(&trx);
@@ -639,6 +642,7 @@ JOB_STATUS UpgradeCollection::status() {
                                          ::UpgradeState::Finalize);
       std::string messageIfError = "could not set target phase 'Finalize'";
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
+      LOG_DEVEL << "setting target phase to Finalize: " << std::boolalpha << ok;
     } else if (targetPhase == ::UpgradeState::Finalize) {
       velocypack::Builder trx;
       ::prepareSetUpgradedPropertiesTransaction(trx, _database, _collection, _jobId);
@@ -651,6 +655,7 @@ JOB_STATUS UpgradeCollection::status() {
                                            ::UpgradeState::Cleanup);
         messageIfError = "could not set target phase 'Cleanup'";
         ok = writeTransaction(trx, messageIfError);
+        LOG_DEVEL << "setting target phase to Cleanup: " << std::boolalpha << ok;
       }
     } else if (targetPhase == ::UpgradeState::Cleanup) {
       // TODO remove status, release resources

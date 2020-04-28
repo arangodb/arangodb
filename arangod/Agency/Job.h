@@ -175,6 +175,7 @@ struct Job {
   // or pre must be in the state that an object has been opened, this
   // method adds some attribute/value pairs and leaves the object open:
   static void addIncreasePlanVersion(velocypack::Builder& trx);
+  static void addIncreaseCurrentVersion(velocypack::Builder& trx);
   static void addRemoveJobFromSomewhere(velocypack::Builder& trx, std::string const& where,
                                         std::string const& jobId);
   static void addPutJobIntoSomewhere(velocypack::Builder& trx,

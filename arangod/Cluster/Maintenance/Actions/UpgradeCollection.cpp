@@ -65,6 +65,36 @@ struct Config {
   }
 };
 
+std::size_t getTimeout(arangodb::application_features::ApplicationServer& server, std::string const& database, std::string const& collection) {
+  using namespace arangodb::velocypack;
+
+  std::size_t timeout = 600;
+
+  arangodb::AgencyReadTransaction trx(arangodb::AgencyCommManager::path("Target/Pending"));
+
+  arangodb::AgencyComm agency(server);
+  arangodb::AgencyCommResult result = agency.sendTransactionWithFailover(trx, 60.0);
+  if (!result.successful()) {
+    return timeout;
+  } else {
+    Slice list = result.slice()[0].get(std::vector<std::string>({
+      arangodb::AgencyCommManager::path(), "Target", "Pending"
+    }));
+    for (ObjectIteratorPair it : ObjectIterator(list)) {
+      Slice dbSlice = it.value.get(arangodb::maintenance::DATABASE);
+      Slice cSlice = it.value.get(arangodb::maintenance::COLLECTION);
+      Slice tSlice = it.value.get(arangodb::maintenance::TIMEOUT);
+      if (dbSlice.isString() && dbSlice.isEqualString(database) &&
+          cSlice.isString() && cSlice.isEqualString(collection) &&
+          tSlice.isInteger()) {
+        timeout = std::max(timeout, tSlice.getNumber<std::size_t>());
+      }
+    }
+  }
+
+  return timeout;
+}
+
 std::pair<arangodb::Result, bool> updateStatusFromCurrent(arangodb::ClusterInfo& ci,
                                                           arangodb::LogicalCollection& collection,
                                                           std::string const& shard) {
@@ -134,6 +164,29 @@ void writeStatusToCurrent(arangodb::LogicalCollection& collection,
   }
 }
 
+void removeStatusFromCurrent(arangodb::LogicalCollection& collection,
+                             arangodb::maintenance::ActionDescription const& desc) {
+  auto operations = std::vector<arangodb::AgencyOperation>{};
+
+  std::string const statusKey =
+      "/Current/Collections/" + desc.get(arangodb::maintenance::DATABASE) +
+      "/" + desc.get(arangodb::maintenance::COLLECTION) + "/" +
+      desc.get(arangodb::maintenance::SHARD) + "/" + arangodb::maintenance::UPGRADE_STATUS;
+  operations.emplace_back(statusKey, arangodb::AgencySimpleOperationType::DELETE_OP);
+
+  std::string const versionKey = "/Current/Version";
+  operations.emplace_back(versionKey, arangodb::AgencySimpleOperationType::INCREMENT_OP);
+
+  auto trx = arangodb::AgencyWriteTransaction{operations};
+
+  arangodb::AgencyComm comm(collection.vocbase().server());
+  arangodb::AgencyCommResult result = comm.sendTransactionWithFailover(trx);
+  if (!result.successful()) {
+    throw std::runtime_error(
+        "failed to send and execute transaction to set shard upgrade status");
+  }
+}
+
 std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
     arangodb::LogicalCollection& collection) {
   std::unordered_map<::UpgradeState, std::vector<std::string>> map;
@@ -151,7 +204,7 @@ std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
 namespace arangodb::maintenance {
 
 UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+    : ActionBase(feature, desc), _timeout(600) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -171,10 +224,6 @@ UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescript
   }
   TRI_ASSERT(desc.has(SHARD));
 
-  if (desc.has(UPGRADE_STATUS)) {
-    _planStatus = velocypack::Parser::fromJson(_description.get(UPGRADE_STATUS));
-  }
-
   if (!error.str().empty()) {
     LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE)
         << "UpgradeCollection: " << error.str();
@@ -183,11 +232,7 @@ UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescript
   }
 }
 
-UpgradeCollection::~UpgradeCollection() = default; /*{
-   while (!_futures.empty() && !feature().server().isShuttingDown()) {
-     std::this_thread::sleep(std::chrono::milliseconds(10));
-   }
- };*/
+UpgradeCollection::~UpgradeCollection()  = default;
 
 bool UpgradeCollection::first() {
   auto const& database = _description.get(DATABASE);
@@ -206,16 +251,19 @@ bool UpgradeCollection::first() {
     ::Config config(_description);
     if (config.collection) {
       LOG_TOPIC("61543", DEBUG, Logger::MAINTENANCE)
-          << "Updating local collection " + shard;
+          << "Upgrading local collection " + shard;
 
-      if (!_planStatus) {
-        // no status found in the plan, clear the local status to report later
+      _timeout = ::getTimeout(config.vocbase.server(), database, collection);
+
+      bool ok = refreshPlanStatus();
+      if (!ok) {
         // TODO trigger rollback/cleanup
         {
           WRITE_LOCKER(lock, config.collection->statusLock());
           LogicalCollection::UpgradeStatus& status = config.collection->upgradeStatus();
           status.clear();
         }
+        ::removeStatusFromCurrent(*config.collection, _description);
         return false;
       }
 
@@ -261,26 +309,30 @@ bool UpgradeCollection::next() {
     }
   });
 
-  TRI_ASSERT(_planStatus);
+  bool ok = refreshPlanStatus();
+  if (!ok) {
+    LOG_TOPIC("61544", DEBUG, Logger::MAINTENANCE)
+        << "Upgrading local collection " << shard << "; plan status may be outdated";
+  }
   ::UpgradeState targetPhase =
-      LogicalCollection::UpgradeStatus::stateFromSlice(_planStatus->slice());
+      LogicalCollection::UpgradeStatus::stateFromSlice(_planStatus.slice());
 
   try {
     ::Config config(_description);
     if (config.collection) {
       LOG_TOPIC("61543", DEBUG, Logger::MAINTENANCE)
-          << "Updating local collection " + shard;
+          << "Upgrading local collection " + shard;
 
       // will check Current, and fill in any missing servers with ToDo
-      bool mustWrite = false;
+      bool localChanges = false;
       auto& feature = config.vocbase.server().getFeature<ClusterFeature>();
       auto& ci = feature.clusterInfo();
-      std::tie(_result, mustWrite) =
+      std::tie(_result, localChanges) =
           ::updateStatusFromCurrent(ci, *config.collection, shard);
       if (_result.fail()) {
         return true;
       }
-      if (mustWrite) {
+      if (localChanges && targetPhase != ::UpgradeState::Cleanup) {
         // make sure it's written back out to Current with up-to-date server list
         ::writeStatusToCurrent(*config.collection, _description);
       }
@@ -322,6 +374,9 @@ bool UpgradeCollection::next() {
                                      targetPhase, *config.collection);
           haveServers = processPhase(servers, ::UpgradeState::Rollback,
                                      targetPhase, *config.collection);
+          // and process the reponses from cleanup requests
+          haveServers = processPhase(servers, ::UpgradeState::Cleanup,
+                                     targetPhase, *config.collection);
           break;
         }
         case ::UpgradeState::ToDo:
@@ -343,11 +398,11 @@ bool UpgradeCollection::next() {
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
 
-  return hasMore();
+  return hasMore(targetPhase);
 }
 
-bool UpgradeCollection::hasMore() const {
-  if (_result.fail() || _futures.empty()) {
+bool UpgradeCollection::hasMore(::UpgradeState targetPhase) const {
+  if (_result.fail() || (_futures.empty() && targetPhase == ::UpgradeState::Cleanup)) {
     return false;
   }
 
@@ -369,6 +424,7 @@ futures::Future<Result> UpgradeCollection::sendRequest(LogicalCollection& collec
   auto* pool = collection.vocbase().server().getFeature<NetworkFeature>().pool();
   std::string url = "/_api/collection/" + collection.name() + "/upgrade";
   network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(static_cast<double>(_timeout));
   reqOpts.database = collection.vocbase().name();
 
   return arangodb::network::sendRequestRetry(pool, "server:" + server,
@@ -380,7 +436,6 @@ futures::Future<Result> UpgradeCollection::sendRequest(LogicalCollection& collec
 std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
     std::string const& server, LogicalCollection::UpgradeStatus::State phase) {
   return [self = shared_from_this(), this, server, phase](network::Response&& res) -> Result {
-    LOG_DEVEL << "handling response for '" << server << "'";
     Result result;
     int commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
@@ -396,7 +451,6 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
     }
 
     // okay, we executed this operation successfully, let everyone know
-    LOG_DEVEL << "response for '" << server << "' OK";
     try {
       ::Config config(_description);
       if (config.collection) {
@@ -407,7 +461,6 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
           status.set(server, phase);
         }
         ::writeStatusToCurrent(*config.collection, _description);
-        LOG_DEVEL << "wrote status after '" << server << "'";
       } else {
         std::stringstream error;
         error << "failed to lookup local collection " << _description.get(SHARD)
@@ -431,37 +484,79 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
 bool UpgradeCollection::processPhase(
     std::unordered_map<::UpgradeState, std::vector<std::string>> servers,
     ::UpgradeState searchPhase, ::UpgradeState targetPhase, LogicalCollection& collection) {
-  bool haveServers = false;
+  std::size_t serverCount = 0;
   decltype(servers)::const_iterator it = servers.find(searchPhase);
   if (it != servers.end() && !it->second.empty()) {
-    haveServers = true;
+    serverCount = it->second.size();
     for (auto const& server : it->second) {
       decltype(_futures)::iterator f = _futures.find(server);
-      if (f == _futures.end()) {
-        LOG_DEVEL << "sending '" << static_cast<unsigned>(targetPhase)
-                  << "' to '" << server << "'";
-        _futures.emplace(server, sendRequest(collection, server, targetPhase));
+      bool mustSendRequest = false;
+      if (f == _futures.end() && searchPhase != targetPhase) {
+        mustSendRequest = true;
       } else {
-        if (f->second.hasValue()) {
-          Result r = f->second.get();
+        if (f->second.second.hasValue()) {
+          Result r = f->second.second.get();
           if (r.ok()) {
+            if (f->second.first == targetPhase) {
+              // this future is from this phase, mark the server done
+              --serverCount;
+            } else {
+              // this future is from a previous phase, go ahead and mark to send
+              // so we don't have a missed update
+              mustSendRequest = true;
+            }
             _futures.erase(f);
           } else {
-            LOG_DEVEL << "have response for '" << server << "', code "
-                      << r.errorNumber() << ", message: '" << r.errorMessage() << "'";
             _result.reset(r);
           }
-        } else if (f->second.hasException()) {
-          if (f->second.getTry().exception()) {
-            std::rethrow_exception(f->second.getTry().exception());
+        } else if (f->second.second.hasException()) {
+          if (f->second.second.getTry().exception()) {
+            std::rethrow_exception(f->second.second.getTry().exception());
           }
-        } else {
-          LOG_DEVEL << "already have request in flight for '" << server << "'";
         }
+      }
+      if (mustSendRequest) {
+        futures::Future<Result> future = sendRequest(collection, server, targetPhase);
+        _futures.emplace(server, std::make_pair(targetPhase, std::move(future)));
       }
     }
   }
-  return haveServers;
+  return serverCount > 0;
+}
+
+bool UpgradeCollection::refreshPlanStatus() {
+  ClusterFeature& cf = _feature.server().getFeature<ClusterFeature>();
+  ClusterInfo& ci = cf.clusterInfo();
+
+  std::shared_ptr<velocypack::Builder> plan = ci.getPlan();
+  if (!plan) {
+    return false;
+  }
+
+  velocypack::Slice collections = plan->slice().get("Collections");
+  if (!collections.isObject()) {
+    return false;
+  }
+
+  velocypack::Slice db = collections.get(_description.get(DATABASE));
+  if (!db.isObject()) {
+    return false;
+  }
+
+  velocypack::Slice collection = db.get(_description.get(COLLECTION));
+  if (!collection.isObject()) {
+    return false;
+  }
+
+  velocypack::Slice status = collection.get(UPGRADE_STATUS);
+  if (!status.isInteger()) {
+    return false;
+  }
+
+  _planStatus.clear();
+  _planStatus.add(status);
+
+  return true;
 }
 
 }  // namespace arangodb::maintenance

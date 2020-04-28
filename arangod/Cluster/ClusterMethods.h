@@ -75,16 +75,16 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
 /// @brief upgrades a collection in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<Result> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
-                                             LogicalCollection const& collection);
+std::pair<Result, std::shared_ptr<velocypack::Builder>> upgradeOnCoordinator(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& collection,
+                                             std::size_t timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upgrades a collection in the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<Result> upgradeOnDBServer(TRI_vocbase_t& vocbase,
-                                          LogicalCollection const& collection,
-                                          LogicalCollection::UpgradeStatus::State phase);
+Result upgradeOnDBServer(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
+                         LogicalCollection::UpgradeStatus::State phase);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection

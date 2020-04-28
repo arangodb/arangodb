@@ -295,9 +295,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
             std::map<std::string, std::string>{{NAME, UPGRADE_COLLECTION},
                                                {DATABASE, dbname},
                                                {COLLECTION, colname},
-                                               {SHARD, shname},
-                                               {UPGRADE_STATUS,
-                                                cprops.get(UPGRADE_STATUS).toJson()}},
+                                               {SHARD, shname}},
             LEADER_PRIORITY, properties));
       } else {
         try {
