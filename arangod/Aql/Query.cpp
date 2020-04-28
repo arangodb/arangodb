@@ -1246,9 +1246,12 @@ ClusterQuery::ClusterQuery(std::shared_ptr<transaction::Context> const& ctx,
                            std::shared_ptr<arangodb::velocypack::Builder> const& options)
 : Query(ctx, aql::QueryString(), /*bindParams*/ nullptr, options) {}
 
-ClusterQuery::~ClusterQuery() try {
-  _traversers.clear();
-} catch (...) {}
+ClusterQuery::~ClusterQuery() {
+  try {
+    _traversers.clear();
+  } catch (...) {
+  }
+} 
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice collections,
