@@ -92,8 +92,6 @@ class TransactionCollection;
 namespace transaction {
 
 class Methods {
-  friend class traverser::BaseEngine;
-
  public:
 
   template<typename T>
