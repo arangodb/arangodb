@@ -287,10 +287,6 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     RequestType type, uint64_t index) const {
   std::vector<ClientId> clientIds;
   VPackBuffer<uint8_t> body;
-  {
-    VPackBuilder builder(body);
-    builder.add(VPackValue(index));
-  }
   return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout, type, clientIds, std::move(body));
 }
 
