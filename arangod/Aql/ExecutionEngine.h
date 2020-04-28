@@ -139,7 +139,7 @@ class ExecutionEngine {
   ///  @brief collected execution stats
   void collectExecutionStats(ExecutionStats& other);
   /// should only be used by the RemoteExecutor and intenally
-  ExecutionStats& execStats() { return _execStats; }
+  ExecutionStats& globalStats() { return _execStats; }
   
   void setShutdown() {
     _wasShutdown = true;

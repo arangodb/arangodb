@@ -391,7 +391,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
       
       if (slice.hasKey("stats")) {
         ExecutionStats newStats(slice.get("stats"));
-        _engine->execStats().add(newStats);
+        _engine->globalStats().add(newStats);
       }
 
       // read "warnings" attribute if present and add it to our query

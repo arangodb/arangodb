@@ -335,7 +335,12 @@ struct ExecutorTestHelper {
     }
 
     if (_testStats) {
-      auto actualStats = _query.rootEngine()->execStats();
+      ExecutionStats actualStats;
+      _query.rootEngine()->collectExecutionStats(actualStats);
+      // simon: engine does not collect most block stats
+      for (auto const& block : _pipeline.get()) {
+        block->collectExecStats(actualStats);
+      }
       EXPECT_EQ(actualStats, _expectedStats);
     }
   };

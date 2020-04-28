@@ -494,7 +494,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       TRI_ASSERT(snippets.size() > 0);
       TRI_ASSERT(snippets[0].first == 0);
       snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
-      snippets[0].second->execStats().addAliases(std::move(nodeAliases));
+      snippets[0].second->globalStats().addAliases(std::move(nodeAliases));
     }
     
     return res;
