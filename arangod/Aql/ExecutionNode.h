@@ -68,6 +68,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
+#include "Aql/VarUsageFinder.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -374,6 +375,7 @@ class ExecutionNode {
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   virtual void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>&) const;
+  virtual void getVariablesUsedHere(std::unordered_set<Variable const*>&) const {};
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const;
@@ -386,6 +388,8 @@ class ExecutionNode {
 
   /// @brief setVarsUsedLater
   void setVarsUsedLater(::arangodb::containers::HashSet<Variable const*> const& v);
+  void setVarsUsedLater(VarUsageFinder<ExecutionNode>::Stack s) {};
+
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.

@@ -82,6 +82,7 @@ struct ExecutionNodeMock {
   }
 
   auto setVarsUsedLater(VarSet& v) -> void { _usedLater = v; }
+  auto setVarsUsedLater(VarUsageFinder<ExecutionNodeMock>::Stack& s) -> void { _usedLaterStack = s; }
 
   auto invalidateVarUsage() -> void {
     _usedLater.clear();
@@ -124,6 +125,7 @@ struct ExecutionNodeMock {
   VarSet _input;
   VarSet _output;
   VarSet _usedLater;
+  VarUsageFinder<ExecutionNodeMock>::Stack _usedLaterStack;
   VarSet _varsValid{};
   bool _varUsageValid{false};
   PlanMiniMock _plan;
@@ -245,6 +247,13 @@ class RegisterPlanTest : public ::testing::Test {
     }
   }
 
+  auto getVarUsage(std::vector<ExecutionNodeMock>& nodes) {
+    std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
+    ::VarUsageFinder finder(&varSetBy);
+    applyWalkerToNodes(nodes, finder);
+    return std::move(finder.usedLaterStack);
+  }
+
  private:
   template <class Walker>
   auto applyWalkerToNodes(std::vector<ExecutionNodeMock>& nodes, Walker& worker) -> void {
@@ -333,6 +342,20 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) 
   assertVariableInRegister(plan, vars[3], 0);
   assertVariableInRegister(plan, vars[4], 1);
   assertPlanKeepsAllVariables(plan, myList);
+}
+
+TEST_F(RegisterPlanTest, variable_usage) {
+  auto vars = generateVars(5);
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, false, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, false, {}, {&vars[0]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[0]}, {&vars[1]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[1]}, {&vars[2]}},
+      ExecutionNodeMock{ExecutionNode::INDEX, false, {&vars[2]}, {&vars[3]}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, true, {&vars[3]}, {&vars[4]}},
+      ExecutionNodeMock{ExecutionNode::RETURN, false, {&vars[4]}, {}}};
+  auto const usageStack = getVarUsage(nodes);
+  EXPECT_EQ(usageStack.size(), 1);
 }
 
 }  // namespace aql

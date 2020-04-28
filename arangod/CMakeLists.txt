@@ -378,7 +378,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
-)
+        Aql/VarUsageFinder.cpp)
 
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
@@ -1019,7 +1019,7 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
 endif ()
-  
+
 foreach(TARGET
   arango_agency
   arango_aql

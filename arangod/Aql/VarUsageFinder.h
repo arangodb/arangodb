@@ -23,6 +23,10 @@
 #ifndef ARANGOD_AQL_VAR_USAGE_FINDER_H
 #define ARANGOD_AQL_VAR_USAGE_FINDER_H 1
 
+#include <vector>
+#include <unordered_set>
+#include <Containers/Enumerate.h>
+#include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 
 namespace arangodb::aql {
@@ -31,6 +35,9 @@ namespace arangodb::aql {
 
 template <class T>
 struct VarUsageFinder final : public WalkerWorker<T> {
+  using Stack = std::vector<std::unordered_set<Variable const*>>;
+
+  Stack usedLaterStack;
   ::arangodb::containers::HashSet<Variable const*> _usedLater;
   ::arangodb::containers::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, T*>* _varSetBy;
@@ -44,7 +51,7 @@ struct VarUsageFinder final : public WalkerWorker<T> {
   }
 
   explicit VarUsageFinder(std::unordered_map<VariableId, T*>* varSetBy)
-      : _varSetBy(varSetBy), _ownsVarSetBy(false) {
+      : usedLaterStack({{}}), _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }
 
@@ -55,29 +62,26 @@ struct VarUsageFinder final : public WalkerWorker<T> {
     }
   }
 
-  bool before(T* en) override final {
-    // count the type of node found
-    en->plan()->increaseCounter(en->getType());
+  bool before(T* en) override final;
 
-    en->invalidateVarUsage();
-    en->setVarsUsedLater(_usedLater);
-    // Add variables used here to _usedLater:
+  /*
+   * o  set: x, z   valid = x, z  usedLater = (z, x)
+   * |\
+   * | \ clear z
+   * |  o set: y    valid = x, y, z   usedLater = (z, x)
+   * |cx| clear y
+   * |  |
+   * |  o used: x   valid = x, y, z   usedLater = ((), ())
+   * | / clear x
+   * |/
+   * o used: z   valid = x, z  usedLater = (z)
+   * |
+   * o used: z   usedLater = (...)
+   */
 
-    en->getVariablesUsedHere(_usedLater);
+  //
 
-    return false;
-  }
-
-  void after(T* en) override final {
-    // Add variables set here to _valid:
-    for (auto const& v : en->getVariablesSetHere()) {
-      _valid.insert(v);
-      _varSetBy->insert({v->id, en});
-    }
-
-    en->setVarsValid(_valid);
-    en->setVarUsageValid();
-  }
+  void after(T* en) override final;
 
   bool enterSubquery(T*, T* sub) override final {
     VarUsageFinder subfinder(_varSetBy);
