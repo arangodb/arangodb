@@ -95,9 +95,12 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
   bool allShadow = true;
   auto row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   auto rowHasNonEmptyValue = [](ShadowAqlItemRow const& row) -> bool {
-    return std::any_of(RegisterId{0}, row.getNrRegisters(), [&](RegisterId registerId) {
-      return !row.getValue(registerId).isEmpty();
-    });
+    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   };
   for (auto const& dep : _dependencyInfos) {
     if (!indexIsValid(dep)) {

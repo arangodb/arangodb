@@ -112,7 +112,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, AqlValueGu
 template <class ItemRowType>
 void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                                      AqlValueGuard& guard) {
-  moveValueWithoutRowCopy(registerId, guard);
+  moveValueWithoutRowCopy<ItemRowType>(registerId, guard);
 
   // allValuesWritten() must be called only *after* moveValueWithoutRowCopy(),
   // because it increases _numValuesWritten.
@@ -126,7 +126,7 @@ void OutputAqlItemRow::consumeShadowRow(RegisterId registerId, ShadowAqlItemRow&
   TRI_ASSERT(sourceRow.isRelevant());
 
 
-  moveValueWithoutRowCopy(registerId, guard);
+  moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, guard);
   TRI_ASSERT(allValuesWritten());
   moveRow(sourceRow);
   TRI_ASSERT(produced());
