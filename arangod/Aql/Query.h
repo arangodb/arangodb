@@ -196,7 +196,7 @@ class Query {
 
   /// @brief register a string
   /// the string is freed when the query is destroyed
-  char* registerString(std::string const& value) {
+  char* registerString(std::string_view const value) {
     return _resources.registerString(value);
   }
 
