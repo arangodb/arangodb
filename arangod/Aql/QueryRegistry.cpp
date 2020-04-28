@@ -172,14 +172,14 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   
   auto it = _engines.find(engineId);
   if (it == _engines.end()) {
-    LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
+    LOG_TOPIC("97351", DEBUG, arangodb::Logger::AQL)
     << "Found no engine with id " << engineId;
     return;
   }
   
   EngineInfo& ei = it->second;
   if (!ei._isOpen) {
-    LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " was not open.";
+    LOG_TOPIC("45b8e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " was not open.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "engine with given vocbase and id is not open");
   }
@@ -274,9 +274,9 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
 
     auto it = _engines.find(engineId);
     if (it == _engines.end()) {
-     LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
-     << "Found no engine with id " << engineId;
-     return false;
+      LOG_TOPIC("2b5e6", DEBUG, arangodb::Logger::AQL)
+        << "Found no engine with id " << engineId;
+      return false;
     }
 
     EngineInfo& ei = it->second;
