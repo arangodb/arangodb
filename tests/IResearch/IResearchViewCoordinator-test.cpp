@@ -95,17 +95,27 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   arangodb::consensus::Store& _agencyStore;
 
   IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     arangodb::tests::init();
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     TransactionStateMock::abortTransactionCount = 0;
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     TransactionStateMock::beginTransactionCount = 0;
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     TransactionStateMock::commitTransactionCount = 0;
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     vocbase = server.createDatabase("testDatabase");
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     ASSERT_NE(nullptr, vocbase);
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     ASSERT_EQ("testDatabase", vocbase->name());
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
     }
 
   ~IResearchViewCoordinatorTest() = default;
@@ -116,8 +126,10 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewCoordinatorTest, test_type) {
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
   EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
                    "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
+    LOG_DEVEL << __FILE__ << ":" << __LINE__;
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_rename) {

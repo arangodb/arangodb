@@ -180,7 +180,6 @@ class AsyncAgencyComm final {
                                                  velocypack::Buffer<uint8_t>&& body) const;
   [[nodiscard]] FutureResult sendPollTransaction(network::Timeout timeout, uint64_t index) const;
 
-  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout) const;
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
                                              AgencyReadTransaction const&) const;
   [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
