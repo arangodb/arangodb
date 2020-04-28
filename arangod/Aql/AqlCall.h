@@ -24,12 +24,14 @@
 #define ARANGOD_AQL_AQL_CALL_H 1
 
 #include "Aql/ExecutionBlock.h"
+#include "Basics/Common.h"
 #include "Basics/overload.h"
 #include "Cluster/ResultT.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <iosfwd>
+#include <tuple>
 #include <variant>
 
 namespace arangodb::velocypack {
