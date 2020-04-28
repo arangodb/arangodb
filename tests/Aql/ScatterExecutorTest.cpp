@@ -129,12 +129,19 @@ class SharedScatterExecutionBlockTest {
     EXPECT_EQ(actual->size(), expected->size());
     EXPECT_EQ(actual->getNrRegs(), 1);
     for (size_t i = 0; i < (std::min)(actual->size(), expected->size()); ++i) {
-      auto const& x = actual->getValueReference(i, 0);
-      auto const& y = expected->getValueReference(i, 0);
-      EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-          << "Row " << i << " Column " << 0 << " do not agree. "
-          << x.slice().toJson(&vpackOptions) << " vs. "
-          << y.slice().toJson(&vpackOptions);
+      if (actual->isShadowRow(i)) {
+        ASSERT_TRUE(expected->isShadowRow(i))
+            << "Row " << i << " is not supposed to be a shadow row.";
+      } else {
+        EXPECT_FALSE(expected->isShadowRow(i))
+            << "Row " << i << " is supposed to be a shadow row.";
+        auto const& x = actual->getValueReference(i, 0);
+        auto const& y = expected->getValueReference(i, 0);
+        EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
+            << "Row " << i << " Column " << 0 << " do not agree. "
+            << x.slice().toJson(&vpackOptions) << " vs. "
+            << y.slice().toJson(&vpackOptions);
+      }
     }
   }
 };
@@ -298,7 +305,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
                                   {{3, 0}, {5, 0}});
   auto firstExpectedBlock =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}}, {{3, 0}});
-  auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{0, 0}});
+  auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{1, 0}});
   size_t subqueryDepth = 1;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
