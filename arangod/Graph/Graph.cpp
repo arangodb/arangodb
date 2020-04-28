@@ -37,6 +37,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -51,7 +52,7 @@ using namespace arangodb::graph;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-size_t getWriteConcern(VPackSlice slice, struct ServerDefaults serverDefaults) {
+size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
   if (slice.hasKey(StaticStrings::WriteConcern)) {
     return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
                                              serverDefaults.writeConcern);
@@ -87,7 +88,7 @@ std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string 
 }
 
 // From persistence
-Graph::Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefaults)
+Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults)
     : _graphName(Helper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
@@ -170,7 +171,7 @@ Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
                                        StaticStrings::ReplicationFactor +
                                            " must be greater than zero");
       }
-      _writeConcern = ::getWriteConcern(options, ServerDefaults{vocbase});
+      _writeConcern = ::getWriteConcern(options, ServerDefaults{vocbase.server()});
     }
   }
 }
