@@ -340,6 +340,15 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
+#ifdef USE_ENTERPRISE
+  // must run before distribute-in-cluster and must not be disabled, as it is necessary
+  // for distributing smart graph operations
+  registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
+               clusterLiftConstantsForDisjointGraphNodes,
+               OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+#endif
+
   registerRule("distribute-in-cluster", distributeInClusterRule,
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
