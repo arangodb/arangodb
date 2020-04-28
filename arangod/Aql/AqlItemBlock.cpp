@@ -461,7 +461,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
         AqlValueGuard guard{a, true};
         auto [it, inserted] =  cache.emplace(a);
         res->setValue(row, col, *it);
-        TRI_ASSERT(inserted); // I'm not 100% sure yet that this is true.
+        // TRI_ASSERT(inserted); // I'm not 100% sure yet that this is true.
         if (inserted) {
           // otherwise, destroy this; we used a cached value.
           guard.steal();
@@ -474,7 +474,6 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
 
     res->copySubQueryDepthFromOtherBlock(row, *this, row);
   }
-
   TRI_ASSERT(res->size() == numRows);
 
   return res;
