@@ -29,6 +29,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -52,6 +53,11 @@ using MapRemoteToSnippet = std::unordered_map<ExecutionNodeId, std::unordered_ma
 enum class BlockPassthrough { Disable, Enable };
 
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
+
+struct Variable;
+using VarSet = std::unordered_set<Variable const*>;
+using VarSetStack = std::vector<VarSet>;
+using RegIdSetStack = std::vector<std::unordered_set<RegisterId>>;
 
 }  // namespace aql
 }  // namespace arangodb

@@ -480,19 +480,27 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
   if (withProperties) {
     auto allVars = plan.getAst()->variables();
     // Create new structures on the new AST...
-    other._varsUsedLater.reserve(_varsUsedLater.size());
-    for (auto const& orgVar : _varsUsedLater) {
-      auto var = allVars->getVariable(orgVar->id);
-      TRI_ASSERT(var != nullptr);
-      other._varsUsedLater.insert(var);
+    other._varsUsedLaterStack.reserve(_varsUsedLaterStack.size());
+    for (auto const& stackEntry : _varsUsedLaterStack) {
+      auto& otherStackEntry = other._varsUsedLaterStack.emplace_back();
+      otherStackEntry.reserve(stackEntry.size());
+      for (auto const& orgVar : stackEntry) {
+        auto var = allVars->getVariable(orgVar->id);
+        TRI_ASSERT(var != nullptr);
+        otherStackEntry.emplace(var);
+      }
     }
 
-    other._varsValid.reserve(_varsValid.size());
+    other._varsValidStack.reserve(_varsValidStack.size());
 
-    for (auto const& orgVar : _varsValid) {
-      auto var = allVars->getVariable(orgVar->id);
-      TRI_ASSERT(var != nullptr);
-      other._varsValid.insert(var);
+    for (auto const& stackEntry : _varsValidStack) {
+      auto& otherStackEntry = other._varsValidStack.emplace_back();
+      otherStackEntry.reserve(stackEntry.size());
+      for (auto const& orgVar : stackEntry) {
+        auto var = allVars->getVariable(orgVar->id);
+        TRI_ASSERT(var != nullptr);
+        otherStackEntry.emplace(var);
+      }
     }
 
     if (_registerPlan != nullptr) {
@@ -500,8 +508,8 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
     }
   } else {
     // point to current AST -> don't do deep copies.
-    other._varsUsedLater = _varsUsedLater;
-    other._varsValid = _varsValid;
+    other._varsUsedLaterStack = _varsUsedLaterStack;
+    other._varsUsedLaterStack = _varsUsedLaterStack;
     other._registerPlan = _registerPlan;
   }
 }
@@ -935,26 +943,36 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
-std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  std::unordered_set<RegisterId> regsToKeep{};
-  regsToKeep.reserve(getVarsUsedLater().size());
+auto ExecutionNode::calcRegsToKeep() const -> RegIdSetStack {
+  auto regsToKeepStack = RegIdSetStack{};
+  regsToKeepStack.reserve(getVarsUsedLaterStack().size());
 
-  auto varsUsedLater = getVarsUsedLater();
-  auto varsSetHere = getVariablesSetHere();
+  auto const& varsSetHere = getVariablesSetHere();
 
-  for (auto const var : getVarsValid()) {
-    auto reg = variableToRegisterId(var);
+  TRI_ASSERT(getVarsUsedLaterStack().size() == getVarsValidStack().size());
 
-    bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
-                     varsSetHere.end();
-    bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
-                       varsUsedLater.end();
-    if (!isSetHere && isUsedLater) {
-      regsToKeep.insert(reg);
+  // TODO The lower levels of the stacks inside the same subquery do not differ,
+  //      so we calculate the same thing multiple times.
+  //      Instead, calculate it in the register planning and pass the results.
+
+  for (auto const& [idx, stackEntry] : enumerate(getVarsValidStack())) {
+    auto& regsToKeep = regsToKeepStack.emplace_back();
+    auto const& varsUsedLater = getVarsUsedLaterStack()[idx];
+
+    for (auto const var : stackEntry) {
+      auto reg = variableToRegisterId(var);
+
+      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                       varsSetHere.end();
+      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                         varsUsedLater.end();
+      if (!isSetHere && isUsedLater) {
+        regsToKeep.emplace(reg);
+      }
     }
   }
 
-  return regsToKeep;
+  return regsToKeepStack;
 }
 
 RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
@@ -970,11 +988,11 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 RegisterInfos ExecutionNode::createRegisterInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const {
-  RegisterId const nrOutRegs = getNrOutputRegisters();
-  RegisterId const nrInRegs = getNrInputRegisters();
+  auto const nrOutRegs = getNrOutputRegisters();
+  auto const nrInRegs = getNrInputRegisters();
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto&& regsToKeep = calcRegsToKeep();
+  auto&& regsToClear = getRegsToClear();
 
   return RegisterInfos{std::move(readableInputRegisters),
                        std::move(writableOutputRegisters),
@@ -1164,7 +1182,7 @@ std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
 }
 
 bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
-  return (_varsUsedLater.find(variable) != _varsUsedLater.end());
+  return (_varsUsedLaterStack.back().find(variable) != _varsUsedLaterStack.back().end());
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
@@ -1205,20 +1223,20 @@ bool ExecutionNode::isPassthrough(ExecutionNode::NodeType type) {
   }
 }
 
-void ExecutionNode::setVarsUsedLater(VarStack varStack) {
+void ExecutionNode::setVarsUsedLater(VarSetStack varStack) {
   _varsUsedLaterStack = std::move(varStack);
 }
 
-void ExecutionNode::setVarsValid(VarStack varStack) {
+void ExecutionNode::setVarsValid(VarSetStack varStack) {
   _varsValidStack = std::move(varStack);
 }
 
-auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarStack const& {
+auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
   TRI_ASSERT(_varUsageValid);
   return _varsUsedLaterStack;
 }
 
-auto ExecutionNode::getVarsValidStack() const noexcept -> VarStack const& {
+auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
   TRI_ASSERT(_varUsageValid);
   return _varsValidStack;
 }

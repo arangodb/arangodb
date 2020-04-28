@@ -77,11 +77,11 @@ void DistributeConsumerNode::cloneRegisterPlan(ScatterNode* dependency) {
   _registerPlan = dependency->getRegisterPlan();
   _depth = dependency->getDepth();
   {
-    auto const& later = dependency->getVarsUsedLater();
+    auto const& later = dependency->getVarsUsedLaterStack();
     setVarsUsedLater(later);
   }
   {
-    auto const& valid = dependency->getVarsValid();
+    auto const& valid = dependency->getVarsValidStack();
     setVarsValid(valid);
   }
   setVarUsageValid();

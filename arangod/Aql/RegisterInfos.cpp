@@ -35,13 +35,12 @@ RegisterInfos::RegisterInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep)
+    RegIdSetStack registersToKeep)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
-      _registersToKeep(std::make_shared<std::unordered_set<RegisterId>>(
-          std::move(registersToKeep))),
+      _registersToKeep(std::move(registersToKeep)),
       _registersToClear(std::make_shared<std::unordered_set<RegisterId>>(
           std::move(registersToClear))) {
   // We allow these to be passed as nullptr for ease of use, but do NOT allow
@@ -55,7 +54,7 @@ RegisterInfos::RegisterInfos(
   // The second assert part is from ReturnExecutor special case, we shrink all
   // results into a single Register column.
   TRI_ASSERT((nrInputRegisters <= nrOutputRegisters) ||
-             (nrOutputRegisters == 1 && _registersToKeep->empty() &&
+             (nrOutputRegisters == 1 && _registersToKeep.back().empty() &&
               _registersToClear->empty()));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -68,9 +67,9 @@ RegisterInfos::RegisterInfos(
   for (RegisterId const regToClear : *_registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
     TRI_ASSERT(regToClear < nrOutputRegisters);
-    TRI_ASSERT(_registersToKeep->find(regToClear) == _registersToKeep->end());
+    TRI_ASSERT(_registersToKeep.back().find(regToClear) == _registersToKeep.back().end());
   }
-  for (RegisterId const regToKeep : *_registersToKeep) {
+  for (RegisterId const regToKeep : _registersToKeep.back()) {
     TRI_ASSERT(regToKeep < nrInputRegisters);
     TRI_ASSERT(_registersToClear->find(regToKeep) == _registersToClear->end());
   }
@@ -91,7 +90,7 @@ RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> const& RegisterInfos::registersToKeep() const {
+RegIdSetStack const& RegisterInfos::registersToKeep() const {
   return _registersToKeep;
 }
 

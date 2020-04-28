@@ -40,10 +40,8 @@ using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
 
 template <class T>
 struct VarUsageFinderT final : public WalkerWorker<T> {
-  using Stack = std::vector<std::unordered_set<Variable const*>>;
-
-  Stack _usedLaterStack = Stack{{}};
-  Stack _varsValidStack = Stack{{}};
+  VarSetStack _usedLaterStack = VarSetStack{{}};
+  VarSetStack _varsValidStack = VarSetStack{{}};
   ::arangodb::containers::HashSet<Variable const*> _usedLater;
   ::arangodb::containers::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, T*>* _varSetBy;

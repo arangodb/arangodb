@@ -63,15 +63,7 @@ class RegisterInfos {
    *                         their values can be deleted
    * @param registersToKeep Registers that will be used after this block, so
    *                        their values have to be copied
-   *                        TODO This will have to be specific to the input block
-   *                         later on, and must be passed through the
-   *                         inputOutputRegisterMap;
-   *                         thinking about it, the inputOutputRegisterMap will
-   *                         just replace this!
-   * @param inputOutputRegisterMap TODO add this, should be: Map translating
-   *                                register IDs from input blocks to register IDs
-   *                                in output blocks, referring to the same
-   *                                variable each.
+   *                        TODO Update this comment, it's a stack now.
    *
    * Note that the output registers can be found in the ExecutionNode via
    * getVariablesSetHere() and translated as follows:
@@ -84,7 +76,7 @@ class RegisterInfos {
                 std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear,
-                std::unordered_set<RegisterId> registersToKeep);
+                RegIdSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;
@@ -126,7 +118,7 @@ class RegisterInfos {
    */
   RegisterId numberOfOutputRegisters() const;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToKeep() const;
+  RegIdSetStack const& registersToKeep() const;
 
   std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const;
 
@@ -139,9 +131,9 @@ class RegisterInfos {
 
   RegisterId _numOutRegs;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
+  RegIdSetStack _registersToKeep;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const _registersToClear;
+  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
 };
 
 }  // namespace aql

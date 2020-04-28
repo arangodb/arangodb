@@ -134,8 +134,6 @@ class ExecutionNode {
   // otherwise the local gather node might delete the sorting register...
   friend class QuerySnippet;
 
-  using VarStack = VarUsageFinder::Stack;
-
  public:
   enum NodeType : int {
     SINGLETON = 1,
@@ -389,14 +387,14 @@ class ExecutionNode {
   bool setsVariable(::arangodb::containers::HashSet<Variable const*> const& which) const;
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(VarStack varStack);
+  void setVarsUsedLater(VarSetStack varStack);
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  auto getVarsUsedLaterStack() const noexcept -> VarStack const&;
+  auto getVarsUsedLaterStack() const noexcept -> VarSetStack const&;
 
   /// @brief setVarsValid
-  void setVarsValid(VarStack varStack);
+  void setVarsValid(VarSetStack varStack);
 
   /// @brief set regs to be deleted
   void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
@@ -404,7 +402,7 @@ class ExecutionNode {
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  auto getVarsValidStack() const noexcept -> VarStack const&;
+  auto getVarsValidStack() const noexcept -> VarSetStack const&;
 
   /// @brief setVarUsageValid
   void setVarUsageValid();
@@ -470,7 +468,7 @@ class ExecutionNode {
                                  std::unordered_set<ExecutionNode const*>& seen) const;
 
 
-  std::unordered_set<RegisterId> calcRegsToKeep() const;
+  auto calcRegsToKeep() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
@@ -505,8 +503,8 @@ class ExecutionNode {
   /// when an item comes into the current node. Both are only valid if
   /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
   /// this. TODO update this comment
-  VarStack _varsUsedLaterStack;
-  VarStack _varsValidStack;
+  VarSetStack _varsUsedLaterStack;
+  VarSetStack _varsValidStack;
 
   /// @brief depth of the current frame, will be filled in by planRegisters
   unsigned int _depth;
