@@ -290,8 +290,10 @@ Result CreateDatabaseInfo::checkOptions() {
   // we cannot use IsAllowedName for database name length validation alone, because
   // IsAllowedName allows up to 256 characters. Database names are just up to 64
   // chars long, as their names are also used as filesystem directories (for Foxx apps)
+  bool isSystem = _name == StaticStrings::SystemDatabase;
+
   if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(TRI_vocbase_t::IsSystemName(_name), arangodb::velocypack::StringRef(_name)) ||
+      !TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(_name)) ||
       _name.size() > 64) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
