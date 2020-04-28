@@ -53,126 +53,126 @@ function analyzersRevisionTestSuite () {
       let revisionNumber = 0;
 
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertFalse(revision.hasOwnProperty("Coordinator"));
-      assertFalse(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertFalse(revision.hasOwnProperty("coordinator"));
+      assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
 
       // valid name 0
       analyzers.save(dbName + "::valid0", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 1
       analyzers.save(dbName + "::valid1", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid name
       try { analyzers.save(dbName + "::inv:alid", "identity"); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 2
       analyzers.save(dbName + "::valid2", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid repeated name 1
       try { analyzers.save(dbName + "::valid1", "delimiter", { "delimiter": "," }); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 0
       analyzers.remove(dbName + "::valid0", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove invalid repeated name 0
       try { analyzers.remove(dbName + "::valid0", true); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 2
       analyzers.remove(dbName + "::valid2", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 1
       analyzers.remove(dbName + "::valid1", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       assertEqual(0, db._analyzers.count());
 
@@ -195,126 +195,126 @@ function analyzersRevisionTestSuite () {
       let revisionNumber = 0;
 
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertFalse(revision.hasOwnProperty("Coordinator"));
-      assertFalse(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertFalse(revision.hasOwnProperty("coordinator"));
+      assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
 
       // valid name 0
       analyzers.save("valid0", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 1
       analyzers.save("valid1", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid name
       try { analyzers.save("inv:alid", "identity"); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 2
       analyzers.save("valid2", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid repeated name 1
       try { analyzers.save("valid1", "delimiter", { "delimiter": "," }); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 0
       analyzers.remove("valid0", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove invalid repeated name 0
       try { analyzers.remove("valid0", true); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 2
       analyzers.remove("valid2", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 1
       analyzers.remove("valid1", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       assertEqual(0, db._analyzers.count());
 
@@ -332,248 +332,248 @@ function analyzersRevisionTestSuite () {
       db._useDatabase(dbName);
 
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertEqual(revision.Revision, revision.BuildingRevision);
-      let revisionNumber = revision.Revision;
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertEqual(revision.revision, revision.buildingRevision);
+      let revisionNumber = revision.revision;
 
       // valid name 0
       analyzers.save(dbName + "::valid0", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 1
       analyzers.save(dbName + "::valid1", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid name
       try { analyzers.save(dbName + "::inv:alid", "identity"); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 2
       analyzers.save(dbName + "::valid2", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid repeated name 1
       try { analyzers.save(dbName + "::valid1", "delimiter", { "delimiter": "," }); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 0
       analyzers.remove(dbName + "::valid0", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove invalid repeated name 0
       try { analyzers.remove(dbName + "::valid0", true); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 2
       analyzers.remove(dbName + "::valid2", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 1
       analyzers.remove(dbName + "::valid1", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
     },
     testAnalyzersPlanSystemDefault: function() {
       let dbName = "_system";
       db._useDatabase(dbName);
 
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertEqual(revision.Revision, revision.BuildingRevision);
-      let revisionNumber = revision.Revision;
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertEqual(revision.revision, revision.buildingRevision);
+      let revisionNumber = revision.revision;
 
       // valid name 0
       analyzers.save("::valid0", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 1
       analyzers.save("::valid1", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid name
       try { analyzers.save("::inv:alid", "identity"); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // valid name 2
       analyzers.save("::valid2", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // invalid repeated name 1
       try { analyzers.save("::valid1", "delimiter", { "delimiter": "," }); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 0
       analyzers.remove("::valid0", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove invalid repeated name 0
       try { analyzers.remove("::valid0", true); } catch(e) {};
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 2
       analyzers.remove("::valid2", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
 
       // remove valid name 1
       analyzers.remove("::valid1", true);
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("Revision"));
-      assertTrue(revision.hasOwnProperty("BuildingRevision"));
-      assertTrue(revision.hasOwnProperty("Coordinator"));
-      assertTrue(revision.hasOwnProperty("RebootID"));
-      assertEqual(revisionNumber, revision.Revision);
-      assertEqual(revisionNumber, revision.BuildingRevision);
-      assertNotEqual("", revision.Coordinator);
-      assertEqual(1, revision.RebootID);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+      assertNotEqual("", revision.coordinator);
+      assertEqual(1, revision.coordinatorRebootId);
     }
   };
 }
