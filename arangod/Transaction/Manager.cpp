@@ -316,10 +316,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   }
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
-
+  
   // lock collections
   CollectionNameResolver resolver(vocbase);
-  auto lockCols = [&](std::vector<std::string> cols, AccessMode::Type mode) {
+  auto lockCols = [&](std::vector<std::string> const& cols, AccessMode::Type mode) {
     for (auto const& cname : cols) {
       TRI_voc_cid_t cid = 0;
       if (state->isCoordinator()) {
@@ -336,24 +336,29 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
       } else {
 #ifdef USE_ENTERPRISE
         if (state->isCoordinator()) {
-          std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
-          if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
-            auto theEdge = dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
-            if (theEdge == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cast collection to smart edge collection");
+          try {
+            std::shared_ptr<LogicalCollection> col = resolver.getCollection(cname);
+            if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+              auto theEdge = dynamic_cast<arangodb::VirtualSmartEdgeCollection*>(col.get());
+              if (theEdge == nullptr) {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot cast collection to smart edge collection");
+              }
+              res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname, mode,  /*lockUsage*/false));
+              if (res.fail()) {
+                return false;
+              }
+              res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname, mode, /*lockUsage*/false));
+              if (res.fail()) {
+                return false;
+              }
+              res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname, mode,  /*lockUsage*/  false));
+              if (res.fail()) {
+                return false;
+              }
             }
-            res.reset(state->addCollection(theEdge->getLocalCid(), "_local_" + cname, mode,  /*lockUsage*/false));
-            if (res.fail()) {
-              return false;
-            }
-            res.reset(state->addCollection(theEdge->getFromCid(), "_from_" + cname, mode, /*lockUsage*/false));
-            if (res.fail()) {
-              return false;
-            }
-            res.reset(state->addCollection(theEdge->getToCid(), "_to_" + cname, mode,  /*lockUsage*/  false));
-            if (res.fail()) {
-              return false;
-            }
+          } catch (basics::Exception const& ex) {
+            res.reset(ex.code(), ex.what());
+            return false;
           }
         }
 #endif
@@ -376,11 +381,16 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
     // no error set. so it must be "data source not found"
     return res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-
+  
   // start the transaction
   transaction::Hints hints;
   hints.set(transaction::Hints::Hint::GLOBAL_MANAGED);
-  res = state->beginTransaction(hints);  // registers with transaction manager
+  try {
+    res = state->beginTransaction(hints);  // registers with transaction manager
+  } catch (basics::Exception const& ex) {
+    res.reset(ex.code(), ex.what());
+  }
+
   if (res.fail()) {
     TRI_ASSERT(!state->isRunning());
     return res;
