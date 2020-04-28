@@ -60,8 +60,8 @@ class TransactionContextTest : public ::testing::Test {
 
 TEST_F(TransactionContextTest, StandaloneContext) {
   transaction::StandaloneContext ctx(vocbase);
-  EXPECT_FALSE(ctx.isEmbeddable());
-  EXPECT_TRUE(ctx.isStateSet());
+  EXPECT_TRUE(ctx.isEmbeddable());
+  EXPECT_FALSE(ctx.isStateSet());
 
   std::vector<std::string*> strings;
   for (int i = 0; i < 10; i++) {
