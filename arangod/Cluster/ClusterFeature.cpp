@@ -627,7 +627,7 @@ void ClusterFeature::start() {
 
 void ClusterFeature::beginShutdown() {}
 
-void ClusterFeature::stop() { shutdownHeartbeatThread(); }
+void ClusterFeature::stop() {  }
 
 void ClusterFeature::unprepare() {
   if (!_enableCluster) {

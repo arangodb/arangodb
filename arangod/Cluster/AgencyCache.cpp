@@ -281,11 +281,18 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint32_t const& id)
 
 /// Orderly shutdown
 void AgencyCache::beginShutdown() {
+
   // trigger all waiting for an index
   {
     std::lock_guard g(_storeLock);
-    triggerWaitingNoLock(std::numeric_limits<uint64_t>::max());
+    auto pit = _waiting.begin();
+    while (pit != _waiting.end()) {
+      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+    }
+    _waiting.clear();
   }
+
+  // trigger all callbacks
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& i : _callbacks) {
@@ -303,7 +310,6 @@ void AgencyCache::beginShutdown() {
     }
     _callbacks.clear();
   }
-
   Thread::beginShutdown();
 }
 
