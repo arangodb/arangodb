@@ -124,17 +124,18 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-  std::tie(_documentOutReg, _collectionPointerReg) =
-    std::visit(overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
-                        return std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
-                      },
-                      [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
-                        return std::pair{regs.documentOutReg, regs.collectionOutReg};
-                      },
-                      [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
-                        return std::pair{aql::RegisterPlan::MaxRegisterId, aql::RegisterPlan::MaxRegisterId};
-                      }},
-             outRegisters);
+  std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
+      overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
+                 return std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
+               },
+               [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
+                 return std::pair{regs.documentOutReg, regs.collectionOutReg};
+               },
+               [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
+                 return std::pair{aql::RegisterPlan::MaxRegisterId,
+                                  aql::RegisterPlan::MaxRegisterId};
+               }},
+      outRegisters);
 }
 
 IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const
@@ -243,8 +244,9 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
       outputRow(outputRow),
       documentOutReg(documentOutReg),
       collectionPointerReg(collectionPointerReg) {
-  if constexpr ((Traits::MaterializeType & iresearch::MaterializeType::Materialize) ==
-                iresearch::MaterializeType::Materialize) {
+  if constexpr (static_cast<unsigned int>(Traits::MaterializeType &
+                                          iresearch::MaterializeType::Materialize) ==
+                static_cast<unsigned int>(iresearch::MaterializeType::Materialize)) {
     callback = this->copyDocumentCallback(*this);
   }
 }
