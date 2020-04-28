@@ -27,6 +27,7 @@
 #include "Basics/overload.h"
 #include "Cluster/ResultT.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <iosfwd>
 #include <variant>
