@@ -29,6 +29,7 @@
 #include "Aql/RegisterPlan.cpp"
 #include "Aql/VarUsageFinder.h"
 #include "Basics/StringUtils.h"
+#include "Aql/VarUsageFinder.cpp"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -76,6 +77,12 @@ struct ExecutionNodeMock {
   auto getVarsUsedLater() -> VarSet const& { return _usedLater; }
 
   auto getVariablesUsedHere(VarSet& res) const -> void {
+    for (auto const v : _input) {
+      res.emplace(v);
+    }
+  }
+
+  auto getVariablesUsedHere(std::unordered_set<Variable const*>& res) const -> void {
     for (auto const v : _input) {
       res.emplace(v);
     }

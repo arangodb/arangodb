@@ -1,5 +1,6 @@
 #include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include <Logger/LogMacros.h>
 
 using namespace arangodb::aql;
@@ -75,3 +76,5 @@ void VarUsageFinder<T>::after(T* en) {
   en->setVarsValid(_valid);
   en->setVarUsageValid();
 }
+
+template struct arangodb::aql::VarUsageFinder<ExecutionNode>;
