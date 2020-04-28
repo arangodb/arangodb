@@ -97,6 +97,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
                             std::string const& endpoints);
 
   void shutdownHeartbeatThread();
+  void shutdownAgencyCache();
 
  private:
   void reportRole(ServerState::RoleEnum);

@@ -492,7 +492,7 @@ void ClusterFeature::prepare() {
 
   //if (AsyncAgencyCommManager::INSTANCE != nullptr) {
     //}
-  
+
   if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myEndpoint,
                                                      _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
@@ -537,7 +537,7 @@ void ClusterFeature::start() {
 
   if (role == ServerState::ROLE_COORDINATOR) {
     double start = TRI_microtime();
-    
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // in maintainer mode, a developer does not want to spend that much time
     // waiting for extra nodes to start up
@@ -548,7 +548,7 @@ void ClusterFeature::start() {
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
         << "Waiting for DBservers to show up...";
-      
+
       _clusterInfo->loadCurrentDBServers();
       std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
@@ -620,12 +620,14 @@ void ClusterFeature::start() {
 
   comm.increment("Current/Version");
 
-  
+
 
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() {}
+void ClusterFeature::beginShutdown() {
+  shutdownHeartbeatThread();
+}
 
 void ClusterFeature::stop() {  }
 
@@ -633,8 +635,6 @@ void ClusterFeature::unprepare() {
   if (!_enableCluster) {
     return;
   }
-
-  shutdownHeartbeatThread();
 
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
@@ -709,9 +709,7 @@ void ClusterFeature::unprepare() {
 
   TRI_ASSERT(tries <= maxTries);
 
-  while (_heartbeatThread != nullptr && _heartbeatThread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
+  shutdownAgencyCacheThread();
 
   _pool.reset();
   AgencyCommManager::MANAGER->stop();
@@ -750,12 +748,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
   if (_heartbeatThread == nullptr) {
     return;
   }
-
   _heartbeatThread->beginShutdown();
-  if (_agencyCache != nullptr) {
-    _agencyCache->beginShutdown();
-  }
-
   int counter = 0;
   while (_heartbeatThread->isRunning()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -765,6 +758,14 @@ void ClusterFeature::shutdownHeartbeatThread() {
           << "waiting for heartbeat thread to finish";
     }
   }
+}
+
+void ClusterFeature::shutdownAgencyCache() {
+  if (_agencyCache == nullptr) {
+    return;
+  }
+  _agencyCache->beginShutdown();
+  int counter = 0;
   while (_agencyCache != nullptr && _agencyCache->isRunning()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     // emit warning after 5 seconds
