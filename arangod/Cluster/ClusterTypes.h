@@ -86,7 +86,7 @@ class AnalyzersRevision {
   using Revision = uint64_t;
 
   AnalyzersRevision(Revision revision, Revision buildingRevision,
-                   ServerID&& serverID, uint64_t rebootID)
+                    ServerID&& serverID, uint64_t rebootID)
     : _revision(revision), _buildingRevision(buildingRevision),
       _serverID(std::move(serverID)), _rebootID(rebootID) {}
 

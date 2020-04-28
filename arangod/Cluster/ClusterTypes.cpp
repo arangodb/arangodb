@@ -41,10 +41,10 @@ arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
              (!_serverID.empty() && _rebootID.initialized()));
 
   if (!_serverID.empty()) {
-    builder.add(StaticStrings::AnalyzersCoordinator, VPackValue(_serverID));
+    builder.add(StaticStrings::AttrCoordinator, VPackValue(_serverID));
   }
   if (_rebootID.initialized()) {
-    builder.add(StaticStrings::AnalyzersRebootID, VPackValue(_rebootID.value()));
+    builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootID.value()));
   }
   builder.close();
 

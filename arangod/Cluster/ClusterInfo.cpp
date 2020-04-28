@@ -853,8 +853,8 @@ void ClusterInfo::loadPlan() {
       }
 
       ServerID coordinatorID;
-      if (analyzerSlice.hasKey(StaticStrings::AnalyzersCoordinator)) {
-        auto const coordinatorSlice = analyzerSlice.get(StaticStrings::AnalyzersCoordinator);
+      if (analyzerSlice.hasKey(StaticStrings::AttrCoordinator)) {
+        auto const coordinatorSlice = analyzerSlice.get(StaticStrings::AttrCoordinator);
         if (!coordinatorSlice.isString()) {
           LOG_TOPIC("67bc9", WARN, Logger::AGENCY)
               << "Invalid analyzer coordinator for database '" << databaseName << "',"
@@ -869,8 +869,8 @@ void ClusterInfo::loadPlan() {
       }
 
       uint64_t rebootID = 0;
-      if (analyzerSlice.hasKey(StaticStrings::AnalyzersRebootID)) {
-        auto const rebootIDSlice = analyzerSlice.get(StaticStrings::AnalyzersRebootID);
+      if (analyzerSlice.hasKey(StaticStrings::AttrCoordinatorRebootId)) {
+        auto const rebootIDSlice = analyzerSlice.get(StaticStrings::AttrCoordinatorRebootId);
         if (!rebootIDSlice.isNumber()) {
           LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
               << "Invalid analyzer reboot ID for database '" << databaseName << "',"
@@ -3039,9 +3039,9 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
     AgencyWriteTransaction const transaction{
         {{anPath + StaticStrings::AnalyzersBuildingRevision,
               AgencySimpleOperationType::INCREMENT_OP},
-         {anPath + StaticStrings::AnalyzersCoordinator,
+         {anPath + StaticStrings::AttrCoordinator,
               AgencyValueOperationType::SET, serverIDBuilder.slice()},
-         {anPath + StaticStrings::AnalyzersRebootID,
+         {anPath + StaticStrings::AttrCoordinatorRebootId,
               AgencyValueOperationType::SET, rebootIDBuilder.slice()},
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
         {{anPath + StaticStrings::AnalyzersBuildingRevision,
@@ -3134,9 +3134,9 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
          {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
         {{anPath + StaticStrings::AnalyzersBuildingRevision,
               AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
-         {anPath + StaticStrings::AnalyzersCoordinator,
+         {anPath + StaticStrings::AttrCoordinator,
               AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
-         {anPath + StaticStrings::AnalyzersRebootID,
+         {anPath + StaticStrings::AttrCoordinatorRebootId,
               AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
 
     auto const res = ac.sendTransactionWithFailover(transaction);
