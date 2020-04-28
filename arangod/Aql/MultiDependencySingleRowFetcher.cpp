@@ -94,6 +94,11 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
   bool allDone = true;
   bool allShadow = true;
   auto row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  auto rowHasNonEmptyValue = [](ShadowAqlItemRow const& row) -> bool {
+    return std::any_of(RegisterId{0}, row.getNrRegisters(), [&](RegisterId registerId) {
+      return !row.getValue(registerId).isEmpty();
+    });
+  };
   for (auto const& dep : _dependencyInfos) {
     if (!indexIsValid(dep)) {
       allShadow = false;
@@ -107,9 +112,13 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
         row = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
       } else {
         TRI_ASSERT(row.isInitialized());
-        // All shadow rows must be equal!
-        auto const options = _dependencyProxy->velocypackOptions();
-        TRI_ASSERT(row.equates(ShadowAqlItemRow{dep._currentBlock, dep._rowIndex}, options));
+        // TODO We could memorize that `row` has a value, in which case we won't
+        //      need to check `curRow` for values, except for assertions.
+        auto curRow = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
+        if (rowHasNonEmptyValue(curRow)) {
+          TRI_ASSERT(!rowHasNonEmptyValue(row));
+          row = curRow;
+        }
       }
     }
   }

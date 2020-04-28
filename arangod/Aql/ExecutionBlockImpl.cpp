@@ -861,7 +861,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     }
   } else {
     // Need to forward the ShadowRows
-    auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
     TRI_ASSERT(shadowRow.isInitialized());
     _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
@@ -901,7 +901,7 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
-  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
@@ -962,7 +962,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     return ExecState::DONE;
   }
 
-  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   uint64_t depthSkippingNow = static_cast<uint64_t>(stack.shadowRowDepthToSkip());
   uint64_t shadowDepth = shadowRow.getDepth();
@@ -987,7 +987,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
       skipResult.didSkipSubquery(1, shadowDepth);
     } else if (shadowCall.getLimit() > 0) {
       TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-      _outputItemRow->copyRow(shadowRow);
+      _outputItemRow->moveRow(shadowRow);
       shadowCall.didProduce(1);
       TRI_ASSERT(_outputItemRow->produced());
       _outputItemRow->advanceRow();
@@ -1001,7 +1001,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     // Do proper reporting on it's call.
     AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
     TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-    _outputItemRow->copyRow(shadowRow);
+    _outputItemRow->moveRow(shadowRow);
     shadowCall.didProduce(1);
 
     TRI_ASSERT(_outputItemRow->produced());
@@ -1042,10 +1042,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
     return ExecState::NEXTSUBQUERY;
   }
 
-  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
 
-  _outputItemRow->copyRow(shadowRow);
+  _outputItemRow->moveRow(shadowRow);
   countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (shadowRow.isRelevant()) {
@@ -1732,7 +1732,7 @@ ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
     _state = InternalState::DONE;
   }
   if (shadowRow.isInitialized()) {
-    _outputItemRow->copyRow(shadowRow);
+    _outputItemRow->moveRow(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
   } else {

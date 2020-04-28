@@ -66,6 +66,13 @@ AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
   return block().getValueReference(_baseIndex, registerId);
 }
 
+AqlValue ShadowAqlItemRow::stealValue(RegisterId registerId) {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId < getNrRegisters());
+  // caller needs to take immediate ownership.
+  return block().stealAndEraseValue(_baseIndex, registerId);
+}
+
 AqlValue const& ShadowAqlItemRow::getShadowDepthValue() const {
   TRI_ASSERT(isInitialized());
   return block().getShadowRowDepth(_baseIndex);
