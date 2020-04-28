@@ -861,7 +861,7 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   builder.add(StaticStrings::Code, VPackValue(errorCode));
   builder.close();
   
-  _query.incHttpRequests(_serverToQueryId.size());
+  _query.incHttpRequests(static_cast<unsigned>(_serverToQueryId.size()));
    
   std::vector<futures::Future<futures::Unit>> futures;
   futures.reserve(_serverToQueryId.size());

@@ -354,7 +354,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                                     "/_api/aql/setup", std::move(buffer),
                                     options, std::move(headers))
                    .get();
-    _query.incHttpRequests(1);
+    _query.incHttpRequests(unsigned(1));
     if (res.fail()) {
       int code = network::fuerteToArangoErrorCode(res);
       std::string message = network::fuerteToArangoErrorMessage(res);
@@ -503,7 +503,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
         network::sendRequest(pool, server, fuerte::RestVerb::Put, url + shardId,
                              /*copy*/ body, options);
       }
-      _query.incHttpRequests(serToSnippets.second.size());
+      _query.incHttpRequests(static_cast<unsigned>(serToSnippets.second.size()));
     }
   }
 
@@ -518,7 +518,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
       network::sendRequest(pool, engine.first, fuerte::RestVerb::Delete,
                            url + basics::StringUtils::itoa(engine.second), noBody, options);
     }
-    _query.incHttpRequests(allEngines->size());
+    _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
   }
 
   snippetIds.clear();
