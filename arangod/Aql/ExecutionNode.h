@@ -134,6 +134,8 @@ class ExecutionNode {
   // otherwise the local gather node might delete the sorting register...
   friend class QuerySnippet;
 
+  using VarStack = VarUsageFinder::Stack;
+
  public:
   enum NodeType : int {
     SINGLETON = 1,
@@ -387,22 +389,14 @@ class ExecutionNode {
   bool setsVariable(::arangodb::containers::HashSet<Variable const*> const& which) const;
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(::arangodb::containers::HashSet<Variable const*> const& v);
-  void setVarsUsedLater(VarUsageFinder<ExecutionNode>::Stack s) {
-    // TODO
-  };
-
+  void setVarsUsedLater(VarStack varStack);
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  ::arangodb::containers::HashSet<Variable const*> const& getVarsUsedLater() const;
+  auto getVarsUsedLaterStack() const noexcept -> VarStack const&;
 
   /// @brief setVarsValid
-  void setVarsValid(::arangodb::containers::HashSet<Variable const*> const& v);
-  void setVarsValid(VarUsageFinder<ExecutionNode>::Stack s) {
-    // TODO
-    //_usedLaterStack = std::move(s);
-  }
+  void setVarsValid(VarStack varStack);
 
   /// @brief set regs to be deleted
   void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
@@ -410,7 +404,7 @@ class ExecutionNode {
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  ::arangodb::containers::HashSet<Variable const*> const& getVarsValid() const;
+  auto getVarsValidStack() const noexcept -> VarStack const&;
 
   /// @brief setVarUsageValid
   void setVarUsageValid();
@@ -510,10 +504,9 @@ class ExecutionNode {
   /// latter contains the variables that are set from the dependent nodes
   /// when an item comes into the current node. Both are only valid if
   /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
-  /// this.
-  ::arangodb::containers::HashSet<Variable const*> _varsUsedLater;
-
-  ::arangodb::containers::HashSet<Variable const*> _varsValid;
+  /// this. TODO update this comment
+  VarStack _varsUsedLaterStack;
+  VarStack _varsValidStack;
 
   /// @brief depth of the current frame, will be filled in by planRegisters
   unsigned int _depth;

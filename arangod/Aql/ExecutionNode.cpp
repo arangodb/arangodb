@@ -1133,29 +1133,11 @@ bool ExecutionNode::setsVariable(const ::arangodb::containers::HashSet<const Var
   return false;
 }
 
-void ExecutionNode::setVarsUsedLater(const ::arangodb::containers::HashSet<const Variable*>& v) {
-  _varsUsedLater = v;
-}
-
-const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsUsedLater() const {
-  TRI_ASSERT(_varUsageValid);
-  return _varsUsedLater;
-}
-
-void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*> const& v) {
-  _varsValid = v;
-}
-
-const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsValid() const {
-  TRI_ASSERT(_varUsageValid);
-  return _varsValid;
-}
-
 void ExecutionNode::setVarUsageValid() { _varUsageValid = true; }
 
 void ExecutionNode::invalidateVarUsage() {
-  _varsUsedLater.clear();
-  _varsValid.clear();
+  _varsUsedLaterStack.clear();
+  _varsValidStack.clear();
   _varUsageValid = false;
 }
 
@@ -1221,6 +1203,24 @@ bool ExecutionNode::isPassthrough(ExecutionNode::NodeType type) {
     default:
       return true;
   }
+}
+
+void ExecutionNode::setVarsUsedLater(VarStack varStack) {
+  _varsUsedLaterStack = std::move(varStack);
+}
+
+void ExecutionNode::setVarsValid(VarStack varStack) {
+  _varsValidStack = std::move(varStack);
+}
+
+auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarStack const& {
+  TRI_ASSERT(_varUsageValid);
+  return _varsUsedLaterStack;
+}
+
+auto ExecutionNode::getVarsValidStack() const noexcept -> VarStack const& {
+  TRI_ASSERT(_varUsageValid);
+  return _varsValidStack;
 }
 
 /// @brief creates corresponding ExecutionBlock

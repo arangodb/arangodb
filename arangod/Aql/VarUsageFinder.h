@@ -34,7 +34,12 @@ namespace arangodb::aql {
 /// @brief helper struct for findVarUsage
 
 template <class T>
-struct VarUsageFinder final : public WalkerWorker<T> {
+struct VarUsageFinderT;
+
+using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
+
+template <class T>
+struct VarUsageFinderT final : public WalkerWorker<T> {
   using Stack = std::vector<std::unordered_set<Variable const*>>;
 
   Stack _usedLaterStack = Stack{{}};
@@ -44,19 +49,19 @@ struct VarUsageFinder final : public WalkerWorker<T> {
   std::unordered_map<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 
-  VarUsageFinder(VarUsageFinder const&) = delete;
-  VarUsageFinder& operator=(VarUsageFinder const&) = delete;
+  VarUsageFinderT(VarUsageFinderT const&) = delete;
+  VarUsageFinderT& operator=(VarUsageFinderT const&) = delete;
 
-  VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
+  VarUsageFinderT() : _varSetBy(nullptr), _ownsVarSetBy(true) {
     _varSetBy = new std::unordered_map<VariableId, T*>();
   }
 
-  explicit VarUsageFinder(std::unordered_map<VariableId, T*>* varSetBy)
+  explicit VarUsageFinderT(std::unordered_map<VariableId, T*>* varSetBy)
       : _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }
 
-  ~VarUsageFinder() {
+  ~VarUsageFinderT() {
     if (_ownsVarSetBy) {
       TRI_ASSERT(_varSetBy != nullptr);
       delete _varSetBy;
@@ -83,7 +88,7 @@ struct VarUsageFinder final : public WalkerWorker<T> {
   void after(T* en) override final;
 
   bool enterSubquery(T*, T* sub) override final {
-    VarUsageFinder subfinder(_varSetBy);
+    VarUsageFinderT subfinder(_varSetBy);
     subfinder._valid = _valid;  // need a copy for the subquery!
     sub->walk(subfinder);
 

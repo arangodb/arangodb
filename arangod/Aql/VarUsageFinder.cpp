@@ -6,7 +6,7 @@
 using namespace arangodb::aql;
 
 template <class T>
-bool VarUsageFinder<T>::before(T* en) {
+bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
   en->plan()->increaseCounter(en->getType());
 
@@ -37,7 +37,7 @@ bool VarUsageFinder<T>::before(T* en) {
 }
 
 template <class T>
-void VarUsageFinder<T>::after(T* en) {
+void VarUsageFinderT<T>::after(T* en) {
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
       _varsValidStack.emplace_back(_varsValidStack.back());
@@ -63,4 +63,4 @@ void VarUsageFinder<T>::after(T* en) {
   en->setVarUsageValid();
 }
 
-template struct arangodb::aql::VarUsageFinder<ExecutionNode>;
+template struct arangodb::aql::VarUsageFinderT<ExecutionNode>;

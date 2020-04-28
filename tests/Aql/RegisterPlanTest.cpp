@@ -59,7 +59,7 @@ struct PlanMiniMock {
 };
 
 struct ExecutionNodeMock {
-  using VarStack = VarUsageFinder<ExecutionNodeMock>::Stack;
+  using VarStack = VarUsageFinderT<ExecutionNodeMock>::Stack;
 
   ExecutionNodeMock(ExecutionNode::NodeType type, std::vector<Variable const*> input,
                     std::vector<Variable const*> output)
@@ -173,7 +173,7 @@ class RegisterPlanTest : public ::testing::Test {
       -> std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> {
     // Compute the variable usage for nodes.
     std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
-    ::VarUsageFinder finder(&varSetBy);
+    ::VarUsageFinderT finder(&varSetBy);
     applyWalkerToNodes(nodes, finder);
 
     auto registerPlan = std::make_shared<RegisterPlanT<ExecutionNodeMock>>();
@@ -288,7 +288,7 @@ class RegisterPlanTest : public ::testing::Test {
 
   auto getVarUsage(std::vector<ExecutionNodeMock>& nodes) {
     std::unordered_map<VariableId, ExecutionNodeMock*> varSetBy;
-    ::VarUsageFinder finder(&varSetBy);
+    ::VarUsageFinderT finder(&varSetBy);
     applyWalkerToNodes(nodes, finder);
   }
 
@@ -395,7 +395,7 @@ TEST_F(RegisterPlanTest, variable_usage) {
       ExecutionNodeMock{ExecutionNode::RETURN, {maria}, {}}};
   getVarUsage(nodes);
 
-  using Stack = VarUsageFinder<ExecutionNodeMock>::Stack;
+  using Stack = VarUsageFinderT<ExecutionNodeMock>::Stack;
 
   { // Check varsUsedLater
 
@@ -447,7 +447,7 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
       ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, mary}, {jesse}},
       ExecutionNodeMock{ExecutionNode::RETURN, {jesse}, {}}};
   getVarUsage(nodes);
-  using Stack = VarUsageFinder<ExecutionNodeMock>::Stack;
+  using Stack = VarUsageFinderT<ExecutionNodeMock>::Stack;
   { // Check varsUsedLater
 
     // SINGLETON
