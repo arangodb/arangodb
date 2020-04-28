@@ -296,6 +296,32 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
 
 TraversalNode::~TraversalNode() = default;
 
+/// @brief checks if the path out variable is used
+bool TraversalNode::usesPathOutVariable() const {
+  return _pathOutVariable != nullptr;
+}
+
+/// @brief return the path out variable
+Variable const* TraversalNode::pathOutVariable() const {
+  return _pathOutVariable;
+}
+
+/// @brief set the path out variable
+void TraversalNode::setPathOutput(Variable const* outVar) {
+  _pathOutVariable = outVar;
+}
+
+/// @brief return the in variable
+Variable const* TraversalNode::inVariable() const { return _inVariable; }
+
+std::string const TraversalNode::getStartVertex() const { return _vertexId; }
+
+void TraversalNode::setInVariable(Variable const* inVariable) {
+  TRI_ASSERT(_inVariable == nullptr);
+  _inVariable = inVariable;
+  _vertexId = "";
+}
+
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
     return 0;
@@ -532,16 +558,15 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     }
   }
 
-  TRI_ASSERT(traverser != nullptr);
-  TraversalExecutorInfos infos(inputRegisters, outputRegisters,
-                               getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                               getRegisterPlan()->nrRegs[getDepth()],
-                               getRegsToClear(), calcRegsToKeep(), std::move(traverser),
-                               outputRegisterMapping, getStartVertex(),
-                               inputRegister, std::move(filterConditionVariables));
+  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(&engine, this,
-                                                                 std::move(infos));
+  TRI_ASSERT(traverser != nullptr);
+  auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
+                                              getStartVertex(), inputRegister,
+                                              std::move(filterConditionVariables));
+
+  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief clone ExecutionNode recursively

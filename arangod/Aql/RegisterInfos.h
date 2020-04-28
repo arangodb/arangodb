@@ -23,8 +23,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EXECUTOR_INFOS_H
-#define ARANGOD_AQL_EXECUTOR_INFOS_H 1
+#ifndef ARANGOD_AQL_REGISTERINFOS_H
+#define ARANGOD_AQL_REGISTERINFOS_H 1
 
 #include "Aql/types.h"
 
@@ -46,23 +46,32 @@ inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set
 }
 
 /**
- * @brief Class to be handed into Executors during construction
- *        This class should be independend from AQL internal
+ * @brief Class to be handed into ExecutionBlock during construction
+ *        This class should be independent from AQL internal
  *        knowledge for easy unit-testability.
  */
-class ExecutorInfos {
+class RegisterInfos {
  public:
   /**
-   * @brief Input for Executors. Derived classes exist where additional
-   *        input is needed.
-   * @param readableInputRegisters Registers the Executor may use as input
-   * @param writeableOutputRegisters Registers the Executor writes into
+   * @brief Generic register information for ExecutionBlocks and related classes,
+   *        like OutputAqlItemRow.
+   * @param readableInputRegisters Registers the Block may use as input
+   * @param writeableOutputRegisters Registers the Block writes into
    * @param nrInputRegisters Width of input AqlItemBlocks
    * @param nrOutputRegisters Width of output AqlItemBlocks
    * @param registersToClear Registers that are not used after this block, so
    *                         their values can be deleted
    * @param registersToKeep Registers that will be used after this block, so
    *                        their values have to be copied
+   *                        TODO This will have to be specific to the input block
+   *                         later on, and must be passed through the
+   *                         inputOutputRegisterMap;
+   *                         thinking about it, the inputOutputRegisterMap will
+   *                         just replace this!
+   * @param inputOutputRegisterMap TODO add this, should be: Map translating
+   *                                register IDs from input blocks to register IDs
+   *                                in output blocks, referring to the same
+   *                                variable each.
    *
    * Note that the output registers can be found in the ExecutionNode via
    * getVariablesSetHere() and translated as follows:
@@ -71,15 +80,15 @@ class ExecutorInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  ExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+  RegisterInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
                 std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
                 RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                 std::unordered_set<RegisterId> registersToClear,
                 std::unordered_set<RegisterId> registersToKeep);
 
-  ExecutorInfos(ExecutorInfos&&) = default;
-  ExecutorInfos(ExecutorInfos const&) = delete;
-  ~ExecutorInfos() = default;
+  RegisterInfos(RegisterInfos&&) = default;
+  RegisterInfos(RegisterInfos const&) = default;
+  ~RegisterInfos() = default;
 
   /**
    * @brief Get the input registers the Executor is allowed to read. This has
@@ -138,4 +147,4 @@ class ExecutorInfos {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
+#endif   // ARANGOD_AQL_REGISTERINFOS_H

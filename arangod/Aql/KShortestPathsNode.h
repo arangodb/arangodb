@@ -108,6 +108,8 @@ class KShortestPathsNode : public virtual GraphNode {
     return *_inStartVariable;
   }
 
+  void setStartInVariable(Variable const* inVariable);
+
   std::string const getStartVertex() const { return _startVertexId; }
 
   /// @brief Test if this node uses an in variable or constant for target

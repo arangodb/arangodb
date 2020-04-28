@@ -46,9 +46,7 @@ using RegisterSet = std::unordered_set<RegisterId>;
 class SubqueryEndExecutorTest : public ::testing::Test {
  public:
   SubqueryEndExecutorTest()
-      : _infos(std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
-               std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
-               1, 1, {}, {}, nullptr, RegisterId{0}, RegisterId{0}, false) {}
+      : _infos(nullptr, RegisterId{0}, RegisterId{0}, false) {}
 
  protected:
   ResourceMonitor monitor;

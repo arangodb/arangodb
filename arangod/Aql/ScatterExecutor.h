@@ -26,7 +26,7 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 
 namespace arangodb {
 namespace aql {
@@ -35,14 +35,10 @@ class SkipResult;
 class ExecutionEngine;
 class ScatterNode;
 
-class ScatterExecutorInfos : public ExecutorInfos, public ClientsExecutorInfos {
+class ScatterExecutorInfos : public ClientsExecutorInfos {
  public:
-  ScatterExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                       std::unordered_set<RegisterId> registersToClear,
-                       std::unordered_set<RegisterId> registersToKeep,
-                       std::vector<std::string> clientIds);
+  explicit ScatterExecutorInfos(std::vector<std::string> clientIds);
+  ScatterExecutorInfos(ScatterExecutorInfos&&) noexcept = default;
 };
 
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
@@ -54,7 +50,7 @@ class ScatterExecutor {
   class ClientBlockData {
    public:
     ClientBlockData(ExecutionEngine& engine, ExecutionNode const* node,
-                    ExecutorInfos const& scatterInfos);
+                    RegisterInfos const& scatterInfos);
 
     auto clear() -> void;
     auto addBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
@@ -70,7 +66,7 @@ class ScatterExecutor {
     bool _executorHasMore;
   };
 
-  ScatterExecutor(ExecutorInfos const&);
+  explicit ScatterExecutor(Infos const&);
   ~ScatterExecutor() = default;
 
   auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
@@ -84,11 +80,8 @@ class ScatterExecutor {
 template <>
 class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<ScatterExecutor> {
  public:
-  // TODO Even if it's not strictly necessary here, for consistency's sake the
-  // non-standard argument (shardIds) should probably be moved into some
-  // ScatterExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, ScatterNode const* node,
-                     ScatterExecutorInfos&& infos);
+                     RegisterInfos registerInfos, ScatterExecutor::Infos&& infos);
 
   ~ExecutionBlockImpl() override = default;
 };
