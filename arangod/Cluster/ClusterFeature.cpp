@@ -709,7 +709,7 @@ void ClusterFeature::unprepare() {
 
   TRI_ASSERT(tries <= maxTries);
 
-  shutdownAgencyCacheThread();
+  shutdownAgencyCache();
 
   _pool.reset();
   AgencyCommManager::MANAGER->stop();
