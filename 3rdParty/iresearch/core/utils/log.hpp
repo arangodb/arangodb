@@ -26,7 +26,6 @@
 
 #include <string>
 #include <iostream>
-#include <vector>
 #include "shared.hpp"
 #include "stdarg.h"
 
@@ -70,10 +69,16 @@ enum level_t {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief log appender callback
+/// @param context user defined context supplied with the appender callback
+/// @param function source function name. Could be a nullptr.
+/// @param file source file name. Could be a nullptr
+/// @param line source line number
+/// @param level message log level
+/// @param message text to log. Null terminated. Could be a nullptr.
+/// @param message_len length of message text in bytes including null terminator.
 //////////////////////////////////////////////////////////////////////////////
 typedef void  (*log_appender_callback_t)(void* context, const char* function, const char* file, int line,
-                              level_t level, const char* message, 
-                              size_t message_len);
+                                         level_t level, const char* message, size_t message_len);
 
 IRESEARCH_API bool enabled(level_t level);
 
@@ -81,8 +86,8 @@ IRESEARCH_API bool enabled(level_t level);
 IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
 // Custom appender control functions
-IRESEARCH_API void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == log level disabled
-IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == log level disabled
+IRESEARCH_API void output(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
+IRESEARCH_API void output_le(level_t level, log_appender_callback_t appender, void* context); // nullptr == appender -> log level disabled
 
 IRESEARCH_API void log(const char* function, const char* file, int line,
                        level_t level, const char* message, size_t len);
@@ -92,22 +97,22 @@ IRESEARCH_API void stack_trace(level_t level, const std::exception_ptr& eptr);
 IRESEARCH_API irs::logger::level_t stack_trace_level(); // stack trace output level
 IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 
-struct log_vararg_wrapper {
-  static void log_formatted(const char* function, const char* file, int line,
-                            level_t level, const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-    auto required_len = vsnprintf(nullptr, 0, format, args);
-    va_end(args);
-    if (required_len > 0) {
-      std::vector<char> buf(size_t(required_len) + 1);
-      va_list args1;
-      va_start(args1, format);
-      vsnprintf(buf.data(), buf.size(), format, args1);
-      va_end(args1);
-      log(function, file, line, level, buf.data(), buf.size());
-    }
+NS_BEGIN(detail)
+static void log_formatted(const char* function, const char* file, int line,
+                          level_t level, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  const auto required_len = vsnprintf(nullptr, 0, format, args);
+  va_end(args);
+  if (required_len > 0) {
+    std::string buf(size_t(required_len) + 1, 0);
+    va_list args1;
+    va_start(args1, format);
+    vsnprintf(buf.data(), buf.size(), format, args1);
+    va_end(args1);
+    log(function, file, line, level, buf.data(), buf.size());
   }
+}
 };
 
 #ifndef _MSC_VER
@@ -121,7 +126,7 @@ NS_END
 #if defined(_MSC_VER)
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, __VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, __VA_ARGS__)
@@ -132,7 +137,7 @@ NS_END
 #else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
   #define IR_LOG_FORMATED(level, format, ...) \
     if (::iresearch::logger::enabled(level)) \
-      ::iresearch::logger::log_vararg_wrapper::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
+      ::iresearch::logger::detail::log_formatted(CURRENT_FUNCTION, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
   #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
   #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, ##__VA_ARGS__)

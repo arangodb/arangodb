@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <atomic>
 
 #if defined(_MSC_VER)
   #include <Windows.h> // must be included before DbgHelp.h
@@ -61,7 +62,6 @@
 
 #include "misc.hpp"
 #include "log.hpp"
-#include <map>
 
 NS_LOCAL
 
@@ -71,79 +71,61 @@ MSVC_ONLY(__pragma(warning(disable: 4996))) // the compiler encountered a deprec
 MSVC_ONLY(__pragma(warning(pop)))
 
 void noop_log_appender(void*, char const*, char const*,
-                                         int, irs::logger::level_t,
-                                         char const*, size_t) {}
+                       int, irs::logger::level_t,
+                       char const*, size_t /* message_len */) {}
 
 
-void fd_log_appender_callback(void* context, char const* function, char const* file, int line,
-    irs::logger::level_t level, char const* message,
-    size_t) {
+constexpr const char* LOG_LEVELS[]{
+  "FATAL",  "ERROR",  "WARN",
+  "INFO",  "DEBUG",  "TRACE"
+};
+void fd_log_appender(void* context, char const* function, char const* file, int line,
+                     irs::logger::level_t level, char const* message, size_t /* message_len */) {
   FILE* fd = reinterpret_cast<FILE*>(context);
   if (fd != nullptr) {
-    char const* prefix = "UNKNOWN";
-    switch (level) {
-    case irs::logger::IRL_FATAL: prefix = "FATAL"; break;
-    case irs::logger::IRL_ERROR: prefix = "ERROR"; break;
-    case irs::logger::IRL_WARN: prefix = "WARN"; break;
-    case irs::logger::IRL_INFO: prefix = "INFO"; break;
-    case irs::logger::IRL_DEBUG: prefix = "DEBUG"; break;
-    case irs::logger::IRL_TRACE: prefix = "TRACE"; break;
-    }
-    std::fprintf(fd, "%s: %s:%d %s\n", prefix, (file ? file : "<no file provided>"), line, message);
+    const auto* prefix = level < IRESEARCH_COUNTOF(LOG_LEVELS) ? LOG_LEVELS[level] : "UNKNOWN";
+    std::fprintf(fd, "%s: %s:%d %s\n", prefix, (file ? file : "<no file provided>"), line, (message ? message : "<no message provided>"));
     if (irs::logger::IRL_FATAL == level) {
       std::fflush(fd);
     }
   }
 }
 
-class logger_ctx: public iresearch::singleton<logger_ctx> {
+class logger_ctx: public irs::singleton<logger_ctx> {
  public:
   logger_ctx()
     : singleton(),
       stack_trace_level_(irs::logger::level_t::IRL_DEBUG) {
     // set everything up to and including INFO to stderr
-    for (size_t i = 0, last = iresearch::logger::IRL_INFO; i <= last; ++i) {
-      out_[i].appender_context_ = stderr;
-      out_[i].appender_ = fd_log_appender_callback;
+    for (size_t i = 0, last = irs::logger::IRL_INFO; i <= last; ++i) {
+      output(static_cast<irs::logger::level_t>(i), fd_log_appender, stderr);
     }
   }
 
-  bool enabled(iresearch::logger::level_t level) const { return noop_log_appender != out_[level].appender_; }
+  bool enabled(irs::logger::level_t level) const { return noop_log_appender != out_[level].load().appender_; }
 
-  logger_ctx& output(iresearch::logger::level_t level, iresearch::logger::log_appender_callback_t appender, void* context) {
+  logger_ctx& output(irs::logger::level_t level, irs::logger::log_appender_callback_t appender, void* context) {
     if (appender != nullptr) {
-      out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
-      out_[level].appender_context_ = context;
-      out_[level].appender_ = appender;
+      out_[level].store(level_ctx_t(appender, context));
     } else {
-      out_[level].appender_ = noop_log_appender;
+      out_[level].store(level_ctx_t());
     }
     return *this;
   }
 
-  logger_ctx& output_le(iresearch::logger::level_t level, iresearch::logger::log_appender_callback_t appender, void* context) {
+  logger_ctx& output_le(irs::logger::level_t level, irs::logger::log_appender_callback_t appender, void* context) {
     for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
-      output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : appender, context);
+      output(static_cast<irs::logger::level_t>(i), i > level ? nullptr : appender, context);
     }
     return *this;
   }
 
-  logger_ctx& output(iresearch::logger::level_t level, FILE* out) {
-    if (out != nullptr) {
-      out_[level].appender_ = noop_log_appender; // to play safe - as noop never uses context and noop log never breaks
-      out_[level].appender_context_ = out;
-      out_[level].appender_ = fd_log_appender_callback;
-    } else {
-      out_[level].appender_ = noop_log_appender;
-    }
-    return *this;
+  logger_ctx& output(irs::logger::level_t level, FILE* out) {
+    return output(level, out != nullptr? fd_log_appender: nullptr, out);
   }
 
-  logger_ctx& output_le(iresearch::logger::level_t level, FILE* out) {
-    for (size_t i = 0, count = IRESEARCH_COUNTOF(out_); i < count; ++i) {
-      output(static_cast<iresearch::logger::level_t>(i), i > level ? nullptr : out);
-    }
-    return *this;
+  logger_ctx& output_le(irs::logger::level_t level, FILE* out) {
+    return output_le(level, out != nullptr ? fd_log_appender : nullptr, out);
   }
 
   irs::logger::level_t stack_trace_level() { return stack_trace_level_; }
@@ -153,27 +135,35 @@ class logger_ctx: public iresearch::singleton<logger_ctx> {
   }
 
   void log(const char* function, const char* file, int line,
-           iresearch::logger::level_t level, const char* message, size_t len) {
-    out_[level].appender_(out_[level].appender_context_, function, file, line, level, message, len);
+           irs::logger::level_t level, const char* message, size_t len) {
+    const auto log_ctx = out_[level].load();
+    log_ctx.appender_(log_ctx.appender_context_, function, file, line, level, message, len);
   }
 
  private:
-  struct level_ctx_t {
+  struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) level_ctx_t {
     irs::logger::log_appender_callback_t appender_;
     void* appender_context_;
-    level_ctx_t(): appender_(noop_log_appender), appender_context_(nullptr) {}
+    level_ctx_t() noexcept: appender_(noop_log_appender), appender_context_(nullptr) {}
+    level_ctx_t(irs::logger::log_appender_callback_t appender, void* context) noexcept
+      : appender_(appender), appender_context_(context) {}
   };
 
-  level_ctx_t out_[iresearch::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
+  static_assert(
+    IRESEARCH_CMPXCHG16B_ALIGNMENT == alignof(level_ctx_t),
+    "invalid alignment"
+    );
+
+  std::atomic<level_ctx_t> out_[irs::logger::IRL_TRACE + 1]; // IRL_TRACE is the last value, +1 for 0'th id
   irs::logger::level_t stack_trace_level_;
 };
 
 typedef std::function<void(const char* file, size_t line, const char* fn)> bfd_callback_type_t;
 bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj, void* addr); // predeclaration
-bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); // predeclaration
+bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe); // predeclaration
 
 #if defined(_MSC_VER)
-  DWORD stack_trace_win32(iresearch::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
+  DWORD stack_trace_win32(irs::logger::level_t level, struct _EXCEPTION_POINTERS* ex) {
     static std::mutex mutex;
     SCOPED_LOCK(mutex); // win32 stack trace API is not thread safe
 
@@ -268,7 +258,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
   }
 #else
   #if defined(__APPLE__)
-    bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr, int fd) {
+    bool file_line_addr2line(irs::logger::level_t level, const char* obj, const char* addr, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -291,7 +281,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
       return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
-    bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, const char* addr, int fd) {
+    bool file_line_addr2line(irs::logger::level_t level, const char* obj, const char* addr, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -337,7 +327,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
   }
 
   #if defined(__APPLE__)
-    bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
+    bool stack_trace_gdb(irs::logger::level_t level, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -355,14 +345,14 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
           execlp("gdb", "gdb", "-n", "-nx", "-return-child-result", "-batch", "-ex", "thread", "-ex", "bt", name_buf, pid_buf, NULL);
         }
 
-       exit(1);
+        exit(1);
       }
 
       int status;
       return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
     }
   #else
-    bool stack_trace_gdb(iresearch::logger::level_t level, int fd) {
+    bool stack_trace_gdb(irs::logger::level_t level, int fd) {
       auto pid = fork();
 
       if (!pid) {
@@ -390,7 +380,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
     }
   #endif
 
-  void stack_trace_posix(iresearch::logger::level_t level, int out_pipe) {
+  void stack_trace_posix(irs::logger::level_t level, int out_pipe) {
     auto* out = fdopen(out_pipe, "w");
     if (out == nullptr) {
       IR_LOG_FORMATED(level, "Failed to open pipe. Outputting stack trace to stderr");
@@ -602,7 +592,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
     return file_line_bfd(callback, obj, (void*)addr);
   }
 
-  bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, unw_word_t addr) {
+  bool file_line_addr2line(irs::logger::level_t level, const char* obj, unw_word_t addr) {
     size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // approximately 3 chars per byte +2 for 0x, +1 for \0
     char addr_buf[addr_size];
 
@@ -611,7 +601,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
     return file_line_addr2line(level, obj, addr_buf);
   }
 
-  bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe) {
+  bool stack_trace_libunwind(irs::logger::level_t level, int output_pipe) {
     unw_context_t ctx;
     unw_cursor_t cursor;
 
@@ -715,7 +705,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level, int output_pipe); /
     return true;
   }
 #else
-  bool stack_trace_libunwind(iresearch::logger::level_t, int) {
+  bool stack_trace_libunwind(irs::logger::level_t, int) {
     return false;
   }
 #endif
@@ -862,7 +852,7 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
   }
 #endif
 
-irs::logger::level_t stack_trace_level() {
+level_t stack_trace_level() {
   return logger_ctx::instance().stack_trace_level();
 }
 
@@ -872,7 +862,3 @@ void stack_trace_level(level_t level) {
 
 NS_END // logger
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

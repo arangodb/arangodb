@@ -35,9 +35,6 @@
 #include "misc.hpp"
 #include "noncopyable.hpp"
 
-// CMPXCHG16B requires that the destination
-// (memory) operand be 16-byte aligned
-#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
 
 NS_ROOT
 
