@@ -113,7 +113,6 @@ void QuerySnippet::serializeIntoBuilder(
   }
   std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>& localExpansions =
       firstBranchRes.get();
-  // TODO: check usage of localExpansion here everywhere
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   ExecutionNode* lastNode = _nodes.back();
   bool lastIsRemote = lastNode->getType() == ExecutionNode::REMOTE;
@@ -278,22 +277,30 @@ void QuerySnippet::serializeIntoBuilder(
         ExecutionNode* clone = current->clone(plan, false, false);
         auto permuter = localExpansions.find(current);
         if (permuter != localExpansions.end()) {
-          auto graphNode = dynamic_cast<GraphNode*>(clone);
-          if (graphNode == nullptr || !graphNode->isDisjoint()) {
-            auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
-            TRI_ASSERT(collectionAccessingNode != nullptr);
+          auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
+          if (collectionAccessingNode != nullptr) {
+            // we guarantee that we only have one collection here
+            TRI_ASSERT(permuter->second.size() == 1);
             std::string const& cName = collectionAccessingNode->collection()->name();
             // Get the `i` th shard
+            // TODO optimize cName
             collectionAccessingNode->setUsedShard(*std::next(permuter->second.at(cName).begin(), i));
-           } else {
-             TRI_ASSERT(graphNode != nullptr);
-             TRI_ASSERT(graphNode->isDisjoint());
-            // we've found a disjoint smart graph node, now add the `i` th shard for used collections
-            // TODO FIX
-             for (auto const& myExp : permuter->second) {
-               std::string const& cName = myExp.first;
-               graphNode->addCollectionToShard(cName, *std::next(myExp.second.begin(), i));
-             }
+          } else {
+            // GraphNodes are not CollectionAccessingNodes! (they handle multiple collections)
+            auto graphNode = dynamic_cast<GraphNode*>(clone);
+            if (graphNode != nullptr) {
+              if (graphNode->isDisjoint()) {
+                TRI_ASSERT(graphNode != nullptr);
+                TRI_ASSERT(graphNode->isDisjoint());
+                // we've found a disjoint smart graph node, now add the `i` th shard for used collections
+                for (auto const& myExp : permuter->second) {
+                  std::string const& cName = myExp.first;
+                  graphNode->addCollectionToShard(cName, *std::next(myExp.second.begin(), i));
+                }
+              }
+            } else {
+              TRI_ASSERT(false);
+            }
           }
         }
         if (previous != nullptr) {
@@ -412,7 +419,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       }
 
       // This is either one shard or a single satellite graph which is not used
-      // as satellite graph.
+      // as satellite graph or a disjoint smart graph.
       uint64_t numShards = 0;
       for (auto* aqlCollection : localGraphNode->collections()) {
         // It is of utmost importance that this is an ordered set of Shards.
@@ -434,10 +441,11 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
           // provide a correct translation from collection to shard
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
-          if (found->second == server && localGraphNode->isDisjoint()) {
-            myExp.emplace(shard);
-          } else if (found->second == server || !localGraphNode->isDisjoint()) {
-            // TODO HEIKO: First section. Fine-grade collection sharding
+          if (localGraphNode->isDisjoint()) {
+            if (found->second == server) {
+              myExp.emplace(shard);
+            }
+          } else {
             localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
           }
 
@@ -540,9 +548,6 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
 
       if (myExpFinal.size() > 0 ) {
         numberOfShardsToPermutate = myExpFinal.begin()->second.size();
-      } else {
-        // TODO: not needed remove me later
-        numberOfShardsToPermutate = 0;
       }
 
       if (numberOfShardsToPermutate > 1) {
