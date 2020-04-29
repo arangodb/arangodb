@@ -2041,7 +2041,7 @@ void Supervision::checkBrokenAnalyzers() {
     auto revision = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
     auto buildingRevision = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
     if (revision.second && buildingRevision.second && revision.first != buildingRevision.first) {
-      resourceCreatorLost(revisions, [this, &dbData, revision, buildingRevision](ResourceCreatorLostEvent const& ev) {
+      resourceCreatorLost(revisions, [this, &dbData, &revision, &buildingRevision](ResourceCreatorLostEvent const& ev) {
         LOG_TOPIC("ae5a3", INFO, Logger::SUPERVISION)
             << "checkBrokenAnalyzers: fixing broken analyzers revision with database name "
             << dbData.first;
