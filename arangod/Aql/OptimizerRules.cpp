@@ -3908,9 +3908,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 // register it with the plan
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
     -> DistributeNode* {
-  auto collection = (Collection const*){nullptr};
-  auto inputVariable = (Variable const*){nullptr};
-  auto alternativeVariable = (Variable const*){nullptr};
+  auto collection = static_cast<Collection const *>(nullptr);
+  auto inputVariable = static_cast<Variable const *>(nullptr);
+  auto alternativeVariable = static_cast<Variable const *>(nullptr);
 
   auto createKeys = bool{false};
   auto allowSpecifiedKeys = bool{false};
@@ -4105,7 +4105,7 @@ TRI_ASSERT(parents.size() < 2);
 auto extractSmartnessAndCollection(ExecutionNode* node)
   -> std::tuple<bool, bool, Collection const*> {
   auto nodeType = node->getType();
-  auto collection = (Collection const*){nullptr};
+  auto collection = static_cast<Collection const*>(nullptr);
   auto isSmart = bool{false};
   auto isDisjoint = bool{false};
 
