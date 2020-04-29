@@ -1216,7 +1216,7 @@ std::vector<Variable const*> ExecutionNode::getVariablesSetHere() const {
   return ids;
 }
 
-bool ExecutionNode::setsVariable(const ::arangodb::containers::HashSet<const Variable*>& which) const {
+bool ExecutionNode::setsVariable(VarSet const& which) const {
   for (auto const& v : getVariablesSetHere()) {
     if (which.find(v) != which.end()) {
       return true;

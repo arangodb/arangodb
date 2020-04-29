@@ -451,8 +451,7 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                     aql::Variable const& ref,
-                     ::arangodb::containers::HashSet<aql::Variable const*>& vars) {
+                     aql::Variable const& ref, aql::VarSet& vars) {
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
   vars.erase(&ref);  // remove "our" variable
@@ -531,7 +530,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
-  ::arangodb::containers::HashSet<aql::Variable const*> vars;
+  aql::VarSet vars;
   int mask = 0;
 
   // evaluate filter condition volatility
@@ -1310,8 +1309,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IResearchViewNode::getVariablesUsedHere(
-    ::arangodb::containers::HashSet<aql::Variable const*>& vars) const {
+void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
@@ -1360,7 +1358,7 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
       std::make_shared<std::unordered_set<aql::RegisterId>>();
 
   if (!::filterConditionIsEmpty(_filterCondition)) {
-    ::arangodb::containers::HashSet<aql::Variable const*> vars;
+    aql::VarSet vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
     if (noMaterialization()) {

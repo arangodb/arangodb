@@ -75,9 +75,9 @@
 
 namespace {
 
-bool accessesCollectionVariable(
-    arangodb::aql::ExecutionPlan const* plan, arangodb::aql::ExecutionNode const* node,
-    ::arangodb::containers::HashSet<arangodb::aql::Variable const*>& vars) {
+bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
+                                arangodb::aql::ExecutionNode const* node,
+                                arangodb::aql::VarSet& vars) {
   using EN = arangodb::aql::ExecutionNode;
 
   if (node->getType() == EN::CALCULATION) {
@@ -231,10 +231,9 @@ class CollectionVariableTracker final
   using DependencyPair =
       std::pair<arangodb::aql::Variable const*, arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
-  using VariableSet = ::arangodb::containers::HashSet<arangodb::aql::Variable const*>;
   bool _stop;
   std::unordered_map<arangodb::aql::Variable const*, DependencySet> _dependencies;
-  std::unordered_map<arangodb::aql::Collection const*, VariableSet> _collectionVariables;
+  std::unordered_map<arangodb::aql::Collection const*, arangodb::aql::VarSet> _collectionVariables;
 
  private:
   template <class NodeType>
@@ -242,7 +241,7 @@ class CollectionVariableTracker final
                      arangodb::aql::Variable const* outVariable) {
     auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
     try {
-      ::arangodb::containers::HashSet<arangodb::aql::Variable const*> inputVariables;
+      arangodb::aql::VarSet inputVariables;
       node->getVariablesUsedHere(inputVariables);
       for (auto var : inputVariables) {
         for (auto dep : _dependencies[var]) {
@@ -277,7 +276,7 @@ class CollectionVariableTracker final
     return _dependencies[var];
   }
 
-  VariableSet const& getCollectionVariables(arangodb::aql::Collection const* collection) {
+  arangodb::aql::VarSet const& getCollectionVariables(arangodb::aql::Collection const* collection) {
     return _collectionVariables[collection];
   }
 
