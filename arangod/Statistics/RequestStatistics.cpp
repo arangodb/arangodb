@@ -109,10 +109,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
       statistics::AsyncRequests.incCounter();
     }
 
-    {
-      MUTEX_LOCKER(locker, statistics::TRI_RequestsStatisticsMutex);
-      statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
-    }
+    statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
 
     // check that the request was completely received and transmitted
     if (statistics->_readStart != 0.0 &&

@@ -36,8 +36,6 @@
 
 namespace arangodb {
 namespace statistics {
-extern Mutex TRI_RequestsStatisticsMutex;
-
 extern std::initializer_list<double> const BytesReceivedDistributionCuts;
 extern std::initializer_list<double> const BytesSentDistributionCuts;
 extern std::initializer_list<double> const ConnectionTimeDistributionCuts;

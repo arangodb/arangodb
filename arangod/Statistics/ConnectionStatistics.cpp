@@ -79,10 +79,7 @@ void ConnectionStatistics::fill(
 
   httpConnections = statistics::HttpConnections;
   totalRequests = statistics::TotalRequests;
-  {
-    MUTEX_LOCKER(locker, statistics::TRI_RequestsStatisticsMutex);
-    methodRequests = statistics::MethodRequests;
-  }
+  methodRequests = statistics::MethodRequests;
   asyncRequests = statistics::AsyncRequests;
   connectionTime = statistics::ConnectionTimeDistribution;
 }

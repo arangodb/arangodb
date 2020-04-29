@@ -56,8 +56,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 namespace statistics {
-  
-Mutex TRI_RequestsStatisticsMutex;
 
 std::initializer_list<double> const BytesReceivedDistributionCuts({250, 1000, 2000, 5000, 10000});
 std::initializer_list<double> const BytesSentDistributionCuts({250, 1000, 2000, 5000, 10000});
