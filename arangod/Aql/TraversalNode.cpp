@@ -297,10 +297,6 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
 
 TraversalNode::~TraversalNode() = default;
 
-/// @brief checks if the path out variable is used
-bool TraversalNode::usesPathOutVariable() const {
-  return _pathOutVariable != nullptr;
-}
 
 /// @brief return the path out variable
 Variable const* TraversalNode::pathOutVariable() const {
