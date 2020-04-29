@@ -4124,8 +4124,8 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
     auto const* collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
     TRI_ASSERT(collectionAccessingNode != nullptr);
 
-    isSmart = collection->isSmart();
     collection = collectionAccessingNode->collection();
+    isSmart = collection->isSmart();
   }
 
   return std::tuple<bool, bool, Collection const*>{isSmart, isDisjoint, collection};
