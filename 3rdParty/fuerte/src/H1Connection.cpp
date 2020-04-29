@@ -452,7 +452,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
       err = Error::Canceled;
     }
 
-    auto state = this->_state;
+    auto state = this->_state.load();
     if (state != Connection::State::Failed) {
       // Stop current connection and try to restart a new one.
       this->restartConnection(err);
@@ -495,7 +495,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
                      << ec.message() << "' , this=" << this << "\n";
 
-    auto state = this->_state;
+    auto state = this->_state.load();
     if (state != Connection::State::Failed) {
       // Restart connection, will invoke _item cb
       this->restartConnection(translateError(ec, Error::ReadError));
