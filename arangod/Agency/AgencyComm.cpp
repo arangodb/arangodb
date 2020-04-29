@@ -37,14 +37,15 @@
 #include <velocypack/velocypack-aliases.h>
 #include <set>
 
+#include "Agency/AgencyStrings.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
@@ -114,6 +115,9 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::INTERSECTION_EMPTY:
           builder.add("intersectionEmpty", value);
           break;
+        case AgencyPrecondition::Type::CAN_WRITE_LOCK:
+          builder.add(consensus::PREC_CAN_WRITE_LOCK, value);
+          break;
         case AgencyPrecondition::Type::NONE:
           break;
       }
@@ -142,6 +146,9 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
           break;
         case AgencyPrecondition::Type::INTERSECTION_EMPTY:
           builder.add("intersectionEmpty", value);
+          break;
+        case AgencyPrecondition::Type::CAN_WRITE_LOCK:
+          builder.add(consensus::PREC_CAN_WRITE_LOCK, value);
           break;
         case AgencyPrecondition::Type::NONE:
           break;

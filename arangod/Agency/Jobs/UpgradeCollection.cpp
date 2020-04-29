@@ -146,8 +146,6 @@ std::pair<bool, bool> checkShard(arangodb::consensus::Node const& snapshot,
                                  arangodb::maintenance::UPGRADE_STATUS;
   Builder builder;
   auto [garbage, found] = snapshot.hasAsBuilder(statusPath, builder);
-  LOG_DEVEL << "CHECKING STATUS FOR " << static_cast<unsigned>(targetPhase)
-            << ", have '" << builder.slice().toJson() << "'";
   if (found && !builder.slice().isObject()) {
     haveError = true;
   } else if (!found || builder.slice().isNone()) {
@@ -162,7 +160,6 @@ std::pair<bool, bool> checkShard(arangodb::consensus::Node const& snapshot,
         ObjectBuilder g(&b);
         status.toVelocyPack(b, false);
       }
-      LOG_DEVEL << "reconstructed: '" << b.slice().toJson() << "'";
       for (std::string const& server : plannedServers) {
         UpgradeStatus::Map::const_iterator it = map.find(server);
         if (it == map.end() || it->second != targetPhase) {
@@ -211,8 +208,6 @@ std::pair<bool, bool> checkAllShards(arangodb::consensus::Node const& snapshot,
       }
       std::tie(allMatch, haveError) =
           ::checkShard(snapshot, database, collection, shard, plannedServers, targetPhase);
-      LOG_DEVEL << std::boolalpha << "shard " << shard << " error " << haveError
-                << " match " << allMatch;
       if (haveError || !allMatch) {
         break;
       }
@@ -454,7 +449,6 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
         trx.add("op", Value("delete"));
       }
 
-      LOG_DEVEL << "trying to clear statuses from current";
       std::string currentPath = "/Current/Collections/" + database + "/" + collection;
       Builder builder;
       auto [garbage, found] = snapshot.hasAsBuilder(currentPath, builder);
@@ -466,7 +460,6 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
               std::string const statusPath =
                   currentPath + "/" + pair.key.copyString() + "/" +
                   arangodb::maintenance::UPGRADE_STATUS;
-              LOG_DEVEL << "added operation to clear " << statusPath;
               trx.add(Value(statusPath));
               {
                 ObjectBuilder status(&trx);
@@ -642,7 +635,6 @@ JOB_STATUS UpgradeCollection::status() {
                                          ::UpgradeState::Finalize);
       std::string messageIfError = "could not set target phase 'Finalize'";
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
-      LOG_DEVEL << "setting target phase to Finalize: " << std::boolalpha << ok;
     } else if (targetPhase == ::UpgradeState::Finalize) {
       velocypack::Builder trx;
       ::prepareSetUpgradedPropertiesTransaction(trx, _database, _collection, _jobId);
@@ -655,7 +647,6 @@ JOB_STATUS UpgradeCollection::status() {
                                            ::UpgradeState::Cleanup);
         messageIfError = "could not set target phase 'Cleanup'";
         ok = writeTransaction(trx, messageIfError);
-        LOG_DEVEL << "setting target phase to Cleanup: " << std::boolalpha << ok;
       }
     } else if (targetPhase == ::UpgradeState::Cleanup) {
       // TODO remove status, release resources

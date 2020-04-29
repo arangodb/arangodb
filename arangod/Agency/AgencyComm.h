@@ -285,7 +285,15 @@ class AgencyCommManager {
 
 class AgencyPrecondition {
  public:
-  enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY};
+  enum class Type {
+    NONE,
+    EMPTY,
+    VALUE,
+    TIN,
+    NOTIN,
+    INTERSECTION_EMPTY,
+    CAN_WRITE_LOCK
+  };
 
  public:
   AgencyPrecondition();

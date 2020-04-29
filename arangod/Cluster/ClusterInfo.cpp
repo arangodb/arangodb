@@ -2605,11 +2605,15 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyComm ac(_server);
   AgencyCommResult res;
 
-  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
-                                    AgencyPrecondition::Type::EMPTY, false);
+  std::string const dbKey = "Plan/Databases/" + databaseName;
+  std::string const planCollKey = dbKey + "/" + collectionID;
+  std::string const planLockKey = planCollKey + "/Lock";
+
+  AgencyPrecondition databaseExists(dbKey, AgencyPrecondition::Type::EMPTY, false);
+  AgencyPrecondition lockable(planLockKey, AgencyPrecondition::Type::CAN_WRITE_LOCK, true);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
+  res = ac.getValues(planCollKey);
 
   if (!res.successful()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -2621,6 +2625,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   if (!collection.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+
+  AgencyPrecondition previousVersion(planCollKey, AgencyPrecondition::Type::VALUE, collection);
 
   VPackBuilder temp;
   temp.openObject();
@@ -2643,7 +2649,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyOperation setColl("Plan/Collections/" + databaseName + "/" + collectionID,
                           AgencyValueOperationType::SET, builder.slice());
 
-  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
+  AgencyWriteTransaction trans({setColl, incrementVersion},
+                               {databaseExists, lockable, previousVersion});
 
   res = ac.sendTransactionWithFailover(trans);
 
@@ -2876,8 +2883,12 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyComm ac(_server);
   AgencyCommResult res;
 
-  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
-                                    AgencyPrecondition::Type::EMPTY, false);
+  std::string const dbKey = "Plan/Databases/" + databaseName;
+  std::string const planCollKey = dbKey + "/" + collectionID;
+  std::string const planLockKey = planCollKey + "/Lock";
+
+  AgencyPrecondition databaseExists(dbKey, AgencyPrecondition::Type::EMPTY, false);
+  AgencyPrecondition lockable(planLockKey, AgencyPrecondition::Type::CAN_WRITE_LOCK, true);
 
   res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
 
@@ -2891,6 +2902,8 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   if (!col.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+
+  AgencyPrecondition previousVersion(planCollKey, AgencyPrecondition::Type::VALUE, col);
 
   TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
@@ -2920,7 +2933,8 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
                           AgencyValueOperationType::SET, builder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
+  AgencyWriteTransaction trans({setColl, incrementVersion},
+                               {databaseExists, lockable, previousVersion});
 
   res = ac.sendTransactionWithFailover(trans);
 
@@ -3163,6 +3177,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
+  std::string const planLockKey = planCollKey + "/Lock";
   std::string const planIndexesKey = planCollKey + "/indexes";
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
@@ -3170,7 +3185,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE,
                               collectionFromPlan.slice());
-  AgencyWriteTransaction trx({newValue, incrementVersion}, oldValue);
+  AgencyPrecondition lockable(planLockKey, AgencyPrecondition::Type::CAN_WRITE_LOCK, true);
+  AgencyWriteTransaction trx({newValue, incrementVersion}, {oldValue, lockable});
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
@@ -3399,6 +3415,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
+  std::string const planLockKey = planCollKey + "/Lock";
   std::string const planIndexesKey = planCollKey + "/indexes";
 
   AgencyCommResult previous = ac.getValues(planCollKey);
@@ -3522,8 +3539,9 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   AgencyOperation planErase(planIndexesKey, AgencyValueOperationType::ERASE, indexToRemove);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition prec(planCollKey, AgencyPrecondition::Type::VALUE, collection);
-  AgencyWriteTransaction trx({planErase, incrementVersion}, prec);
+  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collection);
+  AgencyPrecondition lockable(planLockKey, AgencyPrecondition::Type::CAN_WRITE_LOCK, true);
+  AgencyWriteTransaction trx({planErase, incrementVersion}, {oldValue, lockable});
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
