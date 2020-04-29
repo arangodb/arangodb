@@ -125,8 +125,6 @@ class CreateDatabaseInfo {
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
 
-  void allowSystemDB(bool s) { _isSystemDB = s; }
-
  private:
   Result extractUsers(VPackSlice const& users);
   Result extractOptions(VPackSlice const& options, bool extactId = true,
@@ -147,7 +145,6 @@ class CreateDatabaseInfo {
 
   bool _validId = false;
   bool _valid = false;  // required because TRI_ASSERT needs variable in Release mode.
-  bool _isSystemDB = false;
 };
 
 struct VocbaseOptions {

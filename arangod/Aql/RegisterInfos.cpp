@@ -19,8 +19,8 @@
 ///
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "RegisterInfos.h"
+#include "Logger/LogMacros.h"
 
 #include "Basics/debugging.h"
 
