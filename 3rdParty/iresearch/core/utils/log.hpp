@@ -75,7 +75,7 @@ enum level_t {
 /// @param line source line number
 /// @param level message log level
 /// @param message text to log. Null terminated. Could be a nullptr.
-/// @param message_len length of message text in bytes including null terminator.
+/// @param message_len length of message text in bytes not including null terminator.
 //////////////////////////////////////////////////////////////////////////////
 typedef void  (*log_appender_callback_t)(void* context, const char* function, const char* file, int line,
                                          level_t level, const char* message, size_t message_len);
@@ -99,11 +99,7 @@ IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 
 NS_BEGIN(detail)
 // not everyone who includes header actually logs something, that`s ok
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
-#endif
-static void log_formatted(const char* function, const char* file, int line,
+[[maybe_unused]] static void log_formatted(const char* function, const char* file, int line,
                           level_t level, const char* format, ...) {
   va_list args;
   va_start(args, format);
@@ -115,12 +111,9 @@ static void log_formatted(const char* function, const char* file, int line,
     va_start(args1, format);
     vsnprintf(buf.data(), buf.size(), format, args1);
     va_end(args1);
-    log(function, file, line, level, buf.data(), buf.size());
+    log(function, file, line, level, buf.data(), required_len);
   }
 }
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
 }
 
 #ifndef _MSC_VER

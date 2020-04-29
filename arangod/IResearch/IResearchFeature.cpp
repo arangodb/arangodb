@@ -612,7 +612,7 @@ void IResearchLogTopic::log_appender(void* context, const char* function, const 
   if (ADB_LIKELY(message_len > 0 && message != nullptr)) { // some paranoia, we don`t want to crash on logging
     auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
     std::string msg = LIBIRESEARCH.displayName();
-    msg.append(message, message_len - 1); // we don`t need trailing zero
+    msg.append(message, message_len); 
     arangodb::Logger::log(function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
   }
 }
