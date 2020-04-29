@@ -444,7 +444,8 @@ void OutputAqlItemRow::doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId item
       guard.steal();
     }
   } else if constexpr (copyOrMove == CopyOrMove::MOVE) {
-    auto stolenValue = sourceRow.stealValue(itemId);
+    // This is only compiled for ShadowRows
+    auto stolenValue = sourceRow.stealAndEraseValue(itemId);
     if (!stolenValue.isEmpty()) {
       AqlValueGuard guard(stolenValue, true);
 
