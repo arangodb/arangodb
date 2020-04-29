@@ -91,13 +91,13 @@ double extractNumber(VPackSlice slice, char const* attribute) {
 }  // namespace
 
 using namespace arangodb;
-using namespace arangodb::basics;
+using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
 
-  for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
+  for (auto const& val : BytesSentDistributionCuts) {
     _bytesSentDistribution.add(VPackValue(val));
   }
 
@@ -105,7 +105,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _bytesReceivedDistribution.openArray();
 
-  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics) {
+  for (auto const& val : BytesReceivedDistributionCuts) {
     _bytesReceivedDistribution.add(VPackValue(val));
   }
 
@@ -113,7 +113,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _requestTimeDistribution.openArray();
 
-  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics) {
+  for (auto const& val : RequestTimeDistributionCuts) {
     _requestTimeDistribution.add(VPackValue(val));
   }
 
@@ -956,21 +956,21 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
     rssp = static_cast<double>(rss) / static_cast<double>(PhysicalMemory::getValue());
   }
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  statistics::Counter httpConnections;
+  statistics::Counter totalRequests;
+  statistics::MethodRequestCounters methodRequests;
+  statistics::Counter asyncRequests;
+  statistics::Distribution connectionTime;
 
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
       asyncRequests, connectionTime);
 
-  StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
+  statistics::Distribution totalTime;
+  statistics::Distribution requestTime;
+  statistics::Distribution queueTime;
+  statistics::Distribution ioTime;
+  statistics::Distribution bytesSent;
+  statistics::Distribution bytesReceived;
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
@@ -1031,7 +1031,7 @@ void StatisticsWorker::appendMetric(
 }
 
 void StatisticsWorker::appendHistogram(
-  std::string& result, StatisticsDistribution const& dist,
+  std::string& result, Distribution const& dist,
   std::string const& label, std::initializer_list<std::string> const& les) const {
 
   auto const countLabel = label + "Count";
@@ -1063,21 +1063,22 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     rssp = static_cast<double>(rss) / static_cast<double>(PhysicalMemory::getValue());
   }
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  statistics::Counter httpConnections;
+  statistics::Counter totalRequests;
+  statistics::MethodRequestCounters methodRequests;
+  statistics::Counter asyncRequests;
+  statistics::Distribution connectionTime;
 
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);
 
   StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
+  statistics::Distribution totalTime;
+  statistics::Distribution requestTime;
+  statistics::Distribution queueTime;
+  statistics::Distribution ioTime;
+  statistics::Distribution bytesSent;
+  statistics::Distribution bytesReceived;
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
@@ -1216,7 +1217,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 }
 
-VPackBuilder StatisticsWorker::fillDistribution(StatisticsDistribution const& dist) const {
+VPackBuilder StatisticsWorker::fillDistribution(Distribution const& dist) const {
   VPackBuilder builder;
   builder.openObject();
 

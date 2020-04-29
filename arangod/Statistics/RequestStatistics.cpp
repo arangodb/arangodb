@@ -30,7 +30,6 @@
 #include <iomanip>
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    static members
@@ -104,15 +103,15 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   TRI_ASSERT(statistics != nullptr);
 
   {
-    TRI_TotalRequestsStatistics.incCounter();
+    statistics::TotalRequests.incCounter();
 
     if (statistics->_async) {
-      TRI_AsyncRequestsStatistics.incCounter();
+      statistics::AsyncRequests.incCounter();
     }
 
     {
-      MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
-      TRI_MethodRequestsStatistics[(size_t)statistics->_requestType].incCounter();
+      MUTEX_LOCKER(locker, statistics::TRI_RequestsStatisticsMutex);
+      statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
     }
 
     // check that the request was completely received and transmitted
@@ -126,50 +125,28 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
 
-      if (statistics->_superuser) {
-        TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
+      statistics::RequestFigures& figures = statistics->_superuser
+        ? statistics::GeneralRequestFigures
+        : statistics::UserRequestFigures;
 
-        double requestTime = statistics->_requestEnd - statistics->_requestStart;
-        TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
+      figures.totalTimeDistribution.addFigure(totalTime);
 
-        double queueTime = 0.0;
+      double requestTime = statistics->_requestEnd - statistics->_requestStart;
+      figures.requestTimeDistribution.addFigure(requestTime);
 
-        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-          queueTime = statistics->_queueEnd - statistics->_queueStart;
-          TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
-        }
-
-        double ioTime = totalTime - requestTime - queueTime;
-
-        if (ioTime >= 0.0) {
-          TRI_IoTimeDistributionStatistics.addFigure(ioTime);
-        }
-
-        TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
-        TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
-      } else {
-        TRI_TotalTimeDistributionStatisticsUser.addFigure(totalTime);
-
-        double requestTime = statistics->_requestEnd - statistics->_requestStart;
-        TRI_RequestTimeDistributionStatisticsUser.addFigure(requestTime);
-
-        double queueTime = 0.0;
-
-        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-          queueTime = statistics->_queueEnd - statistics->_queueStart;
-          TRI_QueueTimeDistributionStatisticsUser.addFigure(queueTime);
-        }
-
-        double ioTime = totalTime - requestTime - queueTime;
-
-        if (ioTime >= 0.0) {
-          TRI_IoTimeDistributionStatisticsUser.addFigure(ioTime);
-        }
-
-        TRI_BytesSentDistributionStatisticsUser.addFigure(statistics->_sentBytes);
-        TRI_BytesReceivedDistributionStatisticsUser.addFigure(statistics->_receivedBytes);
-
+      double queueTime = 0.0;
+      if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+        queueTime = statistics->_queueEnd - statistics->_queueStart;
+        figures.queueTimeDistribution.addFigure(queueTime);
       }
+
+      double ioTime = totalTime - requestTime - queueTime;
+      if (ioTime >= 0.0) {
+        figures.ioTimeDistribution.addFigure(ioTime);
+      }
+
+      figures.bytesSentDistribution.addFigure(statistics->_sentBytes);
+      figures.bytesReceivedDistribution.addFigure(statistics->_receivedBytes);
     }
   }
 
@@ -210,39 +187,36 @@ void RequestStatistics::release() {
   }
 }
 
-void RequestStatistics::fill(StatisticsDistribution& totalTime,
-                             StatisticsDistribution& requestTime,
-                             StatisticsDistribution& queueTime,
-                             StatisticsDistribution& ioTime, StatisticsDistribution& bytesSent,
-                             StatisticsDistribution& bytesReceived,
+void RequestStatistics::fill(statistics::Distribution& totalTime,
+                             statistics::Distribution& requestTime,
+                             statistics::Distribution& queueTime,
+                             statistics::Distribution& ioTime,
+                             statistics::Distribution& bytesSent,
+                             statistics::Distribution& bytesReceived,
                              stats::RequestStatisticsSource source) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  if (source == stats::RequestStatisticsSource::USER) {
-    totalTime = TRI_TotalTimeDistributionStatisticsUser;
-    requestTime = TRI_RequestTimeDistributionStatisticsUser;
-    queueTime = TRI_QueueTimeDistributionStatisticsUser;
-    ioTime = TRI_IoTimeDistributionStatisticsUser;
-    bytesSent = TRI_BytesSentDistributionStatisticsUser;
-    bytesReceived = TRI_BytesReceivedDistributionStatisticsUser;
-  } else {
-    totalTime = TRI_TotalTimeDistributionStatistics;
-    requestTime = TRI_RequestTimeDistributionStatistics;
-    queueTime = TRI_QueueTimeDistributionStatistics;
-    ioTime = TRI_IoTimeDistributionStatistics;
-    bytesSent = TRI_BytesSentDistributionStatistics;
-    bytesReceived = TRI_BytesReceivedDistributionStatistics;
-  }
+  statistics::RequestFigures& figures = source == stats::RequestStatisticsSource::USER
+    ? statistics::UserRequestFigures
+    : statistics::GeneralRequestFigures;
+
+  totalTime = figures.totalTimeDistribution;
+  requestTime = figures.requestTimeDistribution;
+  queueTime = figures.queueTimeDistribution;
+  ioTime = figures.ioTimeDistribution;
+  bytesSent = figures.bytesSentDistribution;
+  bytesReceived = figures.bytesReceivedDistribution;
+  
   if (source == stats::RequestStatisticsSource::ALL) {
-    totalTime.add(TRI_TotalTimeDistributionStatisticsUser);
-    requestTime.add(TRI_RequestTimeDistributionStatisticsUser);
-    queueTime.add(TRI_QueueTimeDistributionStatisticsUser);
-    ioTime.add(TRI_IoTimeDistributionStatisticsUser);
-    bytesSent.add(TRI_BytesSentDistributionStatisticsUser);
-    bytesReceived.add(TRI_BytesReceivedDistributionStatisticsUser);
+    totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
+    requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
+    queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);
+    ioTime.add(statistics::UserRequestFigures.ioTimeDistribution);
+    bytesSent.add(statistics::UserRequestFigures.bytesSentDistribution);
+    bytesReceived.add(statistics::UserRequestFigures.bytesReceivedDistribution);
   }
 }
 

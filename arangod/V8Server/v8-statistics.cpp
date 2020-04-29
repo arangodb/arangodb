@@ -42,21 +42,22 @@
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Array> DistributionList(v8::Isolate* isolate,
-                                              std::vector<double> const& dist) {
+                                              std::initializer_list<double> const& dist) {
   v8::EscapableHandleScope scope(isolate);
   auto context = TRI_IGETC;
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
-  for (uint32_t i = 0; i < (uint32_t)dist.size(); ++i) {
-    result->Set(context, i, v8::Number::New(isolate, dist[i])).FromMaybe(false);
+  uint32_t i = 0;
+  for (auto const& val : dist) {
+    result->Set(context, i, v8::Number::New(isolate, val)).FromMaybe(false);
+    ++i;
   }
 
   return scope.Escape<v8::Array>(result);
@@ -68,7 +69,7 @@ static v8::Handle<v8::Array> DistributionList(v8::Isolate* isolate,
 
 static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
                              v8::Handle<v8::String> name,
-                             StatisticsDistribution const& dist) {
+                             statistics::Distribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = TRI_IGETC;
 
@@ -210,11 +211,11 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  statistics::Counter httpConnections;
+  statistics::Counter totalRequests;
+  statistics::MethodRequestCounters methodRequests;
+  statistics::Counter asyncRequests;
+  statistics::Distribution connectionTime;
 
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);
@@ -224,12 +225,12 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   FillDistribution(isolate, result,
                    TRI_V8_ASCII_STRING(isolate, "connectionTime"), connectionTime);
 
-  StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
+  statistics::Distribution totalTime;
+  statistics::Distribution requestTime;
+  statistics::Distribution queueTime;
+  statistics::Distribution ioTime;
+  statistics::Distribution bytesSent;
+  statistics::Distribution bytesReceived;
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
@@ -256,11 +257,11 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  statistics::Counter httpConnections;
+  statistics::Counter totalRequests;
+  statistics::MethodRequestCounters methodRequests;
+  statistics::Counter asyncRequests;
+  statistics::Distribution connectionTime;
 
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);
@@ -330,14 +331,14 @@ void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "CONNECTION_TIME_DISTRIBUTION"),
-      DistributionList(isolate, TRI_ConnectionTimeDistributionVectorStatistics));
+      DistributionList(isolate, statistics::ConnectionTimeDistributionCuts));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REQUEST_TIME_DISTRIBUTION"),
-      DistributionList(isolate, TRI_RequestTimeDistributionVectorStatistics));
+      DistributionList(isolate, statistics::RequestTimeDistributionCuts));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "BYTES_SENT_DISTRIBUTION"),
-      DistributionList(isolate, TRI_BytesSentDistributionVectorStatistics));
+      DistributionList(isolate, statistics::BytesSentDistributionCuts));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "BYTES_RECEIVED_DISTRIBUTION"),
-      DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
+      DistributionList(isolate, statistics::BytesReceivedDistributionCuts));
 }

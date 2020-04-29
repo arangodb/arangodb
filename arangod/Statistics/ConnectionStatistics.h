@@ -48,11 +48,11 @@ class ConnectionStatistics {
 
   static void SET_HTTP(ConnectionStatistics* stat);
 
-  static void fill(basics::StatisticsCounter& httpConnections,
-                   basics::StatisticsCounter& totalRequests,
-                   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize>& methodRequests,
-                   basics::StatisticsCounter& asyncRequests,
-                   basics::StatisticsDistribution& connectionTime);
+  static void fill(statistics::Counter& httpConnections,
+                   statistics::Counter& totalRequests,
+                   statistics::MethodRequestCounters& methodRequests,
+                   statistics::Counter& asyncRequests,
+                   statistics::Distribution& connectionTime);
 
  private:
   ConnectionStatistics() { reset(); }

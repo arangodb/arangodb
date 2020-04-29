@@ -35,37 +35,42 @@
 #include "Statistics/figures.h"
 
 namespace arangodb {
-namespace basics {
-
+namespace statistics {
 extern Mutex TRI_RequestsStatisticsMutex;
 
-extern std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics;
-extern std::vector<double> const TRI_BytesSentDistributionVectorStatistics;
-extern std::vector<double> const TRI_ConnectionTimeDistributionVectorStatistics;
-extern std::vector<double> const TRI_RequestTimeDistributionVectorStatistics;
+extern std::initializer_list<double> const BytesReceivedDistributionCuts;
+extern std::initializer_list<double> const BytesSentDistributionCuts;
+extern std::initializer_list<double> const ConnectionTimeDistributionCuts;
+extern std::initializer_list<double> const RequestTimeDistributionCuts;
 
-extern StatisticsCounter TRI_AsyncRequestsStatistics;
-extern StatisticsCounter TRI_HttpConnectionsStatistics;
-extern StatisticsCounter TRI_TotalRequestsStatistics;
+extern Counter AsyncRequests;
+extern Counter HttpConnections;
+extern Counter TotalRequests;
 
 constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
-extern std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
+using MethodRequestCounters = std::array<Counter, MethodRequestsStatisticsSize>;
+extern MethodRequestCounters MethodRequests;
+extern Distribution ConnectionTimeDistribution;
 
-extern StatisticsDistribution TRI_BytesReceivedDistributionStatistics;
-extern StatisticsDistribution TRI_BytesSentDistributionStatistics;
-extern StatisticsDistribution TRI_ConnectionTimeDistributionStatistics;
-extern StatisticsDistribution TRI_IoTimeDistributionStatistics;
-extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
-extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
-extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
-extern StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser;
-extern StatisticsDistribution TRI_BytesSentDistributionStatisticsUser;
-extern StatisticsDistribution TRI_IoTimeDistributionStatisticsUser;
-extern StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser;
-extern StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser;
-extern StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser;
-}  // namespace basics
+struct RequestFigures {
+  RequestFigures();
+
+  RequestFigures(RequestFigures const&) = delete;
+  RequestFigures(RequestFigures&&) = delete;
+  RequestFigures& operator=(RequestFigures const&) = delete;
+  RequestFigures& operator=(RequestFigures&&) = delete;
+
+  Distribution bytesReceivedDistribution;
+  Distribution bytesSentDistribution;
+  Distribution ioTimeDistribution;
+  Distribution queueTimeDistribution;
+  Distribution requestTimeDistribution;
+  Distribution totalTimeDistribution;
+};
+extern RequestFigures GeneralRequestFigures;
+extern RequestFigures UserRequestFigures;
+}  // namespace statistics
 
 class StatisticsFeature final : public application_features::ApplicationFeature {
  public:

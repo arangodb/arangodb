@@ -111,10 +111,10 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
 
 stats::Descriptions::Descriptions(application_features::ApplicationServer& server)
     : _server(server),
-      _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
-      _connectionTimeCuts(arangodb::basics::TRI_ConnectionTimeDistributionVectorStatistics),
-      _bytesSendCuts(arangodb::basics::TRI_BytesSentDistributionVectorStatistics),
-      _bytesReceivedCuts(arangodb::basics::TRI_BytesReceivedDistributionVectorStatistics) {
+      _requestTimeCuts(statistics::RequestTimeDistributionCuts),
+      _connectionTimeCuts(statistics::ConnectionTimeDistributionCuts),
+      _bytesSendCuts(statistics::BytesSentDistributionCuts),
+      _bytesReceivedCuts(statistics::BytesReceivedDistributionCuts) {
   _groups.emplace_back(Group{stats::GroupType::System, "Process Statistics",
                              "Statistics about the ArangoDB process"});
   _groups.emplace_back(Group{stats::GroupType::Client,
@@ -463,7 +463,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FillDistribution(VPackBuilder& b, std::string const& name,
-                             basics::StatisticsDistribution const& dist) {
+                             statistics::Distribution const& dist) {
   b.add(name, VPackValue(VPackValueType::Object, true));
   b.add("sum", VPackValue(dist._total));
   b.add("count", VPackValue(dist._count));
@@ -476,11 +476,11 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
 }
 
 void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatisticsSource source) const {
-  basics::StatisticsCounter httpConnections;
-  basics::StatisticsCounter totalRequests;
-  std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
-  basics::StatisticsCounter asyncRequests;
-  basics::StatisticsDistribution connectionTime;
+  statistics::Counter httpConnections;
+  statistics::Counter totalRequests;
+  statistics::MethodRequestCounters methodRequests;
+  statistics::Counter asyncRequests;
+  statistics::Distribution connectionTime;
 
   // FIXME why are httpConnections in here ?
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
@@ -489,12 +489,12 @@ void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatis
   b.add("httpConnections", VPackValue(httpConnections._count));
   FillDistribution(b, "connectionTime", connectionTime);
 
-  basics::StatisticsDistribution totalTime;
-  basics::StatisticsDistribution requestTime;
-  basics::StatisticsDistribution queueTime;
-  basics::StatisticsDistribution ioTime;
-  basics::StatisticsDistribution bytesSent;
-  basics::StatisticsDistribution bytesReceived;
+  statistics::Distribution totalTime;
+  statistics::Distribution requestTime;
+  statistics::Distribution queueTime;
+  statistics::Distribution ioTime;
+  statistics::Distribution bytesSent;
+  statistics::Distribution bytesReceived;
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, source);
 
@@ -507,11 +507,11 @@ void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatis
 }
 
 void stats::Descriptions::httpStatistics(velocypack::Builder& b) const {
-  basics::StatisticsCounter httpConnections;
-  basics::StatisticsCounter totalRequests;
-  std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
-  basics::StatisticsCounter asyncRequests;
-  basics::StatisticsDistribution connectionTime;
+  statistics::Counter httpConnections;
+  statistics::Counter totalRequests;
+  statistics::MethodRequestCounters methodRequests;
+  statistics::Counter asyncRequests;
+  statistics::Distribution connectionTime;
 
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);

@@ -152,12 +152,12 @@ class RequestStatistics {
 
   double requestStart() const { return _requestStart; }
 
-  static void fill(basics::StatisticsDistribution& totalTime,
-                   basics::StatisticsDistribution& requestTime,
-                   basics::StatisticsDistribution& queueTime,
-                   basics::StatisticsDistribution& ioTime,
-                   basics::StatisticsDistribution& bytesSent,
-                   basics::StatisticsDistribution& bytesReceived,
+  static void fill(statistics::Distribution& totalTime,
+                   statistics::Distribution& requestTime,
+                   statistics::Distribution& queueTime,
+                   statistics::Distribution& ioTime,
+                   statistics::Distribution& bytesSent,
+                   statistics::Distribution& bytesReceived,
                    stats::RequestStatisticsSource source);
 
   std::string timingsCsv();

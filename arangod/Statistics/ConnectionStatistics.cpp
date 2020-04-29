@@ -27,7 +27,6 @@
 #include "Rest/CommonDefines.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    static members
@@ -45,7 +44,7 @@ void ConnectionStatistics::SET_HTTP(ConnectionStatistics* stat) {
   if (stat != nullptr) {
     stat->_http = true;
 
-    TRI_HttpConnectionsStatistics.incCounter();
+    statistics::HttpConnections.incCounter();
   }
 }
 
@@ -70,22 +69,22 @@ ConnectionStatistics* ConnectionStatistics::acquire() {
 }
 
 void ConnectionStatistics::fill(
-    StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
-    std::array<StatisticsCounter, MethodRequestsStatisticsSize>& methodRequests,
-    StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
+    statistics::Counter& httpConnections, statistics::Counter& totalRequests,
+    statistics::MethodRequestCounters& methodRequests,
+    statistics::Counter& asyncRequests, statistics::Distribution& connectionTime) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  httpConnections = TRI_HttpConnectionsStatistics;
-  totalRequests = TRI_TotalRequestsStatistics;
+  httpConnections = statistics::HttpConnections;
+  totalRequests = statistics::TotalRequests;
   {
-    MUTEX_LOCKER(locker, TRI_RequestsStatisticsMutex);
-    methodRequests = TRI_MethodRequestsStatistics;
+    MUTEX_LOCKER(locker, statistics::TRI_RequestsStatisticsMutex);
+    methodRequests = statistics::MethodRequests;
   }
-  asyncRequests = TRI_AsyncRequestsStatistics;
-  connectionTime = TRI_ConnectionTimeDistributionStatistics;
+  asyncRequests = statistics::AsyncRequests;
+  connectionTime = statistics::ConnectionTimeDistribution;
 }
 
 // -----------------------------------------------------------------------------
@@ -95,12 +94,12 @@ void ConnectionStatistics::fill(
 void ConnectionStatistics::release() {
   {
     if (_http) {
-      TRI_HttpConnectionsStatistics.decCounter();
+      statistics::HttpConnections.decCounter();
     }
 
     if (_connStart != 0.0 && _connEnd != 0.0) {
       double totalTime = _connEnd - _connStart;
-      TRI_ConnectionTimeDistributionStatistics.addFigure(totalTime);
+      statistics::ConnectionTimeDistribution.addFigure(totalTime);
     }
   }
 
