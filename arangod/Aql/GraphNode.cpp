@@ -752,7 +752,7 @@ void GraphNode::setVertexOutput(Variable const* outVar) {
 Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
 
 bool GraphNode::usesEdgeOutVariable() const {
-  return _edgeOutVariable != nullptr;
+  return _edgeOutVariable != nullptr && _options->produceEdges();
 }
 
 void GraphNode::setEdgeOutput(Variable const* outVar) {

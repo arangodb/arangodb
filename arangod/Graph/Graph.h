@@ -33,7 +33,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
-#include "Cluster/ServerDefaults.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
@@ -41,6 +40,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct ServerDefaults;
+
 namespace graph {
 
 class EdgeDefinition {
@@ -125,7 +126,7 @@ class Graph {
    *
    * @param slice The stored document
    */
-  explicit Graph(velocypack::Slice const& slice, struct ServerDefaults serverDefaults);
+  explicit Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults);
 
   /**
    * @brief Create graph from user input.

@@ -212,8 +212,8 @@ class RocksDBEngine final : public StorageEngine {
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 int& status) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
-  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
+  Result writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
+  Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
@@ -234,6 +234,7 @@ class RocksDBEngine final : public StorageEngine {
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
+  void prepareDropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,

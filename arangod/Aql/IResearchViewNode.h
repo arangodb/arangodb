@@ -44,7 +44,6 @@ class ExecutionBlock;
 class ExecutionEngine;
 template<typename T> struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
-struct VariableIdSet;
 struct VarInfo;
 }  // namespace aql
 

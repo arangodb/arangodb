@@ -57,6 +57,7 @@
 
 #include <memory>
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -120,16 +121,7 @@ struct SortElement {
 
 typedef std::vector<SortElement> SortElementVector;
 
-struct VariableIdSet {
-
-  VariableIdSet() = default;
-  VariableIdSet(std::initializer_list<VariableId> list) : _set(list) {}
-  void insert(VariableId id) {
-    _set.push_back(id);
-  }
-
-  std::vector<VariableId> _set;
-};
+using VariableIdSet = std::set<VariableId>;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
@@ -454,7 +446,7 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
-  [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] bool isPassthrough() const;
   [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 
