@@ -74,6 +74,13 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   void drainQueue(const fuerte::Error) override;
 
  private:
+  // Reason for timeout:
+  enum class TimeoutType: int {
+    IDLE = 0,
+    READ = 1,
+    WRITE = 2
+  };
+
   // in-flight request data
   struct RequestItem {
     /// the request header
@@ -94,7 +101,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   std::string buildRequestBody(Request const& req);
 
   /// set the timer accordingly
-  void setTimeout(std::chrono::milliseconds);
+  void setTimeout(std::chrono::milliseconds, TimeoutType type);
 
   ///  Call on IO-Thread: writes out one queued request
   void asyncWriteNextRequest();
@@ -123,6 +130,17 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   http_parser_settings _parserSettings;
   
   std::atomic<bool> _active;  /// is loop active
+  bool _reading;    // set between starting an asyncRead operation and executing
+                    // the completion handler
+  bool _writing;    // set between starting an asyncWrite operation and executing
+                    // the completion handler
+  // both are used in the timeout handlers to decide if the timeout still
+  // has to have an effect or if it is merely still on the iocontext and is now
+  // obsolete.
+  std::chrono::steady_clock::time_point _writeStart;
+  // This is the time when the latest write operation started.
+  // We use this to compute the timeout of the corresponding read if the
+  // write was done.
 
   // parser state
   std::string _lastHeaderField;

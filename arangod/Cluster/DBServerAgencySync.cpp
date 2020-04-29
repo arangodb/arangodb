@@ -169,12 +169,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   VPackBuilder local;
+  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(local);
+  LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
     result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
   }
+  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
 
   try {
     // in previous life handlePlanChange
