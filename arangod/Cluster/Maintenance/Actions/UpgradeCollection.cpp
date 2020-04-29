@@ -225,7 +225,7 @@ UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescript
   TRI_ASSERT(desc.has(SHARD));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("a6e4c", ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("a6f4c", ERR, Logger::MAINTENANCE)
         << "UpgradeCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
@@ -288,7 +288,7 @@ bool UpgradeCollection::first() {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
+    LOG_TOPIC("79543", WARN, Logger::MAINTENANCE)
         << "UpgradeCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
@@ -320,7 +320,7 @@ bool UpgradeCollection::next() {
   try {
     ::Config config(_description);
     if (config.collection) {
-      LOG_TOPIC("61543", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("62543", DEBUG, Logger::MAINTENANCE)
           << "Upgrading local collection " + shard;
 
       // will check Current, and fill in any missing servers with ToDo
@@ -386,14 +386,14 @@ bool UpgradeCollection::next() {
     } else {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
-      LOG_TOPIC("620fc", ERR, Logger::MAINTENANCE) << error.str();
+      LOG_TOPIC("630fc", ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
     }
   } catch (std::exception const& e) {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
+    LOG_TOPIC("79447", WARN, Logger::MAINTENANCE)
         << "UpgradeCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
   }
@@ -465,14 +465,14 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
         std::stringstream error;
         error << "failed to lookup local collection " << _description.get(SHARD)
               << "in database " + _description.get(DATABASE);
-        LOG_TOPIC("620fc", ERR, Logger::MAINTENANCE) << error.str();
+        LOG_TOPIC("720fc", ERR, Logger::MAINTENANCE) << error.str();
         result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       }
     } catch (std::exception const& e) {
       std::stringstream error;
 
       error << "action " << _description << " failed with exception " << e.what();
-      LOG_TOPIC("79443", WARN, Logger::MAINTENANCE)
+      LOG_TOPIC("7a443", WARN, Logger::MAINTENANCE)
           << "UpgradeCollection: " << error.str();
       result.reset(TRI_ERROR_INTERNAL, error.str());
     }

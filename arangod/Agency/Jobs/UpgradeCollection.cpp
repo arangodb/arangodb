@@ -532,7 +532,7 @@ UpgradeCollection::UpgradeCollection(Node const& snapshot, AgentInterface* agent
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC("4667d", ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("4668d", ERR, Logger::SUPERVISION) << err.str();
     finish("", "", false, err.str());
     _status = FAILED;
   }
@@ -548,7 +548,7 @@ void UpgradeCollection::run(bool& aborts) { runHelper("", "", aborts); }
 
 bool UpgradeCollection::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
-  LOG_TOPIC("b0a34", INFO, Logger::SUPERVISION)
+  LOG_TOPIC("b0b34", INFO, Logger::SUPERVISION)
       << "Create upgradeCollection for " + _collection;
 
   _created = system_clock::now();
