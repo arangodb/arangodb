@@ -822,9 +822,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                                         {}, {}, {}, arangodb::transaction::Options());
 
     arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
-    EXPECT_TRUE(
-        (parseOk ==
-         arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
+    EXPECT_EQ(parseOk, arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok());
   }
 
   // execution time

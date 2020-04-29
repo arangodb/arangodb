@@ -2206,7 +2206,7 @@ arangodb::Result getLevenshteinArguments(char const* funcName, bool isFilter,
   ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
 
   // (2 - First) argument defines a max distance
-  int64_t maxDistance;
+  int64_t maxDistance = 0;
   res = evaluateArg(maxDistance, tmpValue, funcName, args, 2 - First, isFilter, ctx);
 
   if (res.fail()) {

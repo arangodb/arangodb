@@ -3326,6 +3326,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
+    root.boost(1.5);
     {
       auto& filter = root.add<irs::by_term>();
       *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
@@ -3352,7 +3353,6 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
       auto& filter = root.add<irs::by_term>();
-      filter.boost(1.5);
       *filter.mutable_field() = mangleNumeric("quick.brown.fox");
       filter.mutable_options()->term = term->value();
     }
