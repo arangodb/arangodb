@@ -4,7 +4,7 @@ EXTENDS Integers, TLC, Sequences
 (*
 --algorithm H1Connection {
 
-variables      \* VERIFIED
+variables   \* VERIFIED
   state = "Disconnected",       \* this is a member variable in the program
   active = FALSE,     \* this is a member variable in the program
   queueSize = 0,      \* this is the length of the input queue
@@ -20,7 +20,7 @@ variables      \* VERIFIED
                       \* to decide if the completion handler has already
                       \* finished
 
-procedure startConnection() {
+procedure startConnection() {   \* VERIFIED
 (* This is called whenever the connection broke and we want to immediately
    reconnect. Therefore we know that the state is "Disconnected" and we
    are active and no alarm is set. *)
@@ -35,12 +35,12 @@ procedure startConnection() {
   return;
 };
 
-procedure asyncWriteNextRequest() {
+procedure asyncWriteNextRequest() {     \* VERIFIED
 (* This is called whenever we are active and potentially want to continue
    writing. It can also be called if we are in the "Failed" state. In this
    case the purpose is to reset the `active` flag, which is exclusively
    done in this procedure. *)
- asyncWriteNextRequestBegin:    \* VERIFIED
+ asyncWriteNextRequestBegin:
   assert /\ state \in {"Connected", "Failed"}
          /\ active
          /\ asyncRunning = "none";
@@ -83,7 +83,7 @@ procedure asyncWriteNextRequest() {
 process(fuerte = "fuertethread") {
   loop:
     while (TRUE) {
-      either activate:    \* VERIFIED
+      either activate:   \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "activate") {
           assert active /\ state /= "Connecting";
           iocontext := Tail(iocontext);
@@ -97,7 +97,7 @@ process(fuerte = "fuertethread") {
           };
         };
       
-      or connectDone:
+      or connectDone:    \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"connect", "connectBAD"}) {
           assert active /\ state \in {"Connecting", "Disconnected", "Failed"};
@@ -115,7 +115,7 @@ process(fuerte = "fuertethread") {
           call asyncWriteNextRequest();
         };
       
-      or writeDone:
+      or writeDone:   \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"write", "writeBAD"}) {
           assert /\ active
@@ -137,12 +137,13 @@ process(fuerte = "fuertethread") {
               \* this models that an error is returned to the client and we
               \* try to reconnect and execute the next request
             } else {
+              \* this is only to reset the `active` flag
               call asyncWriteNextRequest();
             }
           };
         };
       
-      or readDone:
+      or readDone:   \* VERIFIED
         if (/\ Len(iocontext) >= 1
             /\ Head(iocontext) \in {"read", "readBAD"}) {
           assert active /\ state \in {"Connected", "Disconnected", "Failed"}; 
@@ -162,7 +163,7 @@ process(fuerte = "fuertethread") {
           };
         };
       
-      or cancellation:
+      or cancellation:   \* VERIFIED
         if (/\ Len(iocontext) >= 1 /\ Head(iocontext) = "cancel") {
           iocontext := Tail(iocontext);
           \* Note that we *do not* set active to FALSE here, since we want
@@ -179,19 +180,19 @@ process(fuerte = "fuertethread") {
           };
         };
 
-      or alarmTriggered:
+      or alarmTriggered:   \* VERIFIED
         if (alarm /= "off") {
           iocontext := Append(iocontext, alarm);
           alarm := "off";
         };
       
-      or asyncFinished:
+      or asyncFinished:    \* VERIFIED
         if (asyncRunning /= "none") {
           iocontext := Append(iocontext, asyncRunning);
           asyncRunning := "none";
         };
 
-      or handleConnectAlarm:
+      or handleConnectAlarm:   \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "connectAlarm") {
           iocontext := Tail(iocontext);
           if (asyncRunning = "connect") {
@@ -199,7 +200,7 @@ process(fuerte = "fuertethread") {
           }
         };
       
-      or handleWriteAlarm:
+      or handleWriteAlarm:    \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "writeAlarm") {
           iocontext := Tail(iocontext);
           if (writing /\ asyncRunning = "write") {
@@ -211,7 +212,7 @@ process(fuerte = "fuertethread") {
           }
         };
       
-      or handleReadAlarm:
+      or handleReadAlarm:    \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "readAlarm") {
           iocontext := Tail(iocontext);
           if (reading /\ asyncRunning = "read") {
@@ -223,7 +224,7 @@ process(fuerte = "fuertethread") {
           }
         };
       
-      or handleIdleAlarm:
+      or handleIdleAlarm:  \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm") {
           iocontext := Tail(iocontext);
           if (state = "Connected") {
@@ -239,7 +240,7 @@ process(fuerte = "fuertethread") {
 };
 
 process(client = "clientthread") {
-  sendMessage:     \* VERIFIED
+  sendMessage:   \* VERIFIED
     while (TRUE) {
         await queueSize < 2;
       pushQueue:
@@ -253,7 +254,7 @@ process(client = "clientthread") {
 };
 
 process(cancel = "cancelthread") {
-  cancelBegin:   \* VERIFIED
+  cancelBegin:    \* VERIFIED
     iocontext := Append(iocontext, "cancel");
 };
 
