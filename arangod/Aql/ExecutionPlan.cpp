@@ -47,6 +47,7 @@
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
+#include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
@@ -120,7 +121,8 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstNode const* src) {
+void parseGraphCollectionRestriction(std::vector<std::string>& collections,
+                                     AstNode const* src) {
   if (src->isStringValue()) {
     collections.emplace_back(src->getString());
   } else if (src->type == NODE_TYPE_ARRAY) {
@@ -129,14 +131,18 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstN
     for (size_t i = 0; i < n; ++i) {
       AstNode const* c = src->getMemberUnchecked(i);
       if (!c->isStringValue()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-            "collection restrictions option must be either a string or an array of collection names");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "collection restrictions option must be either a string or an "
+            "array of collection names");
       }
       collections.emplace_back(c->getStringValue(), c->getStringLength());
     }
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-        "collection restrictions option must be either a string or an array of collection names");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "collection restrictions option must be either a string or an array of "
+        "collection names");
   }
 }
 
@@ -742,7 +748,6 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
-
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -759,7 +764,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
         if (name == StaticStrings::WaitForSyncString) {
           options.waitForSync = value->isTrue();
         } else if (name == StaticStrings::SkipDocumentValidation) {
-          options.validate = ! value->isTrue();
+          options.validate = !value->isTrue();
         } else if (name == StaticStrings::KeepNullString) {
           options.keepNull = value->isTrue();
         } else if (name == StaticStrings::MergeObjectsString) {
@@ -771,7 +776,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
             options.overwriteMode = OperationOptions::OverwriteMode::Replace;
           }
         } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
-          auto overwriteMode = OperationOptions::determineOverwriteMode(value->getStringRef());
+          auto overwriteMode =
+              OperationOptions::determineOverwriteMode(value->getStringRef());
 
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwriteMode = overwriteMode;
@@ -2137,66 +2143,6 @@ void ExecutionPlan::findEndNodes(::arangodb::containers::SmallVector<ExecutionNo
   root()->walk(finder);
 }
 
-/// @brief helper struct for findVarUsage
-struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  ::arangodb::containers::HashSet<Variable const*> _usedLater;
-  ::arangodb::containers::HashSet<Variable const*> _valid;
-  std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
-  bool const _ownsVarSetBy;
-
-  VarUsageFinder(VarUsageFinder const&) = delete;
-  VarUsageFinder& operator=(VarUsageFinder const&) = delete;
-
-  VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
-    _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
-  }
-
-  explicit VarUsageFinder(std::unordered_map<VariableId, ExecutionNode*>* varSetBy)
-      : _varSetBy(varSetBy), _ownsVarSetBy(false) {
-    TRI_ASSERT(_varSetBy != nullptr);
-  }
-
-  ~VarUsageFinder() {
-    if (_ownsVarSetBy) {
-      TRI_ASSERT(_varSetBy != nullptr);
-      delete _varSetBy;
-    }
-  }
-
-  bool before(ExecutionNode* en) override final {
-    // count the type of node found
-    en->plan()->increaseCounter(en->getType());
-
-    en->invalidateVarUsage();
-    en->setVarsUsedLater(_usedLater);
-    // Add variables used here to _usedLater:
-
-    en->getVariablesUsedHere(_usedLater);
-
-    return false;
-  }
-
-  void after(ExecutionNode* en) override final {
-    // Add variables set here to _valid:
-    for (auto const& v : en->getVariablesSetHere()) {
-      _valid.insert(v);
-      _varSetBy->insert({v->id, en});
-    }
-
-    en->setVarsValid(_valid);
-    en->setVarUsageValid();
-  }
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
-    VarUsageFinder subfinder(_varSetBy);
-    subfinder._valid = _valid;  // need a copy for the subquery!
-    sub->walk(subfinder);
-
-    // we've fully processed the subquery
-    return false;
-  }
-};
-
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
 void ExecutionPlan::findVarUsage() {
@@ -2466,10 +2412,10 @@ void ExecutionPlan::prepareTraversalOptions() {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   findNodesOfType(nodes,
-      {arangodb::aql::ExecutionNode::TRAVERSAL,
-       arangodb::aql::ExecutionNode::SHORTEST_PATH,
-       arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
-      true);
+                  {arangodb::aql::ExecutionNode::TRAVERSAL,
+                   arangodb::aql::ExecutionNode::SHORTEST_PATH,
+                   arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+                  true);
   for (auto& node : nodes) {
     switch (node->getType()) {
       case ExecutionNode::TRAVERSAL:
@@ -2546,7 +2492,8 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
       case ExecutionNode::REMOVE:
       case ExecutionNode::REPLACE:
       case ExecutionNode::UPSERT: {
-        auto const& colAccess = *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
+        auto const& colAccess =
+            *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         type += " (";
         type += colAccess.collection()->name();

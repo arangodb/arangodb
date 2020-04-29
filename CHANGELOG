@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix REST API `/_admin/cluster/removeServer`.
+  This also fixes the removal of servers via the web interface.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Lower the default values for `--rocksdb.block-cache-size` and 

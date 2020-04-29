@@ -66,10 +66,11 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
+  bool enterSubquery(T*, T*) final {
     return false;  // do not walk into subquery
   }
 
+  std::set<RegisterId> unusedRegisters;
   std::shared_ptr<RegisterPlanT<T>> plan;
 };
 
@@ -89,7 +90,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   std::vector<RegisterId> nrRegs;
 
   // We collect the subquery nodes to deal with them at the end:
-  std::vector<ExecutionNode*> subQueryNodes;
+  std::vector<T*> subQueryNodes;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
@@ -104,10 +105,12 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
+  void registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters);
   void registerVariable(VariableId v);
   void increaseDepth();
-  void addRegister();
-  void addSubqueryNode(ExecutionNode* subquery);
+  auto addRegister() -> RegisterId;
+  void addSubqueryNode(T* subquery);
+  auto getTotalNrRegs() -> unsigned int;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
@@ -117,25 +120,8 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   unsigned int totalNrRegs;
 };
 
-template<typename T>
-std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r) {
-  // level -> variable, info
-  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
-
-  for (auto [id, info] : r.varInfo) {
-    frames[info.depth][id] = info;
-  }
-
-  for (auto [depth, vars] : frames) {
-    os << "depth " << depth << std::endl;
-    os << "------------------------------------" << std::endl;
-
-    for (auto [id, info] : vars) {
-      os << "id = " << id << " register = " << info.registerId << std::endl;
-    }
-  }
-  return os;
-}
+template <typename T>
+std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
 
