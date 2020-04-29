@@ -9,37 +9,15 @@
 @RESTQUERYPARAM{collection,string,required}
 The name or id of the collection to dump.
 
-@RESTQUERYPARAM{chunkSize,number,optional} Approximate maximum size of the returned result.
+@RESTQUERYPARAM{chunkSize,number,optional}
+Approximate maximum size of the returned result.
 
 @RESTQUERYPARAM{batchId,number,required}
-rocksdb only - The id of the snapshot to use
-
-@RESTQUERYPARAM{from,number,optional}
-mmfiles only - Lower bound tick value for results.
-
-@RESTQUERYPARAM{to,number,optional}
-mmfiles only - Upper bound tick value for results.
-
-@RESTQUERYPARAM{includeSystem,boolean,optional}
-mmfiles only - Include system collections in the result. The default value is *true*.
-
-@RESTQUERYPARAM{ticks,boolean,optional}
-mmfiles only - Whether or not to include tick values in the dump. The default value is *true*.
-
-@RESTQUERYPARAM{flush,boolean,optional}
-mmfiles only - Whether or not to flush the WAL before dumping. The default value is *true*.
+The id of the snapshot to use
 
 @RESTDESCRIPTION
 Returns the data from the collection for the requested range.
 
-When the *from* query parameter is not used, collection events are returned from
-the beginning. When the *from* parameter is used, the result will only contain
-collection entries which have higher tick values than the specified *from* value
-(note: the log entry with a tick value equal to *from* will be excluded).
-
-The *to* query parameter can be used to optionally restrict the upper bound of
-the result to a certain tick value. If used, the result will only contain
-collection entries with tick values up to (including) *to*.
 
 The *chunkSize* query parameter can be used to control the size of the result.
 It must be specified in bytes. The *chunkSize* value will only be honored
@@ -88,9 +66,6 @@ is returned if the request was executed successfully and data was returned. The 
 is returned if the request was executed successfully, but there was no content available.
 The header `x-arango-replication-lastincluded` is `0` in this case.
 
-@RESTRETURNCODE{400}
-is returned if either the *from* or *to* values are invalid.
-
 @RESTRETURNCODE{404}
 is returned when the collection could not be found.
 
@@ -100,11 +75,12 @@ is returned when an invalid HTTP method is used.
 @RESTRETURNCODE{500}
 is returned if an error occurred while assembling the response.
 
-@EXAMPLES
+<!-- TODO: How to know the RocksDB batchId?
+ EXAMPLES
 
 Empty collection:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationDumpEmpty_mmfiles}
+ EXAMPLE_ARANGOSH_RUN{RestReplicationDumpEmpty_mmfiles}
     db._drop("testCollection");
     var c = db._create("testCollection");
     var url = "/_api/replication/dump?collection=" + c.name();
@@ -114,11 +90,11 @@ Empty collection:
     logRawResponse(response);
 
     c.drop();
-@END_EXAMPLE_ARANGOSH_RUN
+ END_EXAMPLE_ARANGOSH_RUN
 
 Non-empty collection *(One JSON document per line)*:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationDump_mmfiles}
+ EXAMPLE_ARANGOSH_RUN{RestReplicationDump_mmfiles}
     db._drop("testCollection");
     var c = db._create("testCollection");
     c.save({ "test" : true, "a" : "abc", "_key" : "abcdef" });
@@ -135,5 +111,6 @@ Non-empty collection *(One JSON document per line)*:
     logJsonLResponse(response);
 
     c.drop();
-@END_EXAMPLE_ARANGOSH_RUN
+ END_EXAMPLE_ARANGOSH_RUN
+-->
 @endDocuBlock

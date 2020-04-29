@@ -950,8 +950,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid.isPrimary() || iid.isNone()) {
-    // invalid index id or primary index
+  if (iid.empty() || iid.isPrimary()) {
     return true;
   }
 
@@ -1243,7 +1242,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 Result RocksDBCollection::lookupKey(transaction::Methods* trx,
                                     VPackStringRef key,
                                     std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const {
-  result.first.clear();
+  result.first = LocalDocumentId::none();
   result.second = 0;
   
   // lookup the revision id in the primary index
@@ -1749,12 +1748,18 @@ Result RocksDBCollection::prepareUpgrade() {
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
                                        ::injectNewTemporaryObjectId, false, false);
   if (res.fail()) {
+    LOG_TOPIC("ad41c", WARN, Logger::ENGINES)
+        << "failed to allocate temporary id for writing while upgrading '"
+        << _logicalCollection.name() << "': " << res.errorMessage();
     return res;
   }
 
   {
     res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
     if (res.fail()) {
+      LOG_TOPIC("af51c", WARN, Logger::ENGINES)
+          << "failed to upgrade collection data while upgrading '"
+          << _logicalCollection.name() << "': " << res.errorMessage();
       return res;
     }
 
@@ -1762,6 +1767,9 @@ Result RocksDBCollection::prepareUpgrade() {
     for (auto const& index : indices) {
       res = ::copyIndexToNewObjectIdSpace(*engine.db(), _logicalCollection, *index);
       if (res.fail()) {
+        LOG_TOPIC("af61c", WARN, Logger::ENGINES)
+            << "failed to upgrade index data while upgrading '"
+            << _logicalCollection.name() << "': " << res.errorMessage();
         return res;
       }
     }
@@ -1786,6 +1794,13 @@ Result RocksDBCollection::finalizeUpgrade() {
                                        ::swapObjectIds, true, false);
   if (res.fail()) {
     return res;
+  }
+
+  res = rebuildRevisionTree();
+  if (res.fail()) {
+    LOG_TOPIC("af82c", WARN, Logger::ENGINES)
+        << "failed to rebuild revision tree while upgrading '"
+        << _logicalCollection.name() << "': " << res.errorMessage();
   }
 
   return res;

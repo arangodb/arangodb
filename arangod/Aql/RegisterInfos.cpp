@@ -19,14 +19,14 @@
 ///
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "ExecutorInfos.h"
+#include "RegisterInfos.h"
+#include "Logger/LogMacros.h"
 
 #include "Basics/debugging.h"
 
 using namespace arangodb::aql;
 
-ExecutorInfos::ExecutorInfos(
+RegisterInfos::RegisterInfos(
     // cppcheck-suppress passedByValue
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     // cppcheck-suppress passedByValue
@@ -77,25 +77,25 @@ ExecutorInfos::ExecutorInfos(
 #endif
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getInputRegisters() const {
+std::shared_ptr<std::unordered_set<RegisterId> const> RegisterInfos::getInputRegisters() const {
   return _inRegs;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getOutputRegisters() const {
+std::shared_ptr<std::unordered_set<RegisterId> const> RegisterInfos::getOutputRegisters() const {
   return _outRegs;
 }
 
-RegisterId ExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+RegisterCount RegisterInfos::numberOfInputRegisters() const { return _numInRegs; }
 
-RegisterId ExecutorInfos::numberOfOutputRegisters() const {
+RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> const& ExecutorInfos::registersToKeep() const {
+std::shared_ptr<std::unordered_set<RegisterId> const> const& RegisterInfos::registersToKeep() const {
   return _registersToKeep;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> const& ExecutorInfos::registersToClear() const {
+std::shared_ptr<std::unordered_set<RegisterId> const> const& RegisterInfos::registersToClear() const {
   return _registersToClear;
 }
 

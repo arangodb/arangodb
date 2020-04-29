@@ -24,8 +24,8 @@
 
 #include "AqlExecutorTestCase.h"
 
-#include "Aql/ExecutorInfos.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 
 using namespace arangodb;
@@ -55,8 +55,8 @@ class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInput
     return inputRows;
   }
 
-  auto makeInfos() -> ExecutorInfos {
-    return ExecutorInfos{make_shared_unordered_set({0}),
+  auto makeInfos() -> RegisterInfos {
+    return RegisterInfos{make_shared_unordered_set({0}),
                          make_shared_unordered_set(),
                          1,
                          1,
@@ -89,7 +89,7 @@ INSTANTIATE_TEST_CASE_P(NoResultsExecutorTest, NoResultsExecutorTest,
 TEST_P(NoResultsExecutorTest, do_never_ever_return_results) {
   ExecutionStats stats{};
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<NoResultsExecutor>(makeInfos(), ExecutionNode::NORESULTS)
+      .addConsumer<NoResultsExecutor>(makeInfos(), makeInfos(), ExecutionNode::NORESULTS)
       .setInputFromRowNum(getInput())
       .setInputSplitType(getSplit())
       .setCall(getCall())

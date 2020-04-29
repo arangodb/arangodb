@@ -32,12 +32,12 @@
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
@@ -76,9 +76,10 @@ static void resolveFCallConstAttributes(AstNode* fcall) {
 template <bool checkUniqueness>
 IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& context,
                                             transaction::Methods::IndexHandle const& index,
+                                            IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
                                             IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  return [&context, &index, &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                                        VPackSlice slice) {
+  return [&context, &index, &outNonMaterializedIndVars, &outNonMaterializedIndRegs](LocalDocumentId const& token,
+                                                                                    VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -88,8 +89,47 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 
     context.incrScanned();
 
+    auto indexId = index->id();
+    TRI_ASSERT(indexId == outNonMaterializedIndRegs.first &&
+               indexId == outNonMaterializedIndVars.first);
+    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first ||
+                     indexId != outNonMaterializedIndVars.first)) {
+      return false;
+    }
+
     if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
+      struct filterContext {
+        IndexNode::IndexValuesVars const& outNonMaterializedIndVars;
+        velocypack::Slice slice;
+      };
+      filterContext fc{outNonMaterializedIndVars, slice};
+
+      auto getValue = [](void const* ctx, Variable const* var, bool doCopy) {
+        TRI_ASSERT(ctx && var);
+        auto const& fc = *reinterpret_cast<filterContext const*>(ctx);
+        auto const it = fc.outNonMaterializedIndVars.second.find(var);
+        TRI_ASSERT(fc.outNonMaterializedIndVars.second.cend() != it);
+        if (ADB_UNLIKELY(fc.outNonMaterializedIndVars.second.cend() == it)) {
+          return AqlValue();
+        }
+        velocypack::Slice s;
+        // hash/skiplist/edge
+        if (fc.slice.isArray()) {
+          TRI_ASSERT(it->second < fc.slice.length());
+          if (ADB_UNLIKELY(it->second >= fc.slice.length())) {
+            return AqlValue();
+          }
+          s = fc.slice.at(it->second);
+        } else {  // primary
+          s = fc.slice;
+        }
+        if (doCopy) {
+          return AqlValue(AqlValueHintCopy(s.start()));
+        }
+        return AqlValue(AqlValueHintDocumentNoCopy(s.start()));
+      };
+
+      if (!context.checkFilter(getValue, &fc)) {
         context.incrFiltered();
         return false;
       }
@@ -105,11 +145,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
 
-    auto indexId = index->id();
-    TRI_ASSERT(indexId == outNonMaterializedIndRegs.first);
-    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first)) {
-      return false;
-    }
     // hash/skiplist/edge
     if (slice.isArray()) {
       for (auto const& indReg : outNonMaterializedIndRegs.second) {
@@ -147,30 +182,23 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
   return DocumentProducingFunctionContext(
       inputRow, nullptr, infos.getOutputRegisterId(), infos.getProduceResult(),
       infos.getQuery(), infos.getFilter(), infos.getProjections(),
-      infos.getCoveringIndexAttributePositions(), false, 
+      infos.getCoveringIndexAttributePositions(), false,
       infos.getIndexes().size() > 1 || infos.hasMultipleExpansions());
 }
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
-    std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId outputRegister, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    RegisterId outputRegister, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions, 
+    std::vector<size_t> const& coveringIndexAttributePositions,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-    IndexIteratorOptions options, IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
-    : ExecutorInfos(make_shared_unordered_set(), writableOutputRegisters,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _indexes(std::move(indexes)),
+    IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
+    : _indexes(std::move(indexes)),
       _condition(condition),
       _ast(ast),
       _options(options),
@@ -184,6 +212,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
       _outputRegisterId(outputRegister),
+      _outNonMaterializedIndVars(outNonMaterializedIndVars),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(false),
       _produceResult(produceResult),
@@ -350,8 +379,8 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
     case Type::LateMaterialized:
       _documentProducer =
           checkUniqueness
-              ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs())
-              : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
+              ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
+              : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
       break;
     default:
       _documentProducer = checkUniqueness
@@ -444,6 +473,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _currentIndex(_infos.getIndexes().size()),
       _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
+
   // Creation of a cursor will trigger search.
   // As we want to create them lazily we only
   // reserve here.

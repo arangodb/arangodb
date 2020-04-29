@@ -497,7 +497,7 @@ template<typename ScoreType,
   ////////////////////////////////////////////////////////////////////////////////
   virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
     static_assert(
-      alignof(score_t) <= alignof(MAX_ALIGN_T),
+      alignof(score_t) <= alignof(std::max_align_t),
       "alignof(score_t) must be <= alignof(std::max_align_t)"
     );
 
@@ -514,7 +514,7 @@ template<typename ScoreType,
   ////////////////////////////////////////////////////////////////////////////////
   virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
     static_assert(
-      alignof(stats_t) <= alignof(MAX_ALIGN_T),
+      alignof(stats_t) <= alignof(std::max_align_t),
       "alignof(stats_t) must be <= alignof(std::max_align_t)"
     );
 

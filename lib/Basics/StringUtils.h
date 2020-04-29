@@ -352,6 +352,30 @@ float floatDecimal(std::string const& str);
 /// @brief parses a decimal
 float floatDecimal(char const* value, size_t size);
 
+/// @brief convert char const* or std::string to number with error handling
+template<typename T>
+static bool toNumber(std::string const& key, T& val) noexcept {
+  size_t n = key.size();
+  if (n==0) {
+    return false;
+  }
+  try {
+    if constexpr (std::is_integral<T>::value) {
+      char const* s = key.data();
+      std::from_chars(s, s + n, val);
+    } else if constexpr (std::is_same<long double, typename std::remove_cv<T>::type>::value) {
+      val = stold(key);
+    } else if constexpr (std::is_same<double, typename std::remove_cv<T>::type>::value) {
+      val = stod(key);
+    } else if constexpr (std::is_same<float, typename std::remove_cv<T>::type>::value) {
+      val = stof(key);
+    }
+  } catch (...) {
+    return false;
+  }
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // BASE64
 // -----------------------------------------------------------------------------

@@ -27,8 +27,8 @@
 #include "SortedCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ConditionalDeleter.h"
@@ -123,27 +123,18 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 }
 
 SortedCollectExecutorInfos::SortedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-    std::vector<std::pair<std::string, RegisterId>>&& variables,
+    std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
     transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
-      _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+    : _aggregateTypes(std::move(aggregateTypes)),
+      _aggregateRegisters(std::move(aggregateRegisters)),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _expressionRegister(expressionRegister),
-      _variables(variables),
+      _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
       _count(count),
       _trxPtr(trxPtr) {}
@@ -189,13 +180,9 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       // copy variables / keep variables into result register
 
       _builder.openObject();
-      for (auto const& pair : infos.getVariables()) {
-        // Only collect input variables, the variable names DO! contain more.
-        // e.g. the group variable name
-        if (pair.second < infos.numberOfInputRegisters()) {
-          _builder.add(VPackValue(pair.first));
-          input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
-        }
+      for (auto const& pair : infos.getInputVariables()) {
+        _builder.add(VPackValue(pair.first));
+        input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
       }
       _builder.close();
     }

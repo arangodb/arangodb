@@ -47,7 +47,8 @@ class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionPlan;
 class Expression;
-struct RegisterPlan;
+template<typename T> struct RegisterPlanT;
+using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
@@ -131,13 +132,15 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return isProduceResult() && coveringIndexAttributePositions().empty();
   }
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;
   };
 
   using IndexValuesVars =
-      std::pair<IndexId, std::vector<std::pair<size_t, Variable const*>>>;
+      std::pair<IndexId, std::unordered_map<Variable const*, size_t>>;
 
   using IndexValuesRegisters = std::pair<IndexId, std::unordered_map<size_t, RegisterId>>;
 
@@ -147,7 +150,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                            IndexVarsInfo const& indexVariables);
 
  private:
-  void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
+  void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;

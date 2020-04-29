@@ -57,6 +57,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1458,9 +1459,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackOptions options = VPackOptions::Defaults;
-  options.checkAttributeUniqueness = true;
-  VPackBuilder builder(&options);
+  VPackBuilder builder(&basics::VelocyPackHelper::requestValidationOptions);
 
   allMarkers.clear();
 
@@ -1470,11 +1469,11 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
       _request->contentType() != ContentType::DUMP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
-  
+
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-  
+
   VPackValueLength currentPos = 0;
 
   // First parse and collect all markers, we assemble everything in one
@@ -1504,6 +1503,11 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         Result res =
             restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
+          if (res.errorNumber() == TRI_ERROR_HTTP_CORRUPTED_JSON) {
+            using namespace std::literals::string_literals;
+            auto data = std::string(ptr, pos);
+            res.appendErrorMessage(" in message '"s + data + "'");
+          }
           return res;
         }
 
@@ -3311,11 +3315,8 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v31)));
-  if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
-    // system collection?
-    patch.add("isSystem", VPackValue(true));
-  }
+  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::currentVersion())));
+  patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
   patch.add("objectId", VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
   patch.add("id", VPackSlice::nullSlice());

@@ -45,7 +45,7 @@ class SingleRowFetcher;
 
 class AqlItemMatrix;
 class ConstrainedLessThan;
-class ExecutorInfos;
+class RegisterInfos;
 class InputAqlItemRow;
 class AqlItemBlockInputRange;
 class NoStats;

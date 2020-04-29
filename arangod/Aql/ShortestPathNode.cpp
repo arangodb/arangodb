@@ -213,6 +213,12 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
+void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
+  TRI_ASSERT(_inStartVariable == nullptr);
+  _inStartVariable = inVariable;
+  _startVertexId = "";
+}
+
 void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                           std::unordered_set<ExecutionNode const*>& seen) const {
   GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
@@ -279,6 +285,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     outputRegisters->emplace(it->second.registerId);
   }
 
+  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+
   auto opts = static_cast<ShortestPathOptions*>(options());
 
   ShortestPathExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
@@ -291,15 +299,16 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     finder.reset(new graph::ConstantWeightShortestPathFinder(*opts));
   }
 
+#ifdef USE_ENTERPRISE
+  waitForSatelliteIfRequired(&engine);
+#endif
+
   TRI_ASSERT(finder != nullptr);
-  ShortestPathExecutorInfos infos(inputRegisters, outputRegisters,
-                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                  getRegisterPlan()->nrRegs[getDepth()],
-                                  getRegsToClear(), calcRegsToKeep(),
-                                  std::move(finder), std::move(outputRegisterMapping),
-                                  std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(&engine, this,
-                                                                    std::move(infos));
+  auto executorInfos =
+      ShortestPathExecutorInfos(std::move(finder), std::move(outputRegisterMapping),
+                                std::move(sourceInput), std::move(targetInput));
+  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,

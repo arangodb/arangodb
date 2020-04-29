@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
@@ -93,7 +94,7 @@ void MaintenanceFeature::init() {
 
   _maintenanceThreadsMax =
       (std::max)(static_cast<uint32_t>(minThreadLimit),
-                 static_cast<uint32_t>(TRI_numberProcessors() / 4 + 1));
+                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
 }  // MaintenanceFeature::init

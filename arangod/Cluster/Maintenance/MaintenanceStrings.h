@@ -46,22 +46,24 @@ constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";
 constexpr char const* GLOB_UID = "globallyUniqueId";
 constexpr char const* ID = "id";
 constexpr char const* INDEX = "index";
-constexpr char const* INDEX_BUCKETS = "indexBuckets";
 constexpr char const* INDEXES = "indexes";
+constexpr char const* INDEX_BUCKETS = "indexBuckets";
 constexpr char const* JOURNAL_SIZE = "journalSize";
 constexpr char const* KEY = "key";
 constexpr char const* LOCAL_LEADER = "localLeader";
 constexpr char const* LOCK = "Lock";
 constexpr char const* NAME = "name";
 constexpr char const* OBJECT_ID = "objectId";
+constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 constexpr char const* OP = "op";
 constexpr char const* PHASE_ONE = "phaseOne";
 constexpr char const* PHASE_TWO = "phaseTwo";
 constexpr char const* PRIMARY = "primary";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
+constexpr char const* SCHEMA = "schema";
 constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
-constexpr char const* SERVER_ID = "serverId";
 constexpr char const* SERVERS = "servers";
+constexpr char const* SERVER_ID = "serverId";
 constexpr char const* SHARD = "shard";
 constexpr char const* SHARDS = "shards";
 constexpr char const* SHARD_VERSION = "shardVersion";
@@ -73,9 +75,7 @@ constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* UPGRADE_COLLECTION = "UpgradeCollection";
 constexpr char const* UPGRADE_STATUS = "upgradeStatus";
-constexpr char const* VALIDATION = "validation";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
-constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 
 }  // namespace maintenance
 }  // namespace arangodb

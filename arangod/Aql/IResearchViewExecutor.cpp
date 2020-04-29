@@ -43,6 +43,7 @@
 #include <analysis/token_attributes.hpp>
 #include <search/boolean_filter.hpp>
 #include <search/score.hpp>
+#include <utility>
 
 // TODO Eliminate access to the plan if possible!
 // I think it is used for two things only:
@@ -100,21 +101,18 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 ///////////////////////////////////////////////////////////////////////////////
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    ExecutorInfos&& infos, std::shared_ptr<const IResearchView::Snapshot> reader,
-    RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
-    std::vector<Scorer> const& scorers,
-    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
+    std::shared_ptr<const IResearchView::Snapshot> reader, OutRegisters outRegisters,
+    std::vector<RegisterId> scoreRegisters, Query& query, std::vector<Scorer> const& scorers,
+    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
     int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
-    : ExecutorInfos(std::move(infos)),
-      _firstOutputRegister(firstOutputRegister),
-      _numScoreRegisters(numScoreRegisters),
+    : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
       _scorers(scorers),
-      _sort(sort),
+      _sort(std::move(sort)),
       _storedValues(storedValues),
       _plan(plan),
       _outVariable(outVariable),
@@ -126,26 +124,23 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _depth(depth),
       _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
-  TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
-             getOutputRegisters()->end());
-}
-
-RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
-  return _firstOutputRegister + getNumScoreRegisters();
-}
-
-RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const noexcept {
-  return _numScoreRegisters;
+  std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
+      overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
+                 return std::pair{regs.documentOutReg, aql::RegisterPlan::MaxRegisterId};
+               },
+               [&](aql::IResearchViewExecutorInfos::LateMaterializeRegister regs) {
+                 return std::pair{regs.documentOutReg, regs.collectionOutReg};
+               },
+               [&](aql::IResearchViewExecutorInfos::NoMaterializeRegisters) {
+                 return std::pair{aql::RegisterPlan::MaxRegisterId,
+                                  aql::RegisterPlan::MaxRegisterId};
+               }},
+      outRegisters);
 }
 
 IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const
     noexcept {
   return _outNonMaterializedViewRegs;
-}
-
-RegisterId IResearchViewExecutorInfos::getFirstScoreRegister() const noexcept {
-  TRI_ASSERT(getNumScoreRegisters() > 0);
-  return _firstOutputRegister;
 }
 
 std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const
@@ -158,6 +153,10 @@ Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
 const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
     noexcept {
   return _scorers;
+}
+
+std::vector<RegisterId> const& IResearchViewExecutorInfos::getScoreRegisters() const noexcept {
+  return _scoreRegisters;
 }
 
 ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
@@ -196,9 +195,12 @@ IResearchViewStoredValues const& IResearchViewExecutorInfos::storedValues() cons
   return _storedValues;
 }
 
-bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const noexcept {
-  return getNumScoreRegisters() > 0 && getFirstScoreRegister() <= reg &&
-         reg < getFirstScoreRegister() + getNumScoreRegisters();
+auto IResearchViewExecutorInfos::getDocumentRegister() const noexcept -> RegisterId {
+  return _documentOutReg;
+}
+
+auto IResearchViewExecutorInfos::getCollectionRegister() const noexcept -> RegisterId {
+  return _collectionPointerReg;
 }
 
 IResearchViewStats::IResearchViewStats() noexcept : _scannedIndex(0) {}
@@ -206,9 +208,7 @@ void IResearchViewStats::incrScanned() noexcept { _scannedIndex++; }
 void IResearchViewStats::incrScanned(size_t value) noexcept {
   _scannedIndex = _scannedIndex + value;
 }
-size_t IResearchViewStats::getScanned() const noexcept {
-  return _scannedIndex;
-}
+size_t IResearchViewStats::getScanned() const noexcept { return _scannedIndex; }
 ExecutionStats& aql::operator+=(ExecutionStats& executionStats,
                                 const IResearchViewStats& iResearchViewStats) noexcept {
   executionStats.scannedIndex += iResearchViewStats.getScanned();
@@ -220,31 +220,36 @@ ExecutionStats& aql::operator+=(ExecutionStats& executionStats,
 ///////////////////////////////////////////////////////////////////////////////
 
 template <typename Impl, typename Traits>
+template <arangodb::iresearch::MaterializeType, typename>
 IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
     ReadContext& ctx) {
-
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
 
-  static CallbackFactory const callbackFactory{
-      [](ReadContext& ctx) {
-        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          AqlValue a{AqlValueHintCopy(doc.begin())};
-          AqlValueGuard guard{a, true};
-          ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
-          return true;
-        };
-      }
+  static CallbackFactory const callbackFactory{[](ReadContext& ctx) {
+    return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
+      AqlValue a{AqlValueHintCopy(doc.begin())};
+      AqlValueGuard guard{a, true};
+      ctx.outputRow.moveValueInto(ctx.getDocumentReg(), ctx.inputRow, guard);
+      return true;
     };
+  }};
 
   return callbackFactory(ctx);
 }
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
-    aql::RegisterId docOutReg, InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
-    : docOutReg(docOutReg),
-      inputRow(inputRow),
+    aql::RegisterId documentOutReg, aql::RegisterId collectionPointerReg,
+    InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
+    : inputRow(inputRow),
       outputRow(outputRow),
-      callback(copyDocumentCallback(*this)) {}
+      documentOutReg(documentOutReg),
+      collectionPointerReg(collectionPointerReg) {
+  if constexpr (static_cast<unsigned int>(Traits::MaterializeType &
+                                          iresearch::MaterializeType::Materialize) ==
+                static_cast<unsigned int>(iresearch::MaterializeType::Materialize)) {
+    callback = this->copyDocumentCallback(*this);
+  }
+}
 
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
@@ -310,7 +315,9 @@ std::vector<irs::bytes_ref>& IResearchViewExecutorBase<Impl, Traits>::IndexReadB
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-std::vector<irs::bytes_ref> const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() const noexcept {
+std::vector<irs::bytes_ref> const&
+IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValues() const
+    noexcept {
   return _storedValuesBuffer;
 }
 
@@ -376,10 +383,9 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
     IResearchViewExecutorBase::Fetcher&, IResearchViewExecutorBase::Infos& infos)
     : _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
-      _indexReadBuffer(_infos.getNumScoreRegisters()),
+      _indexReadBuffer(_infos.getScoreRegisters().size()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-      _ctx(&infos.getQuery(), infos.numberOfOutputRegisters(),
-           infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
+      _ctx(&infos.getQuery(), infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
       _execCtx(*infos.getQuery().trx(), _ctx),
@@ -413,7 +419,8 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(AqlItemBlockInputRange& inp
         static_cast<Impl&>(*this).reset();
       }
 
-      ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
+      ReadContext ctx(infos().getDocumentRegister(),
+                      infos().getCollectionRegister(), _inputRow, output);
       documentWritten = next(ctx);
 
       if (documentWritten) {
@@ -523,25 +530,25 @@ void IResearchViewExecutorBase<Impl, Traits>::fillScores(ReadContext const& /*ct
 
   // scorer registers are placed right before document output register
   // is used here currently only for assertions.
-  RegisterId scoreReg = infos().getFirstScoreRegister();
+  std::vector<RegisterId> const& scoreRegs = infos().getScoreRegisters();
+  size_t numScoreReg = 0;
 
   // copy scores, registerId's are sequential
-  for (; begin != end; ++begin, ++scoreReg) {
-    TRI_ASSERT(infos().isScoreReg(scoreReg));
+  for (; begin != end; ++begin, ++numScoreReg) {
+    TRI_ASSERT(numScoreReg < scoreRegs.size());
     _indexReadBuffer.pushScore(*begin);
   }
 
   // We should either have no _scrVals to evaluate, or all
-  TRI_ASSERT(begin == nullptr || !infos().isScoreReg(scoreReg));
+  TRI_ASSERT(begin == nullptr || numScoreReg >= scoreRegs.size());
 
-  while (infos().isScoreReg(scoreReg)) {
+  while (numScoreReg < scoreRegs.size()) {
     _indexReadBuffer.pushScoreNone();
-    ++scoreReg;
+    ++numScoreReg;
   }
 
   // we should have written exactly all score registers by now
-  TRI_ASSERT(!infos().isScoreReg(scoreReg));
-  TRI_ASSERT(scoreReg == infos().getOutputRegister());
+  TRI_ASSERT(numScoreReg == scoreRegs.size());
 }
 
 template <typename Impl, typename Traits>
@@ -594,6 +601,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 }
 
 template <typename Impl, typename Traits>
+template <arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId, LogicalCollection const& collection) {
   // we will need collection Id also as View could produce documents from multiple collections
@@ -605,12 +613,12 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
                     "Pointer not fits in uint64_t");
       AqlValue a(AqlValueHintUInt(reinterpret_cast<uint64_t>(&collection)));
       AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getNmColPtrOutReg(), ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow, guard);
     }
     {
       AqlValue a(AqlValueHintUInt(documentId.id()));
       AqlValueGuard guard{a, true};
-      ctx.outputRow.moveValueInto(ctx.getNmDocIdOutReg(), ctx.inputRow, guard);
+      ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, guard);
     }
     return true;
   } else {
@@ -655,8 +663,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(infos().getQuery().trx(),
-                                                          documentId, ctx.callback))) {
+    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(infos().getQuery().trx(), documentId,
+                                                          ctx.getDocumentCallback()))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==
@@ -678,24 +686,25 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
         return false;
       }
     }
-  } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize && !Traits::Ordered) {
-    AqlValue v(VPackSlice::noneSlice());
-    AqlValueGuard guard{v, true};
-    ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
+  } else if constexpr (Traits::MaterializeType == MaterializeType::NotMaterialize &&
+                       !Traits::Ordered) {
+    ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
   if constexpr (Traits::Ordered) {
     // scorer register are placed right before the document output register
-    RegisterId scoreReg = infos().getFirstScoreRegister();
+    std::vector<RegisterId> const& scoreRegisters = infos().getScoreRegisters();
+    auto scoreRegIter = scoreRegisters.begin();
     for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
-      TRI_ASSERT(infos().isScoreReg(scoreReg));
+      TRI_ASSERT(scoreRegIter != scoreRegisters.end());
       AqlValueGuard guard{it, false};
-      ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
-      ++scoreReg;
+
+      ctx.outputRow.moveValueInto(*scoreRegIter, ctx.inputRow, guard);
+      ++scoreRegIter;
     }
 
     // we should have written exactly all score registers by now
-    TRI_ASSERT(!infos().isScoreReg(scoreReg));
+    TRI_ASSERT(scoreRegIter == scoreRegisters.end());
   } else {
     UNUSED(bufferEntry);
   }
@@ -703,8 +712,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 }
 
 template <typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(
-    irs::document const& doc, size_t index) {
+void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document const& doc,
+                                                               size_t index) {
   TRI_ASSERT(index < _storedValuesReaders.size());
   auto const& reader = _storedValuesReaders[index];
   TRI_ASSERT(reader);
@@ -719,8 +728,8 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(
 }
 
 template <typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(
-    irs::document const& doc, size_t storedValuesIndex /*= 0*/) {
+void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const& doc,
+                                                               size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   TRI_ASSERT(!columnsFieldsRegs.empty());
   auto index = storedValuesIndex * columnsFieldsRegs.size();
@@ -783,7 +792,6 @@ IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& 
       _readerOffset(0),
       _scr(&irs::score::no_score()),
       _scrVal() {
-  TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
   this->_storedValuesReaders.resize(this->_infos.getOutNonMaterializedViewRegs().size());
 }
 
@@ -1095,7 +1103,6 @@ IResearchViewMergeExecutor<ordered, materializeType>::IResearchViewMergeExecutor
   TRI_ASSERT(!infos.sort().first->empty());
   TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
   TRI_ASSERT(infos.sort().second);
-  TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1174,7 +1181,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
   auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
   auto const storedValuesCount = columnsFieldsRegs.size();
   this->_storedValuesReaders.resize(size * storedValuesCount);
-  auto isSortReaderUsedInStoredValues = storedValuesCount > 0 &&
+  auto isSortReaderUsedInStoredValues =
+      storedValuesCount > 0 &&
       IResearchViewNode::SortColumnNumber == columnsFieldsRegs.cbegin()->first;
 
   for (size_t i = 0; i < size; ++i) {
@@ -1255,8 +1263,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       }
     }
 
-    _segments.emplace_back(std::move(it), *doc, *score, *collection, std::move(pkReader),
-                           std::move(sortReader), i);
+    _segments.emplace_back(std::move(it), *doc, *score, *collection,
+                           std::move(pkReader), std::move(sortReader), i);
   }
 
   _heap_it.reset(_segments.size());

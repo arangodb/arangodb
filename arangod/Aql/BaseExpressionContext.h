@@ -42,8 +42,6 @@ class BaseExpressionContext final : public QueryExpressionContext {
 
   ~BaseExpressionContext() override = default;
 
-  size_t numRegisters() const override;
-
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
