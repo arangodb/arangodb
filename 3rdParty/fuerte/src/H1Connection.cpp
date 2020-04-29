@@ -355,10 +355,9 @@ template <SocketType ST>
 void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
   FUERTE_ASSERT(this->_active.load());
-  // The following assertion should be possible according to the TLA+
-  // model. However, Jenkins found violations. This needs to be investigated.
-  // FUERTE_ASSERT(this->_state.load() == Connection::State::Connected);
   auto state = this->_state.load();
+  FUERTE_ASSERT(state == Connection::State::Connected ||
+                state == Connection::State::Failed);
   if (state != Connection::State::Connected &&
       state != Connection::State::Failed) {
     FUERTE_LOG_ERROR << "asyncWriteNextRequest found an unexpected state: "
@@ -420,6 +419,9 @@ void H1Connection<ST>::asyncWriteNextRequest() {
 template <SocketType ST>
 void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
+  FUERTE_ASSERT(this->_writing);
+  FUERTE_ASSERT(this->_active);
+  FUERTE_ASSERT(this->_state != Connection::State::Connecting);
   this->_writing = false;       // indicate that no async write is ongoing any more
   this->_proto.timer.cancel();  // cancel alarm for timeout
   auto timePassed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -450,8 +452,15 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
       err = Error::Canceled;
     }
 
-    // Stop current connection and try to restart a new one.
-    this->restartConnection(err);
+    auto state = this->_state;
+    if (state != Connection::State::Failed) {
+      // Stop current connection and try to restart a new one.
+      this->restartConnection(err);
+    } else {
+      drainQueue(Error::Canceled);
+      abortOngoingRequests(Error::Canceled);
+      this->asyncWriteNextRequest();    // will reset `active`
+    }
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -486,8 +495,15 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
                      << ec.message() << "' , this=" << this << "\n";
 
-    // Restart connection, will invoke _item cb
-    this->restartConnection(translateError(ec, Error::ReadError));
+    auto state = this->_state;
+    if (state != Connection::State::Failed) {
+      // Restart connection, will invoke _item cb
+      this->restartConnection(translateError(ec, Error::ReadError));
+    } else {
+      drainQueue(Error::Canceled);
+      abortOngoingRequests(Error::Canceled);
+      this->asyncWriteNextRequest();    // will reset `active`
+    }
     return;
   }
   FUERTE_ASSERT(_item != nullptr);
@@ -586,7 +602,6 @@ void H1Connection<ST>::abortOngoingRequests(const fuerte::Error ec) {
     _item->invokeOnError(ec);
     _item.reset();
   }
-  _active.store(false);  // no IO operations running
 }
 
 /// abort all requests lingering in the queue
