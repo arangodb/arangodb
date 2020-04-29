@@ -147,7 +147,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-  builder.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(_name)));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_name == StaticStrings::SystemDatabase));
 
   if (ServerState::instance()->isCoordinator()) {
     addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
