@@ -4,6 +4,11 @@ devel
 * Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
   is not another one hiding somewhere.
 
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
+* Fix REST API `/_admin/cluster/removeServer`.
+  This also fixes the removal of servers via the web interface.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Lower the default values for `--rocksdb.block-cache-size` and 
