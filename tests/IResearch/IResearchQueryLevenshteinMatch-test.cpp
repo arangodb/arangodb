@@ -331,6 +331,62 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid 5th argument type (empty-array)
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, []) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid 5th argument type (empty-array) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d['value'], 'foo', 2, true, []) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid 4th argument type (array)
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, [42]) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid 4th argument type (bool) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d['value'], 'foo', 2, true, false) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid 4th argument type (string) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d['value'], 'foo', 2, true, '42') RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid 4th argument type (null)
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 1, true, null) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid 4th argument type (object)
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, { \"a\": 7, \"b\": \"c\" }) RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test max Levenshtein distance
   {
     auto result = arangodb::tests::executeQuery(
@@ -368,7 +424,7 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, null) RETURN d");
+        "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.value, 'foo', 2, true, 42, null) RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
