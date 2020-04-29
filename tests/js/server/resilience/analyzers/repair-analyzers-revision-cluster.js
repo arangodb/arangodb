@@ -84,7 +84,6 @@ function repairAnalyzersRevisionTestSuite () {
     testRepairPlan: function() {
       db._useDatabase("_system");
       let dbName = "testDbName";
-      let prefix = "";
       try { db._dropDatabase(dbName); } catch (e) {}
 
       db._createDatabase(dbName);
@@ -99,7 +98,7 @@ function repairAnalyzersRevisionTestSuite () {
       assertEqual(revisionNumber, revision.revision);
       assertEqual(revisionNumber, revision.buildingRevision);
 
-      analyzers.save(prefix + "valid0", "identity");
+      analyzers.save("valid", "identity");
       revisionNumber++;
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
@@ -108,18 +107,17 @@ function repairAnalyzersRevisionTestSuite () {
       assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
       assertEqual(revisionNumber, revision.revision);
       assertEqual(revisionNumber, revision.buildingRevision);
-      let rebootId = revision.coordinatorRebootId;
 
       let value = {"revision": revisionNumber - 1,
           "buildingRevision": revisionNumber,
           "coordinator": revision.coordinator,
-          "coordinatorRebootId": rebootId + 1};
+          "coordinatorRebootId": revision.coordinatorRebootId + 1};
 
       // Break analyzers revision
       global.ArangoAgency.set(`Plan/Analyzers/${dbName}`, value);
       global.ArangoAgency.increaseVersion("Plan/Version");
 
-      // Restore analyzers revision
+      // Repair analyzers revision
       expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');
 
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
@@ -129,6 +127,18 @@ function repairAnalyzersRevisionTestSuite () {
       assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
       assertEqual(revisionNumber - 1, revision.revision);
       assertEqual(revisionNumber - 1, revision.buildingRevision);
+      
+      analyzers.remove("valid", true);
+      revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+      assertTrue(revision.hasOwnProperty("revision"));
+      assertTrue(revision.hasOwnProperty("buildingRevision"));
+      assertTrue(revision.hasOwnProperty("coordinator"));
+      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+      assertEqual(revisionNumber, revision.revision);
+      assertEqual(revisionNumber, revision.buildingRevision);
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
     }
   };
 }
