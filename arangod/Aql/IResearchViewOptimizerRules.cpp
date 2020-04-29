@@ -120,7 +120,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
       return false;
     }
 
-    auto const& varsValid = viewNode.getVarsValid();
+    auto const& varsValid = viewNode.getVarsValidStack().back();
 
     // remove all invalid variables from the condition
     if (searchCondition.removeInvalidVariables(varsValid)) {

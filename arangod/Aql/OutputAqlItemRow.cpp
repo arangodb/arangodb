@@ -50,7 +50,7 @@ using namespace arangodb::aql;
 OutputAqlItemRow::OutputAqlItemRow(
     SharedAqlItemBlockPtr block,
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
+    RegIdSetStack const& registersToKeep,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
     AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
@@ -66,15 +66,19 @@ OutputAqlItemRow::OutputAqlItemRow(
       _numValuesWritten(0),
       _call(clientCall),
       _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)),
+      _registersToKeep(registersToKeep),
       _registersToClear(std::move(registersToClear)) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : *_outputRegisters) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
-    for (auto const& reg : *_registersToKeep) {
-      TRI_ASSERT(reg < _block->getNrRegs());
+    // the block must have enough columns for the registers of both data rows,
+    // and all the different shadow row depths
+    for (auto const& stackEntry : _registersToKeep) {
+      for (auto const& reg : stackEntry) {
+        TRI_ASSERT(reg < _block->getNrRegs());
+      }
     }
     for (auto const& reg : *_registersToClear) {
       TRI_ASSERT(reg < _block->getNrRegs());
@@ -379,8 +383,25 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
   TRI_ASSERT(!_doNotCopyInputRow);
   bool mustClone = testIfWeMustClone(sourceRow);
 
+  auto const& regsToKeep = std::invoke([&] {
+    if constexpr (std::is_same_v<ItemRowType, InputAqlItemRow>) {
+      return registersToKeep().back();
+    } else {
+      static_assert(std::is_same_v<ItemRowType, ShadowAqlItemRow>);
+      if (registersToKeep().size() == 1) {
+        // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
+        return registersToKeep().back();
+      }
+      auto depth = static_cast<size_t>(sourceRow.getDepth());
+      auto roffset = depth + 2;
+      TRI_ASSERT(roffset <= registersToKeep().size());
+      auto idx = registersToKeep().size() - roffset;
+      return registersToKeep().at(idx);
+    }
+  });
+
   if (mustClone) {
-    for (auto itemId : registersToKeep()) {
+    for (auto itemId : regsToKeep) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (!_allowSourceRowUninitialized) {
         TRI_ASSERT(sourceRow.isInitialized());
@@ -411,7 +432,7 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
   } else {
     TRI_ASSERT(_baseIndex > 0);
     if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
-      block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+      block().copyValuesFromRow(_baseIndex, regsToKeep, _lastBaseIndex);
     }
   }
 

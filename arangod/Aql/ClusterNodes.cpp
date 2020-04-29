@@ -145,8 +145,8 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto regsToKeep = calcRegsToKeep();
+  auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before,
   // i.e. before sending it over the network.
@@ -730,13 +730,11 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     writableOutputRegisters->emplace(outputOld);
   }
 
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   auto executorInfos = SingleRemoteModificationInfos(
-      in, outputNew, outputOld, out,
-      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
+      in, outputNew, outputOld, out, _plan->getAst()->query()->trx(), std::move(options),
       collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,

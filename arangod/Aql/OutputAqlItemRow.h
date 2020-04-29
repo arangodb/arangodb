@@ -51,12 +51,12 @@ class OutputAqlItemRow {
   // TODO Implement this behavior via a template parameter instead?
   enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
-  explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
-                            std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-                            AqlCall clientCall = AqlCall{},
-                            CopyRowBehavior = CopyRowBehavior::CopyInputRows);
+  OutputAqlItemRow(SharedAqlItemBlockPtr block,
+                   std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+                   RegIdSetStack const& registersToKeep,
+                   std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+                   AqlCall clientCall = AqlCall{},
+                   CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;
   OutputAqlItemRow(OutputAqlItemRow const&) = delete;
@@ -221,9 +221,8 @@ class OutputAqlItemRow {
     return *_outputRegisters;
   }
 
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToKeep() const {
-    TRI_ASSERT(_registersToKeep != nullptr);
-    return *_registersToKeep;
+  [[nodiscard]] RegIdSetStack const& registersToKeep() const {
+    return _registersToKeep;
   }
 
   [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
@@ -286,7 +285,7 @@ class OutputAqlItemRow {
   AqlCall _call;
 
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToKeep;
+  RegIdSetStack const& _registersToKeep;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
 
  private:

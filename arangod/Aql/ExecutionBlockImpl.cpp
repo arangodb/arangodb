@@ -355,7 +355,8 @@ template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   SharedAqlItemBlockPtr block =
-      input.cloneToBlock(_engine->itemBlockManager(), *(registerInfos().registersToKeep()),
+      input.cloneToBlock(_engine->itemBlockManager(),
+                         registerInfos().registersToKeep().back(),
                          registerInfos().numberOfOutputRegisters());
   TRI_ASSERT(_skipped.nothingSkipped());
   _skipped.reset();

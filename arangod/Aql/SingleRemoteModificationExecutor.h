@@ -35,16 +35,14 @@ namespace arangodb {
 namespace aql {
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(
-      RegisterId inputRegister, RegisterId outputNewRegisterId,
-      RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> const& registersToClear,
-      std::unordered_set<RegisterId>&& registersToKeep, transaction::Methods* trx,
-      OperationOptions options, aql::Collection const* aqlCollection,
-      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-      IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
-      std::string key, bool hasParent, bool replaceIndex)
+  SingleRemoteModificationInfos(RegisterId inputRegister, RegisterId outputNewRegisterId,
+                                RegisterId outputOldRegisterId, RegisterId outputRegisterId,
+                                transaction::Methods* trx, OperationOptions options,
+                                aql::Collection const* aqlCollection,
+                                ConsultAqlWriteFilter consultAqlWriteFilter,
+                                IgnoreErrors ignoreErrors,
+                                IgnoreDocumentNotFound ignoreDocumentNotFound,
+                                std::string key, bool hasParent, bool replaceIndex)
       : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
                                   outputOldRegisterId, outputRegisterId, trx,
