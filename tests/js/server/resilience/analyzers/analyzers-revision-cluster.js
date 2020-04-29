@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -44,8 +44,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // valid name 1
     analyzers.save(prefix + "valid1", "identity");
@@ -57,8 +55,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // invalid name
     try { analyzers.save(prefix + "inv:alid", "identity"); } catch(e) {};
@@ -69,8 +65,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // valid name 2
     analyzers.save(prefix + "valid2", "identity");
@@ -82,8 +76,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // invalid repeated name 1
     try { analyzers.save(prefix + "valid1", "delimiter", { "delimiter": "," }); } catch(e) {};
@@ -94,8 +86,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // remove valid name 0
     analyzers.remove(prefix + "valid0", true);
@@ -107,8 +97,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // remove invalid repeated name 0
     try { analyzers.remove(prefix + "valid0", true); } catch(e) {};
@@ -119,8 +107,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // remove valid name 2
     analyzers.remove(prefix + "valid2", true);
@@ -132,8 +118,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
 
     // remove valid name 1
     analyzers.remove(prefix + "valid1", true);
@@ -145,8 +129,6 @@ function analyzersRevisionTestSuite () {
     assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
     assertEqual(revisionNumber, revision.revision);
     assertEqual(revisionNumber, revision.buildingRevision);
-    assertNotEqual("", revision.coordinator);
-    assertEqual(1, revision.coordinatorRebootId);
   }
 
   return {

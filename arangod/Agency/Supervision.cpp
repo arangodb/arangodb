@@ -1873,7 +1873,7 @@ void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
   {
     VPackArrayBuilder trxs(envelope.get());
     {
-      std::string anPath = planAnalyzersPrefix + database + "/";
+      std::string anPath = _agencyPrefix + planAnalyzersPrefix + database + "/";
 
       VPackArrayBuilder trx(envelope.get());
       {
@@ -1888,17 +1888,25 @@ void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
           VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AnalyzersBuildingRevision);
           envelope->add("op", VPackValue("decrement"));
         }
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AttrCoordinatorRebootId);
+          envelope->add("op", VPackValue("delete"));
+        }
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AttrCoordinator);
+          envelope->add("op", VPackValue("delete"));
+        }
       }
       {
         // precondition that this analyzers revision is still in Plan and is building
         VPackObjectBuilder preconditions(envelope.get());
         envelope->add(anPath + StaticStrings::AnalyzersRevision,
                       VPackValue(revision));
-        envelope->add(anPath + StaticStrings::AnalyzersRevision,
+        envelope->add(anPath + StaticStrings::AnalyzersBuildingRevision,
                       VPackValue(buildingRevision));
         envelope->add(anPath + StaticStrings::AttrCoordinatorRebootId,
                       VPackValue(rebootID));
-        envelope->add(anPath +  StaticStrings::AttrCoordinator,
+        envelope->add(anPath + StaticStrings::AttrCoordinator,
                       VPackValue(coordinatorID));
 
         {
