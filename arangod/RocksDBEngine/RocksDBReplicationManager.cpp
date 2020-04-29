@@ -315,7 +315,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::drop(LogicalCollection* collection) {
-  LOG_TOPIC("ce3b0", TRACE, Logger::REPLICATION)
+  LOG_TOPIC("fe4bb", TRACE, Logger::REPLICATION)
       << "dropping all replication contexts for collection " << collection->name();
 
   bool found = false;
