@@ -818,6 +818,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
 
   RegisterPlanWalker walker(v);
   walk(walker);
+
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
@@ -935,20 +936,21 @@ void ExecutionNode::removeDependencies() {
 }
 
 std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  ExecutionNode const* const previousNode = getFirstDependency();
-  // Only the Singleton has no previousNode, and it does not call this method.
-  TRI_ASSERT(previousNode != nullptr);
-
-  bool inserted = false;
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
   std::unordered_set<RegisterId> regsToKeep{};
   regsToKeep.reserve(getVarsUsedLater().size());
 
-  for (auto const var : getVarsUsedLater()) {
+  auto varsUsedLater = getVarsUsedLater();
+  auto varsSetHere = getVariablesSetHere();
+
+  for (auto const var : getVarsValid()) {
     auto reg = variableToRegisterId(var);
-    if (reg < nrInRegs) {
-      std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
-      TRI_ASSERT(inserted);
+
+    bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                     varsSetHere.end();
+    bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                       varsUsedLater.end();
+    if (!isSetHere && isUsedLater) {
+      regsToKeep.insert(reg);
     }
   }
 
@@ -984,8 +986,8 @@ RegisterInfos ExecutionNode::createRegisterInfos(
 
 RegisterId ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // in case of the SingletonNode, there are no input registers
+  return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
 RegisterId ExecutionNode::getNrOutputRegisters() const {
@@ -1198,13 +1200,12 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
-bool ExecutionNode::isIncreaseDepth() const {
+bool ExecutionNode::isPassthrough() const {
   switch (getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::COLLECT:
-
 
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
@@ -1213,41 +1214,18 @@ bool ExecutionNode::isIncreaseDepth() const {
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::MATERIALIZE:
-      return true;
+      return false;
 
     default:
-      return false;
+      return true;
   }
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  // number in == number out
-  // Other nodes get the nrInRegs from the previous node.
-  // That is why we do not use `calcRegsToKeep()`
-  RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
-  std::unordered_set<RegisterId> regsToKeep;
-  if (isInSubquery()) {
-    for (auto const& var : this->getVarsUsedLater()) {
-      auto val = variableToRegisterId(var);
-      if (val < nrRegs) {
-        auto rv = regsToKeep.insert(val);
-        TRI_ASSERT(rv.second);
-      }
-    }
-  }
-
-  auto regsToClear = getRegsToClear();
-
-  auto registerInfos = RegisterInfos{make_shared_unordered_set(),
-                                     make_shared_unordered_set(),
-                                     nrRegs,
-                                     nrRegs,
-                                     regsToClear,
-                                     regsToKeep};
-
+  auto registerInfos = createRegisterInfos(make_shared_unordered_set(), make_shared_unordered_set());
   IdExecutorInfos infos(false);
 
   auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
@@ -1281,9 +1259,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
-VariableIdSet SingletonNode::getOutputVariables() const {
-  return {};
-}
+VariableIdSet SingletonNode::getOutputVariables() const { return {}; }
 
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
@@ -1590,9 +1566,7 @@ size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
 
-auto LimitNode::getOutputVariables() const -> VariableIdSet {
-  return {};
-}
+auto LimitNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -2572,7 +2546,6 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-auto materialize::MaterializeNode::getOutputVariables() const
-    -> VariableIdSet {
+auto materialize::MaterializeNode::getOutputVariables() const -> VariableIdSet {
   return {_outVariable->id};
 }
