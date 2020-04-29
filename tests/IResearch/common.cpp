@@ -909,28 +909,26 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
   ASSERT_TRUE(parseResult.result.fail());
 }
 
-arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id, bool allowSystem) {
+arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
   arangodb::CreateDatabaseInfo info(server);
-  info.allowSystemDB(allowSystem);
   auto rv = info.load(name, id);
-  if(rv.fail()) {
+  if (rv.fail()) {
     throw std::runtime_error(rv.errorMessage());
   }
   return info;
-};
+}
 
 arangodb::CreateDatabaseInfo systemDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
-  auto rv =  createInfo(server, name, id, true);
-  return rv;
-};
+  return createInfo(server, name, id);
+}
 
 arangodb::CreateDatabaseInfo testDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
-};
+}
 
 arangodb::CreateDatabaseInfo unknownDBInfo(arangodb::application_features::ApplicationServer& server, std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

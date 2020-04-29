@@ -77,6 +77,8 @@ struct TraverserOptions : public graph::BaseOptions {
   ///        The Node keeps responsibility
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
+  bool _producePaths{true};
+
  public:
   uint64_t minDepth;
 
@@ -164,6 +166,10 @@ struct TraverserOptions : public graph::BaseOptions {
   }
 
   auto estimateDepth() const noexcept -> uint64_t override;
+
+  auto setProducePaths(bool value) -> void { _producePaths = value; }
+
+  auto producePaths() -> bool { return _producePaths; }
 };
 }  // namespace traverser
 }  // namespace arangodb

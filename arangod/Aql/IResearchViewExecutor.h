@@ -40,6 +40,7 @@
 #include <index/heap_iterator.hpp>
 
 #include <utility>
+#include <variant>
 
 namespace iresearch {
 class score;
@@ -66,20 +67,35 @@ class IResearchViewExecutorInfos {
  public:
   using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
+  struct LateMaterializeRegister {
+    RegisterId documentOutReg;
+    RegisterId collectionOutReg;
+  };
+
+  struct MaterializeRegisters {
+    RegisterId documentOutReg;
+  };
+
+  struct NoMaterializeRegisters {};
+
+  using OutRegisters =
+      std::variant<MaterializeRegisters, LateMaterializeRegister, NoMaterializeRegisters>;
+
   IResearchViewExecutorInfos(
-      std::shared_ptr<const iresearch::IResearchView::Snapshot> reader,
-      RegisterId firstOutputRegister, RegisterId numScoreRegisters,
+      std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
+      OutRegisters outRegister, std::vector<RegisterId> scoreRegisters,
       aql::QueryContext& query, std::vector<iresearch::Scorer> const& scorers,
-      std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
-      iresearch::IResearchViewStoredValues const& storedValues,
-      ExecutionPlan const& plan, Variable const& outVariable,
-      aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
-      IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
+      std::pair<iresearch::IResearchViewSort const*, size_t> sort,
+      iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
+      Variable const& outVariable, aql::AstNode const& filterCondition,
+      std::pair<bool, bool> volatility, VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
-  RegisterId getOutputRegister() const noexcept;
-  RegisterId getFirstScoreRegister() const noexcept;
-  RegisterId getNumScoreRegisters() const noexcept;
+  auto getDocumentRegister() const noexcept -> RegisterId;
+  auto getCollectionRegister() const noexcept -> RegisterId;
+
+  std::vector<RegisterId> const& getScoreRegisters() const noexcept;
+
   iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const
       noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
@@ -99,11 +115,10 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
-  bool isScoreReg(RegisterId reg) const noexcept;
-
  private:
-  RegisterId const _firstOutputRegister;
-  RegisterId const _numScoreRegisters;
+  aql::RegisterId _documentOutReg;
+  aql::RegisterId _collectionPointerReg;
+  std::vector<RegisterId> _scoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   aql::QueryContext& _query;
   std::vector<iresearch::Scorer> const& _scorers;
@@ -174,22 +189,50 @@ class IResearchViewExecutorBase {
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  protected:
+  template <auto type>
+  using enabled_for_materialize_type_t =
+      std::enable_if_t<static_cast<unsigned int>(Traits::MaterializeType& type) == static_cast<unsigned int>(type)>;
+
   class ReadContext {
-   private:
-    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
-
    public:
-    explicit ReadContext(aql::RegisterId docOutReg, InputAqlItemRow& inputRow,
-                         OutputAqlItemRow& outputRow);
+    explicit ReadContext(aql::RegisterId documentOutReg, aql::RegisterId collectionPointerReg,
+                         InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow);
 
-    aql::RegisterId const docOutReg;
     InputAqlItemRow& inputRow;
     OutputAqlItemRow& outputRow;
-    IndexIterator::DocumentCallback const callback;
 
-    aql::RegisterId getNmColPtrOutReg() const noexcept { return docOutReg; }
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::LateMaterialize,
+              typename E = enabled_for_materialize_type_t<t>>
+    [[nodiscard]] auto getCollectionPointerReg() const noexcept -> aql::RegisterId {
+      return collectionPointerReg;
+    }
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::LateMaterialize,
+              typename E = enabled_for_materialize_type_t<t>>
+    [[nodiscard]] auto getDocumentIdReg() const noexcept -> aql::RegisterId {
+      return documentOutReg;
+    }
 
-    aql::RegisterId getNmDocIdOutReg() const noexcept { return docOutReg + 1; }
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::Materialize,
+              typename E = enabled_for_materialize_type_t<t>>
+    auto getDocumentReg() const noexcept -> aql::RegisterId {
+      return documentOutReg;
+    }
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::Materialize,
+              typename E = enabled_for_materialize_type_t<t>>
+    auto getDocumentCallback() const noexcept -> IndexIterator::DocumentCallback const& {
+      return callback;
+    }
+
+   private:
+    template <iresearch::MaterializeType t = iresearch::MaterializeType::Materialize,
+              typename E = enabled_for_materialize_type_t<t>>
+    static IndexIterator::DocumentCallback copyDocumentCallback(ReadContext& ctx);
+
+    aql::RegisterId documentOutReg;
+    aql::RegisterId collectionPointerReg;
+
+   public:
+    IndexIterator::DocumentCallback callback;
   };  // ReadContext
 
   template <typename ValueType>
@@ -218,8 +261,7 @@ class IResearchViewExecutorBase {
     class ScoreIterator {
      public:
       ScoreIterator() = delete;
-      ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx,
-                    size_t numScores) noexcept;
+      ScoreIterator(std::vector<AqlValue>& scoreBuffer, size_t keyIdx, size_t numScores) noexcept;
 
       std::vector<AqlValue>::iterator begin() noexcept;
 
@@ -299,6 +341,8 @@ class IResearchViewExecutorBase {
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
                 LocalDocumentId const& documentId, LogicalCollection const& collection);
 
+  template <iresearch::MaterializeType t = iresearch::MaterializeType::LateMaterialize,
+            typename E = enabled_for_materialize_type_t<t>>
   bool writeLocalDocumentId(ReadContext& ctx, LocalDocumentId const& documentId,
                             LogicalCollection const& collection);
 
@@ -311,7 +355,8 @@ class IResearchViewExecutorBase {
 
   void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0);
 
-  bool getStoredValuesReaders(irs::sub_reader const& segmentReader, size_t storedValuesIndex = 0);
+  bool getStoredValuesReaders(irs::sub_reader const& segmentReader,
+                              size_t storedValuesIndex = 0);
 
  private:
   bool next(ReadContext& ctx);
@@ -423,8 +468,8 @@ class IResearchViewMergeExecutor
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
-    irs::bytes_ref sortValue{irs::bytes_ref::NIL};      // sort column value
-    irs::columnstore_reader::values_reader_f pkReader;  // primary key reader
+    irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
+    irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
     irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
     size_t storedValuesIndex;  // first stored values index
   };
