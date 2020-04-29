@@ -313,7 +313,12 @@ class OutputAqlItemRow {
     return *_block;
   }
 
-  template <class ItemRowType>
+  enum class CopyRowType {
+    PassedItemRowType,
+    CreateShadowRowFromInputRow
+  };
+
+  template <class ItemRowType, CopyRowType copyRowType = CopyRowType::PassedItemRowType>
   void doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing);
 
   template <class ItemRowType>

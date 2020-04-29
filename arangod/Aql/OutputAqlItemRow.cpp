@@ -326,7 +326,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(!sourceRow.internalBlockIs(_block));
 #endif
   block().makeShadowRow(_baseIndex);
-  doCopyRow(sourceRow, true);
+  doCopyRow<InputAqlItemRow, CopyRowType::CreateShadowRowFromInputRow>(sourceRow, true);
 }
 
 void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow) {
@@ -376,7 +376,7 @@ void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow c
   block().setShadowRowDepth(_baseIndex, sourceRow.getShadowDepthValue());
 }
 
-template <class ItemRowType>
+template <class ItemRowType, OutputAqlItemRow::CopyRowType copyRowType>
 void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
@@ -384,16 +384,28 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
   bool mustClone = testIfWeMustClone(sourceRow);
 
   auto const& regsToKeep = std::invoke([&] {
-    if constexpr (std::is_same_v<ItemRowType, InputAqlItemRow>) {
+    bool constexpr createShadowRow = copyRowType == CopyRowType::CreateShadowRowFromInputRow;
+    static_assert(createShadowRow != (copyRowType == CopyRowType::PassedItemRowType));
+    if constexpr (std::is_same_v<ItemRowType, InputAqlItemRow> && !createShadowRow) {
       return registersToKeep().back();
     } else {
-      static_assert(std::is_same_v<ItemRowType, ShadowAqlItemRow>);
+      static_assert(std::is_same_v<ItemRowType, ShadowAqlItemRow> ||
+                    (std::is_same_v<ItemRowType, InputAqlItemRow> && createShadowRow));
       if (registersToKeep().size() == 1) {
         // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
         return registersToKeep().back();
       }
-      auto depth = static_cast<size_t>(sourceRow.getDepth());
+      auto depth = std::invoke([&]() -> size_t {
+        if constexpr (std::is_same_v<ItemRowType, ShadowAqlItemRow>) {
+          return static_cast<size_t>(sourceRow.getDepth());
+        } else {
+          static_assert(std::is_same_v<ItemRowType, InputAqlItemRow> && createShadowRow);
+          // Create a relevant shadow row, that is, depth 0.
+          return 0;
+        }
+      });
       auto roffset = depth + 2;
+
       TRI_ASSERT(roffset <= registersToKeep().size());
       auto idx = registersToKeep().size() - roffset;
       return registersToKeep().at(idx);
