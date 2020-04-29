@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "QueryResources.h"
+#include "AstResources.h"
 #include "Aql/AstNode.h"
 #include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
@@ -36,7 +36,7 @@ namespace {
 static char const* EmptyString = "";
 }  // namespace
 
-QueryResources::QueryResources(ResourceMonitor* resourceMonitor)
+AstResources::AstResources(ResourceMonitor* resourceMonitor)
     : _resourceMonitor(resourceMonitor),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _stringsLength(0),
@@ -44,7 +44,7 @@ QueryResources::QueryResources(ResourceMonitor* resourceMonitor)
       _shortStringStorage(_resourceMonitor, 1024) {
 }
 
-QueryResources::~QueryResources() {
+AstResources::~AstResources() {
   // free strings
   for (auto& it : _strings) {
     TRI_FreeString(it);
@@ -66,7 +66,7 @@ QueryResources::~QueryResources() {
 }
 
 /// @brief add a node to the list of nodes
-void QueryResources::addNode(AstNode* node) {
+void AstResources::addNode(AstNode* node) {
   auto guard = scopeGuard([node]() {
     // in case something goes wrong, we must free the node we got to prevent
     // memleaks
@@ -112,7 +112,7 @@ void QueryResources::addNode(AstNode* node) {
 
 /// @brief register a string
 /// the string is freed when the query is destroyed
-char* QueryResources::registerString(char const* p, size_t length) {
+char* AstResources::registerString(char const* p, size_t length) {
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -132,7 +132,7 @@ char* QueryResources::registerString(char const* p, size_t length) {
 
 /// @brief register a potentially UTF-8-escaped string
 /// the string is freed when the query is destroyed
-char* QueryResources::registerEscapedString(char const* p, size_t length, size_t& outLength) {
+char* AstResources::registerEscapedString(char const* p, size_t length, size_t& outLength) {
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -152,7 +152,7 @@ char* QueryResources::registerEscapedString(char const* p, size_t length, size_t
 }
 
 /// @brief registers a long string and takes over the ownership for it
-char* QueryResources::registerLongString(char* copy, size_t length) {
+char* AstResources::registerLongString(char* copy, size_t length) {
   if (copy == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

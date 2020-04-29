@@ -74,7 +74,7 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
       _version("arango"),
       _mode("unknown mode"),
       _role("UNKNOWN"),
-      _loop(1),
+      _loop(1, "V8ClientConnection"),
       _vpackOptions(VPackOptions::Defaults),
       _forceJson(false),
       _setCustomError(false) {

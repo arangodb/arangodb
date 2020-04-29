@@ -53,6 +53,12 @@ class TraversalStats {
   }
   
   std::size_t getHttpRequests() const noexcept { return _httpRequests; }
+  
+  void operator+=(TraversalStats const& other) {
+    _filtered += other._filtered;
+    _scannedIndex += other._scannedIndex;
+    _httpRequests += other._httpRequests;
+  }
 
  private:
   std::size_t _filtered;

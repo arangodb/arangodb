@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Builder.h>
@@ -180,6 +181,8 @@ class ModificationExecutor {
  protected:
   void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
+  
+  transaction::Methods _trx;
 
   // The state that was returned on the last call to produceRows. For us
   // this is relevant because we might have collected some documents in the

@@ -33,8 +33,6 @@
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb::velocypack;
-
 namespace arangodb {
 
 class Result;
@@ -206,7 +204,7 @@ class ShortestPathExecutor {
    * row is lost, or the builder is resetted.
    */
   [[nodiscard]] auto getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
-                                 InputAqlItemRow& row, Builder& builder, Slice& id) -> bool;
+                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice& id) -> bool;
 
  private:
   Infos& _infos;

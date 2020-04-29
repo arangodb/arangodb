@@ -150,7 +150,7 @@ class RegisterPlanTest : public ::testing::Test {
   auto generateVars(size_t amount) -> std::vector<Variable> {
     std::vector<Variable> res;
     for (size_t i = 0; i < amount; ++i) {
-      res.emplace_back("var" + arangodb::basics::StringUtils::itoa(i), i);
+      res.emplace_back("var" + arangodb::basics::StringUtils::itoa(i), i, false);
     }
     return res;
   }

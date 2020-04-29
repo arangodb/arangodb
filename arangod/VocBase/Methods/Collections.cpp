@@ -23,8 +23,8 @@
 #include "Collections.h"
 #include "Basics/Common.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
@@ -37,11 +37,11 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -49,16 +49,12 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
@@ -590,7 +586,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
+    return Result(TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") + coll->name() + "'");
   }
 
   std::unordered_set<std::string> ignoreKeys{
@@ -672,20 +668,14 @@ Result Collections::updateProperties(LogicalCollection& collection,
     SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
-    if (res.fail()) {
-      return res;
+    if (res.ok()) {
+      // try to write new parameter to file
+      res = collection.properties(props, partialUpdate);
+      if (res.ok()) {
+        events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+      }
     }
 
-    // try to write new parameter to file
-    auto updateRes = collection.properties(props, partialUpdate);
-
-    if (!updateRes.ok()) {
-      return updateRes;
-    }
-
-    auto physical = collection.getPhysical();
-    TRI_ASSERT(physical != nullptr);
-    events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
     return res;
   }
 }
@@ -694,32 +684,15 @@ Result Collections::updateProperties(LogicalCollection& collection,
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& oldName,
+static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
                                   std::string const& newName) {
-  V8DealerFeature* dealer = V8DealerFeature::DEALER;
-  if (dealer == nullptr || !dealer->isEnabled()) {
-    return TRI_ERROR_NO_ERROR;  // V8 might is disabled
+  ExecContextSuperuserScope exscope;
+
+  graph::GraphManager gmngr{vocbase};
+  bool r = gmngr.renameGraphCollection(oldName, newName);
+  if (!r) {
+    return TRI_ERROR_FAILED;
   }
-
-  basics::StringBuffer buffer(true);
-  buffer.appendText(
-      "require('@arangodb/general-graph-common')._renameCollection(");
-  buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
-  buffer.appendChar(',');
-  buffer.appendJsonEncoded(newName.c_str(), newName.size());
-  buffer.appendText(");");
-
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createInternalContext();
-  V8ContextGuard guard(vocbase, securityContext);
-
-  auto isolate = guard.isolate();
-  v8::HandleScope scope(isolate);
-  TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                              TRI_V8_ASCII_PAIR_STRING(isolate, buffer.c_str(),
-                                                       buffer.length()),
-                              TRI_V8_ASCII_STRING(isolate, "collection rename"), false);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -743,7 +716,7 @@ Result Collections::rename(LogicalCollection& collection,
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
-    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   if (!doOverride) {
@@ -774,7 +747,7 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(&(collection.vocbase()), oldName, newName);
+  return RenameGraphCollections(collection.vocbase(), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
@@ -836,7 +809,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
+  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail() && res.isNot(TRI_ERROR_FORBIDDEN))
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
@@ -949,11 +922,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     binds->openObject();
     binds->add("@coll", VPackValue(cname));
     binds->close();
-    arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
-                               std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::registry();
-    TRI_ASSERT(queryRegistry != nullptr);
-    aql::QueryResult queryResult = query.executeSync(queryRegistry);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+    aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;
     if (queryResult.result.ok()) {
@@ -973,9 +944,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
+    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL);
 
-    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
+    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
       cb(doc.resolveExternal());
       return true;
     }, 1000);
@@ -1003,9 +974,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor(trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL));
+  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL);
 
-  opCursor.allDocuments([&](LocalDocumentId const& token, VPackSlice slice) {
+  iterator->allDocuments([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
     uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
     if (withRevisions) {

@@ -170,55 +170,55 @@ class DeSerializeAqlExecuteResultTest : public ::testing::TestWithParam<AqlExecu
   AqlExecuteResult aqlExecuteResult{ExecutionState::DONE, SkipResult{}, nullptr};
 };
 
-ResourceMonitor resourceMonitor{};
-AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
-
 auto MakeSkipResult(size_t const i) -> SkipResult {
   SkipResult res{};
   res.didSkip(i);
   return res;
 }
 
-auto const testingAqlExecuteResults = ::testing::ValuesIn(std::array{
-    AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},
-    AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(4), nullptr},
-    AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), buildBlock<1>(manager, {{42}})},
-    AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(3),
-                     buildBlock<2>(manager, {{3, 42}, {4, 41}})},
-});
+TEST(DeSerializeAqlExecuteResultTest, test) {
+  
+  ResourceMonitor resourceMonitor{};
+  AqlItemBlockManager manager{&resourceMonitor, SerializationFormat::SHADOWROWS};
 
-TEST_P(DeSerializeAqlExecuteResultTest, testSuite) {
-  auto builder = velocypack::Builder{};
-  aqlExecuteResult.toVelocyPack(builder, &velocypack::Options::Defaults);
+  auto const testingAqlExecuteResults = std::array{
+      AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), nullptr},
+      AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(4), nullptr},
+      AqlExecuteResult{ExecutionState::DONE, MakeSkipResult(0), buildBlock<1>(manager, {{42}})},
+      AqlExecuteResult{ExecutionState::HASMORE, MakeSkipResult(3),
+                       buildBlock<2>(manager, {{3, 42}, {4, 41}})},
+  };
+  
+  for (AqlExecuteResult const& aqlExecuteResult : testingAqlExecuteResults) {
+    
+    velocypack::Builder builder;
+    aqlExecuteResult.toVelocyPack(builder, &velocypack::Options::Defaults);
 
-  ASSERT_TRUE(builder.isClosed());
+    ASSERT_TRUE(builder.isClosed());
 
-  auto const maybeAqlExecuteResult = std::invoke([&]() {
-    try {
-      return AqlExecuteResult::fromVelocyPack(builder.slice(), manager);
-    } catch (std::exception const& ex) {
-      EXPECT_TRUE(false) << ex.what();
+    auto const maybeAqlExecuteResult = std::invoke([&]() {
+      try {
+        return AqlExecuteResult::fromVelocyPack(builder.slice(), manager);
+      } catch (std::exception const& ex) {
+        EXPECT_TRUE(false) << ex.what();
+      }
+      return ResultT<AqlExecuteResult>::error(-1);
+    });
+
+    ASSERT_TRUE(maybeAqlExecuteResult.ok()) << maybeAqlExecuteResult.errorMessage();
+
+    auto const deSerializedAqlExecuteResult = *maybeAqlExecuteResult;
+
+    ASSERT_EQ(aqlExecuteResult.state(), deSerializedAqlExecuteResult.state());
+    ASSERT_EQ(aqlExecuteResult.skipped(), deSerializedAqlExecuteResult.skipped());
+    ASSERT_EQ(aqlExecuteResult.block() == nullptr,
+              deSerializedAqlExecuteResult.block() == nullptr);
+    if (aqlExecuteResult.block() != nullptr) {
+      ASSERT_EQ(*aqlExecuteResult.block(), *deSerializedAqlExecuteResult.block())
+          << "left: " << blockToString(aqlExecuteResult.block())
+          << "; right: " << blockToString(deSerializedAqlExecuteResult.block());
     }
-    return ResultT<AqlExecuteResult>::error(-1);
-  });
-
-  ASSERT_TRUE(maybeAqlExecuteResult.ok()) << maybeAqlExecuteResult.errorMessage();
-
-  auto const deSerializedAqlExecuteResult = *maybeAqlExecuteResult;
-
-  ASSERT_EQ(aqlExecuteResult.state(), deSerializedAqlExecuteResult.state());
-  ASSERT_EQ(aqlExecuteResult.skipped(), deSerializedAqlExecuteResult.skipped());
-  ASSERT_EQ(aqlExecuteResult.block() == nullptr,
-            deSerializedAqlExecuteResult.block() == nullptr);
-  if (aqlExecuteResult.block() != nullptr) {
-    ASSERT_EQ(*aqlExecuteResult.block(), *deSerializedAqlExecuteResult.block())
-        << "left: " << blockToString(aqlExecuteResult.block())
-        << "; right: " << blockToString(deSerializedAqlExecuteResult.block());
+    ASSERT_EQ(aqlExecuteResult, deSerializedAqlExecuteResult);
   }
-  ASSERT_EQ(aqlExecuteResult, deSerializedAqlExecuteResult);
 }
-
-INSTANTIATE_TEST_CASE_P(DeSerializeAqlExecuteResultTestVariations,
-                        DeSerializeAqlExecuteResultTest, testingAqlExecuteResults);
-
 }  // namespace arangodb::tests::aql
