@@ -184,13 +184,7 @@ void RequestStatistics::release() {
   }
 }
 
-void RequestStatistics::fill(statistics::Distribution& totalTime,
-                             statistics::Distribution& requestTime,
-                             statistics::Distribution& queueTime,
-                             statistics::Distribution& ioTime,
-                             statistics::Distribution& bytesSent,
-                             statistics::Distribution& bytesReceived,
-                             stats::RequestStatisticsSource source) {
+void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
@@ -200,20 +194,20 @@ void RequestStatistics::fill(statistics::Distribution& totalTime,
     ? statistics::UserRequestFigures
     : statistics::GeneralRequestFigures;
 
-  totalTime = figures.totalTimeDistribution;
-  requestTime = figures.requestTimeDistribution;
-  queueTime = figures.queueTimeDistribution;
-  ioTime = figures.ioTimeDistribution;
-  bytesSent = figures.bytesSentDistribution;
-  bytesReceived = figures.bytesReceivedDistribution;
+  snapshot.totalTime = figures.totalTimeDistribution;
+  snapshot.requestTime = figures.requestTimeDistribution;
+  snapshot.queueTime = figures.queueTimeDistribution;
+  snapshot.ioTime = figures.ioTimeDistribution;
+  snapshot.bytesSent = figures.bytesSentDistribution;
+  snapshot.bytesReceived = figures.bytesReceivedDistribution;
   
   if (source == stats::RequestStatisticsSource::ALL) {
-    totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
-    requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
-    queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);
-    ioTime.add(statistics::UserRequestFigures.ioTimeDistribution);
-    bytesSent.add(statistics::UserRequestFigures.bytesSentDistribution);
-    bytesReceived.add(statistics::UserRequestFigures.bytesReceivedDistribution);
+    snapshot.totalTime.add(statistics::UserRequestFigures.totalTimeDistribution);
+    snapshot.requestTime.add(statistics::UserRequestFigures.requestTimeDistribution);
+    snapshot.queueTime.add(statistics::UserRequestFigures.queueTimeDistribution);
+    snapshot.ioTime.add(statistics::UserRequestFigures.ioTimeDistribution);
+    snapshot.bytesSent.add(statistics::UserRequestFigures.bytesSentDistribution);
+    snapshot.bytesReceived.add(statistics::UserRequestFigures.bytesReceivedDistribution);
   }
 }
 

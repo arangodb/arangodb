@@ -68,20 +68,17 @@ ConnectionStatistics* ConnectionStatistics::acquire() {
   return nullptr;
 }
 
-void ConnectionStatistics::fill(
-    statistics::Counter& httpConnections, statistics::Counter& totalRequests,
-    statistics::MethodRequestCounters& methodRequests,
-    statistics::Counter& asyncRequests, statistics::Distribution& connectionTime) {
+void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  httpConnections = statistics::HttpConnections;
-  totalRequests = statistics::TotalRequests;
-  methodRequests = statistics::MethodRequests;
-  asyncRequests = statistics::AsyncRequests;
-  connectionTime = statistics::ConnectionTimeDistribution;
+  snapshot.httpConnections = statistics::HttpConnections;
+  snapshot.totalRequests = statistics::TotalRequests;
+  snapshot.methodRequests = statistics::MethodRequests;
+  snapshot.asyncRequests = statistics::AsyncRequests;
+  snapshot.connectionTime = statistics::ConnectionTimeDistribution;
 }
 
 // -----------------------------------------------------------------------------

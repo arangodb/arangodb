@@ -211,36 +211,24 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  statistics::Counter httpConnections;
-  statistics::Counter totalRequests;
-  statistics::MethodRequestCounters methodRequests;
-  statistics::Counter asyncRequests;
-  statistics::Distribution connectionTime;
-
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  ConnectionStatistics::Snapshot connectionStats;
+  ConnectionStatistics::getSnapshot(connectionStats);
 
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "httpConnections"),
-              v8::Number::New(isolate, (double)httpConnections._count)).FromMaybe(false);
+              v8::Number::New(isolate, (double)connectionStats.httpConnections.get())).FromMaybe(false);
   FillDistribution(isolate, result,
-                   TRI_V8_ASCII_STRING(isolate, "connectionTime"), connectionTime);
+                   TRI_V8_ASCII_STRING(isolate, "connectionTime"), connectionStats.connectionTime);
 
-  statistics::Distribution totalTime;
-  statistics::Distribution requestTime;
-  statistics::Distribution queueTime;
-  statistics::Distribution ioTime;
-  statistics::Distribution bytesSent;
-  statistics::Distribution bytesReceived;
+  RequestStatistics::Snapshot requestStats;
+  RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
-
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), totalTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"), queueTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), ioTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"), bytesSent);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), requestStats.totalTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestStats.requestTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"), requestStats.queueTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), requestStats.ioTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"), requestStats.bytesSent);
   FillDistribution(isolate, result,
-                   TRI_V8_ASCII_STRING(isolate, "bytesReceived"), bytesReceived);
+                   TRI_V8_ASCII_STRING(isolate, "bytesReceived"), requestStats.bytesReceived);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -257,47 +245,43 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  statistics::Counter httpConnections;
-  statistics::Counter totalRequests;
-  statistics::MethodRequestCounters methodRequests;
-  statistics::Counter asyncRequests;
-  statistics::Distribution connectionTime;
+  ConnectionStatistics::Snapshot stats;
+  ConnectionStatistics::getSnapshot(stats);
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  using rest::RequestType;
 
   // request counters
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
-              v8::Number::New(isolate, (double)totalRequests._count)).FromMaybe(false);
+              v8::Number::New(isolate, (double)stats.totalRequests.get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
-              v8::Number::New(isolate, (double)asyncRequests._count)).FromMaybe(false);
+              v8::Number::New(isolate, (double)stats.asyncRequests.get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsGet"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::GET]._count)).FromMaybe(false);
+                  isolate, (double)stats.methodRequests[(int)RequestType::GET].get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsHead"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::HEAD]._count)).FromMaybe(false);
+                  isolate, (double)stats.methodRequests[(int)RequestType::HEAD].get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsPost"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::POST]._count)).FromMaybe(false);
+                  isolate, (double)stats.methodRequests[(int)RequestType::POST].get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsPut"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::PUT]._count)).FromMaybe(false);
+                  isolate, (double)stats.methodRequests[(int)RequestType::PUT].get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsPatch"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::PATCH]._count)).FromMaybe(false);
+                  isolate, (double)stats.methodRequests[(int)RequestType::PATCH].get())).FromMaybe(false);
   result->Set(context, 
       TRI_V8_ASCII_STRING(isolate, "requestsDelete"),
       v8::Number::New(isolate,
-                      (double)methodRequests[(int)rest::RequestType::DELETE_REQ]._count)).FromMaybe(false);
+                      (double)stats.methodRequests[(int)RequestType::DELETE_REQ].get())).FromMaybe(false);
   result->Set(context, 
       TRI_V8_ASCII_STRING(isolate, "requestsOptions"),
       v8::Number::New(isolate,
-                      (double)methodRequests[(int)rest::RequestType::OPTIONS]._count)).FromMaybe(false);
+                      (double)stats.methodRequests[(int)rest::RequestType::OPTIONS].get())).FromMaybe(false);
   result->Set(context, 
       TRI_V8_ASCII_STRING(isolate, "requestsOther"),
       v8::Number::New(isolate,
-                      (double)methodRequests[(int)rest::RequestType::ILLEGAL]._count)).FromMaybe(false);
+                      (double)stats.methodRequests[(int)rest::RequestType::ILLEGAL].get())).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

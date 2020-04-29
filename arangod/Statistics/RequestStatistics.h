@@ -152,14 +152,17 @@ class RequestStatistics {
 
   double requestStart() const { return _requestStart; }
 
-  static void fill(statistics::Distribution& totalTime,
-                   statistics::Distribution& requestTime,
-                   statistics::Distribution& queueTime,
-                   statistics::Distribution& ioTime,
-                   statistics::Distribution& bytesSent,
-                   statistics::Distribution& bytesReceived,
-                   stats::RequestStatisticsSource source);
+  struct Snapshot {
+    statistics::Distribution totalTime;
+    statistics::Distribution requestTime;
+    statistics::Distribution queueTime;
+    statistics::Distribution ioTime;
+    statistics::Distribution bytesSent;
+    statistics::Distribution bytesReceived;
+  };
 
+  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
+  
   std::string timingsCsv();
   std::string to_string();
   void trace_log();

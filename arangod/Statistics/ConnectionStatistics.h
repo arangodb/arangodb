@@ -47,12 +47,16 @@ class ConnectionStatistics {
   }
 
   static void SET_HTTP(ConnectionStatistics* stat);
+  
+  struct Snapshot {
+    statistics::Counter httpConnections;
+    statistics::Counter totalRequests;
+    statistics::MethodRequestCounters methodRequests;
+    statistics::Counter asyncRequests;
+    statistics::Distribution connectionTime;
+  };
 
-  static void fill(statistics::Counter& httpConnections,
-                   statistics::Counter& totalRequests,
-                   statistics::MethodRequestCounters& methodRequests,
-                   statistics::Counter& asyncRequests,
-                   statistics::Distribution& connectionTime);
+  static void getSnapshot(Snapshot& snapshot);
 
  private:
   ConnectionStatistics() { reset(); }
