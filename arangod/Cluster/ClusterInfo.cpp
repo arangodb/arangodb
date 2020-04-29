@@ -2606,27 +2606,19 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyCommResult res;
 
   std::string const dbKey = "Plan/Databases/" + databaseName;
-  std::string const planCollKey = dbKey + "/" + collectionID;
+  std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planLockKey = planCollKey + "/Lock";
 
   AgencyPrecondition databaseExists(dbKey, AgencyPrecondition::Type::EMPTY, false);
   AgencyPrecondition lockable(planLockKey, AgencyPrecondition::Type::CAN_WRITE_LOCK, true);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  res = ac.getValues(planCollKey);
-
-  if (!res.successful()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  PlanCollectionReader collectionFromPlan(_server, databaseName, collectionID);
+  if (!collectionFromPlan.state().ok()) {
+    return collectionFromPlan.state();
   }
-
-  velocypack::Slice collection = res.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
-
-  if (!collection.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  AgencyPrecondition previousVersion(planCollKey, AgencyPrecondition::Type::VALUE, collection);
+  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE,
+                                     collectionFromPlan.slice());
 
   VPackBuilder temp;
   temp.openObject();
@@ -2642,7 +2634,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
-  VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);
+  VPackBuilder builder = VPackCollection::merge(collectionFromPlan.slice(), temp.slice(), true);
 
   res.clear();
 
@@ -2650,7 +2642,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
                           AgencyValueOperationType::SET, builder.slice());
 
   AgencyWriteTransaction trans({setColl, incrementVersion},
-                               {databaseExists, lockable, previousVersion});
+                               {databaseExists, lockable, oldValue});
 
   res = ac.sendTransactionWithFailover(trans);
 
@@ -2884,30 +2876,21 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyCommResult res;
 
   std::string const dbKey = "Plan/Databases/" + databaseName;
-  std::string const planCollKey = dbKey + "/" + collectionID;
+  std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planLockKey = planCollKey + "/Lock";
 
   AgencyPrecondition databaseExists(dbKey, AgencyPrecondition::Type::EMPTY, false);
   AgencyPrecondition lockable(planLockKey, AgencyPrecondition::Type::CAN_WRITE_LOCK, true);
 
-  res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
-
-  if (!res.successful()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  PlanCollectionReader collectionFromPlan(_server, databaseName, collectionID);
+  if (!collectionFromPlan.state().ok()) {
+    return collectionFromPlan.state();
   }
-
-  VPackSlice col = res.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
-
-  if (!col.isObject()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
-  AgencyPrecondition previousVersion(planCollKey, AgencyPrecondition::Type::VALUE, col);
+  AgencyPrecondition oldValue(planCollKey, AgencyPrecondition::Type::VALUE, collectionFromPlan.slice());
 
   TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          col, "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
+          collectionFromPlan.slice(), "status", static_cast<int>(TRI_VOC_COL_STATUS_CORRUPTED)));
 
   if (old == status) {
     // no status change
@@ -2917,7 +2900,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   VPackBuilder builder;
   try {
     VPackObjectBuilder b(&builder);
-    for (auto const& entry : VPackObjectIterator(col)) {
+    for (auto const& entry : VPackObjectIterator(collectionFromPlan.slice())) {
       std::string key = entry.key.copyString();
       if (key != "status") {
         builder.add(key, entry.value);
@@ -2934,7 +2917,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
   AgencyWriteTransaction trans({setColl, incrementVersion},
-                               {databaseExists, lockable, previousVersion});
+                               {databaseExists, lockable, oldValue});
 
   res = ac.sendTransactionWithFailover(trans);
 

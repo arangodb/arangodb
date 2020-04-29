@@ -105,11 +105,9 @@ class PlanCollectionReader {
  public:
   PlanCollectionReader(PlanCollectionReader const&&) = delete;
   PlanCollectionReader(PlanCollectionReader const&) = delete;
-  explicit PlanCollectionReader(LogicalCollection const& collection) {
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
-
-    AgencyComm ac(collection.vocbase().server());
+  PlanCollectionReader(application_features::ApplicationServer& server,
+                       std::string const& databaseName, std::string const& collectionID) {
+    AgencyComm ac(server);
 
     std::string path =
         "Plan/Collections/" + databaseName + "/" + collectionID;
@@ -130,6 +128,9 @@ class PlanCollectionReader {
     }
     _state = Result();
   }
+  explicit PlanCollectionReader(LogicalCollection const& collection)
+      : PlanCollectionReader(collection.vocbase().server(),
+                             collection.vocbase().name(), std::to_string(collection.id())) {}
   VPackSlice indexes();
   VPackSlice slice() { return _collection; }
   Result state() { return _state; }
