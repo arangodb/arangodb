@@ -38,17 +38,11 @@ using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, std::unique_ptr<Traverser>&& traverser,
+    std::unique_ptr<Traverser>&& traverser,
     std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
     std::string fixedSource, RegisterId inputRegister,
     std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _traverser(std::move(traverser)),
+    : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
@@ -59,10 +53,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
 }
-
-TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
-
-TraversalExecutorInfos::~TraversalExecutorInfos() = default;
 
 Traverser& TraversalExecutorInfos::traverser() {
   TRI_ASSERT(_traverser != nullptr);
@@ -304,44 +294,45 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       TRI_ASSERT(_inputRow.isInitialized());
     }
 
+    auto sourceString = std::string{};
     TRI_ASSERT(_inputRow.isInitialized());
+
     if (_infos.usesFixedSource()) {
-      auto pos = _infos.getFixedSource().find('/');
-      if (pos == std::string::npos) {
-        _traverser.options()->query()->registerWarning(
-            TRI_ERROR_BAD_PARAMETER,
-            "Invalid input for traversal: "
-            "Only id strings or objects with "
-            "_id are allowed");
-      } else {
-        // Use constant value
-        _traverser.setStartVertex(_infos.getFixedSource());
-        TRI_ASSERT(_inputRow.isInitialized());
-        return true;
-      }
+      sourceString = _infos.getFixedSource();
     } else {
       AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
       if (in.isObject()) {
         try {
-          _traverser.setStartVertex(
-              _traverser.options()->trx()->extractIdString(in.slice()));
-          TRI_ASSERT(_inputRow.isInitialized());
-          return true;
+          sourceString = _traverser.options()->trx()->extractIdString(in.slice());
         } catch (...) {
           // on purpose ignore this error.
         }
       } else if (in.isString()) {
-        _traverser.setStartVertex(in.slice().copyString());
+        sourceString = in.slice().copyString();
+      } else {
+        _traverser.options()->query()->registerWarning(
+          TRI_ERROR_BAD_PARAMETER,
+          "Invalid input for traversal: Only "
+          "id strings or objects with _id are "
+          "allowed");
+
+        // TODO: I feel dirty doing this, but it prevents
+        //       logging 2 errors here.
+        continue;
+      }
+    }
+
+    auto pos = sourceString.find('/');
+
+    if (pos == std::string::npos) {
+      _traverser.options()->query()->registerWarning(
+        TRI_ERROR_BAD_PARAMETER,
+        "Invalid start vertex for traversal: "
+        "Does not contain '/'");
+    } else {
+        _traverser.setStartVertex(sourceString);
         TRI_ASSERT(_inputRow.isInitialized());
         return true;
-      } else {
-        // _id or _key not present we cannot start here, register warning take next
-        _traverser.options()->query()->registerWarning(
-            TRI_ERROR_BAD_PARAMETER,
-            "Invalid input for traversal: Only "
-            "id strings or objects with _id are "
-            "allowed");
-      }
     }
   }
   return false;

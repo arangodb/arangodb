@@ -26,8 +26,8 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
@@ -42,14 +42,9 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SubqueryEndExecutorInfos : public ExecutorInfos {
+class SubqueryEndExecutorInfos {
  public:
-  SubqueryEndExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                           std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                           RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                           std::unordered_set<RegisterId> const& registersToClear,
-                           std::unordered_set<RegisterId> registersToKeep,
-                           velocypack::Options const* options, RegisterId inReg,
+  SubqueryEndExecutorInfos(velocypack::Options const* options, RegisterId inReg,
                            RegisterId outReg, bool isModificationSubquery);
 
   SubqueryEndExecutorInfos() = delete;

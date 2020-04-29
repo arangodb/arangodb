@@ -1102,6 +1102,7 @@ describe('_api/gharial', () => {
           const eName = 'knows';
           const eName_2 = 'knows_2';
           expect(db._collection(eName)).to.be.null; // edgec
+          expect(db._collection(eName_2)).to.be.null; // edgec2
           expect(db._collection(vName)).to.be.null; // vertexc
           const g = examples.loadGraph(exampleGraphName);
           expect(g).to.not.be.null;

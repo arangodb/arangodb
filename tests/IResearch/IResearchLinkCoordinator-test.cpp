@@ -134,7 +134,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     try {
       factory.instantiate(*logicalCollection.get(), json->slice(),
-                          arangodb::IndexId::edge(), true);
+                          arangodb::IndexId::edgeFrom(), true);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& ex) {
       EXPECT_EQ(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, ex.code());

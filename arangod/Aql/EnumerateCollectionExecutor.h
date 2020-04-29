@@ -27,8 +27,8 @@
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "DocumentProducingHelper.h"
 
 #include <memory>
@@ -48,7 +48,7 @@ class AqlItemBlockInputRange;
 struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
@@ -57,15 +57,14 @@ struct Variable;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateCollectionExecutorInfos : public ExecutorInfos {
+class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
-      Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter, std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions, bool random);
+  EnumerateCollectionExecutorInfos(RegisterId outputRegister, ExecutionEngine* engine,
+                                   Collection const* collection, Variable const* outVariable,
+                                   bool produceResult, Expression* filter,
+                                   std::vector<std::string> const& projections,
+                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
@@ -145,8 +144,6 @@ class EnumerateCollectionExecutor {
   void initializeCursor();
 
  private:
-  bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
-
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
  private:

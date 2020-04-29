@@ -25,9 +25,10 @@
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb {
@@ -44,17 +45,6 @@ class MultiDependencySingleRowFetcher;
 class NoStats;
 class OutputAqlItemRow;
 
-class ParallelUnsortedGatherExecutorInfos : public ExecutorInfos {
- public:
-  ParallelUnsortedGatherExecutorInfos(RegisterId nrInOutRegisters,
-                                      std::unordered_set<RegisterId> registersToKeep,
-                                      std::unordered_set<RegisterId> registersToClear);
-  ParallelUnsortedGatherExecutorInfos() = delete;
-  ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos&&) = default;
-  ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos const&) = delete;
-  ~ParallelUnsortedGatherExecutorInfos() = default;
-};
-
 class ParallelUnsortedGatherExecutor {
  public:
  public:
@@ -65,7 +55,7 @@ class ParallelUnsortedGatherExecutor {
   };
 
   using Fetcher = MultiDependencySingleRowFetcher;
-  using Infos = ParallelUnsortedGatherExecutorInfos;
+  using Infos = EmptyExecutorInfos;
   using Stats = NoStats;
 
   ParallelUnsortedGatherExecutor(Fetcher& fetcher, Infos& info);

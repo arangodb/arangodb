@@ -2929,7 +2929,7 @@ arangodb::Result fromFuncNgramMatch(
   return {};
 }
 
-// STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
+// STARTS_WITH(<attribute>, [ '[' ] <prefix> [, <prefix>, ... ']' ], [ <scoring-limit>|<min-match-count> ] [, <scoring-limit> ])
 arangodb::Result fromFuncStartsWith(
     char const* funcName,
     irs::boolean_filter* filter,
@@ -2944,41 +2944,85 @@ arangodb::Result fromFuncStartsWith(
 
   auto const argc = args.numMembers();
 
-  if (argc < 2 || argc > 3) {
-    return error::invalidArgsCount<error::Range<2, 3>>(funcName);
+  if (argc < 2 || argc > 4) {
+    return error::invalidArgsCount<error::Range<2, 4>>(funcName);
   }
+
+  size_t currentArgNum = 0;
 
   // 1st argument defines a field
   auto const* field =
-      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(currentArgNum), *ctx.ref);
 
   if (!field) {
-    return error::invalidAttribute(funcName, 1);
+    return error::invalidAttribute(funcName, currentArgNum + 1);
   }
+  ++currentArgNum;
 
-  // 2nd argument defines a value
-  ScopedAqlValue prefixValue;
-  irs::string_ref prefix;
-  auto rv = evaluateArg(prefix, prefixValue, funcName, args, 1, filter != nullptr, ctx);
+  // 2nd argument defines a value or array of values
+  std::vector<ScopedAqlValue> prefixValues;
+  std::vector<irs::string_ref> prefixes;
+  ScopedAqlValue minMatchCountValue;
+  auto minMatchCount = FilterConstants::DefaultStartsWithMinMatchCount;
+  auto const* astPrefixes = args.getMemberUnchecked(currentArgNum);
+  TRI_ASSERT(astPrefixes);
+  auto const isMultiPrefix = astPrefixes->isArray();
+  if (isMultiPrefix) {
+    auto size = astPrefixes->numMembers();
+    if (size > 0) {
+      prefixValues.resize(size);
+      prefixes.resize(size);
+      for (size_t i = 0; i < size; ++i) {
+        auto rv = evaluateArg(prefixes[i], prefixValues[i], funcName, *astPrefixes, i, filter != nullptr, ctx);
+        if (rv.fail()) {
+          return rv;
+        }
+      }
+    }
+    ++currentArgNum;
 
-  if (rv.fail()) {
-    return rv;
+    if (argc > currentArgNum) {
+      // 3rd argument defines minimum match count
+      auto rv = evaluateArg<decltype(minMatchCount), true>(
+            minMatchCount, minMatchCountValue, funcName, args, currentArgNum, filter != nullptr, ctx);
+
+      if (rv.fail()) {
+        return rv;
+      }
+
+      if (minMatchCount < 0) {
+        return error::negativeNumber(funcName, currentArgNum + 1);
+      }
+    }
+  } else {
+    if (argc > 3) {
+      return error::invalidArgsCount<error::Range<2, 3>>(funcName);
+    }
+    size_t const size = 1;
+    prefixValues.resize(size);
+    prefixes.resize(size);
+    auto rv = evaluateArg(prefixes[0], prefixValues[0], funcName, args, currentArgNum, filter != nullptr, ctx);
+
+    if (rv.fail()) {
+      return rv;
+    }
   }
+  ++currentArgNum;
 
-  size_t scoringLimit = FilterConstants::DefaultScoringTermsLimit;
+  auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
-  if (argc > 2) {
-    // 3rd (optional) argument defines a number of scored terms
+  if (argc > currentArgNum) {
+    // 3rd or 4th (optional) argument defines a number of scored terms
     ScopedAqlValue scoringLimitValueBuf;
-    int64_t scoringLimitValue = static_cast<int64_t>(scoringLimit);
-    rv = evaluateArg(scoringLimitValue, scoringLimitValueBuf, funcName, args, 2, filter != nullptr, ctx);
+    auto scoringLimitValue = static_cast<int64_t>(scoringLimit);
+    auto rv = evaluateArg(scoringLimitValue, scoringLimitValueBuf, funcName, args, currentArgNum, filter != nullptr, ctx);
 
     if (rv.fail()) {
       return rv;
     }
 
     if (scoringLimitValue < 0) {
-      return error::negativeNumber(funcName, 3);
+      return error::negativeNumber(funcName, currentArgNum + 1);
     }
 
     scoringLimit = static_cast<size_t>(scoringLimitValue);
@@ -2993,12 +3037,25 @@ arangodb::Result fromFuncStartsWith(
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleStringField(name, filterCtx.analyzer);
+    filter->boost(filterCtx.boost);
 
-    auto& prefixFilter = filter->add<irs::by_prefix>();
-    prefixFilter.scored_terms_limit(scoringLimit);
-    prefixFilter.field(std::move(name));
-    prefixFilter.boost(filterCtx.boost);
-    prefixFilter.term(prefix);
+    if (isMultiPrefix) {
+      auto& minMatchFilter = filter->add<irs::Or>();
+      minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
+      // become a new root
+      filter = &minMatchFilter;
+    }
+
+    for (size_t i = 0, size = prefixes.size(); i < size; ++i) {
+      auto& prefixFilter = filter->add<irs::by_prefix>();
+      prefixFilter.scored_terms_limit(scoringLimit);
+      if (i + 1 < size) {
+        prefixFilter.field(name);
+      } else {
+        prefixFilter.field(std::move(name));
+      }
+      prefixFilter.term(prefixes[i]);
+    }
   }
 
   return {};
