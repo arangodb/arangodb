@@ -213,6 +213,12 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
+void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
+  TRI_ASSERT(_inStartVariable == nullptr);
+  _inStartVariable = inVariable;
+  _startVertexId = "";
+}
+
 void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                           std::unordered_set<ExecutionNode const*>& seen) const {
   GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method

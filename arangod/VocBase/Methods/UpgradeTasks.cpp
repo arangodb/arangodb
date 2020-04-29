@@ -281,8 +281,8 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         // if not found, create it
         VPackBuilder options;
         options.openObject();
-        options.add("isSystem", VPackSlice::trueSlice());
-        options.add("waitForSync", VPackSlice::falseSlice());
+        options.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
+        options.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
         options.close();
 
         systemCollectionsToCreate.emplace_back(

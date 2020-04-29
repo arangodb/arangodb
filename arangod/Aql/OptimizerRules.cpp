@@ -1250,10 +1250,11 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       // outVariable not used later
       if (!collectNode->count()) {
         collectNode->clearOutVariable();
+        collectNode->clearKeepVariables();
       }
       modified = true;
     } else if (outVariable != nullptr && !collectNode->count() &&
-               !collectNode->hasExpressionVariable() && !collectNode->hasKeepVariables()) {
+               !collectNode->hasExpressionVariable()) {
       // outVariable used later, no count, no INTO expression, no KEEP
       // e.g. COLLECT something INTO g
       // we will now check how many parts of "g" are used later
@@ -1313,7 +1314,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
       }  // end - inspection of nodes below the found collect node - while valid planNode
 
       if (doOptimize) {
-        std::vector<Variable const*> keepVariables;
+        auto keepVariables = std::unordered_set<Variable const*>{};
         // we are allowed to do the optimization
         auto current = n->getFirstDependency();
         while (current != nullptr) {
@@ -1321,7 +1322,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
             for (auto it = keepAttributes.begin(); it != keepAttributes.end();
                  /* no hoisting */) {
               if ((*it) == var->name) {
-                keepVariables.emplace_back(var);
+                keepVariables.emplace(var);
                 it = keepAttributes.erase(it);
               } else {
                 ++it;
@@ -1336,7 +1337,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
         }  // while current
 
         if (keepAttributes.empty() && !keepVariables.empty()) {
-          collectNode->setKeepVariables(std::move(keepVariables));
+          collectNode->restrictKeepVariables(keepVariables);
           modified = true;
         }
       }  // end - if doOptimize
@@ -5890,18 +5891,24 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     }
 
     outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal edge outVariable not used later
-      traversal->setEdgeOutput(nullptr);
+      options->setProduceEdges(false);
+      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+          pruneVars.end()) {
+        traversal->setEdgeOutput(nullptr);
+      }
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal path outVariable not used later
-      traversal->setPathOutput(nullptr);
+      options->setProducePaths(false);
+      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+          pruneVars.end()) {
+        traversal->setPathOutput(nullptr);
+      }
       modified = true;
     }
 
