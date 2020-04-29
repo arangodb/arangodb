@@ -26,15 +26,17 @@
 #include <array>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Mutex.h"
-#include "Basics/Thread.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
-#include "Statistics/Descriptions.h"
-#include "Statistics/StatisticsWorker.h"
 #include "Statistics/figures.h"
 
 namespace arangodb {
+class Thread;
+class StatisticsWorker;
+namespace stats {
+  class Descriptions;
+}
+
 namespace statistics {
 extern std::initializer_list<double> const BytesReceivedDistributionCuts;
 extern std::initializer_list<double> const BytesSentDistributionCuts;
@@ -83,17 +85,14 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
  public:
   explicit StatisticsFeature(application_features::ApplicationServer& server);
+  ~StatisticsFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now) {
-    if (_statisticsWorker != nullptr) {
-      _statisticsWorker->generateRawStatistics(result, now);
-    }
-  }
+  void toPrometheus(std::string& result, double const& now);
 
   static stats::Descriptions const* descriptions() {
     if (STATISTICS != nullptr) {

@@ -31,7 +31,6 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 #include <velocypack/Builder.h>

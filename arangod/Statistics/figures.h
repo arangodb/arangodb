@@ -24,6 +24,7 @@
 #ifndef ARANGOD_STATISTICS_FIGURES_H
 #define ARANGOD_STATISTICS_FIGURES_H 1
 
+#include <atomic>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -50,7 +51,7 @@ struct Counter {
   void decCounter() { --_count; }
 
   int64_t get() const { return _count.load(std::memory_order_relaxed); }
-  
+
 private:
   std::atomic<int64_t> _count;
 };

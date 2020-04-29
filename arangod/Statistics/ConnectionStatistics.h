@@ -26,11 +26,8 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
-
-#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class ConnectionStatistics {
@@ -67,12 +64,6 @@ class ConnectionStatistics {
     _http = false;
     _error = false;
   }
-
-  static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
-
-  static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
-
-  static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
 
  private:
   double _connStart;

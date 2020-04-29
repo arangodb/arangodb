@@ -26,12 +26,10 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Rest/CommonDefines.h"
+#include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
-
-#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class RequestStatistics {
@@ -168,14 +166,6 @@ class RequestStatistics {
   void trace_log();
 
  private:
-  static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
-
-  static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
-
-  static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
-
-  static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _finishedList;
-
   static void process(RequestStatistics*);
 
   RequestStatistics() { reset(); }

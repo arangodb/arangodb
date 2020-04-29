@@ -29,17 +29,21 @@
 
 #include <iomanip>
 
+#include <boost/lockfree/queue.hpp>
+
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    static members
+// --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-std::unique_ptr<RequestStatistics[]> RequestStatistics::_statisticsBuffer;
+static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
-boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>> RequestStatistics::_freeList;
+static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
 
-boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<RequestStatistics::QUEUE_SIZE>> RequestStatistics::_finishedList;
+static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
+
+static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _finishedList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods

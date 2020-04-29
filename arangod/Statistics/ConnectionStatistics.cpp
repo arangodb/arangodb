@@ -23,18 +23,21 @@
 
 #include "ConnectionStatistics.h"
 
-#include "Basics/MutexLocker.h"
 #include "Rest/CommonDefines.h"
+
+#include <boost/lockfree/queue.hpp>
 
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    static members
+// --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-std::unique_ptr<ConnectionStatistics[]> ConnectionStatistics::_statisticsBuffer;
+static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
 
-boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<ConnectionStatistics::QUEUE_SIZE>> ConnectionStatistics::_freeList;
+static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
+
+static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods

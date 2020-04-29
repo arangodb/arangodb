@@ -150,6 +150,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
   startsAfter<AqlFeaturePhase>();
 }
 
+StatisticsFeature::~StatisticsFeature() {} // required by unique_ptrs to incomplete types
+
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
@@ -249,4 +251,10 @@ void StatisticsFeature::stop() {
   _statisticsWorker.reset();
 
   STATISTICS = nullptr;
+}
+
+void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+  if (_statisticsWorker != nullptr) {
+    _statisticsWorker->generateRawStatistics(result, now);
+  }
 }
