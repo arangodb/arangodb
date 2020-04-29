@@ -1255,7 +1255,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
       // try to open this database
       arangodb::CreateDatabaseInfo info(server());
-      info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);

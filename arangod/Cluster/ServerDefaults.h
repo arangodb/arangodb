@@ -23,17 +23,19 @@
 #ifndef ARANGOD_CLUSTER_SERVERDEFAULTS_H
 #define ARANGOD_CLUSTER_SERVERDEFAULTS_H
 
-#include "VocBase/vocbase.h"
+#include <cstdint>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 struct ServerDefaults {
   uint64_t numberOfShards = 1;
   uint64_t replicationFactor = 1;
   uint64_t writeConcern = 1;
 
-  // static ServerDefaults createDefaults(TRI_vocbase_t& vocbase);
-  ServerDefaults(TRI_vocbase_t& vocbase);
+  explicit ServerDefaults(application_features::ApplicationServer& server);
 };
 
 }  // namespace arangodb
