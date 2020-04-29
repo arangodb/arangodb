@@ -314,7 +314,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                                     LEADER_PRIORITY, properties));
             }
           }
-        } catch (std::exception const& e) {
+        } catch (std::exception const&) {
           // database doesn't exist locally
         }
       }
