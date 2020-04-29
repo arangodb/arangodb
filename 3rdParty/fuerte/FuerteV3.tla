@@ -467,7 +467,7 @@ readDone == /\ pc["fuertethread"] = "readDone"
             /\ IF /\ Len(iocontext) >= 1
                   /\ Head(iocontext) \in {"read", "readBAD"}
                   THEN /\ Assert(active /\ state \in {"Connected", "Disconnected", "Failed"}, 
-                                 "Failure of assertion at line 148, column 11.")
+                                 "Failure of assertion at line 149, column 11.")
                        /\ alarm' = "off"
                        /\ reading' = FALSE
                        /\ IF Head(iocontext) = "read" /\ state = "Connected"
@@ -672,5 +672,5 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Apr 27 15:52:07 CEST 2020 by neunhoef
+\* Last modified Wed Apr 29 14:11:27 CEST 2020 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
