@@ -607,8 +607,8 @@ std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
 void IResearchLogTopic::log_appender(void* context, const char* function, const char* file, int line,
-  irs::logger::level_t level, const char* message,
-  size_t message_len) {
+                                     irs::logger::level_t level, const char* message,
+                                     size_t message_len) {
   if (ADB_LIKELY(message_len > 0 && message != nullptr)) { // some paranoia, we don`t want to crash on logging
     auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
     std::string msg = LIBIRESEARCH.displayName();
