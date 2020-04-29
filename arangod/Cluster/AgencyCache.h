@@ -57,9 +57,6 @@ public:
   // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override;
 
-  /// @brief Read from local readDB cache at path
-  arangodb::consensus::Node const& read(std::string const& path) const;
-
   /// @brief Get velocypack from node downward. AgencyCommManager::path is prepended
   std::tuple <consensus::query_t, consensus::index_t> const get(
     std::string const& path = std::string("/")) const;
@@ -72,10 +69,10 @@ public:
   consensus::index_t index() const;
 
   /// @brief Register local callback
-  bool registerCallback(std::string const& key, uint32_t const& id);
+  bool registerCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Register local callback
-  bool unregisterCallback(std::string const& key, uint32_t const& id);
+  bool unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
   futures::Future<Result> waitFor(consensus::index_t index);
@@ -86,9 +83,6 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
-  /// @brief Ready for business
-  bool ready() const;
-
 private:
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
@@ -96,7 +90,6 @@ private:
   void triggerWaitingNoLock(consensus::index_t commitIndex);
 
   /// @brief Guard for _readDB
-  std::condition_variable _cv;
   mutable std::mutex _storeLock;
 
   /// @brief Commit index
@@ -110,7 +103,7 @@ private:
 
   /// @brief Stored call backs key -> callback registry's id
   mutable std::mutex _callbacksLock;
-  std::multimap<std::string, uint32_t> _callbacks;
+  std::multimap<std::string, uint64_t> _callbacks;
 
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;

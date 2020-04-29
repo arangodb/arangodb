@@ -49,11 +49,11 @@ AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::Application
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
 bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
-  uint32_t rand;
+  uint64_t rand;
   {
     WRITE_LOCKER(locker, _lock);
     while (true) {
-      rand = RandomGenerator::interval(UINT32_MAX);
+      rand = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
       if (_endpoints.try_emplace(rand, cb).second) {
         break;
       }
@@ -85,7 +85,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
   return ok;
 }
 
-std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id) {
+std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {
   READ_LOCKER(locker, _lock);
   auto it = _endpoints.find(id);
 
@@ -97,7 +97,7 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
   bool found = false;
-  uint32_t endpointToDelete = 0;
+  uint64_t endpointToDelete = 0;
   {
     READ_LOCKER(locker, _lock);
 
@@ -123,7 +123,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
   return false;
 }
 
-std::string AgencyCallbackRegistry::getEndpointUrl(uint32_t endpoint) {
+std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t endpoint) {
   std::stringstream url;
   url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
       << _callbackBasePath << "/" << endpoint;

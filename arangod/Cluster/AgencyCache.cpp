@@ -99,7 +99,7 @@ void AgencyCache::run() {
   _readDB.clear();
   double wait = 0.0;
   VPackBuilder rb;
-  std::vector<uint32_t> toCall;
+  std::vector<uint64_t> toCall;
   // Long poll to agency
   auto sendTransaction =
     [&](VPackBuilder& r) {
@@ -248,7 +248,7 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
 
 
 /// Register local call back
-bool AgencyCache::registerCallback(std::string const& key, uint32_t const& id) {
+bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
   LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER)
     << "Registering callback for " <<  AgencyCommManager::path(key);
   std::lock_guard g(_callbacksLock);
@@ -260,7 +260,7 @@ bool AgencyCache::registerCallback(std::string const& key, uint32_t const& id) {
 }
 
 /// Register local call back
-bool AgencyCache::unregisterCallback(std::string const& key, uint32_t const& id) {
+bool AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id) {
   LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER)
     << "Unregistering callback for " <<  AgencyCommManager::path(key);
   std::lock_guard g(_callbacksLock);
@@ -311,11 +311,6 @@ void AgencyCache::beginShutdown() {
     _callbacks.clear();
   }
   Thread::beginShutdown();
-}
-
-bool AgencyCache::ready() const {
-  std::lock_guard g(_storeLock);
-  return _commitIndex > 0;
 }
 
 bool AgencyCache::has(std::string const& path) const {

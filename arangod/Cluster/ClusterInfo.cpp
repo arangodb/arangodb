@@ -2075,7 +2075,7 @@ Result ClusterInfo::createCollectionsCoordinator(
                     << "Did not find shard in _shardServers: " << p.key.copyString()
                     << ". Maybe the collection is already dropped.";
                 *errMsg = "Error in creation of collection: " + p.key.copyString() +
-                          ". Collection already dropped. " + __PRETTY_FUNCTION__ + ":" +
+                          ". Collection already dropped. " + __FILE__ + ":" +
                           std::to_string(__LINE__);
                 dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
@@ -2119,7 +2119,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         }
         if (!tmpError.empty()) {
           *errMsg = "Error in creation of collection:" + tmpError + " " +
-                    __PRETTY_FUNCTION__ + std::to_string(__LINE__);
+                    __FILE__ + std::to_string(__LINE__);
           dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                 std::memory_order_release);
           // We cannot get into bad state after a collection was created
@@ -2802,7 +2802,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
     return Result(                                        // result
         TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
-        std::string("file: ") + __PRETTY_FUNCTION__ + " line: " + std::to_string(__LINE__) +
+        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
             " HTTP code: " + std::to_string(res.httpCode()) +
             " error message: " + res.errorMessage() +
             " error details: " + res.errorDetails() + " body: " + res.body());
@@ -2858,7 +2858,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
     } else {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
-          std::string("file: ") + __PRETTY_FUNCTION__ + " line: " + std::to_string(__LINE__) +
+          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
               " HTTP code: " + std::to_string(res.httpCode()) +
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
@@ -3250,7 +3250,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         std::string(" Failed to execute ") + trx.toJson() +
             " ResultCode: " + std::to_string(result.errorCode()) +
             " HttpCode: " + std::to_string(result.httpCode()) + " " +
-            std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__));
+            std::string(__FILE__) + ":" + std::to_string(__LINE__));
   }
 
   // From here on we want to roll back the index creation if we run into
