@@ -627,6 +627,8 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
       return TRI_ERROR_LOCK_TIMEOUT;
     }
+  
+    engine->prepareDropCollection(*this, *collection);
 
     // sleep for a while
     std::this_thread::yield();

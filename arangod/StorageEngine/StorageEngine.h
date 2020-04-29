@@ -230,7 +230,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   
   // method that is called prior to deletion of a collection. allows the storage
   // engine to clean up arbitrary data for this collection before the collection
-  // moves into status "deleted"
+  // moves into status "deleted". this method may be called multiple times for
+  // the same collection
   virtual void prepareDropCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection& collection) {}
 
