@@ -160,8 +160,6 @@ class ClusterEngine final : public StorageEngine {
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                 int& status) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
-  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
