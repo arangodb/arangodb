@@ -99,8 +99,10 @@ IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 
 NS_BEGIN(detail)
 // not everyone who includes header actually logs something, that`s ok
-GCC_ONLY(#pragma GCC diagnostic push)
-GCC_ONLY(#pragma GCC diagnostic ignored "-Wunused-function")
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 static void log_formatted(const char* function, const char* file, int line,
                           level_t level, const char* format, ...) {
   va_list args;
@@ -116,7 +118,9 @@ static void log_formatted(const char* function, const char* file, int line,
     log(function, file, line, level, buf.data(), buf.size());
   }
 }
-GCC_ONLY(#pragma GCC diagnostic pop)
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 }
 
 #ifndef _MSC_VER
