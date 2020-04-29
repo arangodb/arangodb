@@ -2,6 +2,8 @@ devel
 -----
 * Integrated libiresearch log topic properly into ArangoDB logging system
 
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
 * Fix REST API `/_admin/cluster/removeServer`.
   This also fixes the removal of servers via the web interface.
 
