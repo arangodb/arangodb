@@ -26,6 +26,10 @@
 
 namespace arangodb {
 
+bool TransactionId::isSet() const noexcept { return id() != 0; }
+
+bool TransactionId::empty() const noexcept { return !isSet(); }
+
 bool TransactionId::isCoordinatorTransactionId() const {
   return (id() % 4) == 0;
 }

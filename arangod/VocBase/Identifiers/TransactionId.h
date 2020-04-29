@@ -36,6 +36,12 @@ class TransactionId : public basics::Identifier {
   constexpr explicit TransactionId(BaseType id) noexcept : Identifier(id) {}
 
  public:
+  /// @brief whether or not the id is set (not 0)
+  bool isSet() const noexcept;
+
+  /// @brief whether or not the identifier is unset (equal to 0)
+  bool empty() const noexcept;
+
   bool isCoordinatorTransactionId() const;
   bool isFollowerTransactionId() const;
   bool isLeaderTransactionId() const;
