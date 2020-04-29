@@ -376,43 +376,61 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   auto allVars = plan->getAst()->variables();
 
-  VPackSlice varsUsedLater = slice.get("varsUsedLater");
-  if (!varsUsedLater.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "\"varsUsedLater\" needs to be an array");
-  }
+  VPackSlice varsUsedLaterStackSlice = slice.get("varsUsedLaterStack");
 
-  _varsUsedLater.reserve(varsUsedLater.length());
-  for (VPackSlice it : VPackArrayIterator(varsUsedLater)) {
-    Variable oneVarUsedLater(it);
-    Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
-
-    if (oneVariable == nullptr) {
-      std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarUsedLater.id);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+  if (varsUsedLaterStackSlice.isNone()) {
+    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
+    VPackSlice varsUsedLaterSlice = slice.get("varsUsedLater");
+    if (!varsUsedLaterSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "\"varsUsedLater\" needs to be an array");
     }
-    _varsUsedLater.insert(oneVariable);
-  }
+    auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
 
-  VPackSlice varsValidList = slice.get("varsValid");
+    varsUsedLater.reserve(varsUsedLaterSlice.length());
+    for (VPackSlice it : VPackArrayIterator(varsUsedLaterSlice)) {
+      Variable oneVarUsedLater(it);
+      Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
-  if (!varsValidList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "\"varsValid\" needs to be an array");
-  }
-
-  _varsValid.reserve(varsValidList.length());
-  for (VPackSlice it : VPackArrayIterator(varsValidList)) {
-    Variable oneVarValid(it);
-    Variable* oneVariable = allVars->getVariable(oneVarValid.id);
-
-    if (oneVariable == nullptr) {
-      std::string errmsg = "varsValid: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarValid.id);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+      if (oneVariable == nullptr) {
+        std::string errmsg = "varsUsedLater: ID not found in all-array: " +
+                             StringUtils::itoa(oneVarUsedLater.id);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+      }
+      varsUsedLater.insert(oneVariable);
     }
-    _varsValid.insert(oneVariable);
+  } else {
+    // TODO deserialize varsUsedLaterStack
+    ADB_UNREACHABLE;
+  }
+
+  VPackSlice varsValidStackSlice = slice.get("varsValidStack");
+
+  if (varsValidStackSlice.isNone()) {
+    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
+    VPackSlice varsValidSlice = slice.get("varsValid");
+
+    if (!varsValidSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "\"varsValid\" needs to be an array");
+    }
+    auto& varsValid = _varsValidStack.emplace_back();
+
+    varsValid.reserve(varsValidSlice.length());
+    for (VPackSlice it : VPackArrayIterator(varsValidSlice)) {
+      Variable oneVarValid(it);
+      Variable* oneVariable = allVars->getVariable(oneVarValid.id);
+
+      if (oneVariable == nullptr) {
+        std::string errmsg = "varsValid: ID not found in all-array: " +
+                             StringUtils::itoa(oneVarValid.id);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+      }
+      varsValid.insert(oneVariable);
+    }
+  } else {
+    // TODO deserialize varsValidStack
+    ADB_UNREACHABLE;
   }
 
   _isInSplicedSubquery =
