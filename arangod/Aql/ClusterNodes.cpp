@@ -382,7 +382,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }
@@ -662,7 +662,7 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collec
 
 auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
-void GatherNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
+void GatherNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _elements) {
     vars.emplace(p.var);
   }
@@ -846,7 +846,7 @@ std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere() co
   return vec;
 }
 
-void SingleRemoteOperationNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
+void SingleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inVariable) {
     vars.emplace(_inVariable);
   }

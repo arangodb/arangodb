@@ -284,12 +284,12 @@ namespace {
 /// introduced by the COLLECT itself, in which case it would fail
 void checkIntoVariables(Parser* parser, AstNode const* expression,
                         int line, int column,
-                        ::arangodb::containers::HashSet<Variable const*> const& variablesIntroduced) {
+                        VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
 
-  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
+  VarSet varsInAssignment;
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -304,9 +304,9 @@ void checkIntoVariables(Parser* parser, AstNode const* expression,
 /// @brief register variables in the scope
 void registerAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                              int line, int column,
-                             ::arangodb::containers::HashSet<Variable const*>& variablesIntroduced,
+                             VarSet& variablesIntroduced,
                              AstNode const* vars) {
-  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
+  VarSet varsInAssignment;
 
   size_t const n = vars->numMembers();
 
@@ -2812,7 +2812,7 @@ yyreduce:
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
-        ::arangodb::containers::HashSet<Variable const*> variables;
+        VarSet variables;
         ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, (yyvsp[-2].node));
       }
 
@@ -2826,7 +2826,7 @@ yyreduce:
 #line 842 "Aql/grammar.y"
     {
       /* AGGREGATE var = expr OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -2855,7 +2855,7 @@ yyreduce:
 #line 866 "Aql/grammar.y"
     {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -2872,7 +2872,7 @@ yyreduce:
       }
 
       // note all group variables
-      ::arangodb::containers::HashSet<Variable const*> groupVars;
+      VarSet groupVars;
       size_t n = (yyvsp[-3].node)->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = (yyvsp[-3].node)->getMember(i);
@@ -2890,7 +2890,7 @@ yyreduce:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          ::arangodb::containers::HashSet<Variable const*> variablesUsed;
+          VarSet variablesUsed;
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -2916,7 +2916,7 @@ yyreduce:
 #line 922 "Aql/grammar.y"
     {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {
@@ -2940,7 +2940,7 @@ yyreduce:
 #line 941 "Aql/grammar.y"
     {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
+      VarSet variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (::startCollectScope(scopes)) {

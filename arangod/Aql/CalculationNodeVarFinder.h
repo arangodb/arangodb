@@ -35,7 +35,7 @@ class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode> {
 
   ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
 
-  ::arangodb::containers::HashSet<Variable const*> _currentUsedVars;
+  VarSet _currentUsedVars;
 
  public:
   CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
@@ -46,7 +46,7 @@ class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode> {
 class CalculationNodeVarExistenceFinder final : public WalkerWorker<ExecutionNode> {
   Variable const* _lookingFor;
 
-  ::arangodb::containers::HashSet<Variable const*> _currentUsedVars;
+  VarSet _currentUsedVars;
 
   bool _isCalculationNodesFound;
 

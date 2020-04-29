@@ -262,7 +262,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -354,7 +354,7 @@ class GatherNode final : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief get Variables used here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
@@ -444,7 +444,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;

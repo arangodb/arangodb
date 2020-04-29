@@ -79,7 +79,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
   auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
     auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
-    ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
+    VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
     std::unordered_set<RegisterId> regsToClear;
 
@@ -241,13 +241,6 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
         std::string("duplicate register assignment for variable #") +
             std::to_string(v) + " while planning registers");
   }
-}
-
-template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v) {
-  auto regId = addRegister();
-
-  varInfo.try_emplace(v, VarInfo(depth, regId));
 }
 
 template <typename T>

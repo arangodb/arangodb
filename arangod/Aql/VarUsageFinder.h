@@ -46,8 +46,8 @@ template <class T>
 struct VarUsageFinderT final : public WalkerWorker<T> {
   VarSetStack _usedLaterStack = VarSetStack{{}};
   VarSetStack _varsValidStack = VarSetStack{{}};
-  ::arangodb::containers::HashSet<Variable const*> _usedLater;
-  ::arangodb::containers::HashSet<Variable const*> _valid;
+  VarSet _usedLater;
+  VarSet _valid;
   std::unordered_map<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 

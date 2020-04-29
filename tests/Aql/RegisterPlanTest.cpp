@@ -29,6 +29,7 @@
 #include "Aql/RegisterPlan.cpp"
 #include "Aql/VarUsageFinder.cpp"
 #include "Aql/VarUsageFinder.h"
+#include "Aql/types.h"
 #include "Basics/StringUtils.h"
 
 #include <optional>
@@ -41,8 +42,6 @@ using namespace arangodb::aql;
 namespace arangodb {
 namespace tests {
 namespace aql {
-
-typedef ::arangodb::containers::HashSet<Variable const*> VarSet;
 
 struct PlanMiniMock {
   PlanMiniMock(ExecutionNode::NodeType expectedType)

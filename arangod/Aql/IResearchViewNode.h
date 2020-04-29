@@ -165,7 +165,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<aql::Variable const*>& vars) const override final;
+  void getVariablesUsedHere(aql::VarSet& vars) const override final;
 
   /// @brief returns IResearchViewNode options
   Options const& options() const noexcept { return _options; }
@@ -177,8 +177,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       second - node has nondeterministic/dependent (inside a loop)
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
-
-  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   [[nodiscard]] auto getOutputVariables() const -> aql::VariableIdSet final;
 

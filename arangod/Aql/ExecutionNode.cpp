@@ -866,7 +866,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     }
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
-    ::arangodb::containers::HashSet<Variable const*> variablesUsedHere;
+    VarSet variablesUsedHere;
     ep->getVariablesUsedHere(variablesUsedHere);
     for (auto const& v : variablesUsedHere) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
@@ -1197,7 +1197,7 @@ void ExecutionNode::setParent(ExecutionNode* p) {
   _parents.emplace_back(p);
 }
 
-void ExecutionNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>&) const {
+void ExecutionNode::getVariablesUsedHere(VarSet& vars) const {
   // do nothing!
 }
 
@@ -1206,7 +1206,7 @@ std::vector<Variable const*> ExecutionNode::getVariablesSetHere() const {
 }
 
 ::arangodb::containers::HashSet<VariableId> ExecutionNode::getVariableIdsUsedHere() const {
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   getVariablesUsedHere(vars);
 
   ::arangodb::containers::HashSet<VariableId> ids;
@@ -1256,6 +1256,7 @@ std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
 }
 
 bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
+  TRI_ASSERT(_varUsageValid);
   return (_varsUsedLaterStack.back().find(variable) != _varsUsedLaterStack.back().end());
 }
 
@@ -1573,7 +1574,7 @@ ExecutionNode::NodeType EnumerateListNode::getType() const {
   return ENUMERATE_LIST;
 }
 
-void EnumerateListNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
@@ -1735,7 +1736,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
 
-  ::arangodb::containers::HashSet<Variable const*> inVars;
+  VarSet inVars;
   _expression->variables(inVars);
 
   std::vector<Variable const*> expInVars;
@@ -1816,7 +1817,7 @@ Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
 Expression* CalculationNode::expression() const { return _expression.get(); }
 
-void CalculationNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
   _expression->variables(vars);
 }
 
@@ -1873,7 +1874,7 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   getVariablesUsedHere(vars);
   for (auto const& v : vars) {
     auto setter = _plan->getVarSetBy(v->id);
@@ -2014,8 +2015,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
 struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  ::arangodb::containers::HashSet<Variable const*> _usedLater;
-  ::arangodb::containers::HashSet<Variable const*> _valid;
+  VarSet _usedLater;
+  VarSet _valid;
 
   SubqueryVarUsageFinder() {}
 
@@ -2054,7 +2055,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void SubqueryNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(finder);
 
@@ -2189,7 +2190,7 @@ FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* 
 
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
 
-void FilterNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void FilterNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
@@ -2293,7 +2294,7 @@ ExecutionNode::NodeType ReturnNode::getType() const { return RETURN; }
 
 void ReturnNode::setCount() { _count = true; }
 
-void ReturnNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void ReturnNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
@@ -2466,7 +2467,7 @@ CostEstimate MaterializeNode::estimateCost() const {
   return estimate;
 }
 
-void MaterializeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void MaterializeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inNonMaterializedDocId);
 }
 
@@ -2559,7 +2560,7 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDepende
 }
 
 void MaterializeMultiNode::getVariablesUsedHere(
-    ::arangodb::containers::HashSet<Variable const*>& vars) const {
+    VarSet& vars) const {
   // call base class method
   MaterializeNode::getVariablesUsedHere(vars);
 

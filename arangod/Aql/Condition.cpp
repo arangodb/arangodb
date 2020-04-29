@@ -990,7 +990,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  ::arangodb::containers::HashSet<Variable const*> varsUsed;
+  VarSet varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);

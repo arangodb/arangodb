@@ -229,18 +229,6 @@ void IndexNode::initIndexCoversProjections() {
   _options.forceProjection = true;
 }
 
-void IndexNode::planNodeRegisters(RegisterPlan& registerPlan) const {
-  if (isLateMaterialized()) {
-    registerPlan.registerVariable(_outNonMaterializedDocId->id);
-    // plan registers for index references
-    for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
-      registerPlan.registerVariable(fieldVar.first->id);
-    }
-  } else {
-    registerPlan.registerVariable(_outVariable->id);
-  }
-}
-
 /// @brief toVelocyPack, for IndexNode
 void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
                                    std::unordered_set<ExecutionNode const*>& seen) const {
@@ -350,7 +338,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
 
     hasV8Expression |= e->willUseV8();
 
-    ::arangodb::containers::HashSet<Variable const*> innerVars;
+    VarSet innerVars;
     e->variables(innerVars);
 
     nonConstExpressions.emplace_back(
@@ -607,7 +595,7 @@ CostEstimate IndexNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IndexNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);

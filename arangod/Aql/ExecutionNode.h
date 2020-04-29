@@ -374,8 +374,7 @@ class ExecutionNode {
    */
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  virtual void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>&) const;
-  virtual void getVariablesUsedHere(std::unordered_set<Variable const*>&) const {};
+  virtual void getVariablesUsedHere(VarSet& vars) const;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const;
@@ -384,7 +383,7 @@ class ExecutionNode {
   ::arangodb::containers::HashSet<VariableId> getVariableIdsUsedHere() const;
 
   /// @brief tests whether the node sets one of the passed variables
-  bool setsVariable(::arangodb::containers::HashSet<Variable const*> const& which) const;
+  bool setsVariable(VarSet const& which) const;
 
   /// @brief setVarsUsedLater
   void setVarsUsedLater(VarSetStack varStack);
@@ -654,7 +653,7 @@ class EnumerateListNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -767,7 +766,7 @@ class CalculationNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -830,7 +829,7 @@ class SubqueryNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -884,7 +883,7 @@ class FilterNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   Variable const* inVariable() const;
 
@@ -948,7 +947,7 @@ class ReturnNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   Variable const* inVariable() const;
 
@@ -1024,7 +1023,7 @@ class MaterializeNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override;
+  void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -1082,7 +1081,7 @@ class MaterializeMultiNode : public MaterializeNode {
                        bool withProperties) const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
  private:
   /// @brief input variable non-materialized collection ids

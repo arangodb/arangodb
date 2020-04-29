@@ -753,7 +753,7 @@ void TraversalNode::prepareOptions() {
 
 /// @brief remember the condition to execute for early traversal abortion.
 void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
-  ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
+  VarSet varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
