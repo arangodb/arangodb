@@ -12,6 +12,11 @@ devel
 * Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
   is not another one hiding somewhere.
 
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
+* Fix REST API `/_admin/cluster/removeServer`.
+  This also fixes the removal of servers via the web interface.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Lower the default values for `--rocksdb.block-cache-size` and 
@@ -28,10 +33,11 @@ devel
 * Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
   integrated into scatter-in-cluster.
 
-* Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base` and 
-  `--rocksdb.target-file-size-multiplier` to make them configurable.
+* Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base`
+  and `--rocksdb.target-file-size-multiplier` to make them configurable.
 
-* Allow STARTS_WITH function to process several prefixes with min match count parameter.
+* Allow STARTS_WITH function to process several prefixes with min match count
+  parameter.
 
 * Added collection property changes into auditing.
 

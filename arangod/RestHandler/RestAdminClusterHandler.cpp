@@ -473,12 +473,12 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
   }
 
   if (server.isString()) {
-    std::string serverId = resolveServerNameID(server);
+    std::string serverId = resolveServerNameID(server.copyString());
     return handlePostRemoveServer(serverId);
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                "object with key `server`");
+                "expecting string or object with key `server`");
   return RestStatus::DONE;
 }
 
@@ -828,7 +828,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job
   if (body.isObject()) {
     VPackSlice server = body.get("server");
     if (server.isString()) {
-      std::string serverId = resolveServerNameID(server);
+      std::string serverId = resolveServerNameID(server.copyString());
       return handleCreateSingleServerJob(job, serverId);
     }
   }
@@ -1548,18 +1548,6 @@ std::string RestAdminClusterHandler::resolveServerNameID(std::string const& serv
   }
 
   return serverName;
-}
-
-std::string RestAdminClusterHandler::resolveServerNameID(VPackSlice slice) {
-  auto servers = server().getFeature<ClusterFeature>().clusterInfo().getServerAliases();
-
-  for (auto const& pair : servers) {
-    if (slice.isEqualString(pair.second)) {
-      return pair.first;
-    }
-  }
-
-  return slice.copyString();
 }
 
 namespace std {
