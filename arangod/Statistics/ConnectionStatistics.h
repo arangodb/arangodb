@@ -33,18 +33,48 @@ namespace arangodb {
 class ConnectionStatistics {
  public:
   static void initialize();
-
-  static ConnectionStatistics* acquire();
-  void release();
-
-  static void SET_START(ConnectionStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_connStart = StatisticsFeature::time();
-    }
-  }
-
-  static void SET_HTTP(ConnectionStatistics* stat);
   
+  class Item {
+   public:
+    Item() : _stat(nullptr) {}
+    Item(ConnectionStatistics* stat) : _stat(stat) {}
+
+    Item(Item const&) = delete;
+    Item& operator=(Item const&) = delete;
+
+    Item(Item&& r) : _stat(r._stat) { r._stat = nullptr; }
+    Item& operator=(Item&& r) {
+      if (&r != this) {
+        reset();
+        _stat = r._stat;
+        r._stat = nullptr;
+      }
+      return *this;
+    }
+
+    ~Item() { reset(); }
+
+    void reset() {
+      if (_stat != nullptr) {
+        _stat->release();
+        _stat = nullptr;
+      }
+    }
+
+    void SET_START() {
+      if (_stat != nullptr) {
+        _stat->_connStart = StatisticsFeature::time();
+      }
+    }
+
+    void SET_HTTP();
+
+   private:
+    ConnectionStatistics* _stat;
+  };
+  
+  static Item acquire();
+
   struct Snapshot {
     statistics::Counter httpConnections;
     statistics::Counter totalRequests;
@@ -57,6 +87,8 @@ class ConnectionStatistics {
 
  private:
   ConnectionStatistics() { reset(); }
+
+  void release();
 
   void reset() {
     _connStart = 0.0;

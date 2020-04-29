@@ -43,9 +43,9 @@ static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<Q
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
-void ConnectionStatistics::SET_HTTP(ConnectionStatistics* stat) {
-  if (stat != nullptr) {
-    stat->_http = true;
+void ConnectionStatistics::Item::SET_HTTP() {
+  if (_stat != nullptr) {
+    _stat->_http = true;
 
     statistics::HttpConnections.incCounter();
   }
@@ -61,14 +61,14 @@ void ConnectionStatistics::initialize() {
   }
 }
 
-ConnectionStatistics* ConnectionStatistics::acquire() {
+ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
   if (StatisticsFeature::enabled() && _freeList.pop(statistics)) {
-    return statistics;
+    return Item{ statistics };
   }
 
-  return nullptr;
+  return Item{};
 }
 
 void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {

@@ -191,7 +191,7 @@ template <SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
   initNgHttp2Session();
 }
 

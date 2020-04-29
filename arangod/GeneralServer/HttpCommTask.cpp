@@ -210,7 +210,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _shouldKeepAlive(false),
       _messageDone(false),
       _allowMethodOverride(GeneralServerFeature::allowMethodOverride()) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
   llhttp_settings_init(&_parserSettings);

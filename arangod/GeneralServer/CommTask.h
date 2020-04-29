@@ -27,6 +27,7 @@
 
 #include "Auth/TokenCache.h"
 #include "Endpoint/ConnectionInfo.h"
+#include "Statistics/ConnectionStatistics.h"
 
 #include <mutex>
 
@@ -154,7 +155,7 @@ protected:
   GeneralServer& _server;
   ConnectionInfo _connectionInfo;
   
-  ConnectionStatistics* _connectionStatistics;
+  ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 

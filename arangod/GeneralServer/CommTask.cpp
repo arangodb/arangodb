@@ -76,11 +76,10 @@ CommTask::CommTask(GeneralServer& server,
                    ConnectionInfo info)
     : _server(server),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(nullptr),
+      _connectionStatistics(ConnectionStatistics::acquire()),
       _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics = ConnectionStatistics::acquire();
-  ConnectionStatistics::SET_START(_connectionStatistics);
+  _connectionStatistics.SET_START();
 }
 
 CommTask::~CommTask() {
@@ -91,10 +90,6 @@ CommTask::~CommTask() {
     if (stat != nullptr) {
       stat->release();
     }
-  }
-  if (_connectionStatistics != nullptr) {
-    _connectionStatistics->release();
-    _connectionStatistics = nullptr;
   }
 }
 
