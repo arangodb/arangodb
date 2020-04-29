@@ -203,15 +203,6 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDat
   return rv;
 }
 
-int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-void ClusterEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
-                                        bool useWriteMarker, int& status) {
-  status = TRI_ERROR_NO_ERROR;
-}
-
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
   TRI_ASSERT(false);
   return TRI_ERROR_NOT_IMPLEMENTED;

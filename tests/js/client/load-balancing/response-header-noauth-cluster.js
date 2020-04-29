@@ -135,7 +135,6 @@ function ResponseHeadersSuite () {
       }
       assertEqual(result.status, 200);
       assertNotUndefined(result.headers["x-arango-async-id"]);
-      assertEqual("200 OK", result.headers["http/1.1"]);
     },
 
     testForwardingPost: function() {
@@ -165,7 +164,6 @@ function ResponseHeadersSuite () {
       }
       assertEqual(result.status, 200);
       assertNotUndefined(result.headers["x-arango-async-id"]);
-      assertEqual("200 OK", result.headers["http/1.1"]);
     },
 
     testForwardingPut: function() {
@@ -195,7 +193,6 @@ function ResponseHeadersSuite () {
       }
       assertEqual(result.status, 200);
       assertNotUndefined(result.headers["x-arango-async-id"]);
-      assertEqual("200 OK", result.headers["http/1.1"]);
     },
   };
 }

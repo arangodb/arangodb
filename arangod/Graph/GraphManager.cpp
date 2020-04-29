@@ -372,7 +372,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(std::string cons
     res.reset(res.errorNumber(), ss.str());
     return {res};
   }
-  return {Graph::fromPersistence(result.slice(), _vocbase)};
+  return {Graph::fromPersistence(_vocbase, result.slice())};
 }
 
 OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync) const {
@@ -480,7 +480,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
   for (VPackSlice it : VPackArrayIterator(graphsSlice)) {
     std::unique_ptr<Graph> graph;
     try {
-      graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);
+      graph = Graph::fromPersistence(_vocbase, it.resolveExternals());
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     }
@@ -497,76 +497,95 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
   return res;
 }
 
-Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) const {
+Result GraphManager::ensureCollections(Graph* graph, bool waitForSync) const {
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
+  std::unordered_set<std::shared_ptr<LogicalCollection>> existentDocumentCollections{};
+  std::unordered_set<std::shared_ptr<LogicalCollection>> existentEdgeCollections{};
+
   auto& vocbase = ctx()->vocbase();
   Result innerRes{TRI_ERROR_NO_ERROR};
 
+  // I. Check which collections do exists and which not.
   // Check that all edgeCollections are either to be created
   // or exist in a valid way.
+  // a) edge collections
   for (auto const& edgeColl : graph->edgeCollections()) {
-    bool found = false;
     std::shared_ptr<LogicalCollection> col;
     Result res = methods::Collections::lookup(vocbase, edgeColl, col);
     if (res.ok()) {
       TRI_ASSERT(col);
       if (col->type() != TRI_COL_TYPE_EDGE) {
         return Result(TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                       "Collection: '" + col->name() +
-                           "' is not an EdgeCollection");
+                      "Collection: '" + col->name() +
+                          "' is not an EdgeCollection");
       } else {
-        res = graph->validateCollection(*col);
-        if (res.fail()) {
-          return res;
-        }
-        found = true;
+        // found the collection
+        existentEdgeCollections.emplace(std::move(col));
       }
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
-    }
-
-    if (!found) {
+    } else {
+      // not found the collection, need to create it later
       edgeCollectionsToCreate.emplace(edgeColl);
     }
   }
 
   // Check that all vertexCollections are either to be created
   // or exist in a valid way.
-  // If there is an edge collection used as a vertex collection
-  // it will not be created twice
+  // b) vertex collections
   for (auto const& vertexColl : graph->vertexCollections()) {
-    bool found = false;
     std::shared_ptr<LogicalCollection> col;
     Result res = methods::Collections::lookup(vocbase, vertexColl, col);
     if (res.ok()) {
       TRI_ASSERT(col);
-      res = graph->validateCollection(*col);
-      if (res.fail()) {
-        return res;
-      }
-      found = true;
+      existentDocumentCollections.emplace(col);
     } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
-    }
-
-    if (!found) {
+    } else {
       if (edgeCollectionsToCreate.find(vertexColl) == edgeCollectionsToCreate.end()) {
         documentCollectionsToCreate.emplace(vertexColl);
       }
     }
   }
 
+  // II. Validate graph
+  // a) Initial Validation
+  if (!existentDocumentCollections.empty()) {
+    for (auto const& col : existentDocumentCollections) {
+      graph->ensureInitial(*col);
+    }
+  }
+
+  // b) Enterprise Sharding
 #ifdef USE_ENTERPRISE
   {
-    Result res = ensureEnterpriseCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
+    Result res = ensureEnterpriseCollectionSharding(graph, waitForSync,
+                                                    documentCollectionsToCreate);
     if (res.fail()) {
       return res;
     }
   }
 #endif
 
+  // III. Validate collections
+  // document collections
+  for (auto const& col : existentDocumentCollections) {
+    Result res = graph->validateCollection(*col);
+    if (res.fail()) {
+      return res;
+    }
+  }
+  // edge collections
+  for (auto const& col : existentEdgeCollections) {
+    Result res = graph->validateCollection(*col);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  // IV. Create collections
   VPackBuilder optionsBuilder;
   optionsBuilder.openObject();
   graph->createCollectionOptions(optionsBuilder, waitForSync);
@@ -592,8 +611,8 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   }
 
   std::vector<std::shared_ptr<LogicalCollection>> created;
-  return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
+  return methods::Collections::create(vocbase, collectionsToCreate, waitForSync,
+                                      true, false, nullptr, created);
 };
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
@@ -604,7 +623,7 @@ bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
       onlySatellites = false;
     }
     if (!onlySatellites) {
-      break; // quick exit
+      break;  // quick exit
     }
   }
 
@@ -613,7 +632,7 @@ bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
       onlySatellites = false;
     }
     if (!onlySatellites) {
-      break; // quick exit
+      break;  // quick exit
     }
   }
 
@@ -692,8 +711,8 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
   // Note that this check includes the following check in the loop
   //   if (!collectionExists(col) && !canUseDatabaseRW)
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
-  // However, in case a collection has to be created but can't, we have to throw
-  // FORBIDDEN instead of READ_ONLY for backwards compatibility.
+  // However, in case a collection has to be created but can't, we have to
+  // throw FORBIDDEN instead of READ_ONLY for backwards compatibility.
   if (!execContext.canUseDatabase(auth::Level::RW)) {
     // Check for all collections: if it exists and if we have RO access to it.
     // If none fails the check above we need to return READ_ONLY.
@@ -849,15 +868,15 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     // there may be no collections to drop when dropCollections is false.
     TRI_ASSERT(dropCollections ||
                (leadersToBeRemoved.empty() && followersToBeRemoved.empty()));
-    // drop followers (with distributeShardsLike) first and leaders (which occur
-    // in some distributeShardsLike) second.
+    // drop followers (with distributeShardsLike) first and leaders (which
+    // occur in some distributeShardsLike) second.
     for (auto const& cname : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       std::shared_ptr<LogicalCollection> coll;
       Result found = methods::Collections::lookup(ctx()->vocbase(), cname, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        dropResult =  arangodb::methods::Collections::drop(*coll, false, -1.0);
+        dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
       }
 
       if (dropResult.fail()) {
@@ -996,8 +1015,8 @@ Result GraphManager::checkDropGraphPermissions(
   // Note that this check includes the following check from before
   //   if (mustDropAtLeastOneCollection && !canUseDatabaseRW)
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
-  // However, in case a collection has to be created but can't, we have to throw
-  // FORBIDDEN instead of READ_ONLY for backwards compatibility.
+  // However, in case a collection has to be created but can't, we have to
+  // throw FORBIDDEN instead of READ_ONLY for backwards compatibility.
   if (!execContext.canUseCollection(StaticStrings::GraphCollection, auth::Level::RW)) {
     LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
         << logprefix << "No write access to " << databaseName << "."
@@ -1021,7 +1040,8 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
         return res;
       }
     }
-    return Graph::fromUserInput(graphName, input, input.get(StaticStrings::GraphOptions));
+    return Graph::fromUserInput(_vocbase, graphName, input,
+                                input.get(StaticStrings::GraphOptions));
   } catch (arangodb::basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (...) {

@@ -243,8 +243,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                       std::shared_ptr<VPackBuilder>& builderSPtr) override;
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool isUpgrade) override;
-  virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,
-                                   int& status) override;
   using StorageEngine::registerCollection;
   using StorageEngine::registerView;
   virtual TRI_voc_tick_t releasedTick() const override;
@@ -261,7 +259,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual arangodb::WalAccess const* walAccess() const override;
-  virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
     arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info);

@@ -701,14 +701,14 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }  // release _databaseCreateLock
 
   // write marker into log
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
 
   if (!engine->inRecovery()) {
     res = engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
-  events::CreateDatabase(name, res);
+  events::CreateDatabase(name, res.errorNumber());
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -813,7 +813,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
-    engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
+    res = engine->prepareDropDatabase(*vocbase).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
@@ -1255,7 +1255,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
       // try to open this database
       arangodb::CreateDatabaseInfo info(server());
-      info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);

@@ -1176,7 +1176,7 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
     }
   }
 
-  result.first.clear();
+  result.first = arangodb::LocalDocumentId::none();
   result.second = 0;
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
@@ -1676,11 +1676,6 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(arangodb::CreateD
                                          std::move(new_info));
 }
 
-void StorageEngineMock::prepareDropDatabase(TRI_vocbase_t& vocbase,
-                                            bool useWriteMarker, int& status) {
-  // NOOP
-}
-
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
   before();
   return _releasedTick;
@@ -1736,10 +1731,6 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForColle
                                              bool writeShutdownFile) {
   TRI_ASSERT(false);
   return arangodb::Result();
-}
-
-int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
-  return TRI_ERROR_NO_ERROR;
 }
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state,

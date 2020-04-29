@@ -88,9 +88,8 @@ class TraversalNode : public virtual GraphNode {
   /// @brief Internal constructor to clone the node.
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 std::vector<Collection*> const& edgeColls,
-                std::vector<Collection*> const& vertexColls,
-                Variable const* inVariable, std::string const& vertexId,
-                TRI_edge_direction_e defaultDirection,
+                std::vector<Collection*> const& vertexColls, Variable const* inVariable,
+                std::string const& vertexId, TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
@@ -133,7 +132,10 @@ class TraversalNode : public virtual GraphNode {
       }
     }
     for (auto const& pruneVar : _pruneVariables) {
-      result.emplace(pruneVar);
+      if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
+          pruneVar != pathOutVariable()) {
+        result.emplace(pruneVar);
+      }
     }
     if (usesInVariable()) {
       result.emplace(_inVariable);
@@ -156,18 +158,20 @@ class TraversalNode : public virtual GraphNode {
   }
 
   /// @brief checks if the path out variable is used
-  bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
+  bool usesPathOutVariable() const;
 
   /// @brief return the path out variable
-  Variable const* pathOutVariable() const { return _pathOutVariable; }
+  Variable const* pathOutVariable() const;
 
   /// @brief set the path out variable
-  void setPathOutput(Variable const* outVar) { _pathOutVariable = outVar; }
+  void setPathOutput(Variable const* outVar);
 
   /// @brief return the in variable
-  Variable const* inVariable() const { return _inVariable; }
+  Variable const* inVariable() const;
 
-  std::string const getStartVertex() const { return _vertexId; }
+  std::string const getStartVertex() const;
+
+  void setInVariable(Variable const* inVariable);
 
   /// @brief remember the condition to execute for early traversal abortion.
   void setCondition(std::unique_ptr<Condition> condition);

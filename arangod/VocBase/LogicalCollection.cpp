@@ -155,10 +155,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
       _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
-      _usesRevisionsAsDocumentIds(
-          Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _usesRevisionsAsDocumentIds(
+          Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
       _minRevision((system() || isSmartChild())
                        ? 0
@@ -185,7 +185,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  auto res = updateValidators(info.get(StaticStrings::Validation));
+  auto res = updateValidators(info.get(StaticStrings::Schema));
   if(res.fail()){
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -759,7 +759,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   // Validators
   {
-    result.add(VPackValue(StaticStrings::Validation));
+    result.add(VPackValue(StaticStrings::Schema));
     validatorsToVelocyPack(result);
   }
 
@@ -843,7 +843,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
-  auto res = updateValidators(slice.get(StaticStrings::Validation));
+  auto res = updateValidators(slice.get(StaticStrings::Schema));
   if(res.fail()){
     THROW_ARANGO_EXCEPTION(res);
   }

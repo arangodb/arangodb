@@ -35,7 +35,7 @@ namespace velocypack {
 class Builder;
 struct Options;
 }  // namespace velocypack
-  
+
 class HttpRequest final : public GeneralRequest {
   friend class RestBatchHandler; // TODO remove
 
@@ -52,7 +52,7 @@ class HttpRequest final : public GeneralRequest {
 
  public:
   HttpRequest(HttpRequest&&) = default;
-  ~HttpRequest() = default;
+  ~HttpRequest() override = default;
 
  public:
   arangodb::Endpoint::TransportType transportType() override {
@@ -76,7 +76,7 @@ class HttpRequest final : public GeneralRequest {
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override {
     _payload = std::move(buffer);
   }
-  
+
   arangodb::velocypack::Buffer<uint8_t>& body() {
     return _payload;
   }
@@ -89,33 +89,35 @@ class HttpRequest final : public GeneralRequest {
   void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
-  
+
   /// @brief parse an existing path
   void parseUrl(char const* start, size_t len);
   void setHeaderV2(std::string&& key, std::string&& value);
-  
+
   static HttpRequest* createHttpRequest(ContentType contentType,
                                         char const* body, int64_t contentLength,
                                         std::unordered_map<std::string, std::string> const& headers);
-  
+
  protected:
-  void setValue(char* key, char* value);
   void setArrayValue(char const* key, size_t length, char const* value);
 
  private:
-  
+
   /// used by RestBatchHandler (an API straight from hell)
   void parseHeader(char* buffer, size_t length);
   void setValues(char* buffer, char* end);
   void setCookie(char* key, size_t length, char const* value);
-  
+
   void parseCookies(char const* buffer, size_t length);
 
  private:
   std::unordered_map<std::string, std::string> _cookies;
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
-  bool const _allowMethodOverride;
+  bool const _allowMethodOverride = false;
+
+  /// @brief was VPack payload validated
+  bool _validatedPayload = false;
 };
 }  // namespace arangodb
 

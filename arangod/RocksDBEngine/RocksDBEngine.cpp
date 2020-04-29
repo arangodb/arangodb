@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
@@ -419,7 +420,7 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.num_stripes = NumberOfCores::getValue();
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
@@ -437,6 +438,9 @@ void RocksDBEngine::start() {
   _options.optimize_filters_for_hits = opts._optimizeFiltersForHits;
   _options.use_direct_reads = opts._useDirectReads;
   _options.use_direct_io_for_flush_and_compaction = opts._useDirectIoForFlushAndCompaction;
+
+  _options.target_file_size_base = opts._targetFileSizeBase;
+  _options.target_file_size_multiplier = static_cast<int>(opts._targetFileSizeMultiplier);
   // during startup, limit the total WAL size to a small value so we do not see
   // large WAL files created at startup.
   // Instead, we will start with a small value here and up it later in the startup process
@@ -1163,9 +1167,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 }
 
-int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
-  Result res = writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
-  return res.errorNumber();
+Result RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
+  return writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
 }
 
 Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice,
@@ -1205,8 +1208,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   return result.errorNumber();
 }
 
-void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
-                                        bool useWriteMarker, int& status) {
+Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
   VPackBuilder builder;
 
   builder.openObject();
@@ -1216,9 +1218,7 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
   builder.close();
 
   auto log = RocksDBLogValue::DatabaseDrop(vocbase.id());
-  auto res = writeDatabaseMarker(vocbase.id(), builder.slice(), std::move(log));
-
-  status = res.errorNumber();
+  return writeDatabaseMarker(vocbase.id(), builder.slice(), std::move(log));
 }
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
@@ -1255,6 +1255,12 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
     THROW_ARANGO_EXCEPTION(res);
   }
 }
+
+void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
+                                          LogicalCollection& coll) {
+  replicationManager()->drop(&coll);
+}
+
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                LogicalCollection& coll) {

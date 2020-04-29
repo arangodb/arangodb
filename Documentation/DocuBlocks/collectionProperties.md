@@ -30,22 +30,8 @@ Returns an object containing all collection properties.
   * *offset*: initial offset value for *autoincrement* key generator.
     Not used for other key generator types.
 
-* *indexBuckets*: number of buckets into which indexes using a hash
-  table are split. The default is 16 and this number has to be a
-  power of 2 and less than or equal to 1024.
-  This option is meaningful for the MMFiles storage engine only.
-
-  For very large collections one should increase this to avoid long pauses
-  when the hash table has to be initially built or resized, since buckets
-  are resized individually and can be initially built in parallel. For
-  example, 64 might be a sensible value for a collection with 100
-  000 000 documents. Currently, only the edge index respects this
-  value, but other index types might follow in future ArangoDB versions.
-  Changes (see below) are applied when the collection is loaded the next
-  time.
-
-* *validation* (optional, default is *null*, **rocksdb-only**): 
-  Object that specifies the collection level document validation for documents.
+* *schema* (optional, default is *null*): 
+  Object that specifies the collection level document schema for documents.
   The attribute keys `rule`, `level` and `message` must follow the rules
   documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
@@ -79,10 +65,6 @@ one or more of the following attribute(s):
   after the data was synced to disk.
 
 * *journalSize*: The size of the journal in bytes.
-  This option is meaningful for the MMFiles storage engine only.
-
-* *indexBuckets*: See above, changes are only applied when the
-  collection is loaded the next time.
   This option is meaningful for the MMFiles storage engine only.
 
 * *replicationFactor*: Change the number of shard copies kept on
