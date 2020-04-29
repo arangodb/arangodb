@@ -1908,7 +1908,6 @@ void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
                       VPackValue(rebootID));
         envelope->add(anPath + StaticStrings::AttrCoordinator,
                       VPackValue(coordinatorID));
-
         {
           VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix +
                                           "/" + coordinatorID);
@@ -2039,14 +2038,14 @@ void Supervision::checkBrokenAnalyzers() {
 
   for (auto const& dbData : node.children()) {
     auto const& revisions = dbData.second;
-    auto [revision, revisionExists] = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
-    auto [buildingRevision, buildingRevisionExists] = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
-    if (revisionExists && buildingRevisionExists && revision != buildingRevision) {
+    auto revision = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
+    auto buildingRevision = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
+    if (revision.second && buildingRevision.second && revision.first != buildingRevision.first) {
       resourceCreatorLost(revisions, [this, &dbData, revision, buildingRevision](ResourceCreatorLostEvent const& ev) {
         LOG_TOPIC("ae5a3", INFO, Logger::SUPERVISION)
             << "checkBrokenAnalyzers: fixing broken analyzers revision with database name "
             << dbData.first;
-        restoreBrokenAnalyzersRevision(dbData.first, revision, buildingRevision,
+        restoreBrokenAnalyzersRevision(dbData.first, revision.first, buildingRevision.first,
                                        ev.coordinatorId, ev.coordinatorRebootId, ev.coordinatorFound);
       });
     }

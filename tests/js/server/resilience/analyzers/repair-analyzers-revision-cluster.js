@@ -127,7 +127,7 @@ function repairAnalyzersRevisionTestSuite () {
       assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
       assertEqual(revisionNumber - 1, revision.revision);
       assertEqual(revisionNumber - 1, revision.buildingRevision);
-      
+
       analyzers.remove("valid", true);
       revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
