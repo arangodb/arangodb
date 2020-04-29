@@ -155,8 +155,13 @@ AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
 AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId < getNrRegisters());
-  // caller needs to take immediate ownership.
-  return block().stealAndEraseValue(_baseIndex, registerId);
+  AqlValue const& a = block().getValueReference(_baseIndex, registerId);
+  if (!a.isEmpty() && a.requiresDestruction()) {
+    // Now no one is responsible for AqlValue a
+    block().steal(a);
+  }
+  // This cannot fail, caller needs to take immediate ownership.
+  return a;
 }
 
 RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
