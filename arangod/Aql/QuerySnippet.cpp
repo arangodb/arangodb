@@ -114,7 +114,6 @@ void QuerySnippet::serializeIntoBuilder(
   std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>& localExpansions =
       firstBranchRes.get();
   // TODO: check usage of localExpansion here everywhere
-
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   ExecutionNode* lastNode = _nodes.back();
   bool lastIsRemote = lastNode->getType() == ExecutionNode::REMOTE;
@@ -436,9 +435,9 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
           if (found->second == server && localGraphNode->isDisjoint()) {
-            // TODO HEIKO: First section. Fine-grade collection sharding
             myExp.emplace(shard);
           } else if (found->second == server || !localGraphNode->isDisjoint()) {
+            // TODO HEIKO: First section. Fine-grade collection sharding
             localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
           }
 
@@ -451,7 +450,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // additional verification checks
+      // additional verification checks for disjoint smart graphs
       if (localGraphNode->isDisjoint()) {
         size_t size = myExpFinal.begin()->second.size();
         for (auto const& expDefinition : myExpFinal) {
@@ -538,7 +537,14 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
 
       // set the max loop index (note this will essentially be done only once)
       // we can set first found map to overall size as they all must be the same (asserted above)
-      numberOfShardsToPermutate = myExpFinal.begin()->second.size();
+
+      if (myExpFinal.size() > 0 ) {
+        numberOfShardsToPermutate = myExpFinal.begin()->second.size();
+      } else {
+        // TODO: not needed remove me later
+        numberOfShardsToPermutate = 0;
+      }
+
       if (numberOfShardsToPermutate > 1) {
         // Only in this case we really need to do an expansion
         // Otherwise we get away with only using the main stream for
