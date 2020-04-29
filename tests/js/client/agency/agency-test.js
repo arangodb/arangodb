@@ -474,12 +474,19 @@ function agencyTestSuite () {
       assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
       job = ret.headers["x-arango-async-id"];
 
-      ret = request({url: agencyLeader + "/_api/job/" + job, method: "GET"});
-      assertEqual(ret.statusCode, 204);
       wr = accessAgency("write",[[{"/": {"op":"delete"}}]]).
           bodyParsed.results[0];
-      ret = request({url: agencyLeader + "/_api/job/" + job,
-                     method: "GET", followRedirect: true});
+      let tries = 0;
+      while (++tries <60) {
+        // jobs are processed asynchronously, so we need to poll here
+        // until the job has been processed
+        ret = request({url: agencyLeader + "/_api/job/" + job,
+                       method: "GET", followRedirect: true});
+        if (ret.statusCode !== 204) {
+          break;
+        }
+        wait(0.5);
+      }
       assertEqual(ret.statusCode, 200);
       ret = request({url: agencyLeader + "/_api/job/" + job, method: "PUT"});
       assertEqual(ret.statusCode, 200);
@@ -988,11 +995,11 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[2.71828182845904523536]}}]);
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":1}}]]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
       writeAndCheck([[{"/version/c":{"op":"push", "new":"world"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      wait(2.1);
+      wait(3.1);
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"push", "new":"hello"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
@@ -1032,11 +1039,11 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[1.25,2.71828182845904523536]}}]);
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":1}}]]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
       writeAndCheck([[{"/version/c":{"op":"prepend", "new":"world"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["world","hello"]}}]);
-      wait(2.1);
+      wait(3.1);
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"prepend", "new":"hello"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
@@ -1057,11 +1064,11 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":1}}]]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
       writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["world"]}}]);
-      wait(2.1);
+      wait(3.1);
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
@@ -1082,11 +1089,11 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
 
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":1}}]]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
       writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      wait(2.1);
+      wait(3.1);
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
@@ -1192,11 +1199,11 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:1}]);
       writeAndCheck([[{"/version":{"op":"increment"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":1}}]]); // int before
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
       writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:13}}]);
-      wait(1.1);
+      wait(3.1);
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:1}}]);
@@ -1212,11 +1219,11 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:-1}]);
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":1}}]]); // int before
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
       writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:11}}]);
-      wait(1.1);
+      wait(3.1);
       assertEqual(readAndCheck([["version"]]), [{}]);
       writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:{c:-1}}]);
