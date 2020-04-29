@@ -73,12 +73,12 @@ using namespace arangodb::methods;
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
-Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection& coll)
-    : _vocbase(vocbase), _coll(coll), _trx(nullptr), _responsibleForTrx(true) {}
+Collections::Context::Context(std::shared_ptr<LogicalCollection> coll)
+    : _coll(std::move(coll)), _trx(nullptr), _responsibleForTrx(true) {}
 
-Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection& coll,
+Collections::Context::Context(std::shared_ptr<LogicalCollection> coll,
                               transaction::Methods* trx)
-    : _vocbase(vocbase), _coll(coll), _trx(trx), _responsibleForTrx(false) {
+    : _coll(std::move(coll)), _trx(trx), _responsibleForTrx(false) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -91,8 +91,8 @@ Collections::Context::~Context() {
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type, bool embeddable,
                                                 bool forceLoadCollection) {
   if (_responsibleForTrx && _trx == nullptr) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(_vocbase, embeddable);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, _coll, type);
+    auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(), embeddable);
+    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
     if (!trx) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
                                      "Cannot create Transaction");
@@ -115,9 +115,9 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type, bo
   return _trx;
 }
 
-TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
+//TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
 
-LogicalCollection* Collections::Context::coll() const { return &_coll; }
+std::shared_ptr<LogicalCollection> Collections::Context::coll() const { return _coll; }
 
 void Collections::enumerate(TRI_vocbase_t* vocbase,
                             std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func) {
@@ -585,7 +585,7 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 }
 
 Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
-  LogicalCollection* coll = ctxt.coll();
+  auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
