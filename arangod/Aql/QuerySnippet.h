@@ -81,7 +81,7 @@ class QuerySnippet {
   Id id() const { return _id; }
 
  private:
-  ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> prepareFirstBranch(
+  ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>> prepareFirstBranch(
       ServerID const& server,
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       ShardLocking& shardLocking);
