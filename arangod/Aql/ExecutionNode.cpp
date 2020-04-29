@@ -400,8 +400,32 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
       varsUsedLater.insert(oneVariable);
     }
   } else {
-    // TODO deserialize varsUsedLaterStack
-    ADB_UNREACHABLE;
+    if (!varsUsedLaterStackSlice.isArray() || varsUsedLaterStackSlice.length() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+          "\"varsUsedLaterStack\" needs to be a non-empty array");
+    }
+
+    _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+            "\"varsUsedLaterStack\" needs contain arrays");
+      }
+      auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
+
+      varsUsedLater.reserve(stackEntrySlice.length());
+      for (auto it : VPackArrayIterator(stackEntrySlice)) {
+        Variable oneVarUsedLater(it);
+        Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
+
+        if (oneVariable == nullptr) {
+          std::string errmsg = "varsUsedLaterStack: ID not found in all-array: " +
+                               StringUtils::itoa(oneVarUsedLater.id);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+        }
+        varsUsedLater.insert(oneVariable);
+      }
+    }
   }
 
   VPackSlice varsValidStackSlice = slice.get("varsValidStack");
@@ -429,8 +453,34 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
       varsValid.insert(oneVariable);
     }
   } else {
-    // TODO deserialize varsValidStack
-    ADB_UNREACHABLE;
+    if (!varsValidStackSlice.isArray() || varsValidStackSlice.length() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL_AQL,
+          "\"varsValidStack\" needs to be a non-empty array");
+    }
+
+    _varsUsedLaterStack.reserve(varsValidStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "\"varsValidStack\" needs to contain arrays");
+      }
+      auto& varsValid = _varsValidStack.emplace_back();
+
+      varsValid.reserve(stackEntrySlice.length());
+      for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
+        Variable oneVarValid(it);
+        Variable* oneVariable = allVars->getVariable(oneVarValid.id);
+
+        if (oneVariable == nullptr) {
+          std::string errmsg = "varsValidStack: ID not found in all-array: " +
+                               StringUtils::itoa(oneVarValid.id);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+        }
+        varsValid.insert(oneVariable);
+      }
+    }
   }
 
   _isInSplicedSubquery =
