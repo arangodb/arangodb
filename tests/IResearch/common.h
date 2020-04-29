@@ -196,11 +196,10 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   builder.add("replicationFactor", VPackValue(1));
   builder.close();
   return builder;
-};
+}
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server,
-                                        std::string const& name, uint64_t id,
-                                        bool allowSystemDB = false);
+                                        std::string const& name, uint64_t id);
 arangodb::CreateDatabaseInfo systemDBInfo(
     arangodb::application_features::ApplicationServer& server,
     std::string const& name = arangodb::StaticStrings::SystemDatabase, uint64_t id = 1);

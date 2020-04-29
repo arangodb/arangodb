@@ -5891,18 +5891,24 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     }
 
     outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal edge outVariable not used later
-      traversal->setEdgeOutput(nullptr);
+      options->setProduceEdges(false);
+      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+          pruneVars.end()) {
+        traversal->setEdgeOutput(nullptr);
+      }
       modified = true;
     }
 
     outVariable = traversal->pathOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
       // traversal path outVariable not used later
-      traversal->setPathOutput(nullptr);
+      options->setProducePaths(false);
+      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+          pruneVars.end()) {
+        traversal->setPathOutput(nullptr);
+      }
       modified = true;
     }
 

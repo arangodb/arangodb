@@ -150,7 +150,7 @@ void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
-    TRI_ASSERT(collectRegister > 0 && collectRegister < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(collectRegister < RegisterPlan::MaxRegisterId);
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
