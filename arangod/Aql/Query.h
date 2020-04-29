@@ -195,11 +195,12 @@ class Query : public QueryContext {
     }
     return nullptr;
   }
+  void initForTests();
+#endif
+  
   AqlItemBlockManager& itemBlockManager() {
     return _itemBlockManager;
   }
-  void initForTests();
-#endif
   
   SnippetList const& snippets() const {
     return _snippets;
@@ -243,6 +244,9 @@ class Query : public QueryContext {
 
   /// @brief transaction context to use for this query
   std::shared_ptr<transaction::Context> _transactionContext;
+  
+  /// @brief shared query state
+  std::shared_ptr<SharedQueryState> _sharedState;
 
   /// @brief the currently used V8 context
   V8Context* _v8Context;

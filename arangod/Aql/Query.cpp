@@ -73,6 +73,15 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+std::shared_ptr<SharedQueryState> ensureSQS() {
+  if (ServerState::instance()->isDBServer()) {
+    return nullptr;
+  }
+  return std::make_shared<SharedQueryState>();
+}
+}
+
 /// @brief creates a query
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
@@ -81,6 +90,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _queryString(queryString),
       _transactionContext(ctx),
+      _sharedState(::ensureSQS()),
       _v8Context(nullptr),
       _bindParameters(bindParameters),
       _options(options),
@@ -215,8 +225,7 @@ void Query::prepareQuery(SerializationFormat format) {
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
-  auto res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockManager, *plan,
-                                                  /*planRegisters*/!_queryString.empty(),
+  auto res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                   format, _snippets);
 
   _plans.push_back(std::move(plan));
@@ -1227,11 +1236,7 @@ void Query::initForTests() {
 
 /// @brief return the query's shared state
 std::shared_ptr<SharedQueryState> Query::sharedState() const {
-  if (!_snippets.empty()) {
-    TRI_ASSERT(ServerState::instance()->isDBServer() || _snippets[0].first == 0);
-    return _snippets[0].second->sharedState();
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "query is not initalized");
+  return _sharedState;
 }
 
 ExecutionEngine* Query::rootEngine() const {
@@ -1305,8 +1310,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
     TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
     
-    res = ExecutionEngine::instantiateFromPlan(*this, _itemBlockManager, *plan,
-                                               /*planRegisters*/!_queryString.empty(),
+    res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                format, _snippets);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);

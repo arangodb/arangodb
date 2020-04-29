@@ -46,6 +46,7 @@ class AqlItemBlockManager;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
+class Query;
 class QueryContext;
 class QueryRegistry;
 class SkipResult;
@@ -56,7 +57,8 @@ class ExecutionEngine {
   /// @brief create the engine
   ExecutionEngine(QueryContext& query,
                   AqlItemBlockManager& itemBlockManager,
-                  SerializationFormat format);
+                  SerializationFormat format,
+                  std::shared_ptr<SharedQueryState> sharedState = nullptr);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
@@ -64,8 +66,7 @@ class ExecutionEngine {
  public:
   
   // @brief create an execution engine from a plan
-  static Result instantiateFromPlan(QueryContext& query,
-                                    AqlItemBlockManager& itemBlockManager,
+  static Result instantiateFromPlan(Query& query,
                                     ExecutionPlan& plan,
                                     bool planRegisters,
                                     SerializationFormat format,
@@ -142,7 +143,7 @@ class ExecutionEngine {
   ExecutionStats& globalStats() { return _execStats; }
   
   void setShutdown() {
-    _wasShutdown = true;
+    _shutdownState = ShutdownState::Done;
   }
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
@@ -187,9 +188,16 @@ class ExecutionEngine {
   
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
+  
+  // simon: prevents messing up shutdown sequence
+  enum class ShutdownState {
+    None = 0,
+    InProgress,
+    Done
+  };
 
   /// @brief whether or not shutdown() was executed
-  bool _wasShutdown;
+  ShutdownState _shutdownState = ShutdownState::None;
 };
 }  // namespace aql
 }  // namespace arangodb

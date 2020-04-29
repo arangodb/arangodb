@@ -187,15 +187,15 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(QueryContext& query,
                                  AqlItemBlockManager& itemBlockMgr,
-                                 SerializationFormat format)
+                                 SerializationFormat format,
+                                 std::shared_ptr<SharedQueryState> sqs)
     : _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState(std::make_shared<SharedQueryState>()),
+      _sharedState((sqs != nullptr) ? sqs : std::make_shared<SharedQueryState>()),
       _blocks(),
       _root(nullptr),
       _resultRegister(0),
-      _initializeCursorCalled(false),
-      _wasShutdown(false) {
+      _initializeCursorCalled(false) {
   _blocks.reserve(8);
 }
 
@@ -375,7 +375,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   bool _isCoordinator;
   bool const _pushToSingleServer;
   QueryId _lastClosed;
-  QueryContext& _query;
+  Query& _query;
   // This is a handle to the last gather node that we see while traversing the
   // plan The guarantee is that we only have the combination `Remote <- Gather
   // <- before` Therefore we will always assert that this is NULLPTR with the
@@ -384,7 +384,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   std::unordered_map<ExecutionNodeId, ExecutionNode*> const& _nodesById;
 
  public:
-  DistributedQueryInstanciator(QueryContext& query,
+  DistributedQueryInstanciator(Query& query,
                                std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                                bool pushToSingleServer)
       : _dbserverParts(query),
@@ -644,7 +644,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
-  if (_root == nullptr || _wasShutdown) {
+  if (_root == nullptr || _shutdownState == ShutdownState::Done) {
     return Result();
   }
   
@@ -682,8 +682,8 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  if (_root == nullptr || _wasShutdown) {
-    return {ExecutionState::DONE, Result()};
+  if (_root == nullptr || _shutdownState == ShutdownState::Done) {
+    return {ExecutionState::DONE, _shutdownResult};
   }
   
   if (ServerState::instance()->isCoordinator()) {
@@ -696,6 +696,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
     }
     
     if (knowsAllQueryIds) {
+      if (_shutdownState == ShutdownState::InProgress) {
+        return {ExecutionState::WAITING, Result()};
+      }
       return {this->shutdownDBServerQueries(errorCode), Result()};
     }
   }
@@ -706,14 +709,13 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   }
 
   // prevent a duplicate shutdown
-  _wasShutdown = true;
+  _shutdownState = ShutdownState::Done;
 
   return {state, res};
 }
 
 // @brief create an execution engine from a plan
-Result ExecutionEngine::instantiateFromPlan(QueryContext& query,
-                                            AqlItemBlockManager& mgr,
+Result ExecutionEngine::instantiateFromPlan(Query& query,
                                             ExecutionPlan& plan,
                                             bool planRegisters,
                                             SerializationFormat format,
@@ -734,6 +736,8 @@ Result ExecutionEngine::instantiateFromPlan(QueryContext& query,
 #else
   bool const pushToSingleServer = false;
 #endif
+  
+  AqlItemBlockManager& mgr = query.itemBlockManager();
 
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
@@ -756,7 +760,7 @@ Result ExecutionEngine::instantiateFromPlan(QueryContext& query,
   } else {
     
     // instantiate the engine on a local server
-    auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format);
+    auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());
 
     SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);
@@ -840,17 +844,21 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 }
 
 ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
-  TRI_ASSERT(!_wasShutdown);
+  TRI_ASSERT(_shutdownState == ShutdownState::None);
   if (_serverToQueryId.empty()) { // happens during tests
+    _shutdownState = ShutdownState::Done;
     return ExecutionState::DONE;
   }
   
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
+    _shutdownState = ShutdownState::Done;
     return ExecutionState::DONE;
   }
   
+  _shutdownState = ShutdownState::InProgress;
+
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
@@ -911,10 +919,11 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
     futures.emplace_back(std::move(f));
   }
   
+  
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
     ss->executeAndWakeup([&] {
       // prevent a duplicate shutdown
-      _wasShutdown = true;
+      _shutdownState = ShutdownState::Done;
       return true;
     });
   });

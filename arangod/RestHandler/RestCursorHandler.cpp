@@ -242,6 +242,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   // non-stream case. Execute query, then build a cursor
   //  with the entire result set.
+  query->sharedState()->setWakeupHandler([self = shared_from_this()] {
+    return self->wakeupHandler();
+  });
 
   registerQuery(std::move(query));
   return processQuery(/*continuation*/false);
@@ -268,13 +271,6 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
     auto state = _query->execute(_queryResult);
     if (state == aql::ExecutionState::WAITING) {
       guard.cancel();
-      
-      if (!continuation) {
-        _query->sharedState()->setWakeupHandler([self = shared_from_this()] {
-          return self->wakeupHandler();
-        });
-      }
-      
       return RestStatus::WAITING;
     }
     TRI_ASSERT(state == aql::ExecutionState::DONE);

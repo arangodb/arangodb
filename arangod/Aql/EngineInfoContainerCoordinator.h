@@ -60,10 +60,8 @@ class EngineInfoContainerCoordinator {
 
     void addNode(ExecutionNode* en);
 
-    Result buildEngine(QueryContext& query,
-      AqlItemBlockManager& mgr,
-      MapRemoteToSnippet const& dbServerQueryIds,
-      std::unique_ptr<ExecutionEngine>& engine) const;
+    Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
+                       bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
 
     QueryId queryId() const;
 
@@ -101,7 +99,7 @@ class EngineInfoContainerCoordinator {
   //   * Creates the ExecutionBlocks
   //   * Injects all Parts but the First one into QueryRegistry
   //   Return the first engine which is not added in the Registry
-  Result buildEngines(QueryContext& query, AqlItemBlockManager& mgr,
+  Result buildEngines(Query& query, AqlItemBlockManager& mgr,
                       MapRemoteToSnippet const& dbServerQueryIds,
                       SnippetList& coordSnippets) const;
 
