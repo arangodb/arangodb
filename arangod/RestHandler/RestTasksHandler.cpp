@@ -24,6 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -162,7 +163,7 @@ void RestTasksHandler::registerTask(bool byId) {
   std::string name =
       VelocyPackHelper::getStringValue(body, "name", "user-defined task");
 
-  bool isSystem = VelocyPackHelper::getBooleanValue(body, "isSystem", false);
+  bool isSystem = VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
 
   // offset in seconds into period or from now on if no period
   double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
