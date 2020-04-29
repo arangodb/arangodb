@@ -145,11 +145,10 @@ class RocksDBEngine final : public StorageEngine {
   void unprepare() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<TransactionState> createTransactionState(
+  std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -196,9 +195,8 @@ class RocksDBEngine final : public StorageEngine {
   Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
+                    velocypack::Builder& builder) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management

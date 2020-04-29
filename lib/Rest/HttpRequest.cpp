@@ -45,7 +45,8 @@ using namespace arangodb::basics;
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          uint64_t mid, bool allowMethodOverride)
     : GeneralRequest(connectionInfo, mid),
-      _allowMethodOverride(allowMethodOverride) {
+      _allowMethodOverride(allowMethodOverride),
+      _validatedPayload(false) {
   _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::JSON;
 }

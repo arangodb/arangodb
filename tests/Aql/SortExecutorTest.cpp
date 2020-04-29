@@ -87,7 +87,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
 
  private:
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-  Variable sortVar{"mySortVar", 0};
+  Variable sortVar{"mySortVar", 0, false};
 };
 
 template <size_t... vs>
