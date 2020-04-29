@@ -149,8 +149,6 @@ attribute_registrar::attribute_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 
@@ -181,7 +179,3 @@ attribute_view::attribute_view(size_t /*reserve = 0*/) {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

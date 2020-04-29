@@ -154,6 +154,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
@@ -264,6 +265,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp
+  Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
   Aql/EngineInfoContainerCoordinator.cpp
@@ -279,7 +281,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
   Aql/ExecutorExpressionContext.cpp
-  Aql/ExecutorInfos.cpp
+  Aql/RegisterInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
   Aql/FixedVarExpressionContext.cpp
@@ -389,6 +391,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Identifiers/IndexId.cpp
   VocBase/Identifiers/LocalDocumentId.cpp
   VocBase/Identifiers/RevisionId.cpp
+  VocBase/Identifiers/ServerId.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
@@ -596,6 +599,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp

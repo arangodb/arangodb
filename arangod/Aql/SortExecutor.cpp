@@ -45,8 +45,8 @@ class OurLessThan {
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
-    InputAqlItemRow left = _input.getRow(a);
-    InputAqlItemRow right = _input.getRow(b);
+    InputAqlItemRow const& left = _input.getRow(a);
+    InputAqlItemRow const& right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
@@ -71,30 +71,31 @@ class OurLessThan {
 
 }  // namespace
 
-static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
-    std::vector<SortRegister> const& sortRegisters) {
-  auto set = make_shared_unordered_set();
-  std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(*set, set->begin()),
-                 [](SortRegister const& sortReg) { return sortReg.reg; });
-  return set;
-}
-
-SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
+SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
+                                     RegisterCount nrOutputRegisters,
+                                     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+                                     std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
-                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
                                      velocypack::Options const* options, bool stable)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
+    : _numInRegs(nrInputRegisters),
+      _numOutRegs(nrOutputRegisters),
+      _registersToClear(std::move(registersToClear)),
       _limit(limit),
       _manager(manager),
       _vpackOptions(options),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
+}
+
+RegisterCount SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+
+RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
+  return _numOutRegs;
+}
+
+std::shared_ptr<std::unordered_set<RegisterId> const> const& SortExecutorInfos::registersToClear() const {
+  return _registersToClear;
 }
 
 std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const noexcept {

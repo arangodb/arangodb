@@ -48,6 +48,10 @@ namespace arangodb {
 
 RevisionId::RevisionId(LocalDocumentId const& id) : Identifier(id.id()) {}
 
+bool RevisionId::isSet() const noexcept { return id() != 0; }
+
+bool RevisionId::empty() const noexcept { return !isSet(); }
+
 // @brief get the next revision id in sequence (this + 1)
 RevisionId RevisionId::next() const { return RevisionId{id() + 1}; }
 

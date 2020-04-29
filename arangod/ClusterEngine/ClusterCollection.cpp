@@ -115,9 +115,9 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     merge.add(StaticStrings::CacheEnabled,
               VPackValue(Helper::getBooleanValue(slice, StaticStrings::CacheEnabled, def)));
 
-    auto validators = slice.get(StaticStrings::Validation);
+    auto validators = slice.get(StaticStrings::Schema);
     if(!validators.isNone()) {
-      merge.add(StaticStrings::Validation, validators);
+      merge.add(StaticStrings::Schema, validators);
     }
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
@@ -283,8 +283,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
 /// @brief Drop an index with the given iid.
 bool ClusterCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid.isPrimary() || iid.isNone()) {
-    // invalid index id or primary index
+  if (iid.empty() || iid.isPrimary()) {
     return true;
   }
 

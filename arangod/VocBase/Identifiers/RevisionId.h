@@ -44,6 +44,12 @@ class RevisionId : public arangodb::basics::Identifier {
   constexpr explicit RevisionId(BaseType id) noexcept : Identifier(id) {}
   explicit RevisionId(LocalDocumentId const& id);
 
+  /// @brief whether or not the id is set (not 0)
+  bool isSet() const noexcept;
+
+  /// @brief whether or not the identifier is unset (equal to 0)
+  bool empty() const noexcept;
+
   // @brief get the next revision id in sequence (this + 1)
   RevisionId next() const;
 

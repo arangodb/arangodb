@@ -33,7 +33,6 @@
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -52,17 +51,10 @@ static bool isValidId(VPackSlice id) {
 }  // namespace
 
 ShortestPathExecutorInfos::ShortestPathExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _finder(std::move(finder)),
+    : _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
       _source(std::move(source)),
       _target(std::move(target)) {}

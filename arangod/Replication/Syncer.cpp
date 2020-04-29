@@ -688,7 +688,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   VPackBuilder s;
 
   s.openObject();
-  s.add("isSystem", VPackValue(true));
+  s.add(StaticStrings::DataSourceSystem, VPackValue(true));
 
   if ((uuid.isString() && !_state.master.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always
@@ -807,7 +807,7 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
-    if (res.ok() && !iid.isNone()) {
+    if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
       auto byDef = physical->lookupIndex(idxDef);

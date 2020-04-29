@@ -48,11 +48,6 @@ struct ExpressionContextMock final : arangodb::iresearch::ViewExpressionContextB
 
   virtual ~ExpressionContextMock();
 
-  virtual size_t numRegisters() const override {
-    TRI_ASSERT(false);
-    return 0;
-  }
-
   virtual arangodb::aql::AqlValue getVariableValue(
     arangodb::aql::Variable const* variable,
     bool doCopy,

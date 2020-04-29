@@ -223,7 +223,7 @@
     render: function () {
       $(this.el).html(this.template.render({}));
 
-      $('#documentEditor').height($('.centralRow').height() - 300);
+      this.resize();
       this.disableSaveButton();
 
       var self = this;

@@ -44,10 +44,12 @@ class Builder;
 class Slice;
 }
 namespace aql {
+struct AqlValue;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
+class ExpressionContext;
 
 enum class ProjectionType : uint32_t {
   IdAttribute,
@@ -102,8 +104,11 @@ struct DocumentProducingFunctionContext {
   RegisterId getOutputRegister() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
-  
+
   bool checkFilter(velocypack::Slice slice);
+
+  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+                   void const* filterContext);
 
   void reset();
 
@@ -112,6 +117,8 @@ struct DocumentProducingFunctionContext {
   bool hasFilter() const noexcept;
 
  private:
+  bool checkFilter(ExpressionContext& ctx);
+
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
   Query* const _query;
