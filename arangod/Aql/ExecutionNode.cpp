@@ -763,19 +763,25 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       }
     }
 
-    nodes.add(VPackValue("varsUsedLater"));
+    nodes.add(VPackValue("varsUsedLaterStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      for (auto const& oneVar : _varsUsedLater) {
-        oneVar->toVelocyPack(nodes);
+      for (auto const& stackEntry : _varsUsedLaterStack) {
+        VPackArrayBuilder stackEntryGuard(&nodes);
+        for (auto const& oneVar : stackEntry) {
+          oneVar->toVelocyPack(nodes);
+        }
       }
     }
 
-    nodes.add(VPackValue("varsValid"));
+    nodes.add(VPackValue("varsValidStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      for (auto const& oneVar : _varsValid) {
-        oneVar->toVelocyPack(nodes);
+      for (auto const& stackEntry : _varsValidStack) {
+        VPackArrayBuilder stackEntryGuard(&nodes);
+        for (auto const& oneVar : stackEntry) {
+          oneVar->toVelocyPack(nodes);
+        }
       }
     }
 
