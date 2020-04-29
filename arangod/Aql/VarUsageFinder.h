@@ -23,13 +23,17 @@
 #ifndef ARANGOD_AQL_VAR_USAGE_FINDER_H
 #define ARANGOD_AQL_VAR_USAGE_FINDER_H 1
 
-#include <vector>
-#include <unordered_set>
-#include <Containers/Enumerate.h>
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 
+#include <Containers/Enumerate.h>
+
+#include <vector>
+#include <unordered_set>
+
 namespace arangodb::aql {
+
+class ExecutionNode;
 
 /// @brief helper struct for findVarUsage
 

@@ -78,8 +78,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   };
 
   auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
-    ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
-        en->getVarsUsedLater();
+    auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
     ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
     std::unordered_set<RegisterId> regsToClear;

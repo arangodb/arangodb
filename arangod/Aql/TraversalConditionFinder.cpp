@@ -572,7 +572,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         break;
       }
       auto options = node->options();
-      auto const& varsValidInTraversal = node->getVarsValid();
+      auto const& varsValidInTraversal = node->getVarsValidStack().back();
 
       bool conditionIsImpossible = false;
       auto vertexVar = node->vertexOutVariable();
