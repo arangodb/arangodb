@@ -297,6 +297,28 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
 
 TraversalNode::~TraversalNode() = default;
 
+
+/// @brief return the path out variable
+Variable const* TraversalNode::pathOutVariable() const {
+  return _pathOutVariable;
+}
+
+/// @brief set the path out variable
+void TraversalNode::setPathOutput(Variable const* outVar) {
+  _pathOutVariable = outVar;
+}
+
+/// @brief return the in variable
+Variable const* TraversalNode::inVariable() const { return _inVariable; }
+
+std::string const TraversalNode::getStartVertex() const { return _vertexId; }
+
+void TraversalNode::setInVariable(Variable const* inVariable) {
+  TRI_ASSERT(_inVariable == nullptr);
+  _inVariable = inVariable;
+  _vertexId = "";
+}
+
 int TraversalNode::checkIsOutVariable(size_t variableId) const {
   if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
     return 0;

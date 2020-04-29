@@ -407,7 +407,7 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-  auto allowDropSystem = _request->parsedValue("isSystem", false);
+  auto allowDropSystem = _request->parsedValue(StaticStrings::DataSourceSystem, false);
   auto view = CollectionNameResolver(_vocbase).getView(name);
 
   if (!view) {

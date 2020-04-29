@@ -431,6 +431,7 @@ function DatabaseSuite () {
 
     testCreateDatabaseNonSystem : function () {
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -440,6 +441,7 @@ function DatabaseSuite () {
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       // creation of new databases should fail here
       try {
@@ -458,6 +460,7 @@ function DatabaseSuite () {
       }
 
       internal.db._useDatabase("_system");
+      assertTrue(internal.db._isSystem());
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
@@ -567,6 +570,7 @@ function DatabaseSuite () {
 
     testUseDatabase : function () {
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -576,12 +580,15 @@ function DatabaseSuite () {
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       internal.db._useDatabase("_system");
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
 

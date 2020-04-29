@@ -147,7 +147,7 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-  builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_name == StaticStrings::SystemDatabase));
 
   if (ServerState::instance()->isCoordinator()) {
     addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
@@ -291,8 +291,10 @@ Result CreateDatabaseInfo::checkOptions() {
   // we cannot use IsAllowedName for database name length validation alone, because
   // IsAllowedName allows up to 256 characters. Database names are just up to 64
   // chars long, as their names are also used as filesystem directories (for Foxx apps)
+  bool isSystem = _name == StaticStrings::SystemDatabase;
+
   if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name)) ||
+      !TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(_name)) ||
       _name.size() > 64) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
