@@ -69,9 +69,9 @@ void SharedQueryState::resetWakeupHandler() {
 }
 
 /// execute the _continueCallback. must hold _mutex,
-void SharedQueryState::execute() {
+void SharedQueryState::notifyWaiter() {
   TRI_ASSERT(_valid);
-  uint32_t n = _numWakeups++;
+  unsigned n = _numWakeups++;
 
   if (!_wakeupCb) {
     _cv.notify_one();
@@ -101,10 +101,6 @@ void SharedQueryState::queueHandler() {
                                  [self = shared_from_this(),
                                   cb = _wakeupCb,
                                   v = _cbVersion]() {
-//    auto guard = scopeGuard([&] {
-//      std::unique_lock<std::mutex> lck(self->_mutex);
-//      self->_inWakeupCb = false;
-//    });
     
     std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
@@ -116,7 +112,7 @@ void SharedQueryState::queueHandler() {
       
       lck.lock();
       if (v == self->_cbVersion) {
-        uint32_t c = self->_numWakeups--;
+        unsigned c = self->_numWakeups--;
         TRI_ASSERT(c > 0);
         if (c == 1 || !cntn || !self->_valid) {
           break;
@@ -136,4 +132,18 @@ void SharedQueryState::queueHandler() {
      _valid = false;
      _cv.notify_all();
   }
+}
+
+bool SharedQueryState::queueAsyncTask(std::function<void()> const& cb) {
+  
+  bool queued = false;
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler) {
+    queued = scheduler->queue(RequestLane::CLIENT_AQL, cb);
+  }
+  if (!queued) {
+    cb();
+    return false;
+  }
+  return true;
 }

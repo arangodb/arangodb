@@ -100,7 +100,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   RegisterInfos const& registerInfos() const { return _registerInfos; }
 
-  Query const& getQuery() const { return _query; }
+  QueryContext const& getQuery() const { return _query; }
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
@@ -118,19 +118,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
-  enum class ReqState {
-    None,
-    SendingGetSome,
-    GotSendSome,
-    SendingSkipSome,
-    GotSkipSome,
-    SendingShutdown,
-    GotShutdown
-  };
 
   RegisterInfos _registerInfos;
 
-  Query const& _query;
+  QueryContext const& _query;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;

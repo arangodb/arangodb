@@ -53,12 +53,13 @@ struct ShortestPathOptions : public BaseOptions {
   arangodb::velocypack::Builder startBuilder;
   arangodb::velocypack::Builder endBuilder;
 
-  explicit ShortestPathOptions(aql::Query* query);
+  explicit ShortestPathOptions(aql::QueryContext& query);
 
-  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice const& info);
+  ShortestPathOptions(aql::QueryContext& query, arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
-  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice info,
+  ShortestPathOptions(aql::QueryContext& query,
+                      arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
   ~ShortestPathOptions() override;
 

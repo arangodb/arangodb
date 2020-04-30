@@ -130,8 +130,6 @@ compression_registrar::compression_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 

@@ -143,7 +143,7 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testQueryMemoryLimitSufficient : function () {
-      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 }).toArray().length);
+      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 + 4096 }).toArray().length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

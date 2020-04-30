@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -54,8 +55,7 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    TRI_ASSERT(_infos._trx->resolver() != nullptr);
-    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
     result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
     if (!result.ok()) {
@@ -79,6 +79,6 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-OperationResult RemoveModifierCompletion::transact(VPackSlice const& data) {
-  return _infos._trx->remove(_infos._aqlCollection->name(), data, _infos._options);
+OperationResult RemoveModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+  return trx.remove(_infos._aqlCollection->name(), data, _infos._options);
 }

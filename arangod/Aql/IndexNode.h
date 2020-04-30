@@ -152,15 +152,14 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
  private:
   void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
-                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
-                      transaction::Methods* trxPtr) const;
+                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const;
 
   bool isProduceResult() const {
     return isVarUsedLater(_outVariable) || _filter != nullptr;
   }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
-  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;
+  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
  private:
   /// @brief the index

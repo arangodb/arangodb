@@ -89,7 +89,7 @@ RestStatus RestCursorHandler::continueExecute() {
 
   if (_query != nullptr) {  // non-stream query
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
-      return processQuery();
+      return processQuery(/*continuation*/ true);
     }
   } else if (_cursor) {  // stream cursor query
 
@@ -220,43 +220,34 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  
+  auto query = std::make_unique<aql::Query>(createTransactionContext(),
+      arangodb::aql::QueryString(querySlice.copyString()),
+      bindVarsBuilder, _options);
 
   if (stream) {
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
-    } else {
-      CursorRepository* cursors = _vocbase.cursorRepository();
-      TRI_ASSERT(cursors != nullptr);
-      _cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
-                                           _options, batchSize, ttl,
-                                           /*contextOwnedByExt*/ false,
-                                           createTransactionContext());
-      _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
-      
-      return generateCursorResult(rest::ResponseCode::CREATED);
     }
+    
+    CursorRepository* cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
+    _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+    
+    return generateCursorResult(rest::ResponseCode::CREATED);
   }
 
   // non-stream case. Execute query, then build a cursor
   //  with the entire result set.
-  VPackValueLength l;
-  char const* queryStr = querySlice.getString(l);
-  TRI_ASSERT(l > 0);
-
-  auto query = std::make_unique<aql::Query>(
-      false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
-      bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createTransactionContext());
-
-  std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  ss->setWakeupHandler([self = shared_from_this()] {
+  query->sharedState()->setWakeupHandler([self = shared_from_this()] {
     return self->wakeupHandler();
   });
 
   registerQuery(std::move(query));
-  return processQuery();
+  return processQuery(/*continuation*/false);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -265,7 +256,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 /// in AQL we can post a handler calling this function again.
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::processQuery() {
+RestStatus RestCursorHandler::processQuery(bool continuation) {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -277,7 +268,7 @@ RestStatus RestCursorHandler::processQuery() {
     auto guard = scopeGuard([this]() { unregisterQuery(); });
 
     // continue handler is registered earlier
-    auto state = _query->execute(_queryRegistry, _queryResult);
+    auto state = _query->execute(_queryResult);
     if (state == aql::ExecutionState::WAITING) {
       guard.cancel();
       return RestStatus::WAITING;
@@ -364,6 +355,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
+    generateResult(rest::ResponseCode::CREATED, std::move(buffer),
+                   _queryResult.context->getVPackOptionsForDump());
     // directly after returning from here, we will free the query's context and free the
     // resources it uses (e.g. leases for a managed transaction). this way the server
     // can send back the query result to the client and the client can make follow-up
@@ -441,7 +434,16 @@ void RestCursorHandler::cancelQuery() {
 
     // cursor is canceled. now remove the continue handler we may have
     // registered in the query
-    std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
+    std::shared_ptr<aql::SharedQueryState> ss;
+    try {
+      ss = _query->sharedState();
+    } catch (...) {
+      // in case we cannot get the query state, the query is not (yet)
+      // initialized. this is not an error, but the kill/cancel command
+      // has been sent too early
+      return;
+    }
+
     ss->invalidate();
   } else if (!_hasStarted) {
     _queryKilled = true;

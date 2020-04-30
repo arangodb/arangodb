@@ -1231,7 +1231,6 @@ index_writer::index_writer(
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
-
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
     flush_context_pool_[i].dir_ = memory::make_unique<ref_tracking_directory>(dir);

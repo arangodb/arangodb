@@ -228,12 +228,19 @@ void ClusterInfo::cleanup() {
 
   MUTEX_LOCKER(mutexLocker, _planProt.mutex);
 
-  TRI_ASSERT(_newPlannedViews.empty());  // only non-empty during loadPlan()
-  _plannedViews.clear();
-  _plannedCollections.clear();
-  _shards.clear();
-  _shardIds.clear();
-  _currentCollections.clear();
+  {
+    WRITE_LOCKER(writeLocker, _planProt.lock);
+    TRI_ASSERT(_newPlannedViews.empty());  // only non-empty during loadPlan()
+    _plannedViews.clear();
+    _plannedCollections.clear();
+    _shards.clear();
+  }
+  
+  {
+    WRITE_LOCKER(writeLocker, _currentProt.lock);
+    _currentCollections.clear();
+    _shardIds.clear();
+  }
 }
 
 void ClusterInfo::triggerBackgroundGetIds() {
@@ -2334,7 +2341,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     // to the coordinator going into FAIL, or due to it changing its rebootId.
     // Otherwise we must under no circumstance give up here, because noone else
     // will clean this up.
-    while(!_server.isStopping()) {
+    while (!_server.isStopping()) {
       auto res = ac.sendTransactionWithFailover(trx);
       // If the collections were removed (res.ok()), we may abort. If we run
       // into precondition failed, the collections were successfully created, so

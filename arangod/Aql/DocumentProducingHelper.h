@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
 #include "Aql/types.h"
+#include "Aql/RegexCache.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
@@ -47,7 +48,7 @@ struct AqlValue;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class Query;
+class QueryContext;
 class ExpressionContext;
 
 enum class ProjectionType : uint32_t {
@@ -64,7 +65,8 @@ struct DocumentProducingFunctionContext {
  public:
   DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
                                    RegisterId outputRegister, bool produceResult,
-                                   Query* query, Expression* filter,
+                                   aql::QueryContext& query,
+                                   transaction::Methods& trx, Expression* filter,
                                    std::vector<std::string> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
@@ -114,13 +116,19 @@ struct DocumentProducingFunctionContext {
   void setIsLastIndex(bool val);
   
   bool hasFilter() const noexcept;
+  
+  aql::RegexCache& regexCache() { return _regexCache; }
 
  private:
+  aql::RegexCache _regexCache;
+
   bool checkFilter(ExpressionContext& ctx);
 
+  
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
-  Query* const _query;
+  aql::QueryContext& _query;
+  transaction::Methods& _trx;
   Expression* _filter;
   std::vector<std::pair<ProjectionType, std::string>> _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
@@ -144,7 +152,6 @@ struct DocumentProducingFunctionContext {
 namespace DocumentProducingCallbackVariant {
 struct WithProjectionsCoveredByIndex {};
 struct WithProjectionsNotCoveredByIndex {};
-struct DocumentWithRawPointer {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
@@ -154,10 +161,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::Wi
 
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
-
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
                                             DocumentProducingFunctionContext& context);
 
 template <bool checkUniqueness, bool skip>
