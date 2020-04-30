@@ -67,13 +67,13 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
-    setFilter(std::make_unique<Expression>(plan, ast, new AstNode(ast, p)));
+    setFilter(std::make_unique<Expression>(ast, new AstNode(ast, p)));
   }
 }
   
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
   if (_filter != nullptr) {
-    c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan, plan->getAst())));
+    c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan->getAst())));
   }
 }
 

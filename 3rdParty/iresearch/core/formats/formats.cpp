@@ -200,8 +200,6 @@ format_registrar::format_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 
@@ -210,7 +208,3 @@ format_registrar::operator bool() const noexcept {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

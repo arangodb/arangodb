@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_QUERY_RESOURCES_H
-#define ARANGOD_AQL_QUERY_RESOURCES_H 1
+#ifndef ARANGOD_AQL_AST_RESOURCES_H
+#define ARANGOD_AQL_AST_RESOURCES_H 1
 
 #include <string>
 #include <vector>
@@ -36,14 +36,14 @@ namespace aql {
 struct AstNode;
 struct ResourceMonitor;
 
-class QueryResources {
+class AstResources {
  public:
-  QueryResources() = delete;
-  QueryResources(QueryResources const&) = delete;
-  QueryResources& operator=(QueryResources const&) = delete;
+  AstResources() = delete;
+  AstResources(AstResources const&) = delete;
+  AstResources& operator=(AstResources const&) = delete;
 
-  explicit QueryResources(ResourceMonitor*);
-  ~QueryResources();
+  explicit AstResources(ResourceMonitor*);
+  ~AstResources();
 
   /// @brief add a node to the list of nodes
   void addNode(AstNode*);

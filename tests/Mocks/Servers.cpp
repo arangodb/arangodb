@@ -60,7 +60,6 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -280,7 +279,6 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<arangodb::aql::AqlFunctionFeature>(true);
   server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
   server.addFeature<arangodb::AqlFeature>(true);
-  server.addFeature<arangodb::TraverserEngineRegistryFeature>(false);
 
 #ifdef USE_ENTERPRISE
   server.addFeature<arangodb::HotBackupFeature>(false);
@@ -461,16 +459,19 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
     queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
   }
   queryOptions->close();
+  if (queryString.empty()) {
+    queryString = "RETURN 1";
+  }
+  
   aql::QueryString fakeQueryString(queryString);
   auto query =
-      std::make_unique<arangodb::aql::Query>(false, getSystemDatabase(),
-                                             fakeQueryString, bindParams, queryOptions,
-                                             arangodb::aql::QueryPart::PART_DEPENDENT);
-  query->injectTransaction(createFakeTransaction());
+      std::make_unique<arangodb::aql::Query>(arangodb::transaction::StandaloneContext::Create(getSystemDatabase()),
+                                             fakeQueryString, bindParams, queryOptions);
+  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
 
-  auto engine =
-      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
-  query->setEngine(std::move(engine));
+//  auto engine =
+//      std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
+//  query->setEngine(std::move(engine));
 
   return query;
 }

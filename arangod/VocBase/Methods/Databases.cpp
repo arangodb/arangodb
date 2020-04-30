@@ -293,8 +293,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
-    LOG_TOPIC("15580", ERR, Logger::FIXME)
-      << "Could not create database: " << res.errorMessage();
     events::CreateDatabase(dbName, res.errorNumber());
     return res;
   }
@@ -394,11 +392,14 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
     try {
-      JavaScriptSecurityContext securityContext =
-          JavaScriptSecurityContext::createInternalContext();
+      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+      
+      v8::Isolate* isolate = v8::Isolate::GetCurrent();
+      V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
 
-      V8ContextGuard guard(systemVocbase, securityContext);
-      v8::Isolate* isolate = guard.isolate();
+      if (res.fail()) {
+        return res;
+      }
 
       v8::HandleScope scope(isolate);
 
@@ -420,7 +421,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        V8DealerFeature::DEALER->addGlobalContextMethod("reloadRouting");
+        dealer->addGlobalContextMethod("reloadRouting");
       }
     } catch (arangodb::basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL);

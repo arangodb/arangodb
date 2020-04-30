@@ -66,7 +66,6 @@ class UserManagerTest : public ::testing::Test {
         databaseFeature(databaseFeatureMock.get()),
         um(server) {
     state->setRole(ServerState::ROLE_SINGLE);
-    um.setQueryRegistry(&queryRegistry);
     DatabaseFeature::DATABASE = &databaseFeature;
   }
 

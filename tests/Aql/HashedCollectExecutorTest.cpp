@@ -125,7 +125,7 @@ class HashedCollectExecutorTest
                                       collectRegister,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
-                                      fakedQuery->trx(),
+                                      &VPackOptions::Defaults,
                                       count};
   };
 };
@@ -241,9 +241,9 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   }
 
   auto inputBlock = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->rootEngine(),
                                                    generateNodeDummy(),
                                                    std::move(registerInfos),
                                                    std::move(executorInfos)};
@@ -611,7 +611,7 @@ class HashedCollectExecutorTestAggregate
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
-                                            fakedQuery->trx(), count);
+                                            &VPackOptions::Defaults, count);
     return infos;
   };
 };
