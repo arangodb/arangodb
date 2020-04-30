@@ -118,10 +118,10 @@ function repairAnalyzersRevisionTestSuite () {
         rebootId = revision.coordinatorRebootId;
       }
       // Break analyzers revision
-      const value = {"revision": revisionNumber - 1,
-          "buildingRevision": revisionNumber,
-          "coordinator": coordinator,
-          "coordinatorRebootId": rebootId + 1};
+      const value = {revision: revisionNumber - 1,
+          buildingRevision: revisionNumber,
+          coordinator: coordinator,
+          coordinatorRebootId: rebootId + 1};
       for (let i = 0; i < n; i++) {
         global.ArangoAgency.set("Plan/Analyzers/" + dbName + i, value);
       }
