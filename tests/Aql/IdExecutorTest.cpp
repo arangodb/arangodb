@@ -271,7 +271,7 @@ class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
   RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
   IdExecutorInfos executorInfos{false};
-  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       std::move(registerInfos),
                                                       std::move(executorInfos)};
@@ -315,7 +315,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
   RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
   IdExecutorInfos executorInfos{false};
-  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       std::move(registerInfos),
                                                       std::move(executorInfos)};
@@ -357,7 +357,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
   RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
   IdExecutorInfos executorInfos{false};
-  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
                                                       std::move(registerInfos),
                                                       std::move(executorInfos)};
@@ -422,7 +422,7 @@ class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
     RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
     IdExecutorInfos executorInfos{false};
-    return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->engine(),
+    return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->rootEngine(),
                                                         generateNodeDummy(),
                                                         std::move(registerInfos),
                                                         std::move(executorInfos)};

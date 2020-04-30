@@ -67,9 +67,9 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base<i
       arangodb::iresearch::ExpressionExecutionContext const& ectx,
       irs::boost_t boost)
     : max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)),
-      expr_(cctx.plan, cctx.ast, cctx.node.get()),
+      expr_(cctx.ast, cctx.node.get()),
       ctx_(ectx) {
-    TRI_ASSERT(ctx_.ctx && ctx_.trx);
+    TRI_ASSERT(ctx_.ctx);
 
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
@@ -97,7 +97,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base<i
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     while (target <= max_doc_) {
       destroy();  // destroy old value before assignment
-      val_ = expr_.execute(ctx_.trx, ctx_.ctx, destroy_);
+      val_ = expr_.execute(ctx_.ctx, destroy_);
 
       if (val_.toBoolean()) {
         break;
@@ -191,9 +191,9 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    arangodb::aql::Expression expr(_ctx.plan, _ctx.ast, _ctx.node.get());
+    arangodb::aql::Expression expr(_ctx.ast, _ctx.node.get());
     bool mustDestroy = false;
-    auto value = expr.execute(execCtx->trx, execCtx->ctx, mustDestroy);
+    auto value = expr.execute(execCtx->ctx, mustDestroy);
     arangodb::aql::AqlValueGuard guard(value, mustDestroy);
 
     if (value.toBoolean()) {
@@ -276,8 +276,8 @@ irs::filter::prepared::ptr ByExpression::prepare(irs::index_reader const& index,
 
   // evaluate expression
   bool mustDestroy = false;
-  arangodb::aql::Expression expr(_ctx.plan, _ctx.ast, _ctx.node.get());
-  auto value = expr.execute(execCtx->trx, execCtx->ctx, mustDestroy);
+  arangodb::aql::Expression expr(_ctx.ast, _ctx.node.get());
+  auto value = expr.execute(execCtx->ctx, mustDestroy);
   arangodb::aql::AqlValueGuard guard(value, mustDestroy);
 
   return value.toBoolean() ? irs::all().prepare(index, order, filter_boost)

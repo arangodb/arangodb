@@ -30,13 +30,13 @@
 #include "Basics/Common.h"
 #include "BaseOptions.h"
 #include "Graph/EdgeCursor.h"
+#include "Indexes/IndexIterator.h"
 
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
 
 class LocalDocumentId;
-struct OperationCursor;
 class LogicalCollection;
 
 namespace aql {
@@ -61,7 +61,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   transaction::Methods* _trx;
   aql::Variable const* _tmpVar;
   // TODO: make this a flat vector
-  std::vector<std::vector<std::unique_ptr<OperationCursor>>> _cursors;
+  std::vector<std::vector<std::unique_ptr<IndexIterator>>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
@@ -70,7 +70,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  explicit SingleServerEdgeCursor(BaseOptions const* options, 
+  explicit SingleServerEdgeCursor(BaseOptions* options, 
                                   aql::Variable const* tmpVar,
                                   std::vector<size_t> const* mapping,
                                   std::vector<BaseOptions::LookupInfo> const& lookupInfo);
@@ -88,9 +88,9 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   
  private:
   // returns false if cursor can not be further advanced
-  bool advanceCursor(OperationCursor*& cursor, std::vector<std::unique_ptr<OperationCursor>>*& cursorSet);
+  bool advanceCursor(IndexIterator*& cursor, std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
 
-  void getDocAndRunCallback(OperationCursor*, EdgeCursor::Callback const& callback);
+  void getDocAndRunCallback(IndexIterator*, EdgeCursor::Callback const& callback);
 
   void buildLookupInfo(arangodb::velocypack::StringRef vertex); 
 

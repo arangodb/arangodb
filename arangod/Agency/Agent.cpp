@@ -904,16 +904,17 @@ futures::Future<query_t> Agent::poll(
   std::lock_guard guard(_promLock);
   auto tp = steady_clock::now() +
     duration_cast<milliseconds>(duration<double>(timeout));
-  auto res = _promises.try_emplace(tp, futures::Promise<query_t>());
 
-  if (!res.second) {
+  try {
+    auto res = _promises.emplace(tp, futures::Promise<query_t>());
+    if (_lowestPromise > index) {
+      _lowestPromise = index;
+    }
+    return res->second.getFuture();
+  } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "Failed to add promise for polling");
   }
-  if (_lowestPromise > index) {
-    _lowestPromise = index;
-  }
-  return res.first->second.getFuture();
 }
 
 // Check if I am member of active agency

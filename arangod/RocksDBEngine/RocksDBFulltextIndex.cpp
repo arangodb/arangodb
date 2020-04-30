@@ -58,7 +58,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "fulltext-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(*_pos);
@@ -68,9 +68,9 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
     return _pos != _docs.end();
   }
 
-  void reset() override { _pos = _docs.begin(); }
+  void resetImpl() override { _pos = _docs.begin(); }
 
-  void skip(uint64_t count, uint64_t& skipped) override {
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
     while (_pos != _docs.end() && skipped < count) {
       ++_pos;
       skipped++;

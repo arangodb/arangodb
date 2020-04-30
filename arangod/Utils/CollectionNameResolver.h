@@ -157,9 +157,6 @@ class CollectionNameResolver {
                         TRI_voc_cid_t id) const;
 
  private:
-  mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
-  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
-
   std::string lookupName(TRI_voc_cid_t cid) const;
 
   /// @brief vocbase base pointer
@@ -168,11 +165,14 @@ class CollectionNameResolver {
   /// @brief role of server in cluster
   ServerState::RoleEnum const _serverRole;
 
-  /// @brief lock protecting _resolvedIds
-  mutable basics::ReadWriteLock _idLock;
+  /// @brief lock protecting caches
+  mutable basics::ReadWriteLock _lock;
 
   /// @brief collection id => collection name map
   mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
+
+  mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
+  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
 };
 
 }  // namespace arangodb

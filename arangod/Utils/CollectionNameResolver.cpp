@@ -181,7 +181,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionId(std::string const& name) c
 
 std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
   {
-    READ_LOCKER(locker, _idLock);
+    READ_LOCKER(locker, _lock);
     auto it = _resolvedIds.find(cid);
 
     if (it != _resolvedIds.end()) {
@@ -191,7 +191,7 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 
   std::string name = lookupName(cid);
   {
-    WRITE_LOCKER(locker, _idLock);
+    WRITE_LOCKER(locker, _lock);
     _resolvedIds.emplace(cid, name);
   }
 
@@ -211,7 +211,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
 
   // First check the cache:
   {
-    READ_LOCKER(locker, _idLock);
+    READ_LOCKER(locker, _lock);
     auto it = _resolvedIds.find(cid);
 
     if (it != _resolvedIds.end()) {
@@ -225,7 +225,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     // This might be a local system collection:
     name = lookupName(cid);
     if (name != ::UNKNOWN) {
-      WRITE_LOCKER(locker, _idLock);
+      WRITE_LOCKER(locker, _lock);
       _resolvedIds.emplace(cid, name);
       return name;
     }
@@ -239,7 +239,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     if (ci != nullptr) {
       name = ci->name();
       {
-        WRITE_LOCKER(locker, _idLock);
+        WRITE_LOCKER(locker, _lock);
         _resolvedIds.emplace(cid, name);
       }
 
@@ -271,18 +271,23 @@ std::string CollectionNameResolver::getCollectionName(std::string const& nameOrI
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(TRI_voc_cid_t id) const {
-  auto itr = _dataSourceById.find(id);
+  decltype(_dataSourceById)::iterator itr;
 
-  if (itr != _dataSourceById.end()) {
-    return itr->second;
+  {
+    READ_LOCKER(guard, _lock);
+    itr = _dataSourceById.find(id);
+    if (itr != _dataSourceById.end()) {
+      return itr->second;
+    }
   }
-
+  
   // db server / standalone
   auto ptr = ServerState::isCoordinator(_serverRole)
                  ? getDataSource(std::to_string(id))
                  : _vocbase.lookupDataSource(id);
 
   if (ptr) {
+    WRITE_LOCKER(guard, _lock);
     _dataSourceById.emplace(id, ptr);
   }
 
@@ -290,10 +295,15 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(TRI_voc
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::string const& nameOrId) const {
-  auto itr = _dataSourceByName.find(nameOrId);
+  decltype(_dataSourceByName)::iterator itr;
+  
+  {
+    READ_LOCKER(guard, _lock);
+    itr = _dataSourceByName.find(nameOrId);
 
-  if (itr != _dataSourceByName.end()) {
-    return itr->second;
+    if (itr != _dataSourceByName.end()) {
+      return itr->second;
+    }
   }
 
   std::shared_ptr<LogicalDataSource> ptr;
@@ -321,6 +331,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::st
   }
 
   if (ptr) {
+    WRITE_LOCKER(guard, _lock);
     _dataSourceByName.emplace(nameOrId, ptr);
   }
 

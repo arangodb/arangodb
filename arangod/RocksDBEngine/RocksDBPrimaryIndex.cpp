@@ -102,8 +102,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearm(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
-             IndexIteratorOptions const& opts) override {
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
@@ -121,7 +121,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     return !_key->isEmpty();
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     if (limit == 0 || _done) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
@@ -139,7 +139,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   }
 
   /// @brief extracts just _key. not supported for use with _id
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
     if (limit == 0 || _done) {
       // No limit no data, or we are actually done. The last call should have
@@ -157,7 +157,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     return false;
   }
 
-  void reset() override { _done = false; }
+  void resetImpl() override { _done = false; }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
@@ -197,8 +197,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearm(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
-             IndexIteratorOptions const& opts) override {
+  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+                 IndexIteratorOptions const& opts) override {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
     TRI_ASSERT(node->numMembers() == 1);
@@ -215,7 +215,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     return false;
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     if (limit == 0 || !_iterator.valid()) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
@@ -239,7 +239,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     return true;
   }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
     if (limit == 0 || !_iterator.valid()) {
       // No limit no data, or we are actually done. The last call should have
@@ -264,7 +264,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     return true;
   }
 
-  void reset() override { _iterator.reset(); }
+  void resetImpl() override { _iterator.reset(); }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
@@ -297,7 +297,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     // we need to have a pointer to a slice for the upper bound
     // so we need to assign the slice to an instance variable here
-    if (reverse) {
+    if constexpr (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
     } else {
@@ -307,7 +307,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if (reverse) {
+    if constexpr (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
@@ -316,11 +316,11 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
  public:
   char const* typeName() const override {
-    return "rocksdb-range-index-iterator";
+    return "primary-index-range-iterator";
   }
 
   /// @brief Get the next limit many elements in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -336,7 +336,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       cb(RocksDBValue::documentId(_iterator->value()));
 
       --limit;
-      if (reverse) {
+      if constexpr (reverse) {
         _iterator->Prev();
       } else {
         _iterator->Next();
@@ -349,8 +349,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
     return true;
   }
-
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_allowCoveringIndexOptimization);
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -371,7 +371,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       cb(documentId, builder->slice());
 
       --limit;
-      if (reverse) {
+      if constexpr (reverse) {
         _iterator->Prev();
       } else {
         _iterator->Next();
@@ -384,7 +384,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     return true;
   }
 
-  void skip(uint64_t count, uint64_t& skipped) override {
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (!_iterator->Valid() || outOfRange()) {
@@ -396,7 +396,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
 
       --count;
       ++skipped;
-      if (reverse) {
+      if constexpr (reverse) {
         _iterator->Prev();
       } else {
         _iterator->Next();
@@ -409,10 +409,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   }
 
   /// @brief Reset the cursor
-  void reset() override {
+  void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
-    if (reverse) {
+    if constexpr (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
@@ -426,7 +426,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   bool outOfRange() const {
     TRI_ASSERT(_trx->state()->isRunning());
-    if (reverse) {
+    if constexpr (reverse) {
       return (_cmp->Compare(_iterator->key(), _bounds.start()) < 0);
     } else {
       return (_cmp->Compare(_iterator->key(), _bounds.end()) > 0);

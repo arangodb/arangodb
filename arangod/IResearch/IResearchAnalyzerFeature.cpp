@@ -853,16 +853,10 @@ arangodb::Result visitAnalyzers(
     return res;
   }
 
-  arangodb::aql::Query query(false, vocbase, queryString,
-                             nullptr, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                             queryString, nullptr, nullptr);
 
-  auto* queryRegistry = arangodb::QueryRegistryFeature::registry();
-
-  if (!queryRegistry) {
-    return { TRI_ERROR_INTERNAL, "QueryRegistry is not set" };
-  }
-
-  auto result = query.executeSync(queryRegistry);
+  auto result = query.executeSync();
 
   if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
     return {}; // treat missing collection as if there are no analyzers

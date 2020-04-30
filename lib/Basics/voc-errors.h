@@ -1361,7 +1361,7 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    
 
 /// 1922: ERROR_GRAPH_CREATE_MISSING_NAME
 /// "missing graph name"
-/// a graph name is required to create a graph.
+/// a graph name is required to create or drop a graph.
 constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               = 1922;
 
 /// 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION

@@ -38,6 +38,7 @@ class Builder;
 }
 
 namespace aql {
+class Query;
 struct QueryResult;
 }
 
@@ -78,11 +79,8 @@ class CursorRepository {
   /// the cursor will create a query internally and retain it until deleted
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createQueryStream(std::string const& query,
-                            std::shared_ptr<velocypack::Builder> const& binds,
-                            std::shared_ptr<velocypack::Builder> const& opts,
-                            size_t batchSize, double ttl, bool contextOwnedByExterior,
-                            std::shared_ptr<transaction::Context> ctx);
+  Cursor* createQueryStream(std::unique_ptr<arangodb::aql::Query> q,
+                            size_t batchSize, double ttl);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id

@@ -92,13 +92,13 @@ class CalculationExecutorTest
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        ast(fakedQuery.get()),
+        ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
-        var("a", 0),
+        var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
         plan(&ast),
-        expr(&plan, &ast, node),
+        expr(&ast, node),
         outRegID(1),
         inRegID(0),
         registerInfos(make_shared_unordered_set({inRegID}),

@@ -532,7 +532,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   //        They need to sort out, what is sent to client
   std::mutex _promLock;
   index_t _lowestPromise;
-  std::map<SteadyTimePoint, futures::Promise<query_t>> _promises;
+  std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
 
   Counter& _write_ok;
   Counter& _write_no_leader;
