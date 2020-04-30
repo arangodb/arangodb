@@ -2,9 +2,6 @@ devel
 -----
 * Integrated libiresearch log topic properly into ArangoDB logging system
 
-* Fix spurious bugs in `resilience_move` tests due to replication context of 
-  to-be-dropped collections lingering around until timeout.
-
 * `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
 
 * Removed old AgencyComm.
@@ -15,6 +12,9 @@ devel
 
 * Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
   is not another one hiding somewhere.
+
+* Fix spurious bugs in `resilience_move` tests due to replication context of 
+  to-be-dropped collections lingering around until timeout.
 
 * Fix invalid value of `isSystem` attribute for non-system databases.
 

@@ -95,6 +95,8 @@ extern void (*raus_damit)(std::string str);
 struct RausDamitStream {
   std::stringstream ss;
 
+  RausDamitStream() : ss() {}
+
   ~RausDamitStream() {
     if (raus_damit) {
       raus_damit(ss.str());
