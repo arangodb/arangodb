@@ -287,7 +287,7 @@ void H1Connection<ST>::terminateActivity() {
   FUERTE_ASSERT(_active.load());
   FUERTE_ASSERT(this->_state.load() == Connection::State::Failed);
   FUERTE_LOG_HTTPTRACE << "terminateAcitivate: active=true, this=" << this << "\n";
-  do {
+  while (true) {
     drainQueue(Error::Canceled);
     _active.store(false);
     // Now need to check again:
@@ -295,7 +295,7 @@ void H1Connection<ST>::terminateActivity() {
       return;
     }
     _active.store(true);
-  } while (!_queue.empty());
+  }
 }
 
 // -----------------------------------------------------------------------------
