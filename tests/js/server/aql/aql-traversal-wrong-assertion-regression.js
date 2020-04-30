@@ -70,16 +70,16 @@ function traversalPruneAssertionRegressionSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test object access for path object
     ////////////////////////////////////////////////////////////////////////////////
-    testTraversalResetCrashes: function() {
+    testTraversalNonAssertion: function() {
       const query = `WITH @@V, @@E
                        FOR v IN ANY @start @@E
 		         PRUNE v
 			 RETURN true`;
 
       const bindVars = {
-        "@@V": collectionName,
-        "@@E": edgeName,
-        "@start": collectionName + "/S"
+        "@V": collectionName,
+        "@E": edgeName,
+        "start": collectionName + "/S"
       };
 
       var actual = db._query(query, bindVars);
@@ -92,6 +92,5 @@ function traversalPruneAssertionRegressionSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(testTraversalResetCrashes);
-
+jsunity.run(traversalPruneAssertionRegressionSuite);
 return jsunity.done();
