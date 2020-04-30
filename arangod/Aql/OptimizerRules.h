@@ -141,6 +141,11 @@ void clusterLiftConstantsForDisjointGraphNodes(Optimizer* opt,
                                                OptimizerRule const& rule);
 #endif
 
+#ifdef USE_ENTERPRISE
+void clusterPushSubqueryToDBServer(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                   OptimizerRule const& rule);
+#endif
+
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
