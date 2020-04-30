@@ -78,9 +78,9 @@ size_t RequestStatistics::processAll() {
   return count;
 }
 
-RequestStatistics* RequestStatistics::acquire() {
+RequestStatistics::Item RequestStatistics::acquire() {
   if (!StatisticsFeature::enabled()) {
-    return nullptr;
+    return Item{};
   }
 
   RequestStatistics* statistics = nullptr;
@@ -88,7 +88,6 @@ RequestStatistics* RequestStatistics::acquire() {
   if (_freeList.pop(statistics)) {
     TRI_ASSERT(statistics->_released);
     TRI_ASSERT(!statistics->_inQueue);
-
     statistics->_released = false;
   } else {
     statistics = nullptr;
@@ -96,7 +95,7 @@ RequestStatistics* RequestStatistics::acquire() {
         << "no free element on statistics queue";
   }
 
-  return statistics;
+  return Item{statistics};
 }
 
 // -----------------------------------------------------------------------------
@@ -215,84 +214,17 @@ void RequestStatistics::getSnapshot(Snapshot& snapshot, stats::RequestStatistics
   }
 }
 
-std::string RequestStatistics::timingsCsv() {
+std::string RequestStatistics::Item::timingsCsv() {
+  TRI_ASSERT(_stat != nullptr);
   std::stringstream ss;
 
-  ss << std::setprecision(9) << std::fixed << "read," << (_readEnd - _readStart)
-     << ",queue," << (_queueEnd - _queueStart) << ",queue-size," << _queueSize
-     << ",request," << (_requestEnd - _requestStart) << ",total,"
-     << (StatisticsFeature::time() - _readStart) << ",error,"
-     << (_executeError ? "true" : "false");
+  ss << std::setprecision(9) << std::fixed
+     << "read," << (_stat->_readEnd - _stat->_readStart)
+     << ",queue," << (_stat->_queueEnd - _stat->_queueStart)
+     << ",queue-size," << _stat->_queueSize
+     << ",request," << (_stat->_requestEnd - _stat->_requestStart)
+     << ",total," << (StatisticsFeature::time() - _stat->_readStart)
+     << ",error," << (_stat->_executeError ? "true" : "false");
 
   return ss.str();
-}
-
-std::string RequestStatistics::to_string() {
-  std::stringstream ss;
-
-  ss << std::boolalpha << std::setprecision(20) << "statistics      " << std::endl
-     << "_readStart      " << _readStart << std::endl
-     << "_readEnd        " << _readEnd << std::endl
-     << "_queueStart     " << _queueStart << std::endl
-     << "_queueEnd       " << _queueEnd << std::endl
-     << "_requestStart   " << _requestStart << std::endl
-     << "_requestEnd     " << _requestEnd << std::endl
-     << "_writeStart     " << _writeStart << std::endl
-     << "_writeEnd       " << _writeEnd << std::endl
-     << "_receivedBytes  " << _receivedBytes << std::endl
-     << "_sentBytes      " << _sentBytes << std::endl
-     << "_async          " << _async << std::endl
-     << "_tooLarge       " << _tooLarge << std::endl
-     << "_executeError   " << _executeError << std::endl
-     << "_ignore         " << _ignore << std::endl
-     << "_superuser      " << _superuser << std::endl;
-
-  return ss.str();
-}
-
-void RequestStatistics::trace_log() {
-  LOG_TOPIC("4a0b6", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_readStart      " << _readStart;
-
-  LOG_TOPIC("8620b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_readEnd        " << _readEnd;
-
-  LOG_TOPIC("13bae", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_queueStart     " << _queueStart;
-
-  LOG_TOPIC("e6292", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_queueEnd       " << _queueEnd;
-
-  LOG_TOPIC("9c947", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_requestStart   " << _requestStart;
-
-  LOG_TOPIC("09e63", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_requestEnd     " << _requestEnd;
-
-  LOG_TOPIC("4eef0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_writeStart     " << _writeStart;
-
-  LOG_TOPIC("3922b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_writeEnd       " << _writeEnd;
-
-  LOG_TOPIC("49e75", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_receivedBytes  " << _receivedBytes;
-
-  LOG_TOPIC("399d0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_sentBytes      " << _sentBytes;
-
-  LOG_TOPIC("54d62", TRACE, Logger::REQUESTS)
-      << std::boolalpha << std::setprecision(20) << "_async          " << _async;
-
-  LOG_TOPIC("5e68c", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_tooLarge       " << _tooLarge;
-
-  LOG_TOPIC("f4089", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_executeError   " << _executeError;
-
-  LOG_TOPIC("31657", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_ignore         " << _ignore;
-
-  LOG_TOPIC("31658", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
-                                     << "_superuser      " << _superuser;
 }
