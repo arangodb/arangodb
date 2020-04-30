@@ -1029,9 +1029,20 @@ auto ExecutionNode::calcRegsToKeep() const -> RegIdSetStack {
   //      so we calculate the same thing multiple times.
   //      Instead, calculate it in the register planning and pass the results.
 
+  LOG_DEVEL << "ExecutionNode::calcRegsToKeep " << id() << " " << getTypeString();
+
+  LOG_DEVEL << "varsSetHere = " << std::accumulate(varsSetHere.begin(), varsSetHere.end(), std::string{},[](std::string  const& v, Variable const *ptr) {
+    return v + ", " + std::to_string(ptr->id) + "(" + ptr->name + ")";
+  });
+
   for (auto const& [idx, stackEntry] : enumerate(getVarsValidStack())) {
+    LOG_DEVEL << "at level " << idx;
     auto& regsToKeep = regsToKeepStack.emplace_back();
     auto const& varsUsedLater = getVarsUsedLaterStack()[idx];
+
+    LOG_DEVEL << "varsUsedLater = " << std::accumulate(varsUsedLater.begin(), varsUsedLater.end(), std::string{}, [](std::string  const& v, Variable const *ptr) {
+      return v + ", " + std::to_string(ptr->id) + "(" + ptr->name + ")";
+    });
 
     for (auto const var : stackEntry) {
       auto reg = variableToRegisterId(var);
@@ -1041,6 +1052,7 @@ auto ExecutionNode::calcRegsToKeep() const -> RegIdSetStack {
       bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
                          varsUsedLater.end();
       if (!isSetHere && isUsedLater) {
+        LOG_DEVEL << "keeping reg for var " << var->id << " name = " << var->name;
         regsToKeep.emplace(reg);
       }
     }

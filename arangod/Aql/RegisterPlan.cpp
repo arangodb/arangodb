@@ -60,6 +60,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->addSubqueryNode(en);
   }
 
+  LOG_DEVEL << "Planning Registers for " << en->id() << " " << en->getTypeString();
+
   /*
    * For passthrough blocks it is better to assign the registers _before_ we calculate
    * which registers have become unused to prevent reusing a input register as output register.
@@ -79,6 +81,12 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
   auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
     auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
+
+    LOG_DEVEL << "vars used at this level: ";
+    for (auto const var : varsUsedLater) {
+      LOG_DEVEL << "id = " << var->id << " name = " << var->name;
+    }
+
     VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
     std::unordered_set<RegisterId> regsToClear;
@@ -106,6 +114,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
           TRI_ASSERT(it2 != plan->varInfo.end());
           RegisterId r = it2->second.registerId;
           regsToClear.insert(r);
+
+          LOG_DEVEL << "var is no longer used: id = " << v->id << " name = " << v->name;
         }
       }
     }
@@ -231,6 +241,8 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
     regId = *iter;
     unusedRegisters.erase(iter);
   }
+
+  LOG_DEVEL << "using register " << regId << " for variable " << v;
 
   bool inserted;
   std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(depth, regId));
