@@ -519,4 +519,4 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL, 7012, "hot backup not all db servers reachable"
 ################################################################################
 ## Plan analyzers errors
 ################################################################################
-ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, 7021, "analyzers in plan could not be modified"
+ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, 7021, "analyzers in plan could not be modified", "Plan could not be modified while creating or deleting analyzers revision"
