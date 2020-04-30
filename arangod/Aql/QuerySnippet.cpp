@@ -170,7 +170,11 @@ void QuerySnippet::serializeIntoBuilder(
   if (!localExpansions.empty()) { // one expansion
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
-    size_t numberOfShardsToPermutate = localExpansions.begin()->second.size();
+    auto const& colToShardMap = localExpansions.begin()->second;
+    // We will never add an empty map
+    TRI_ASSERT(!colToShardMap.empty());
+    // For all collections within this map we will have the same amount of shards.
+    size_t numberOfShardsToPermutate = colToShardMap.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
     
     std::vector<std::string> distIds{};
@@ -546,10 +550,14 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       // For all other Nodes we can inject a single shard at a time.
       // Always use the list of nodes we maintain to hold the first
       // of all shards.
-      // We later use a cone mechanism to inject other shards of permutation
+      // We later use a clone mechanism to inject other shards of permutation
       auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       collectionAccessingNode->setUsedShard(*myExp.begin());
+
+      if (myExp.size() > 0) {
+        myExpFinal.insert({col->name(), std::move(myExp)});
+      }
     }
 
     auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
@@ -570,7 +578,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       if (myExpFinal.size() > 0 ) {
         numberOfShardsToPermutate = myExpFinal.begin()->second.size();
       }
-
+      
       if (numberOfShardsToPermutate > 1) {
         // Only in this case we really need to do an expansion
         // Otherwise we get away with only using the main stream for
