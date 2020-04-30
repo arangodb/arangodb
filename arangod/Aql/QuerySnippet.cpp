@@ -224,9 +224,11 @@ void QuerySnippet::serializeIntoBuilder(
           TRI_ASSERT(colAcc != nullptr);
           if (colAcc->collection() == distCollection) {
             // Found one, use all shards of it
+            TRI_ASSERT(exp.second.size() == 1);
             // unordered_map of collections to sets of ids
             for (auto const& collectionMap : exp.second) {
               // set of shard ids
+              TRI_ASSERT(collectionMap.first == colAcc->collection()->name());
               for (auto const& shardIds : collectionMap.second) {
                 distIds.emplace_back(shardIds);
               }
@@ -300,6 +302,7 @@ void QuerySnippet::serializeIntoBuilder(
               }
             } else {
               TRI_ASSERT(false);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
             }
           }
         }
@@ -463,9 +466,8 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
         size_t size = myExpFinal.begin()->second.size();
         for (auto const& expDefinition : myExpFinal) {
           for (auto const& myExp : expDefinition.second) {
-            // 1.) TRI_ASSERT länge der liste = länge der localGraphNode->collections()
+            // We need one expansion for every collection in the Graph
             TRI_ASSERT(myExp.size() == localGraphNode->collections().size());
-            // 2.) TRI_ASSERT Alle zielwerte (shardSets) haben die gleiche der Elemente
             TRI_ASSERT(myExp.size() == size);
           }
         }
@@ -533,6 +535,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
     }
 
     auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
+    TRI_ASSERT(collectionAccessingNode != nullptr);
     if (exp.doExpand) {
       TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
       // All parts need to have exact same size, they need to be permutated pairwise!
