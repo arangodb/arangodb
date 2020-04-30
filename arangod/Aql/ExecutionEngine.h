@@ -191,9 +191,7 @@ class ExecutionEngine {
   
   bool _wasShutdown;
   
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::atomic<bool> _sentShutdownResponse{false};
-#endif
 };
 }  // namespace aql
 }  // namespace arangodb
