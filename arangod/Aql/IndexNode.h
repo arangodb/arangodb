@@ -155,9 +155,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const;
 
   bool isProduceResult() const {
-    return isVarUsedLater(_outVariable) || _filter != nullptr;
+    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !canCount();
   }
-
+  
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
