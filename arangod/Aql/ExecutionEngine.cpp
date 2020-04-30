@@ -195,7 +195,8 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
       _blocks(),
       _root(nullptr),
       _resultRegister(0),
-      _initializeCursorCalled(false) {
+      _initializeCursorCalled(false),
+      _wasShutdown(false) {
   _blocks.reserve(8);
 }
 
@@ -644,7 +645,7 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
-  if (_root == nullptr || _shutdownState == ShutdownState::Done) {
+  if (_root == nullptr || _wasShutdown) {
     return Result();
   }
   
@@ -682,9 +683,13 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  if (_root == nullptr || _shutdownState == ShutdownState::Done) {
+  // enter shutdown phase, forget previous wakeups
+  _sharedState->resetNumWakeups();
+
+  if (_root == nullptr || _wasShutdown) {
     return {ExecutionState::DONE, _shutdownResult};
   }
+  
   
   if (ServerState::instance()->isCoordinator()) {
     bool knowsAllQueryIds = !_serverToQueryId.empty();
@@ -696,9 +701,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
     }
     
     if (knowsAllQueryIds) {
-      if (_shutdownState == ShutdownState::InProgress) {
-        return {ExecutionState::WAITING, Result()};
-      }
+      TRI_ASSERT(!_wasShutdown);
       return {this->shutdownDBServerQueries(errorCode), Result()};
     }
   }
@@ -709,7 +712,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   }
 
   // prevent a duplicate shutdown
-  _shutdownState = ShutdownState::Done;
+  _wasShutdown = true;
 
   return {state, res};
 }
@@ -844,21 +847,21 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 }
 
 ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
-  TRI_ASSERT(_shutdownState == ShutdownState::None);
+  TRI_ASSERT(!_wasShutdown);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_sentShutdownResponse.exchange(true));
+#endif
+  
   if (_serverToQueryId.empty()) { // happens during tests
-    _shutdownState = ShutdownState::Done;
     return ExecutionState::DONE;
   }
   
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
-    _shutdownState = ShutdownState::Done;
     return ExecutionState::DONE;
   }
   
-  _shutdownState = ShutdownState::InProgress;
-
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(60.0);  // Picked arbitrarily
@@ -921,9 +924,9 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   
   
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
+    TRI_ASSERT(ss->isValid());
     ss->executeAndWakeup([&] {
-      // prevent a duplicate shutdown
-      _shutdownState = ShutdownState::Done;
+      _wasShutdown = true; // prevent duplicates
       return true;
     });
   });
