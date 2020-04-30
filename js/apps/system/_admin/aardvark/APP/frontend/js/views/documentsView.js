@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa, JSONEditor */
 /* global numeral */
 
 (function () {
@@ -547,7 +547,7 @@
         var callback = function (error, type) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not fetch collection type');
-          } else {
+          } else {            
             if (this.collection.getSmartJoinAttribute()) {
               tableContent.push(this.createDocumentKeyInput(true));
 
@@ -567,7 +567,8 @@
                   ]
                 )
               );
-
+              tableContent.push(window.modalView.createJsonEditor());
+              
               buttons.push(
                 window.modalView.createSuccessButton('Create', this.addSmartAttributeDocument.bind(this))
               );
@@ -608,6 +609,8 @@
                   ]
                 )
               );
+
+              tableContent.push(window.modalView.createJsonEditor());
 
               buttons.push(
                 window.modalView.createSuccessButton('Create', this.addSmartGraphDocument.bind(this))
@@ -681,6 +684,9 @@
                   ]
                 )
               );
+
+              tableContent.push(window.modalView.createJsonEditor());
+
               buttons.push(
                 window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
               );
@@ -693,6 +699,10 @@
               );
             } else {
               tableContent.push(this.createDocumentKeyInput(false));
+              tableContent.push();
+
+              tableContent.push(window.modalView.createJsonEditor());
+
               buttons.push(
                 window.modalView.createSuccessButton('Create', this.addDocument.bind(this))
               );
@@ -704,6 +714,21 @@
                 tableContent
               );
             }
+            
+            var container = document.getElementById('jsoneditor');
+            this.resize();
+            var options = {
+              onChange: function () {
+              },
+              onModeChange: function (newMode) {
+                void (newMode);
+              },
+              search: true,
+              mode: 'code',
+              modes: ['tree', 'code'],
+              ace: window.ace
+            };
+            this.editor = new JSONEditor(container, options);
           }
         }.bind(this);
         arangoHelper.collectionApiType(collid, true, callback);
@@ -740,22 +765,24 @@
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
+      var body = this.editor.get();
 
       if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeEdge(collid, from, to, key, this.goToDocument);
+        this.documentStore.createTypeEdge(collid, from, to, key, body, this.goToDocument);
       } else {
-        this.documentStore.createTypeEdge(collid, from, to, null, this.goToDocument);
+        this.documentStore.createTypeEdge(collid, from, to, null, body, this.goToDocument);
       }
     },
 
     addDocument: function () {
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
+      var body = this.editor.get();
 
       if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collid, key, this.goToDocument);
+        this.documentStore.createTypeDocument(collid, key, body, this.goToDocument);
       } else {
-        this.documentStore.createTypeDocument(collid, null, this.goToDocument);
+        this.documentStore.createTypeDocument(collid, null, body, this.goToDocument);
       }
     },
 
@@ -763,12 +790,13 @@
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
       var smartJoinAttributeValue = $('.modal-body #new-smart-val-attr').last().val();
+      var body = this.editor.get();
 
       if (key !== '' || key !== undefined) {
-        this.documentStore.createTypeDocument(collid, key, this.goToDocument, false,
+        this.documentStore.createTypeDocument(collid, key, body, this.goToDocument, false,
           this.collection.getSmartJoinAttribute(), smartJoinAttributeValue, null, null);
       } else {
-        this.documentStore.createTypeDocument(collid, null, this.goToDocument, false,
+        this.documentStore.createTypeDocument(collid, null, body, this.goToDocument, false,
           this.collection.getSmartJoinAttribute(), smartJoinAttributeValue, null, null);
       }
     },
@@ -777,6 +805,7 @@
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
       var smartGraphAttributeValue = $('.modal-body #new-smartGraph-val-attr').last().val();
+      var body = this.editor.get();
 
       if (smartGraphAttributeValue === '') {
         smartGraphAttributeValue = null;
@@ -791,7 +820,7 @@
         key = null;
       }
 
-      this.documentStore.createTypeDocument(collid, key, this.goToDocument, false, null, null,
+      this.documentStore.createTypeDocument(collid, key, body, this.goToDocument, false, null, null,
         smartGraphAttribute, smartGraphAttributeValue);
     },
 

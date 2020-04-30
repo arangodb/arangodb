@@ -1052,6 +1052,7 @@
       var self = this;
       var from = self.contextState._from;
       var to = self.contextState._to;
+      var body = this.editor.get();
 
       var collection;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
@@ -1063,12 +1064,11 @@
 
       var callback = function (error, id, msg) {
         if (!error) {
-          var edge = {
-            source: from,
-            target: to,
-            id: id,
-            color: self.graphConfig.edgeColor || self.ecolor
-          };
+          var edge = _.clone(body);
+          edge.source = from;
+          edge.target = to;
+          edge.id = id;
+          edge.color = self.graphConfig.edgeColor || self.ecolor;
 
           if (self.graphConfig.edgeEditable === 'true') {
             edge.size = 1;
@@ -1091,14 +1091,12 @@
         window.modalView.hide();
       };
 
-      var data = {
-        _from: from,
-        _to: to
-      };
+      body._from = from;
+      body._to = to;
       if (key !== '' && key !== undefined) {
-        data._key = key;
+        body._key = key;
       }
-      this.collection.createEdge(self.name, collection, data, callback);
+      this.collection.createEdge(self.name, collection, body, callback);
     },
 
     addEdgeModal: function (edgeDefinitions) {
@@ -1152,6 +1150,8 @@
           );
         }
 
+        tableContent.push(window.modalView.createJsonEditor());
+
         buttons.push(
           window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
         );
@@ -1162,6 +1162,20 @@
           buttons,
           tableContent
         );
+        var container = document.getElementById('jsoneditor');
+        this.resize();
+        var options = {
+          onChange: function () {
+          },
+          onModeChange: function (newMode) {
+            void (newMode);
+          },
+          search: true,
+          mode: 'code',
+          modes: ['tree', 'code'],
+          ace: window.ace
+        };
+        this.editor = new JSONEditor(container, options);
       } else {
         arangoHelper.arangoError('Graph', 'No valid edge definitions found.');
       }

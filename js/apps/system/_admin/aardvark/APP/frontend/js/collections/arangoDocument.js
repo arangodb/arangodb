@@ -32,25 +32,23 @@ window.ArangoDocument = Backbone.Collection.extend({
     });
   },
 
-  addDocument: function (collectionID, key) {
+  addDocument: function (collectionID, key, body) {
     var self = this;
-    self.createTypeDocument(collectionID, key);
+    self.createTypeDocument(collectionID, key, body);
   },
 
-  createTypeEdge: function (collectionID, from, to, key, callback) {
+  createTypeEdge: function (collectionID, from, to, key, body, callback) {
     var newEdge;
 
     if (key) {
-      newEdge = JSON.stringify({
-        _key: key,
-        _from: from,
-        _to: to
-      });
+      body._key = key;
+      body._from = from;
+      body._to = to; 
+      newEdge = JSON.stringify(body);
     } else {
-      newEdge = JSON.stringify({
-        _from: from,
-        _to: to
-      });
+      body._from = from;
+      body._to = to; 
+      newEdge = JSON.stringify(body);
     }
 
     $.ajax({
@@ -69,10 +67,10 @@ window.ArangoDocument = Backbone.Collection.extend({
     });
   },
 
-  createTypeDocument: function (collectionID, key, callback, returnNew,
+  createTypeDocument: function (collectionID, key, body, callback, returnNew,
                                 smartJoinAttribute, smartJoinAttributeValue,
                                 smartGraphAttribute, smartGraphAttributeValue) {
-    var newDocument = {};
+    var newDocument = body;
 
     if (smartJoinAttribute && smartJoinAttributeValue && key) {
       // case: smartJoin, bot value are needed and NOT optional
