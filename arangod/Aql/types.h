@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNodeId.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -47,7 +48,8 @@ typedef RegisterId RegisterCount;
 typedef uint64_t QueryId;
 
 // Map RemoteID->ServerID->[SnippetId]
-using MapRemoteToSnippet = std::unordered_map<ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
+using MapRemoteToSnippet =
+    std::unordered_map<ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
 
 // Enable/Disable block passthrough in fetchers
 enum class BlockPassthrough { Disable, Enable };
@@ -58,6 +60,7 @@ struct Variable;
 using VarSet = std::unordered_set<Variable const*>;
 using VarSetStack = std::vector<VarSet>;
 using RegIdSetStack = std::vector<std::unordered_set<RegisterId>>;
+using RegIdOrderedSetStack = std::vector<std::set<RegisterId>>;
 
 }  // namespace aql
 }  // namespace arangodb

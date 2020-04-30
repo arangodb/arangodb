@@ -422,6 +422,12 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 /// necessary, using the reference count.
 void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
+    if (isShadowRow(i)) {
+      // Do not clear shadow rows:
+      // 1) our toClear set is only valid for data rows
+      // 2) there will never be anything to clear for shadow rows
+      continue;
+    }
     for (auto const& reg : toClear) {
       AqlValue& a(_data[getAddress(i, reg)]);
 
