@@ -469,7 +469,7 @@ void RestAnalyzerHandler::removeAnalyzer(
 }
 
 bool RestAnalyzerHandler::startPlanModyfing(irs::string_ref const& databaseID) {
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() && !databaseID.empty()) {
     TRI_ASSERT(server().hasFeature<ClusterFeature>());
     auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
     auto res = engine.startModifyingAnalyzerCoordinator(databaseID);
@@ -483,7 +483,7 @@ bool RestAnalyzerHandler::startPlanModyfing(irs::string_ref const& databaseID) {
 }
 
 bool RestAnalyzerHandler::finishPlanModifying(irs::string_ref const& databaseID, bool restore) {
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() && !databaseID.empty()) {
     TRI_ASSERT(server().hasFeature<ClusterFeature>());
     auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
     auto res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);

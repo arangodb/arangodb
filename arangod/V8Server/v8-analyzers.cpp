@@ -81,7 +81,7 @@ v8::Handle<v8::Object> WrapAnalyzer(
 }
 
 void StartPlanModyfing(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID) {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
+  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
     TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
     auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     auto const res = engine.startModifyingAnalyzerCoordinator(databaseID);
@@ -92,7 +92,7 @@ void StartPlanModyfing(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_r
 }
 
 void FinishPlanModifying(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID, bool restore) {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
+  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
     TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
     auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     auto const res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
