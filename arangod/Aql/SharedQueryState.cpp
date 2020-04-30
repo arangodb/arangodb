@@ -68,6 +68,12 @@ void SharedQueryState::resetWakeupHandler() {
   _cbVersion++;
 }
 
+void SharedQueryState::resetNumWakeups() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  _numWakeups = 0;
+  _cbVersion++;
+}
+
 /// execute the _continueCallback. must hold _mutex,
 void SharedQueryState::notifyWaiter() {
   TRI_ASSERT(_valid);

@@ -143,7 +143,7 @@ class ExecutionEngine {
   ExecutionStats& globalStats() { return _execStats; }
   
   void setShutdown() {
-    _shutdownState = ShutdownState::Done;
+    _wasShutdown = true;
   }
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
@@ -156,7 +156,7 @@ class ExecutionEngine {
   
  private:
   
-  ExecutionState shutdownDBServerQueries(int errorCode);
+  std::pair<ExecutionState, Result> shutdownDBServerQueries(int errorCode);
 
  private:
   /// @brief a pointer to the query
@@ -189,15 +189,9 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
   
-  // simon: prevents messing up shutdown sequence
-  enum class ShutdownState {
-    None = 0,
-    InProgress,
-    Done
-  };
-
-  /// @brief whether or not shutdown() was executed
-  ShutdownState _shutdownState = ShutdownState::None;
+  bool _wasShutdown;
+  
+  std::atomic<bool> _sentShutdownResponse{false};
 };
 }  // namespace aql
 }  // namespace arangodb

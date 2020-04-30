@@ -94,8 +94,19 @@ class InputRangeTest : public AqlExecutorTestCase<> {
         if (chosen.empty()) {
           res.setDependency(index, AqlItemBlockInputRange{state});
         } else {
-          AqlItemBlockInputRange splitRange{state, 0,
-                                            block->slice(chosen, 0, chosen.size()), 0};
+          auto copiedBlock = block->slice(chosen, 0, chosen.size());
+          if (index != 0) {
+            // Simulate that shadowRows have been "moved"  by clearing their dataRegisters
+            for (size_t i = 0; i < copiedBlock->size(); ++i) {
+              if (copiedBlock->isShadowRow(i)) {
+                for (RegisterId r = 0; r < copiedBlock->getNrRegs(); ++r) {
+                  copiedBlock->destroyValue(i, r);
+                }
+
+              }
+            }
+          }
+          AqlItemBlockInputRange splitRange{state, 0, copiedBlock , 0};
           res.setDependency(index, splitRange);
         }
       }
