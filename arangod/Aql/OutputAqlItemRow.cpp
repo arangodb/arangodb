@@ -384,8 +384,6 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
   bool constexpr createShadowRow = copyRowType == CopyRowType::CreateShadowRowFromInputRow;
   bool mustClone = testIfWeMustClone(sourceRow) || createShadowRow;
 
-  LOG_DEVEL << " OutputAqlItemRow::doCopyRow = " << registersToKeep();
-
   auto const& regsToKeep = std::invoke([&] {
     static_assert(createShadowRow != (copyRowType == CopyRowType::PassedItemRowType));
     if constexpr (std::is_same_v<ItemRowType, InputAqlItemRow> && !createShadowRow) {
@@ -414,8 +412,6 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
     }
   });
 
-  LOG_DEVEL << "OutputAqlItemRow::doCopyRow regsToKeep = " << regsToKeep << " mustClone = " << mustClone;
-
   if (mustClone) {
     for (auto itemId : regsToKeep) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -428,7 +424,6 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
       }
       if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
         auto const& value = sourceRow.getValue(itemId);
-        LOG_DEVEL << "sourceRow reg = " << itemId << " slice = " << value.slice().toJson();
         if (!value.isEmpty()) {
           AqlValue clonedValue = value.clone();
           AqlValueGuard guard(clonedValue, true);
