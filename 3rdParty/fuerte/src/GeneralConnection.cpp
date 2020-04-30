@@ -39,10 +39,10 @@ GeneralConnection<ST>::GeneralConnection(
 template <SocketType ST>
 void GeneralConnection<ST>::cancel() {
   FUERTE_LOG_DEBUG << "cancel: this=" << this << "\n";
-  _state.store(State::Failed);
   asio_ns::post(*_io_context, [self(weak_from_this()), this] {
     auto s = self.lock();
     if (s) {
+      _state.store(State::Failed);
       drainQueue(Error::Canceled);
       shutdownConnection(Error::Canceled);
     }
