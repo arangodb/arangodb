@@ -1177,7 +1177,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   if (coll) {
 
     VPackObjectBuilder object(&builder, true);
-    methods::Collections::Context ctxt(coll->vocbase(), *coll);
+    methods::Collections::Context ctxt(coll);
     Result res = methods::Collections::properties(ctxt, builder);
 
     if (res.fail()) {
@@ -1828,7 +1828,14 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  methods::Collections::Context ctxt(collection->vocbase(), *collection);
+  struct NonDeleter {
+    void operator()(LogicalCollection*) {}
+  };
+
+  // we are not responsible for this collection object, but need to wrap it into a
+  // shared_ptr here
+  std::shared_ptr<LogicalCollection> coll(collection, NonDeleter());
+  methods::Collections::Context ctxt(coll);
   auto res = methods::Collections::revisionId(ctxt).get();
 
   if (res.fail()) {
