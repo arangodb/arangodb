@@ -92,6 +92,6 @@ function traversalPruneAssertionRegressionSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(traversalResetRegressionSuite);
+jsunity.run(testTraversalResetCrashes);
 
 return jsunity.done();
