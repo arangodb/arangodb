@@ -40,15 +40,21 @@ window.ArangoDocument = Backbone.Collection.extend({
   createTypeEdge: function (collectionID, from, to, key, body, callback) {
     var newEdge;
 
-    if (key) {
-      body._key = key;
-      body._from = from;
-      body._to = to; 
-      newEdge = JSON.stringify(body);
-    } else {
-      body._from = from;
-      body._to = to; 
-      newEdge = JSON.stringify(body);
+    try {
+      if (key) {
+        body._key = key;
+        body._from = from;
+        body._to = to;
+        newEdge = JSON.stringify(body);
+      } else {
+        body._from = from;
+        body._to = to;
+        newEdge = JSON.stringify(body);
+      }
+    }
+    catch(x) {
+      body = {};
+      return this.createTypeEdge(collectionID, from, to, key, body, callback)
     }
 
     $.ajax({
@@ -72,21 +78,29 @@ window.ArangoDocument = Backbone.Collection.extend({
                                 smartGraphAttribute, smartGraphAttributeValue) {
     var newDocument = body;
 
-    if (smartJoinAttribute && smartJoinAttributeValue && key) {
-      // case: smartJoin, bot value are needed and NOT optional
-      newDocument._key = smartJoinAttributeValue + ':' + key;
-      newDocument[smartJoinAttribute] = smartJoinAttributeValue;
-    } else if (smartGraphAttribute && smartGraphAttributeValue) {
-      // case: smartGraph with value
-      // other to smartJoin, we can:
-      // 1.) Create without smartGraphAttribute and without smartGraphAttributeValue
-      // 2.) Create only with smartGraphAttributeValue
-      if (key) {
-        newDocument._key = smartGraphAttributeValue + ':' + key;
+    try {
+      if (smartJoinAttribute && smartJoinAttributeValue && key) {
+        // case: smartJoin, bot value are needed and NOT optional
+        newDocument._key = smartJoinAttributeValue + ':' + key;
+        newDocument[smartJoinAttribute] = smartJoinAttributeValue;
+      } else if (smartGraphAttribute && smartGraphAttributeValue) {
+        // case: smartGraph with value
+        // other to smartJoin, we can:
+        // 1.) Create without smartGraphAttribute and without smartGraphAttributeValue
+        // 2.) Create only with smartGraphAttributeValue
+        if (key) {
+          newDocument._key = smartGraphAttributeValue + ':' + key;
+        }
+        newDocument[smartGraphAttribute] = smartGraphAttributeValue;
+      } else if (key) {
+        newDocument._key = key;
       }
-      newDocument[smartGraphAttribute] = smartGraphAttributeValue;
-    } else if (key) {
-      newDocument._key = key;
+    }
+    catch (x) {
+      body = {};
+      return this.createTypeDocument(collectionID, key, body, callback, returnNew,
+                                     smartJoinAttribute, smartJoinAttributeValue,
+                                     smartGraphAttribute, smartGraphAttributeValue)
     }
     newDocument = JSON.stringify(newDocument);
 

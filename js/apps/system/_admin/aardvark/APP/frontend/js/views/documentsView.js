@@ -699,7 +699,6 @@
               );
             } else {
               tableContent.push(this.createDocumentKeyInput(false));
-              tableContent.push();
 
               tableContent.push(window.modalView.createJsonEditor());
 

@@ -1052,7 +1052,6 @@
       var self = this;
       var from = self.contextState._from;
       var to = self.contextState._to;
-      var body = this.editor.get();
 
       var collection;
       if ($('.modal-body #new-edge-collection-attr').val() === '') {
@@ -1064,8 +1063,13 @@
 
       var callback = function (error, id, msg) {
         if (!error) {
-          var edge = _.clone(body);
-          edge.source = from;
+          var edge = this.editor.get();
+          try {
+            edge.source = from;
+          } catch (x) {
+            edge = {};
+            edge.source = from;
+          }
           edge.target = to;
           edge.id = id;
           edge.color = self.graphConfig.edgeColor || self.ecolor;
@@ -1091,7 +1095,14 @@
         window.modalView.hide();
       };
 
-      body._from = from;
+      var body = this.editor.get();
+      try {
+        body._from = from;
+      } catch (x) {
+        body = {};
+        body._from = from;
+      }
+
       body._to = to;
       if (key !== '' && key !== undefined) {
         body._key = key;
