@@ -279,6 +279,25 @@ void H1Connection<ST>::startWriting() {
   this->asyncWriteNextRequest();
 }
 
+/// The following is called when the connection is permanently failed. It is
+/// used to shut down any activity in the derived classes in a way that avoids
+/// sleeping barbers
+template <SocketType ST>
+void H1Connection<ST>::terminateActivity() {
+  FUERTE_ASSERT(_active.load());
+  FUERTE_ASSERT(this->_state.load() == Connection::State::Failed);
+  FUERTE_LOG_HTTPTRACE << "terminateAcitivate: active=true, this=" << this << "\n";
+  while (true) {
+    drainQueue(Error::Canceled);
+    _active.store(false);
+    // Now need to check again:
+    if (_queue.empty()) {
+      return;
+    }
+    _active.store(true);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -393,6 +412,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   FUERTE_ASSERT(q > 0);
   
   _item.reset(ptr);
+
   setTimeout(_item->request->timeout(), TimeoutType::WRITE);
   _writeStart = std::chrono::steady_clock::now();
   _writing = true;

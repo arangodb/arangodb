@@ -1,10 +1,13 @@
 devel
 -----
 
+* Fixed a bug in Maintenance which could prevent collection creation from
+  working (made CreateCollection action idempotent).
+
+* Integrated libiresearch log topic properly into ArangoDB logging system
+
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
-
-* Integrated libiresearch log topic properly into ArangoDB logging system.
 
 * `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
 

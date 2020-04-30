@@ -83,12 +83,16 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
   }
   FUERTE_LOG_DEBUG<< "this=" << this << "\n";
 
+  bool mustShutdown = false;
+
   auto state = _state.load();
   if (state != Connection::State::Failed) {
     state = Connection::State::Disconnected;
     // hack to fix SSL streams
     if constexpr (ST == SocketType::Ssl) {
       state = Connection::State::Failed;
+      mayRestart = false;
+      mustShutdown = true;
     }
     _state.store(state);
   }
@@ -104,6 +108,9 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
       onFailure(err, msg);
     }
   });  // Close socket
+  if (mustShutdown) {
+    terminateActivity();
+  }
 }
 
 // Connect with a given number of retries
