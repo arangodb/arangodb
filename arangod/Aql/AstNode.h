@@ -207,6 +207,8 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_VIEW = 77,
   NODE_TYPE_PARAMETER_DATASOURCE = 78,
   NODE_TYPE_FOR_VIEW = 79,
+  NODE_TYPE_PARALLEL_START = 80,
+  NODE_TYPE_PARALLEL_END = 81,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -260,7 +262,10 @@ struct AstNode {
 
   /// @brief compute the value for a constant value node
   /// the value is owned by the node and must not be freed by the caller
-  arangodb::velocypack::Slice computeValue() const;
+  /// the Builder object can be passed in as an optimization
+  arangodb::velocypack::Slice computeValue(arangodb::velocypack::Builder* = nullptr) const;
+
+  uint8_t const* computedValue() const { return _computedValue; }
 
   /// @brief sort the members of an (array) node
   /// this will also set the FLAG_SORTED flag for the node
@@ -287,13 +292,10 @@ struct AstNode {
 
   /// @brief build a VelocyPack representation of the node value
   ///        Can throw Out of Memory Error
-  void toVelocyPackValue(arangodb::velocypack::Builder&) const;
-
-  /// @brief return a VelocyPack representation of the node
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+  void toVelocyPackValue(arangodb::velocypack::Builder& builder) const;
 
   /// @brief Create a VelocyPack representation of the node
-  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a
@@ -581,11 +583,12 @@ struct AstNode {
 
   static std::underlying_type<AstNodeFlagType>::type makeFlags();
 
+  void computeValue(arangodb::velocypack::Builder& builder) const;
   void freeComputedValue();
 
  private:
   /// @brief precomputed VPack value (used when executing expressions)
-  uint8_t mutable* computedValue;
+  uint8_t mutable* _computedValue;
 
   /// @brief the node's sub nodes
   std::vector<AstNode*> members;

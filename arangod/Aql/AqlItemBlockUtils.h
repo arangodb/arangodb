@@ -29,7 +29,6 @@
 namespace arangodb {
 namespace aql {
 class AqlItemBlockManager;
-class BlockCollector;
 class InputAqlItemRow;
 class SharedAqlItemBlockPtr;
 

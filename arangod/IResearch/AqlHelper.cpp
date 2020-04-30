@@ -366,13 +366,12 @@ bool ScopedAqlValue::execute(arangodb::iresearch::QueryContext const& ctx) {
   }
 
   // don't really understand why we need `ExecutionPlan` and `Ast` here
-  arangodb::aql::Expression expr(ctx.plan, ctx.ast,
-                                 const_cast<arangodb::aql::AstNode*>(_node));
+  arangodb::aql::Expression expr(ctx.ast, const_cast<arangodb::aql::AstNode*>(_node));
 
   destroy();
 
   try {
-    _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
+    _value = expr.execute(ctx.ctx, _destroy);
   } catch (arangodb::basics::Exception const& e) {
     // can't execute expression
     LOG_TOPIC("0c06a", WARN, arangodb::iresearch::TOPIC) << e.message();

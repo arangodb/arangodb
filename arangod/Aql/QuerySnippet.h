@@ -73,7 +73,7 @@ class QuerySnippet {
   void serializeIntoBuilder(ServerID const& server,
                             std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
                             ShardLocking& shardMapping,
-                            std::unordered_map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+                            std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
                             velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
@@ -90,7 +90,7 @@ class QuerySnippet {
                                              std::string const& distributeId);
 
  private:
-  GatherNode const* _sinkNode;
+  GatherNode const* _sinkNode; // node that merges the results for all shards
 
   ExecutionNodeId const _idOfSinkRemoteNode;
 

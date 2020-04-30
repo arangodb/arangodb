@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
 
 #include "Aql/types.h"
+#include "Aql/ExecutionEngine.h"
 
 #include <stack>
 #include <string>
@@ -35,10 +36,9 @@ class Result;
 
 namespace aql {
 
-class ExecutionEngine;
-class ExecutionEngineResult;
+class AqlItemBlockManager;
 class ExecutionNode;
-class Query;
+class QueryContext;
 class QueryRegistry;
 
 class EngineInfoContainerCoordinator {
@@ -60,10 +60,8 @@ class EngineInfoContainerCoordinator {
 
     void addNode(ExecutionNode* en);
 
-    Result buildEngine(Query& query, QueryRegistry* queryRegistry, std::string const& dbname,
-                       std::unordered_set<std::string> const& restrictToShards,
-                       MapRemoteToSnippet const& dbServerQueryIds,
-                       std::vector<uint64_t>& coordinatorQueryIds) const;
+    Result buildEngine(Query& query, MapRemoteToSnippet const& dbServerQueryIds,
+                       bool isfirst, std::unique_ptr<ExecutionEngine>& engine) const;
 
     QueryId queryId() const;
 
@@ -101,11 +99,9 @@ class EngineInfoContainerCoordinator {
   //   * Creates the ExecutionBlocks
   //   * Injects all Parts but the First one into QueryRegistry
   //   Return the first engine which is not added in the Registry
-  ExecutionEngineResult buildEngines(Query& query, QueryRegistry* registry,
-                                     std::string const& dbname,
-                                     std::unordered_set<std::string> const& restrictToShards,
-                                     MapRemoteToSnippet const& dbServerQueryIds,
-                                     std::vector<uint64_t>& coordinatorQueryIds) const;
+  Result buildEngines(Query& query, AqlItemBlockManager& mgr,
+                      MapRemoteToSnippet const& dbServerQueryIds,
+                      SnippetList& coordSnippets) const;
 
  private:
   // @brief List of EngineInfos to distribute across the cluster

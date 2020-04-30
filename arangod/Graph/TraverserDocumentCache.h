@@ -36,9 +36,9 @@ namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
  public:
-  TraverserDocumentCache(aql::Query* query, 
+  TraverserDocumentCache(aql::QueryContext& query, 
                          std::shared_ptr<arangodb::cache::Cache> cache, 
-                         BaseOptions const*);
+                         BaseOptions*);
 
   ~TraverserDocumentCache();
 

@@ -84,7 +84,7 @@ using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-      << "[query#" << this->_engine->getQuery()->id() << "] "
+    << "[query#" << this->_engine->getQuery().id() << "] "
 
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
@@ -147,13 +147,13 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
           registerInfos.getInputRegisters(),
-          registerInfos.numberOfInputRegisters(), trxVpackOptions()),
+          registerInfos.numberOfInputRegisters(), &engine->getQuery().vpackOptions()),
       _rowFetcher(_dependencyProxy),
       _registerInfos(std::move(registerInfos)),
       _executorInfos(std::move(executorInfos)),
       _executor(_rowFetcher, _executorInfos),
       _outputItemRow(),
-      _query(*engine->getQuery()),
+      _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _lastRange{ExecutorState::HASMORE},
       _execState{ExecState::CHECKCALL},
@@ -161,10 +161,6 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _clientRequest{},
       _stackBeforeWaiting{AqlCallList{AqlCall{}}},
       _hasUsedDataRangeBlock{false} {
-  // already insert ourselves into the statistics results
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
-  }
   // Break the stack before waiting.
   // We should not use this here.
   _stackBeforeWaiting.popCall();
@@ -211,7 +207,7 @@ Executor& ExecutionBlockImpl<Executor>::executor() {
 }
 
 template <class Executor>
-Query const& ExecutionBlockImpl<Executor>::getQuery() const {
+QueryContext const& ExecutionBlockImpl<Executor>::getQuery() const {
   return _query;
 }
 
@@ -308,7 +304,8 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   }
   initOnce();
   auto res = executeWithoutTrace(stack);
-  return traceExecuteEnd(res);
+  traceExecuteEnd(res);
+  return res;
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -1371,7 +1368,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 #endif
         localExecutorState = state;
         _skipped.didSkip(skippedLocal);
-        _engine->_stats += stats;
+        _blockStats += stats;
         // The execute might have modified the client call.
         if (state == ExecutorState::DONE) {
           _execState = ExecState::FASTFORWARD;
@@ -1433,7 +1430,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
         }
         _executorReturnedDone = state == ExecutorState::DONE;
-        _engine->_stats += stats;
+        _blockStats += stats;
         localExecutorState = state;
 
         if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
@@ -1487,7 +1484,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
 
         _skipped.didSkip(skippedLocal);
-        _engine->_stats += stats;
+        _blockStats += stats;
         localExecutorState = state;
 
         if (state == ExecutorState::DONE) {

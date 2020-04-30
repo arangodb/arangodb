@@ -45,7 +45,7 @@ class AqlExecuteResult {
  public:
   AqlExecuteResult(ExecutionState state, SkipResult skipped, SharedAqlItemBlockPtr&& block);
 
-  void toVelocyPack(velocypack::Builder&, velocypack::Options const*);
+  void toVelocyPack(velocypack::Builder&, velocypack::Options const*) const;
   static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
       -> ResultT<AqlExecuteResult>;
 

@@ -309,30 +309,21 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
         }
       } else if (in.isString()) {
         sourceString = in.slice().copyString();
-      } else {
-        _traverser.options()->query()->registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for traversal: Only "
-          "id strings or objects with _id are "
-          "allowed");
-
-        // TODO: I feel dirty doing this, but it prevents
-        //       logging 2 errors here.
-        continue;
       }
     }
 
     auto pos = sourceString.find('/');
 
     if (pos == std::string::npos) {
-      _traverser.options()->query()->registerWarning(
+      _traverser.options()->query().warnings().registerWarning(
         TRI_ERROR_BAD_PARAMETER,
-        "Invalid start vertex for traversal: "
-        "Does not contain '/'");
+        "Invalid input for traversal: Only "
+        "id strings or objects with _id are "
+        "allowed");
     } else {
-        _traverser.setStartVertex(sourceString);
-        TRI_ASSERT(_inputRow.isInitialized());
-        return true;
+      _traverser.setStartVertex(sourceString);
+      TRI_ASSERT(_inputRow.isInitialized());
+      return true;
     }
   }
   return false;

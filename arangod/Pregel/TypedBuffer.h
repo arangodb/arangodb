@@ -255,7 +255,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     }
     if (_fd != -1) {
       TRI_ASSERT(_fd >= 0);
-      int res = TRI_CLOSE(_fd);
+      res = TRI_CLOSE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("00e1d", ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;

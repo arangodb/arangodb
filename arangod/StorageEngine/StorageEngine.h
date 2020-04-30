@@ -107,11 +107,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   }
 
   virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
-  virtual std::unique_ptr<TransactionState> createTransactionState(
+  virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) = 0;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -191,7 +190,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                                                         int& status) = 0;
 
   // @brief write create marker for database
-  virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) = 0;
+  virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) { return {}; }
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -202,13 +201,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "prepareDropDatabase" returns
   //
   // is done under a lock in database feature
-  virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,
-                                   int& status) = 0;
-  void prepareDropDatabase(TRI_vocbase_t& db, bool useWriteMarker) {
-    int status = 0;
-    prepareDropDatabase(db, useWriteMarker, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-  };
+  virtual Result prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 
   // perform a physical deletion of the database
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
@@ -233,6 +226,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   // written *after* the call to "createCollection" returns
   virtual void createCollection(TRI_vocbase_t& vocbase,
                                 LogicalCollection const& collection) = 0;
+  
+  // method that is called prior to deletion of a collection. allows the storage
+  // engine to clean up arbitrary data for this collection before the collection
+  // moves into status "deleted". this method may be called multiple times for
+  // the same collection
+  virtual void prepareDropCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection& collection) {}
 
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
@@ -243,7 +243,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // will be written *after* the call to "dropCollection" returns
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
                                           LogicalCollection& collection) = 0;
-
+  
   // asks the storage engine to change properties of the collection as specified
   // in the VPack Slice object and persist them. If this operation fails
   // somewhere in the middle, the storage engine is required to fully revert the
@@ -333,9 +333,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual Result createTickRanges(velocypack::Builder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
   virtual Result lastLogger(TRI_vocbase_t& vocbase,
-                            std::shared_ptr<transaction::Context> transactionContext,
                             uint64_t tickStart, uint64_t tickEnd,
-                            std::shared_ptr<velocypack::Builder>& builderSPtr) = 0;
+                            velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
   void getCapabilities(velocypack::Builder& builder) const {
