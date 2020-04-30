@@ -764,8 +764,13 @@
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
-      var body = this.editor.get();
-
+      var body;
+      try {
+        body = this.editor.get();
+      } catch (x) {
+        arangoHelper.arangoError("failed to parse JSON document", x.message);
+        return;
+      }
       if (key !== '' || key !== undefined) {
         this.documentStore.createTypeEdge(collid, from, to, key, body, this.goToDocument);
       } else {
@@ -776,7 +781,13 @@
     addDocument: function () {
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
-      var body = this.editor.get();
+      var body;
+      try {
+        body = this.editor.get();
+      } catch (x) {
+        arangoHelper.arangoError("failed to parse JSON document", x.message);
+        return;
+      }
 
       if (key !== '' || key !== undefined) {
         this.documentStore.createTypeDocument(collid, key, body, this.goToDocument);
@@ -789,7 +800,13 @@
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
       var smartJoinAttributeValue = $('.modal-body #new-smart-val-attr').last().val();
-      var body = this.editor.get();
+      var body;
+      try {
+        body = this.editor.get();
+      } catch (x) {
+        arangoHelper.arangoError("failed to parse JSON document", x.message);
+        return;
+      }
 
       if (key !== '' || key !== undefined) {
         this.documentStore.createTypeDocument(collid, key, body, this.goToDocument, false,
@@ -804,7 +821,13 @@
       var collid = window.location.hash.split('/')[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
       var smartGraphAttributeValue = $('.modal-body #new-smartGraph-val-attr').last().val();
-      var body = this.editor.get();
+      var body;
+      try {
+        body = this.editor.get();
+      } catch (x) {
+        arangoHelper.arangoError("failed to parse JSON document", x.message);
+        return;
+      }
 
       if (smartGraphAttributeValue === '') {
         smartGraphAttributeValue = null;

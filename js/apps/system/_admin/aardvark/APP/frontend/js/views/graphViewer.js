@@ -1063,7 +1063,13 @@
 
       var callback = function (error, id, msg) {
         if (!error) {
-          var edge = this.editor.get();
+          var edge
+          try {
+            edge = this.editor.get();
+          } catch (x) {
+            arangoHelper.arangoError("failed to parse JSON document", x.message);
+            return;
+          }
           try {
             edge.source = from;
           } catch (x) {
@@ -1095,7 +1101,14 @@
         window.modalView.hide();
       };
 
-      var body = this.editor.get();
+      var body;
+      try {
+        body = this.editor.get();
+      } catch (x) {
+        arangoHelper.arangoError("failed to parse JSON document", x.message);
+        return;
+      }
+
       try {
         body._from = from;
       } catch (x) {
