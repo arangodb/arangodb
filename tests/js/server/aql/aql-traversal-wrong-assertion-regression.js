@@ -19,7 +19,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Markus Pfeiffer
-/// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
