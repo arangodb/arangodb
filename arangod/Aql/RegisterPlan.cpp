@@ -51,13 +51,18 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  bool const isPassthrough = en->isPassthrough();
-  if (!isPassthrough) {
+  bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
+
+  if (en->isIncreaseDepth()) {
+    // isIncreaseDepth => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
 
   if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
     plan->addSubqueryNode(en);
+    // is SQS or SQE => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
   }
 
   /*
@@ -67,13 +72,11 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * This is not the case if the block is not passthrough since in that case the output row
    * is different from the input row.
    */
-  auto const planRegistersForCurrentNode = [&](T* en, bool isBefore) -> void {
-    if (isBefore == isPassthrough) {
-      auto const outputVariables = en->getOutputVariables();
-      for (VariableId const& v : outputVariables) {
-        TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
-        plan->registerVariable(v, unusedRegisters.back());
-      }
+  auto const planRegistersForCurrentNode = [&](T* en) -> void {
+    auto const outputVariables = en->getOutputVariables();
+    for (VariableId const& v : outputVariables) {
+      TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
+      plan->registerVariable(v, unusedRegisters.back());
     }
   };
 
@@ -131,7 +134,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   }
 
   // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
-  planRegistersForCurrentNode(en, false);
+  if (mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
 
   en->_depth = plan->depth;
   en->_registerPlan = plan;

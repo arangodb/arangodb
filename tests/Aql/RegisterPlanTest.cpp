@@ -73,8 +73,8 @@ struct ExecutionNodeMock {
 
   auto id() -> ExecutionNodeId { return ExecutionNodeId{0}; }
 
-  auto isPassthrough() -> bool {
-    return ExecutionNode::isPassthrough(getType());
+  auto isIncreaseDepth() -> bool {
+    return ExecutionNode::isIncreaseDepth(getType());
   }
 
   auto getType() -> ExecutionNode::NodeType { return _type; }

@@ -1275,9 +1275,9 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
-bool ExecutionNode::isPassthrough() const { return isPassthrough(getType()); }
+bool ExecutionNode::isIncreaseDepth() const { return isIncreaseDepth(getType()); }
 
-bool ExecutionNode::isPassthrough(ExecutionNode::NodeType type) {
+bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
   switch (type) {
     case ENUMERATE_COLLECTION:
     case INDEX:
@@ -1291,11 +1291,57 @@ bool ExecutionNode::isPassthrough(ExecutionNode::NodeType type) {
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case MATERIALIZE:
-      return false;
+      return true;
 
     default:
-      return true;
+      return false;
   }
+}
+
+bool ExecutionNode::alwaysCopiesRows() const {
+  // TODO This can be improved. And probably should be renamed.
+  //      It is used in the register planning to discern whether we may reuse
+  //      an input register immediately as an output register at this very block.
+  switch (getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::SORT:
+    case ExecutionNode::COLLECT:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::NORESULTS:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::UPSERT:
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::SUBQUERY_START:
+    case ExecutionNode::SUBQUERY_END:
+      return true;
+    case ExecutionNode::CALCULATION:
+    case ExecutionNode::SUBQUERY:
+    case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::RETURN:
+      return false;
+    // It's safe to return false for these, but is it necessary?
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+      return false;
+    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  }
+  ADB_UNREACHABLE;
 }
 
 void ExecutionNode::setVarsUsedLater(VarSetStack varStack) {

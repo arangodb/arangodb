@@ -444,8 +444,9 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
-  [[nodiscard]] static bool isPassthrough(NodeType type);
-  [[nodiscard]] bool isPassthrough() const;
+  [[nodiscard]] static bool isIncreaseDepth(NodeType type);
+  [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] bool alwaysCopiesRows() const;
   [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 
