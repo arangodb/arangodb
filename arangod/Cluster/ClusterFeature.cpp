@@ -422,15 +422,9 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
-
-  // create callback registery
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
-
-  // Initialize ClusterInfo library:
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  if (!_allocated) {
+    allocateMembers();
+  }
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -530,8 +524,6 @@ void ClusterFeature::start() {
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache =
-      std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
     _agencyCache->start();
   }
 
@@ -798,4 +790,17 @@ AgencyCache& ClusterFeature::agencyCache() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   return *_agencyCache;
+}
+
+void ClusterFeature::allocateMembers() {
+  try {
+    server().getFeature<arangodb::MetricsFeature>().histogram(
+      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
+      "Request time for Agency requests");
+  } catch (...) {}
+  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  _agencyCache =
+    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
+  _allocated = true;
 }

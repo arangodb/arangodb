@@ -1664,7 +1664,9 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
   }
 
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (res.slice().get("results").length() > 0) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   // Now update our own cache of planned databases:
   loadPlan();
@@ -1719,8 +1721,9 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
   }
 
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+  if (res.slice().get("results").length()) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
   // Make sure we're all aware of collections that have been created
   loadPlan();
 
@@ -1770,8 +1773,9 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
     }
 
     auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+    if (res.slice().get("results").length()) {
+      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    }
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
@@ -1842,8 +1846,9 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+  if (res.slice().get("results").length()) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
   // Load our own caches:
   loadPlan();
 
@@ -1857,7 +1862,9 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         res = ac.removeValues(where, true);
 
         if (res.successful()) {
-          cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+          if (res.slice().get("results").length()) {
+            cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+          }
           return Result(TRI_ERROR_NO_ERROR);
         }
 
@@ -2237,7 +2244,9 @@ Result ClusterInfo::createCollectionsCoordinator(
       // we're fine too.
       if (res.successful() || res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-        cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        if (res.slice().get("results").length()) {
+          cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        }
         return;
       }
 
@@ -2309,7 +2318,9 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
 
       auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      if (res.slice().get("results").length() > 0) {
+        cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      }
       loadPlan();
     }
   }
@@ -2373,9 +2384,9 @@ Result ClusterInfo::createCollectionsCoordinator(
         // unneccessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-        auto r = cache.waitFor(
-          res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+        if (res.slice().get("results").length() > 0) {
+          cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        }
       }
 
       // Report if this operation worked, if it failed collections will be
@@ -2591,7 +2602,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (res.slice().get("results").length()) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   // Update our own cache:
   loadPlan();
@@ -2610,9 +2623,6 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
-        //res = ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
-        //cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
         loadCurrent();
 
         events::DropCollection(dbName, collectionID, *dbServerResult);
@@ -2691,8 +2701,9 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
 
   if (res.successful()) {
     auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-    cache.waitFor(
-      res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    if (res.slice().get("results").length()) {
+      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    }
     loadPlan();
     return Result();
   }
@@ -2808,7 +2819,9 @@ Result ClusterInfo::createViewCoordinator(  // create view
             " error details: " + res.errorDetails() + " body: " + res.body());
   }
 
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (res.slice().get("results").length() > 0) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   // Update our cache:
   loadPlan();
@@ -2839,7 +2852,9 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   auto const res = ac.sendTransactionWithFailover(trans);
 
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (res.slice().get("results").length()) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   // Update our own cache
   loadPlan();
@@ -2912,8 +2927,10 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
   }
 
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+  if (res.slice().get("results").length()) {
+    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
+  
   loadPlan();
   return {};
 }
@@ -2980,7 +2997,9 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
 
   if (res.successful()) {
     auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    if (res.slice().get("results").length()) {
+      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    }
     loadPlan();
     return Result();
   }
@@ -3231,7 +3250,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
   if (result.successful()) {
     auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+    if (result.slice().get("results").length()) {
+      cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+    }
   }
 
   // This object watches whether the collection is still present in Plan
@@ -3335,7 +3356,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               << indexId.id() << ", this will be repaired automatically.";
         }
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-        cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+        if (result.slice().get("results").length()) {
+          cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+        }
 
         loadPlan();
 
@@ -3375,8 +3398,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
           if (update.successful()) {
             auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-            cache.waitFor(update.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+            if (update.slice().get("results").length()) {
+              cache.waitFor(update.slice().get("results")[0].getNumber<uint64_t>()).get();
+            }
             loadPlan();
 
             if (tmpRes < 0) {                 // timeout
@@ -3588,7 +3612,9 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyWriteTransaction trx({planErase, incrementVersion}, prec);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+  if (result.slice().get("results").length()) {
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   if (!result.successful()) {
     events::DropIndex(databaseName, collectionID, idString,
@@ -4517,8 +4543,9 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
     return result;
   }
   auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  cache.waitFor(r.slice().get("results")[0].getNumber<uint64_t>()).get();
-
+  if (r.slice().get("results").length()) {
+    cache.waitFor(r.slice().get("results")[0].getNumber<uint64_t>()).get();
+  }
 
   return arangodb::Result();
 }

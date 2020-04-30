@@ -51,6 +51,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void unprepare() override final;
 
+  void allocateMembers();
+
   std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
 
   std::string agencyPrefix() const { return _agencyPrefix; }
@@ -119,6 +121,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _enableCluster = false;
   bool _requirePersistedId = false;
   double _indexCreationTimeout = 3600.0;
+  bool _allocated = false;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;

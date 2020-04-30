@@ -95,21 +95,17 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   arangodb::consensus::Store& _agencyStore;
 
   IResearchViewCoordinatorTest() : server(), _agencyStore(server.getAgencyStore()) {
-  std::cout << __FILE__ << __LINE__ << std::endl;
-/*    arangodb::tests::init();
+    arangodb::tests::init();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
-    TransactionStateMock::commitTransactionCount = 0;*/
+    TransactionStateMock::commitTransactionCount = 0;
   }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
-  std::cout << __FILE__ << __LINE__ << std::endl;
-    /*
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    */
   }
 
   ~IResearchViewCoordinatorTest() = default;
@@ -120,11 +116,10 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchViewCoordinatorTest, test_type) {
-  std::cout << __FILE__ << __LINE__ << std::endl;
   EXPECT_TRUE((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(
                    "arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
-/*
+
 TEST_F(IResearchViewCoordinatorTest, test_rename) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
@@ -170,9 +165,11 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
       "}");
-  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
-                                              collectionJson0->slice(), 0.0, false, nullptr)
-                   .ok()));
+
+  ci.loadPlan();
+
+  ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                            collectionJson0->slice(), 0.0, false, nullptr).ok());
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
@@ -218,7 +215,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(3 == (begin - expectedCollections));
 }
 
-TEST_F(IResearchViewCoordinatorTest, test_defaults) {
+/*TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -5809,5 +5806,4 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     // check there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
   }
-}
-*/
+  }*/

@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -484,18 +485,30 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   }
 }
 
-MockClusterServer::MockClusterServer()
-    : MockServer(), _agencyStore(_server, nullptr, "arango") {
+consensus::check_ret_t AgencyCache::set(VPackSlice const trx) {
+  ++_commitIndex;
+  return _readDB.applyTransaction(trx);
+}
+
+consensus::Store& AgencyCache::store() {
+  return _readDB;
+}
+
+MockClusterServer::MockClusterServer() : MockServer() {
   auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
+  //need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   _oldRole = arangodb::ServerState::instance()->getRole();
 
   // Add features
   SetupAqlPhase(*this);
+
+  _server.getFeature<ClusterFeature>().allocateMembers();
+  _agencyStore = &_server.getFeature<ClusterFeature>().agencyCache().store();
+  std::ignore =
+    agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, *_agencyStore);
+  std::ignore =
+    agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, *_agencyStore);
 
   addFeature<arangodb::UpgradeFeature>(false, &_dummy, std::vector<std::type_index>{});
   addFeature<arangodb::ServerSecurityFeature>(false);
@@ -535,14 +548,16 @@ void MockClusterServer::agencyTrx(std::string const& key, std::string const& val
       b.add(key, b2->slice());
     }
   }
-  _agencyStore.applyTransaction(b.slice());
+  _server.getFeature<ClusterFeature>().agencyCache().set(b.slice());
 }
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   TemplateSpecializer ts(name);
 
+
   std::string st = ts.specialize(plan_dbs_string);
   agencyTrx("/arango/Plan/Databases/" + name, st);
+
   st = ts.specialize(plan_colls_string);
   agencyTrx("/arango/Plan/Collections/" + name, st);
   st = ts.specialize(current_dbs_string);

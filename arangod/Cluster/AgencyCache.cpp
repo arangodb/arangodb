@@ -36,7 +36,9 @@ AgencyCache::AgencyCache(
     _readDB(server, nullptr, "raadDB"), _callbackRegistry(callbackRegistry) {}
 
 
-AgencyCache::~AgencyCache() {}
+AgencyCache::~AgencyCache() {
+    beginShutdown();
+}
 
 /// Start all agent thread
 bool AgencyCache::start() {

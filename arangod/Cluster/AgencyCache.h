@@ -83,6 +83,12 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
+  /// @brief Used exclusively in unit tests
+  consensus::check_ret_t set(VPackSlice const trx);
+
+  /// @brief Used exclusively in unit tests
+  consensus::Store& store();
+
 private:
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
