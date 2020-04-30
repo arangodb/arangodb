@@ -112,26 +112,26 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     return regsToClear;
   };
 
+  planRegistersForCurrentNode(en, true);
+
   switch (en->getType()) {
-    case ExecutionNode::SUBQUERY_START:
+    case ExecutionNode::SUBQUERY_START: {
       unusedRegisters.emplace_back(unusedRegisters.back());
-      break;
-    case ExecutionNode::SUBQUERY_END:
+    } break;
+    case ExecutionNode::SUBQUERY_END: {
       unusedRegisters.pop_back();
-      break;
-    default:
-      break;
+    } break;
+    default: {
+      auto regsToClear = calculateRegistersToClear(en);
+      unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
+      // We need to delete those variables that have been used here but are not
+      // used any more later:
+      en->setRegsToClear(std::move(regsToClear));
+    } break;
   }
 
-  planRegistersForCurrentNode(en, true);
-  auto regsToClear = calculateRegistersToClear(en);
-  unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
   // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
   planRegistersForCurrentNode(en, false);
-
-  // We need to delete those variables that have been used here but are not
-  // used any more later:
-  en->setRegsToClear(std::move(regsToClear));
 
   en->_depth = plan->depth;
   en->_registerPlan = plan;
