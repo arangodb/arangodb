@@ -381,12 +381,12 @@ void OutputAqlItemRow::doCopyRow(ItemRowType const& sourceRow, bool ignoreMissin
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(!_doNotCopyInputRow);
-  bool mustClone = testIfWeMustClone(sourceRow);
+  bool constexpr createShadowRow = copyRowType == CopyRowType::CreateShadowRowFromInputRow;
+  bool mustClone = testIfWeMustClone(sourceRow) || createShadowRow;
 
   LOG_DEVEL << " OutputAqlItemRow::doCopyRow = " << registersToKeep();
 
   auto const& regsToKeep = std::invoke([&] {
-    bool constexpr createShadowRow = copyRowType == CopyRowType::CreateShadowRowFromInputRow;
     static_assert(createShadowRow != (copyRowType == CopyRowType::PassedItemRowType));
     if constexpr (std::is_same_v<ItemRowType, InputAqlItemRow> && !createShadowRow) {
       return registersToKeep().back();
