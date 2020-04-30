@@ -506,7 +506,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
             &dummyScorerFunc  // function implementation
         });
 
-    LOG_TOPIC("f42f8", TRACE, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("f42f9", TRACE, arangodb::iresearch::TOPIC)
         << "registered ArangoSearch scorer '" << upperName << "'";
 
     return true;
