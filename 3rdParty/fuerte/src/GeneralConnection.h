@@ -68,7 +68,12 @@ class GeneralConnection : public fuerte::Connection {
   
   virtual void finishConnect() = 0;
 
-  /// begin writing
+  /// The following is called when the connection is permanently failed. It is
+  /// used to shut down any activity in the derived classes in a way that avoids
+  /// sleeping barbers
+  virtual void terminateActivity() = 0;
+
+  /// begin writing,
   virtual void startWriting() = 0;
 
   // called by the async_read handler (called from IO thread)
