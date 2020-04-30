@@ -683,13 +683,12 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  // enter shutdown phase, forget previous wakeups
-  _sharedState->resetNumWakeups();
-
   if (_root == nullptr || _wasShutdown) {
     return {ExecutionState::DONE, _shutdownResult};
   }
   
+  // enter shutdown phase, forget previous wakeups
+  _sharedState->resetNumWakeups();
   
   if (ServerState::instance()->isCoordinator()) {
     bool knowsAllQueryIds = !_serverToQueryId.empty();
@@ -702,7 +701,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
     
     if (knowsAllQueryIds) {
       TRI_ASSERT(!_wasShutdown);
-      return {this->shutdownDBServerQueries(errorCode), Result()};
+      return shutdownDBServerQueries(errorCode);
     }
   }
   
@@ -846,20 +845,20 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
   _execStats.clear();
 }
 
-ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int errorCode) {
   TRI_ASSERT(!_wasShutdown);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(!_sentShutdownResponse.exchange(true));
-#endif
+  if (_sentShutdownResponse.exchange(true)) {
+    return {ExecutionState::WAITING, Result()};
+  }
   
   if (_serverToQueryId.empty()) { // happens during tests
-    return ExecutionState::DONE;
+    return {ExecutionState::DONE, Result()};
   }
   
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
-    return ExecutionState::DONE;
+    return {ExecutionState::DONE, Result(TRI_ERROR_SHUTTING_DOWN)};
   }
   
   network::RequestOptions options;
@@ -931,7 +930,7 @@ ExecutionState ExecutionEngine::shutdownDBServerQueries(int errorCode) {
     });
   });
   
-  return ExecutionState::WAITING;
+  return {ExecutionState::WAITING, Result()};
 }
 
 #ifndef USE_ENTERPRISE

@@ -156,7 +156,7 @@ class ExecutionEngine {
   
  private:
   
-  ExecutionState shutdownDBServerQueries(int errorCode);
+  std::pair<ExecutionState, Result> shutdownDBServerQueries(int errorCode);
 
  private:
   /// @brief a pointer to the query
