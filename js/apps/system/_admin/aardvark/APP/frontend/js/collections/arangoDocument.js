@@ -54,7 +54,7 @@ window.ArangoDocument = Backbone.Collection.extend({
     }
     catch(x) {
       body = {};
-      return this.createTypeEdge(collectionID, from, to, key, body, callback)
+      return this.createTypeEdge(collectionID, from, to, key, body, callback);
     }
 
     $.ajax({
@@ -100,7 +100,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       body = {};
       return this.createTypeDocument(collectionID, key, body, callback, returnNew,
                                      smartJoinAttribute, smartJoinAttributeValue,
-                                     smartGraphAttribute, smartGraphAttributeValue)
+                                     smartGraphAttribute, smartGraphAttributeValue);
     }
     newDocument = JSON.stringify(newDocument);
 

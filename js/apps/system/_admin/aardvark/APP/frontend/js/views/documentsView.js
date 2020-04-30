@@ -765,7 +765,7 @@
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
       var body;
-      try { // TODO: refactor this. 
+      try { // TODO: refactor this.
         body = this.editor.get();
       } catch (x) {
         arangoHelper.arangoError("failed to parse JSON document", x.message);

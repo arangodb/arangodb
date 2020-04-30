@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window */
+/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window, JSONEditor 
 (function () {
   'use strict';
 
@@ -1063,7 +1063,7 @@
 
       var callback = function (error, id, msg) {
         if (!error) {
-          var edge
+          var edge;
           try {
             edge = this.editor.get();
           } catch (x) {
@@ -1099,7 +1099,7 @@
         // then clear states
         self.clearOldContextMenu(true);
         window.modalView.hide();
-      }.bind(this)
+      }.bind(this);
 
       var body;
       try {
