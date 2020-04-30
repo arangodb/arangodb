@@ -204,15 +204,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
                 return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
               }
               break;  // otherwise return error as is
-            case fuerte::Error::Timeout:
-            case fuerte::Error::CouldNotConnect:
+            default:
               // retry to send the request again
               man.reportError(endpoint);
               return agencyAsyncInquiry(man, std::move(meta), std::move(body));
-
-            default:
-              // return the result as is
-              break;
           }
 
           return futures::makeFuture(AsyncAgencyCommResult{result.error, std::move(resp)});
@@ -306,6 +301,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
           [[fallthrough]];
           /* fallthrough */
         case fuerte::Error::Timeout:
+        case fuerte::Error::ConnectionClosed:
+        case fuerte::Error::Canceled:
+        case fuerte::Error::ProtocolError:
+        case fuerte::Error::WriteError:
+        case fuerte::Error::ReadError:
           // inquiry the request
           man.reportError(endpoint);
           // in case of a write transaction we have to do inquiry
@@ -315,6 +315,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
           // otherwise just send again
           [[fallthrough]];
         case fuerte::Error::CouldNotConnect:
+        case fuerte::Error::QueueCapacityExceeded:
           if (meta.isRetryOnNoResponse()) {
             LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
                 << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
