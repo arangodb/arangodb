@@ -52,7 +52,7 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
 
     irs::utf8_path resource;
     resource /= irs::string_ref(arangodb::tests::testResourceDir);
-    resource /= irs::string_ref("simple_sequential.json");
+    resource /= irs::string_ref("levenshtein_sequential.json");
 
     auto builder =
         arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
@@ -105,15 +105,75 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     EXPECT_TRUE(arangodb::tests::executeQuery(vocbase, queryString).result.ok());
   }
 
-  // test missing field
+  // distance 0, default limit
   {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[26].slice()
+    };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.missing, 'alphabet', 3) RETURN d");
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.title, 'aa', 0) RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    EXPECT_EQ(0, slice.length());
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // distance 1, defatul limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[26].slice(),
+      insertedDocs[27].slice(),
+      insertedDocs[28].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.title, 'a', 1) RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // distance 1, limit 1
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[27].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH LEVENSHTEIN_MATCH(d.title, 'a', 1, false, 1) RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
   }
 
   // test missing field
