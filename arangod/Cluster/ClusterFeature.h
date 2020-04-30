@@ -74,8 +74,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _createWaitsForSyncReplication;
   }
   std::uint32_t writeConcern() const { return _writeConcern; }
-  std::uint32_t systemReplicationFactor() { return _systemReplicationFactor; }
-  std::uint32_t defaultReplicationFactor() { return _defaultReplicationFactor; }
+  std::uint32_t systemReplicationFactor() const { return _systemReplicationFactor; }
+  std::uint32_t defaultReplicationFactor() const { return _defaultReplicationFactor; }
   std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
   std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }

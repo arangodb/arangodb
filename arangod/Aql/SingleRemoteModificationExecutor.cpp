@@ -26,6 +26,7 @@
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
@@ -64,7 +65,7 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
 template <typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(Fetcher& fetcher,
                                                                              Infos& info)
-    : _info(info), _upstreamState(ExecutionState::HASMORE) {
+    : _trx(info._query.newTrxContext()), _info(info), _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
@@ -140,29 +141,29 @@ auto SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
   }
 
   if (isIndex) {
-    result = _info._trx->document(_info._aqlCollection->name(), inSlice, _info._options);
+    result = _trx.document(_info._aqlCollection->name(), inSlice, _info._options);
   } else if (isInsert) {
     if (options.returnOld && !options.isOverwriteModeUpdateReplace()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN,
           "OLD is only available when using INSERT with the overwrite option");
     }
-    result = _info._trx->insert(_info._aqlCollection->name(), inSlice, _info._options);
+    result = _trx.insert(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
   } else if (isRemove) {
-    result = _info._trx->remove(_info._aqlCollection->name(), inSlice, _info._options);
+    result = _trx.remove(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
   } else if (isReplace) {
     if (_info._replaceIndex && _info._input1RegisterId == RegisterPlan::MaxRegisterId) {
       // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
       // in this case replace needs to behave as if it was UPDATE.
-      result = _info._trx->update(_info._aqlCollection->name(), inSlice, _info._options);
+      result = _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
     } else {
-      result = _info._trx->replace(_info._aqlCollection->name(), inSlice, _info._options);
+      result = _trx.replace(_info._aqlCollection->name(), inSlice, _info._options);
     }
     possibleWrites = 1;
   } else if (isUpdate) {
-    result = _info._trx->update(_info._aqlCollection->name(), inSlice, _info._options);
+    result = _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
     possibleWrites = 1;
   }
 

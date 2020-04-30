@@ -1,5 +1,14 @@
 devel
 -----
+* Integrated libiresearch log topic properly into ArangoDB logging system
+
+* Fix spurious bugs in `resilience_move` tests due to replication context of 
+  to-be-dropped collections lingering around until timeout.
+
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
+* Fix REST API `/_admin/cluster/removeServer`.
+  This also fixes the removal of servers via the web interface.
 
 * Updated OpenSSL to 1.1.1g.
 

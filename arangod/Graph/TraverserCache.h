@@ -44,7 +44,7 @@ class Slice;
 
 namespace aql {
 struct AqlValue;
-class Query;
+class QueryContext;
 }  // namespace aql
 
 namespace graph {
@@ -61,7 +61,7 @@ struct BaseOptions;
 
 class TraverserCache {
  public:
-  explicit TraverserCache(aql::Query* query, BaseOptions const* opts);
+  explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts);
 
   virtual ~TraverserCache();
 
@@ -135,7 +135,7 @@ class TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::aql::Query* _query;
+  arangodb::aql::QueryContext& _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transaction to access data, This class is NOT responsible for it.

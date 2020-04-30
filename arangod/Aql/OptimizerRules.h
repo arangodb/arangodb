@@ -39,10 +39,10 @@ class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
 
-class Query;
+class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert = true);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -237,6 +237,12 @@ void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 /// if not required
 void removeDataModificationOutVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                             OptimizerRule const&);
+
+// replace inaccessible EnumerateCollectionNode with NoResult nodes
+#ifdef USE_ENTERPRISE
+void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const& rule);
+#endif
 
 /// @brief patch UPDATE statement on single collection that iterates over the
 /// entire collection to operate in batches

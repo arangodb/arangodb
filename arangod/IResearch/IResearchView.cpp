@@ -432,7 +432,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   arangodb::transaction::Options options;
 
   options.waitForSync = false;
-  options.allowImplicitCollections = false;
+  options.allowImplicitCollectionsForRead = false;
 
   Result res;
   try {

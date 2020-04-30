@@ -67,15 +67,17 @@ struct TraverserOptions : public graph::BaseOptions {
  protected:
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
-  std::unordered_map<uint64_t, aql::Expression*> _vertexExpressions;
+  std::unordered_map<uint64_t, std::unique_ptr<aql::Expression>> _vertexExpressions;
 
-  aql::Expression* _baseVertexExpression;
+  std::unique_ptr<aql::Expression> _baseVertexExpression;
 
   arangodb::traverser::ClusterTraverser* _traverser;
 
   /// @brief The condition given in PRUNE (might be empty)
   ///        The Node keeps responsibility
   std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
+
+  bool _producePaths{true};
 
  public:
   uint64_t minDepth;
@@ -94,12 +96,14 @@ struct TraverserOptions : public graph::BaseOptions {
 
   std::vector<std::string> edgeCollections;
 
-  explicit TraverserOptions(aql::Query* query);
+  explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
-  TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
-
-  TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
-                   arangodb::velocypack::Slice);
+  TraverserOptions(arangodb::aql::QueryContext& query,
+                   arangodb::velocypack::Slice definition);
+  
+  TraverserOptions(arangodb::aql::QueryContext&,
+                   arangodb::velocypack::Slice info,
+                   arangodb::velocypack::Slice collections);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -162,6 +166,10 @@ struct TraverserOptions : public graph::BaseOptions {
   }
 
   auto estimateDepth() const noexcept -> uint64_t override;
+
+  auto setProducePaths(bool value) -> void { _producePaths = value; }
+
+  auto producePaths() -> bool { return _producePaths; }
 };
 }  // namespace traverser
 }  // namespace arangodb

@@ -50,6 +50,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
+#include "Aql/ParallelStartExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
@@ -68,8 +69,8 @@
 #include "Meta/static_assert_size.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -118,7 +119,11 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SUBQUERY_END), "SubqueryEndNode"},
     {static_cast<int>(ExecutionNode::DISTRIBUTE_CONSUMER),
      "DistributeConsumer"},
-    {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"}};
+    {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
+    {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
+    {static_cast<int>(ExecutionNode::PARALLEL_START), "ParallelStartNode"},
+    {static_cast<int>(ExecutionNode::PARALLEL_END), "ParallelEndNode"},
+};
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -345,6 +350,12 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
+//    case ASYNC:
+//      return new AsyncNode(plan, slice);
+    case PARALLEL_START:
+      return new ParallelStartNode(plan, slice);
+    case PARALLEL_END:
+      return new ParallelEndNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -818,6 +829,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
 
   RegisterPlanWalker walker(v);
   walk(walker);
+
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
@@ -935,20 +947,21 @@ void ExecutionNode::removeDependencies() {
 }
 
 std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  ExecutionNode const* const previousNode = getFirstDependency();
-  // Only the Singleton has no previousNode, and it does not call this method.
-  TRI_ASSERT(previousNode != nullptr);
-
-  bool inserted = false;
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
   std::unordered_set<RegisterId> regsToKeep{};
   regsToKeep.reserve(getVarsUsedLater().size());
 
-  for (auto const var : getVarsUsedLater()) {
+  auto varsUsedLater = getVarsUsedLater();
+  auto varsSetHere = getVariablesSetHere();
+
+  for (auto const var : getVarsValid()) {
     auto reg = variableToRegisterId(var);
-    if (reg < nrInRegs) {
-      std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
-      TRI_ASSERT(inserted);
+
+    bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                     varsSetHere.end();
+    bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                       varsUsedLater.end();
+    if (!isSetHere && isUsedLater) {
+      regsToKeep.insert(reg);
     }
   }
 
@@ -984,8 +997,8 @@ RegisterInfos ExecutionNode::createRegisterInfos(
 
 RegisterId ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // in case of the SingletonNode, there are no input registers
+  return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
 RegisterId ExecutionNode::getNrOutputRegisters() const {
@@ -1198,13 +1211,12 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
-bool ExecutionNode::isIncreaseDepth() const {
+bool ExecutionNode::isPassthrough() const {
   switch (getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::COLLECT:
-
 
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
@@ -1213,41 +1225,18 @@ bool ExecutionNode::isIncreaseDepth() const {
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::MATERIALIZE:
-      return true;
+      return false;
 
     default:
-      return false;
+      return true;
   }
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  // number in == number out
-  // Other nodes get the nrInRegs from the previous node.
-  // That is why we do not use `calcRegsToKeep()`
-  RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
-  std::unordered_set<RegisterId> regsToKeep;
-  if (isInSubquery()) {
-    for (auto const& var : this->getVarsUsedLater()) {
-      auto val = variableToRegisterId(var);
-      if (val < nrRegs) {
-        auto rv = regsToKeep.insert(val);
-        TRI_ASSERT(rv.second);
-      }
-    }
-  }
-
-  auto regsToClear = getRegsToClear();
-
-  auto registerInfos = RegisterInfos{make_shared_unordered_set(),
-                                     make_shared_unordered_set(),
-                                     nrRegs,
-                                     nrRegs,
-                                     regsToClear,
-                                     regsToKeep};
-
+  auto registerInfos = createRegisterInfos(make_shared_unordered_set(), make_shared_unordered_set());
   IdExecutorInfos infos(false);
 
   auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
@@ -1281,9 +1270,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
-VariableIdSet SingletonNode::getOutputVariables() const {
-  return {};
-}
+VariableIdSet SingletonNode::getOutputVariables() const { return {}; }
 
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
@@ -1319,8 +1306,8 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  if (!engine.waitForSatellites(collection())) {
-    double maxWait = engine.getQuery()->queryOptions().satelliteSyncWait;
+  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
+    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
                                    "collection " + collection()->name() +
                                        " did not come into sync in time (" +
@@ -1331,7 +1318,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   auto registerInfos = createRegisterInfos(make_shared_unordered_set(),
                                            make_shared_unordered_set({outputRegister}));
   auto executorInfos =
-      EnumerateCollectionExecutorInfos(outputRegister, &engine, collection(),
+      EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(), collection(),
                                        _outVariable, produceResult,
                                        this->_filter.get(), this->projections(),
                                        this->coveringIndexAttributePositions(),
@@ -1374,14 +1361,14 @@ VariableIdSet EnumerateCollectionNode::getOutputVariables() const {
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
 /// its unique dependency
 CostEstimate EnumerateCollectionNode::estimateCost() const {
-  transaction::Methods* trx = _plan->getAst()->query()->trx();
-  if (trx->status() != transaction::Status::RUNNING) {
+  transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
+  if (trx.status() != transaction::Status::RUNNING) {
     return CostEstimate::empty();
   }
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems *= collection()->count(trx);
+  estimate.estimatedNrItems *= collection()->count(&trx, transaction::CountType::TryCache);
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
@@ -1590,14 +1577,12 @@ size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
 
-auto LimitNode::getOutputVariables() const -> VariableIdSet {
-  return {};
-}
+auto LimitNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan, plan->getAst(), base)) {}
+      _expression(new Expression(plan->getAst(), base)) {}
 
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -1686,15 +1671,15 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   }
   bool const willUseV8 = expression()->willUseV8();
 
-  TRI_ASSERT(engine.getQuery() != nullptr);
   TRI_ASSERT(expression() != nullptr);
+
 
   auto registerInfos =
       createRegisterInfos(make_shared_unordered_set(expInRegs.begin(), expInRegs.end()),
                           make_shared_unordered_set({outputRegister}));
 
   auto executorInfos = CalculationExecutorInfos(
-      outputRegister, *engine.getQuery() /* used for v8 contexts and in expression */,
+      outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
       *expression(), std::move(expInVars) /* required by expression.execute */,
       std::move(expInRegs)); /* required by expression.execute */
 
@@ -1719,7 +1704,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies
   }
 
   auto c = std::make_unique<CalculationNode>(plan, _id,
-                                             _expression->clone(plan, plan->getAst()),
+                                             _expression->clone(plan->getAst()),
                                              outVariable);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
@@ -1798,7 +1783,7 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  if (mayAccessCollections() && _plan->getAst()->query()->isModificationQuery()) {
+  if (mayAccessCollections() && _plan->getAst()->containsModificationNode()) {
     // a subquery that accesses data from a collection may not be const,
     // even if itself does not modify any data. it is possible that the
     // subquery is embedded into some outer loop that is modifying data
@@ -2347,6 +2332,122 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
   return allEqual;
 }
 
+ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id)
+    : ExecutionNode(plan, id) {}
+
+ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {}
+
+ExecutionNode::NodeType ParallelStartNode::getType() const { return PARALLEL_START; }
+
+ExecutionNode* ParallelStartNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                    bool withProperties) const {
+  return cloneHelper(std::make_unique<ParallelStartNode>(plan, _id),
+                     withDependencies, withProperties);
+}
+
+void ParallelStartNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLater());
+  setVarsValid(dependency->getVarsValid());
+  setVarUsageValid();
+}
+
+/// @brief toVelocyPack, for ParallelStartNode
+void ParallelStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                           std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+
+  // And close it
+  nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  // Everything that is cleared here could and should have been cleared before
+  TRI_ASSERT(regsToClear.empty());
+  
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "Parallel Start is not implemented");
+
+//  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+//                      std::move(regsToKeep));
+//
+//  return std::make_unique<ExecutionBlockImpl<ParallelStartExecutor>>(&engine, this, std::move(infos));
+}
+
+/// @brief estimateCost, the cost of a NoResults is nearly 0
+CostEstimate ParallelStartNode::estimateCost() const {
+  if (_dependencies.empty()) {
+    return aql::CostEstimate::empty();
+  }
+  CostEstimate estimate = CostEstimate::empty();
+  return estimate;
+}
+
+auto ParallelStartNode::getOutputVariables() const -> VariableIdSet { return {}; }
+
+ParallelEndNode::ParallelEndNode(ExecutionPlan* plan, ExecutionNodeId id)
+    : ExecutionNode(plan, id) {}
+
+ParallelEndNode::ParallelEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {}
+
+ExecutionNode::NodeType ParallelEndNode::getType() const { return PARALLEL_END; }
+
+ExecutionNode* ParallelEndNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                      bool withProperties) const {
+  return cloneHelper(std::make_unique<ParallelEndNode>(plan, _id),
+                     withDependencies, withProperties);
+}
+
+void ParallelEndNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLater());
+  setVarsValid(dependency->getVarsValid());
+  setVarUsageValid();
+}
+
+/// @brief toVelocyPack, for ParallelEndNode
+void ParallelEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                         std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+
+  // And close it
+  nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ParallelEndNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "createBlock not implemented for ParallelEndNode");
+}
+
+/// @brief estimateCost
+CostEstimate ParallelEndNode::estimateCost() const {
+  if (_dependencies.empty()) {
+    return aql::CostEstimate::empty();
+  }
+  CostEstimate estimate = CostEstimate::empty();
+  return estimate;
+}
+
+auto ParallelEndNode::getOutputVariables() const -> VariableIdSet { return {}; }
+
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";
 const char* MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
@@ -2454,7 +2555,6 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  TRI_ASSERT(engine.getQuery());
 
   auto const readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
   auto const writableOutputRegisters = make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
@@ -2463,7 +2563,7 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
 
   auto executorInfos =
       MaterializerExecutorInfos(inNmColPtrRegId, inNmDocIdRegId,
-                                outDocumentRegId, engine.getQuery()->trx());
+                                outDocumentRegId, engine.getQuery());
 
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -2537,7 +2637,6 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
   }
-  TRI_ASSERT(engine.getQuery());
   auto const& name = collection()->name();
 
   auto const readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
@@ -2548,7 +2647,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
 
   auto executorInfos =
       MaterializerExecutorInfos<decltype(name)>(name, inNmDocIdRegId, outDocumentRegId,
-                                                engine.getQuery()->trx());
+                                                engine.getQuery());
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -2572,7 +2671,6 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-auto materialize::MaterializeNode::getOutputVariables() const
-    -> VariableIdSet {
+auto materialize::MaterializeNode::getOutputVariables() const -> VariableIdSet {
   return {_outVariable->id};
 }

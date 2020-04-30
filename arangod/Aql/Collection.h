@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -34,6 +35,9 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
+
+class Index;
+
 namespace aql {
 
 struct Collection {
@@ -55,12 +59,6 @@ struct Collection {
 
   void isReadWrite(bool isReadWrite);
 
-  /// @brief set the current shard
-  void setCurrentShard(std::string const& shard);
-
-  /// @brief remove the current shard
-  void resetCurrentShard();
-
   /// @brief get the collection id
   TRI_voc_cid_t id() const;
 
@@ -72,7 +70,7 @@ struct Collection {
   TRI_col_type_e type() const;
 
   /// @brief count the number of documents in the collection
-  size_t count(transaction::Methods* trx) const;
+  size_t count(transaction::Methods* trx, transaction::CountType type) const;
 
   /// @brief returns the collection's plan id
   TRI_voc_cid_t getPlanId() const;
@@ -126,7 +124,7 @@ struct Collection {
     TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
     _shardToServerMapping.try_emplace(sid, server);
   }
-
+  
   /// @brief lookup the server responsible for the given shard.
   ServerID const& getServerForShard(ShardID const& sid) const {
     auto const& it = _shardToServerMapping.find(sid);
@@ -134,6 +132,12 @@ struct Collection {
     TRI_ASSERT(it != _shardToServerMapping.end());
     return it->second;
   }
+
+  /// @brief get the index by it's identifier. Will either throw or
+  ///        return a valid index. nullptr is impossible.
+  std::shared_ptr<arangodb::Index> indexByIdentifier(std::string const& idxId) const;
+  
+  std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
 
  private:
   std::shared_ptr<arangodb::LogicalCollection> _collection;

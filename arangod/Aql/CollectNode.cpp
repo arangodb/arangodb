@@ -36,6 +36,7 @@
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
@@ -150,7 +151,7 @@ void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
-    TRI_ASSERT(collectRegister > 0 && collectRegister < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(collectRegister < RegisterPlan::MaxRegisterId);
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
@@ -209,7 +210,7 @@ void CollectNode::calcAggregateRegisters(
 void CollectNode::calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
   for (auto const& p : _aggregateVariables) {
     aggregateTypes.emplace_back(
-        Aggregator::fromTypeString(_plan->getAst()->query()->trx(), p.second.second));
+      Aggregator::fromTypeString(&_plan->getAst()->query().vpackOptions(), p.second.second));
   }
 }
 
@@ -268,11 +269,11 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       auto executorInfos =
           HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      std::move(aggregateTypes),
-                                     std::move(aggregateRegisters), trxPtr, _count);
+                                     std::move(aggregateRegisters),
+                                     &_plan->getAst()->query().vpackOptions(), _count);
 
       return std::make_unique<ExecutionBlockImpl<HashedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -318,12 +319,12 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto& it) { return it.second.second; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
       auto executorInfos =
           SortedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                      expressionRegister, _expressionVariable,
                                      std::move(aggregateTypes), std::move(inputVariables),
-                                     std::move(aggregateRegisters), trxPtr, _count);
+                                     std::move(aggregateRegisters),
+                                     &_plan->getAst()->query().vpackOptions(), _count);
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(&engine, this,
                                                                          std::move(registerInfos),
@@ -360,10 +361,9 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
           std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
 
-      transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
-
       TRI_ASSERT(groupRegisters.size() == 1);
-      auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(), trxPtr);
+      auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(),
+                                                        &_plan->getAst()->query().vpackOptions());
 
       return std::make_unique<ExecutionBlockImpl<DistinctCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -457,6 +457,9 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -498,6 +501,9 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -539,6 +545,9 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);

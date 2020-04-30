@@ -25,7 +25,6 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Range.h"

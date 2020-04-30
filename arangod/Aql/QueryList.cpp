@@ -220,7 +220,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
   auto it = _current.find(id);
 
   if (it == _current.end()) {
-    return {TRI_ERROR_QUERY_NOT_FOUND};
+    return {TRI_ERROR_QUERY_NOT_FOUND, "query ID not found in query list"};
   }
 
   Query* query = (*it).second;

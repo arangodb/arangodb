@@ -32,6 +32,7 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/Stats.h"
 #include "Aql/RegisterInfos.h"
 
 #include <functional>
@@ -52,7 +53,7 @@ class ExecutionEngine;
 class ExecutionNode;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class Query;
+class QueryContext;
 class ShadowAqlItemRow;
 class SkipResult;
 class ParallelUnsortedGatherExecutor;
@@ -206,6 +207,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+  
+  virtual void collectExecStats(ExecutionStats& stats) const override {
+    ExecutionBlock::collectExecStats(stats);
+    stats += _blockStats; // additional stats;
+  }
 
   template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
   [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
@@ -232,7 +238,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
                                                                   AqlCall&& call);
 
-  [[nodiscard]] Query const& getQuery() const;
+  [[nodiscard]] QueryContext const& getQuery() const;
 
   [[nodiscard]] Executor& executor();
 
@@ -310,7 +316,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
-  Query const& _query;
+  QueryContext const& _query;
 
   InternalState _state;
 
@@ -327,6 +333,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _hasMemoizedCall{false};
 
   AqlCall _clientRequest;
+  
+  /// used to track the stats per executor
+  typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
 

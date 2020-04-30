@@ -59,6 +59,7 @@ enum class SerializationFormat;
 
 class AqlItemBlock {
   friend class AqlItemBlockManager;
+  // needed for testing only
   friend class BlockCollector;
   friend class SharedAqlItemBlockPtr;
 
