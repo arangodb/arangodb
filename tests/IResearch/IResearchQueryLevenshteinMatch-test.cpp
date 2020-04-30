@@ -516,7 +516,6 @@ TEST_F(IResearchQueryLevenhsteinMatchTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 
-
   // test missing field
   {
     auto result = arangodb::tests::executeQuery(
