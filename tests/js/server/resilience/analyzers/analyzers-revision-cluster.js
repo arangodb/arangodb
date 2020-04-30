@@ -225,6 +225,11 @@ function analyzersRevisionTestSuite () {
       let revisionNumber = revision.revision;
 
       checkAnalyzers(dbName, "", revisionNumber);
+    },
+    testAnalyzersPlanBuiltIn: function() {
+      try { analyzers.save("text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", [ "frequency", "norm", "position" ]); } catch(e) {
+        assertTrue(false);
+      }
     }
   };
 }
