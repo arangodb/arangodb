@@ -1895,10 +1895,9 @@ constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     
 ///  "One or more db servers could not be reached for hot backup inquiry"
 constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
 
-/// 7021: TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN
-/// "could not modify analyzers in plan"
-/// Will be raised when a coordinator in a cluster cannot modify an entry
-/// for a new analyzers revision in the Plan hierarchy in the agency.
+///  7021: ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN
+/// " "analyzers in plan could not be modified""
+///  "Plan could not be modified while creating or deleting analyzers revision"
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              =  7021;
 
 
