@@ -239,10 +239,6 @@ class OutputAqlItemRow {
 
   enum class CopyOrMove { COPY, MOVE };
 
-  // template <class ItemRowType, CopyOrMove copyOrMove>
-  // using MaybeConst =
-  //     std::conditional_t<copyOrMove == CopyOrMove::COPY, ItemRowType const, ItemRowType>;
-
   template <class ItemRowType, CopyOrMove copyOrMove>
   void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
 
