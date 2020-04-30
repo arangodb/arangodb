@@ -451,7 +451,9 @@ template <SocketType ST>
 void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
   FUERTE_ASSERT(this->_writing);
-  FUERTE_ASSERT(this->_active);
+  // In the TLS case a connection can go to Failed state essentially at any time
+  // and in this case _active will already be false if we get back here. Therefore
+  // we cannot assert on it being true, which would otherwise be correct.
   FUERTE_ASSERT(this->_state != Connection::State::Connecting);
   this->_writing = false;       // indicate that no async write is ongoing any more
   this->_proto.timer.cancel();  // cancel alarm for timeout
@@ -490,7 +492,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     } else {
       drainQueue(Error::Canceled);
       abortOngoingRequests(Error::Canceled);
-      this->asyncWriteNextRequest();    // will reset `active`
+      this->terminateActivity();    // will reset `active`
     }
     return;
   }
@@ -533,7 +535,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     } else {
       drainQueue(Error::Canceled);
       abortOngoingRequests(Error::Canceled);
-      this->asyncWriteNextRequest();    // will reset `active`
+      this->terminateActivity();    // will reset `active`
     }
     return;
   }

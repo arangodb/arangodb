@@ -1,4 +1,4 @@
------------------------------- MODULE FuerteV3 ---------------------------
+------------------------------ MODULE FuerteH1TLS ---------------------------
 EXTENDS Integers, TLC, Sequences
 
 (*
@@ -41,18 +41,18 @@ procedure terminateActivity() {    \* VERIFIED
    avoids a sleeping barber in case new requests are posted concurrently. *)
  terminateActivityBegin:
   assert /\ state = "Failed"
-         /\ active
          /\ asyncRunning = "none"
          /\ alarm = "off";
+ terminateLoop: 
   while (TRUE) {
     drain:
       queueSize := 0;
     deactivate2:
       active := FALSE;
-    checkAgain:
+    checkAgain2:
       if (queueSize = 0) {
         return;
-      }
+      };
     reactivate2:
       active := TRUE;
   };
@@ -108,14 +108,16 @@ process(fuerte = "fuertethread") {
     while (TRUE) {
       either activate:   \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "activate") {
-          assert active /\ state /= "Connecting";
+          assert state /= "Connecting";
           iocontext := Tail(iocontext);
-          if (state = "Disconnected") {
-            call startConnection();
-          } else if (state = "Connected") {
-            call asyncWriteNextRequest();
-          } else if (state = "Failed") {
-            call terminateActivity();
+          if (active) {
+            if (state = "Disconnected") {
+              call startConnection();
+            } else if (state = "Connected") {
+              call asyncWriteNextRequest();
+            } else if (state = "Failed") {
+              call terminateActivity();
+            };
           };
         };
       
@@ -152,7 +154,7 @@ process(fuerte = "fuertethread") {
           } else {
             iocontext := Tail(iocontext);
             alarm := "off";
-            state := "Failed;
+            state := "Failed";
             call terminateActivity();
           };
         };
@@ -168,7 +170,7 @@ process(fuerte = "fuertethread") {
             call asyncWriteNextRequest();
           } else {
             iocontext := Tail(iocontext);
-            state := "Failed;
+            state := "Failed";
             call terminateActivity();
           };
         };
@@ -238,8 +240,9 @@ process(fuerte = "fuertethread") {
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm") {
           iocontext := Tail(iocontext);
           if (state = "Connected") {
-            state := "Disconnected";
+            state := "Failed";
             alarm := "off";
+            call terminateActivity();
             \* it is possible that the idle alarm was still set, since we have
             \* gone to sleep and we have been posted on the iocontext beforehand
           }
@@ -252,7 +255,7 @@ process(fuerte = "fuertethread") {
 process(client = "clientthread") {
   sendMessage:   \* VERIFIED
     while (TRUE) {
-        await queueSize < 2;
+        await queueSize < 2 /\ state /= "Failed";
       pushQueue:
         queueSize := queueSize + 1;
       postActivate:
@@ -309,42 +312,90 @@ startConnectionBegin(self) == /\ pc[self] = "startConnectionBegin"
 
 startConnection(self) == startConnectionBegin(self)
 
+terminateActivityBegin(self) == /\ pc[self] = "terminateActivityBegin"
+                                /\ Assert(/\ state = "Failed"
+                                          /\ asyncRunning = "none"
+                                          /\ alarm = "off", 
+                                          "Failure of assertion at line 43, column 3.")
+                                /\ pc' = [pc EXCEPT ![self] = "terminateLoop"]
+                                /\ UNCHANGED << state, active, queueSize, 
+                                                alarm, asyncRunning, iocontext, 
+                                                reading, writing, stack >>
+
+terminateLoop(self) == /\ pc[self] = "terminateLoop"
+                       /\ pc' = [pc EXCEPT ![self] = "drain"]
+                       /\ UNCHANGED << state, active, queueSize, alarm, 
+                                       asyncRunning, iocontext, reading, 
+                                       writing, stack >>
+
+drain(self) == /\ pc[self] = "drain"
+               /\ queueSize' = 0
+               /\ pc' = [pc EXCEPT ![self] = "deactivate2"]
+               /\ UNCHANGED << state, active, alarm, asyncRunning, iocontext, 
+                               reading, writing, stack >>
+
+deactivate2(self) == /\ pc[self] = "deactivate2"
+                     /\ active' = FALSE
+                     /\ pc' = [pc EXCEPT ![self] = "checkAgain2"]
+                     /\ UNCHANGED << state, queueSize, alarm, asyncRunning, 
+                                     iocontext, reading, writing, stack >>
+
+checkAgain2(self) == /\ pc[self] = "checkAgain2"
+                     /\ IF queueSize = 0
+                           THEN /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
+                                /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
+                           ELSE /\ pc' = [pc EXCEPT ![self] = "reactivate2"]
+                                /\ stack' = stack
+                     /\ UNCHANGED << state, active, queueSize, alarm, 
+                                     asyncRunning, iocontext, reading, writing >>
+
+reactivate2(self) == /\ pc[self] = "reactivate2"
+                     /\ active' = TRUE
+                     /\ pc' = [pc EXCEPT ![self] = "terminateLoop"]
+                     /\ UNCHANGED << state, queueSize, alarm, asyncRunning, 
+                                     iocontext, reading, writing, stack >>
+
+terminateActivity(self) == terminateActivityBegin(self)
+                              \/ terminateLoop(self) \/ drain(self)
+                              \/ deactivate2(self) \/ checkAgain2(self)
+                              \/ reactivate2(self)
+
 asyncWriteNextRequestBegin(self) == /\ pc[self] = "asyncWriteNextRequestBegin"
                                     /\ Assert(/\ state \in {"Connected", "Failed"}
                                               /\ active
                                               /\ asyncRunning = "none", 
-                                              "Failure of assertion at line 44, column 3.")
-                                    /\ pc' = [pc EXCEPT ![self] = "check1"]
+                                              "Failure of assertion at line 67, column 3.")
+                                    /\ pc' = [pc EXCEPT ![self] = "check"]
                                     /\ UNCHANGED << state, active, queueSize, 
                                                     alarm, asyncRunning, 
                                                     iocontext, reading, 
                                                     writing, stack >>
 
-check1(self) == /\ pc[self] = "check1"
-                /\ IF queueSize = 0
-                      THEN /\ pc' = [pc EXCEPT ![self] = "deactivate"]
-                      ELSE /\ pc' = [pc EXCEPT ![self] = "pop"]
-                /\ UNCHANGED << state, active, queueSize, alarm, asyncRunning, 
-                                iocontext, reading, writing, stack >>
+check(self) == /\ pc[self] = "check"
+               /\ IF queueSize = 0
+                     THEN /\ pc' = [pc EXCEPT ![self] = "deactivate"]
+                     ELSE /\ pc' = [pc EXCEPT ![self] = "pop"]
+               /\ UNCHANGED << state, active, queueSize, alarm, asyncRunning, 
+                               iocontext, reading, writing, stack >>
 
 deactivate(self) == /\ pc[self] = "deactivate"
                     /\ active' = FALSE
-                    /\ pc' = [pc EXCEPT ![self] = "check2"]
+                    /\ pc' = [pc EXCEPT ![self] = "checkAgain"]
                     /\ UNCHANGED << state, queueSize, alarm, asyncRunning, 
                                     iocontext, reading, writing, stack >>
 
-check2(self) == /\ pc[self] = "check2"
-                /\ IF queueSize = 0
-                      THEN /\ IF state = "Connected"
-                                 THEN /\ alarm' = "idleAlarm"
-                                 ELSE /\ TRUE
-                                      /\ alarm' = alarm
-                           /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
-                           /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
-                      ELSE /\ pc' = [pc EXCEPT ![self] = "reactivate"]
-                           /\ UNCHANGED << alarm, stack >>
-                /\ UNCHANGED << state, active, queueSize, asyncRunning, 
-                                iocontext, reading, writing >>
+checkAgain(self) == /\ pc[self] = "checkAgain"
+                    /\ IF queueSize = 0
+                          THEN /\ IF state = "Connected"
+                                     THEN /\ alarm' = "idleAlarm"
+                                     ELSE /\ TRUE
+                                          /\ alarm' = alarm
+                               /\ pc' = [pc EXCEPT ![self] = Head(stack[self]).pc]
+                               /\ stack' = [stack EXCEPT ![self] = Tail(stack[self])]
+                          ELSE /\ pc' = [pc EXCEPT ![self] = "reactivate"]
+                               /\ UNCHANGED << alarm, stack >>
+                    /\ UNCHANGED << state, active, queueSize, asyncRunning, 
+                                    iocontext, reading, writing >>
 
 reactivate(self) == /\ pc[self] = "reactivate"
                     /\ IF active
@@ -367,8 +418,8 @@ pop(self) == /\ pc[self] = "pop"
              /\ UNCHANGED << state, active, iocontext, reading >>
 
 asyncWriteNextRequest(self) == asyncWriteNextRequestBegin(self)
-                                  \/ check1(self) \/ deactivate(self)
-                                  \/ check2(self) \/ reactivate(self)
+                                  \/ check(self) \/ deactivate(self)
+                                  \/ checkAgain(self) \/ reactivate(self)
                                   \/ pop(self)
 
 loop == /\ pc["fuertethread"] = "loop"
@@ -390,54 +441,57 @@ loop == /\ pc["fuertethread"] = "loop"
 
 activate == /\ pc["fuertethread"] = "activate"
             /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "activate"
-                  THEN /\ Assert(active /\ state /= "Connecting", 
-                                 "Failure of assertion at line 88, column 11.")
+                  THEN /\ Assert(state /= "Connecting", 
+                                 "Failure of assertion at line 111, column 11.")
                        /\ iocontext' = Tail(iocontext)
-                       /\ IF state = "Disconnected"
-                             THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "startConnection",
-                                                                                     pc        |->  "loop" ] >>
-                                                                                 \o stack["fuertethread"]]
-                                  /\ pc' = [pc EXCEPT !["fuertethread"] = "startConnectionBegin"]
-                                  /\ UNCHANGED << active, queueSize >>
-                             ELSE /\ IF state = "Connected"
-                                        THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
+                       /\ IF active
+                             THEN /\ IF state = "Disconnected"
+                                        THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "startConnection",
                                                                                                 pc        |->  "loop" ] >>
                                                                                             \o stack["fuertethread"]]
-                                             /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
-                                             /\ UNCHANGED << active, queueSize >>
-                                        ELSE /\ IF state = "Failed"
-                                                   THEN /\ active' = FALSE
-                                                        /\ queueSize' = 0
-                                                   ELSE /\ TRUE
-                                                        /\ UNCHANGED << active, 
-                                                                        queueSize >>
-                                             /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
-                                             /\ stack' = stack
+                                             /\ pc' = [pc EXCEPT !["fuertethread"] = "startConnectionBegin"]
+                                        ELSE /\ IF state = "Connected"
+                                                   THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
+                                                                                                           pc        |->  "loop" ] >>
+                                                                                                       \o stack["fuertethread"]]
+                                                        /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
+                                                   ELSE /\ IF state = "Failed"
+                                                              THEN /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
+                                                                                                                      pc        |->  "loop" ] >>
+                                                                                                                  \o stack["fuertethread"]]
+                                                                   /\ pc' = [pc EXCEPT !["fuertethread"] = "terminateActivityBegin"]
+                                                              ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                                                                   /\ stack' = stack
+                             ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                                  /\ stack' = stack
                   ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
-                       /\ UNCHANGED << active, queueSize, iocontext, stack >>
-            /\ UNCHANGED << state, alarm, asyncRunning, reading, writing >>
+                       /\ UNCHANGED << iocontext, stack >>
+            /\ UNCHANGED << state, active, queueSize, alarm, asyncRunning, 
+                            reading, writing >>
 
 connectDone == /\ pc["fuertethread"] = "connectDone"
                /\ IF /\ Len(iocontext) >= 1
                      /\ Head(iocontext) \in {"connect", "connectBAD"}
                      THEN /\ Assert(active /\ state \in {"Connecting", "Disconnected", "Failed"}, 
-                                    "Failure of assertion at line 103, column 11.")
+                                    "Failure of assertion at line 127, column 11.")
                           /\ alarm' = "off"
                           /\ IF Head(iocontext) = "connect" /\ state = "Connecting"
                                 THEN /\ iocontext' = Tail(iocontext)
                                      /\ state' = "Connected"
-                                     /\ UNCHANGED queueSize
+                                     /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
+                                                                                        pc        |->  "loop" ] >>
+                                                                                    \o stack["fuertethread"]]
+                                     /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
                                 ELSE /\ iocontext' = Tail(iocontext)
                                      /\ state' = "Failed"
-                                     /\ queueSize' = 0
-                          /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
-                                                                             pc        |->  "loop" ] >>
-                                                                         \o stack["fuertethread"]]
-                          /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
+                                     /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
+                                                                                        pc        |->  "loop" ] >>
+                                                                                    \o stack["fuertethread"]]
+                                     /\ pc' = [pc EXCEPT !["fuertethread"] = "terminateActivityBegin"]
                      ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
-                          /\ UNCHANGED << state, queueSize, alarm, iocontext, 
-                                          stack >>
-               /\ UNCHANGED << active, asyncRunning, reading, writing >>
+                          /\ UNCHANGED << state, alarm, iocontext, stack >>
+               /\ UNCHANGED << active, queueSize, asyncRunning, reading, 
+                               writing >>
 
 writeDone == /\ pc["fuertethread"] = "writeDone"
              /\ IF /\ Len(iocontext) >= 1
@@ -445,7 +499,7 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
                    THEN /\ Assert(/\ active
                                   /\ state \in {"Connected", "Disconnected", "Failed"}
                                   /\ writing, 
-                                  "Failure of assertion at line 121, column 11.")
+                                  "Failure of assertion at line 145, column 11.")
                         /\ writing' = FALSE
                         /\ IF Head(iocontext) = "write" /\ state = "Connected"
                               THEN /\ iocontext' = Tail(iocontext)
@@ -456,17 +510,11 @@ writeDone == /\ pc["fuertethread"] = "writeDone"
                                    /\ UNCHANGED << state, stack >>
                               ELSE /\ iocontext' = Tail(iocontext)
                                    /\ alarm' = "off"
-                                   /\ IF state /= "Failed"
-                                         THEN /\ state' = "Disconnected"
-                                              /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "startConnection",
-                                                                                                 pc        |->  "loop" ] >>
-                                                                                             \o stack["fuertethread"]]
-                                              /\ pc' = [pc EXCEPT !["fuertethread"] = "startConnectionBegin"]
-                                         ELSE /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
-                                                                                                 pc        |->  "loop" ] >>
-                                                                                             \o stack["fuertethread"]]
-                                              /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
-                                              /\ state' = state
+                                   /\ state' = "Failed"
+                                   /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
+                                                                                      pc        |->  "loop" ] >>
+                                                                                  \o stack["fuertethread"]]
+                                   /\ pc' = [pc EXCEPT !["fuertethread"] = "terminateActivityBegin"]
                                    /\ UNCHANGED << asyncRunning, reading >>
                    ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
                         /\ UNCHANGED << state, alarm, asyncRunning, iocontext, 
@@ -477,7 +525,7 @@ readDone == /\ pc["fuertethread"] = "readDone"
             /\ IF /\ Len(iocontext) >= 1
                   /\ Head(iocontext) \in {"read", "readBAD"}
                   THEN /\ Assert(active /\ state \in {"Connected", "Disconnected", "Failed"}, 
-                                 "Failure of assertion at line 149, column 11.")
+                                 "Failure of assertion at line 165, column 11.")
                        /\ alarm' = "off"
                        /\ reading' = FALSE
                        /\ IF Head(iocontext) = "read" /\ state = "Connected"
@@ -488,17 +536,11 @@ readDone == /\ pc["fuertethread"] = "readDone"
                                   /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
                                   /\ state' = state
                              ELSE /\ iocontext' = Tail(iocontext)
-                                  /\ IF state /= "Failed"
-                                        THEN /\ state' = "Disconnected"
-                                             /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "startConnection",
-                                                                                                pc        |->  "loop" ] >>
-                                                                                            \o stack["fuertethread"]]
-                                             /\ pc' = [pc EXCEPT !["fuertethread"] = "startConnectionBegin"]
-                                        ELSE /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "asyncWriteNextRequest",
-                                                                                                pc        |->  "loop" ] >>
-                                                                                            \o stack["fuertethread"]]
-                                             /\ pc' = [pc EXCEPT !["fuertethread"] = "asyncWriteNextRequestBegin"]
-                                             /\ state' = state
+                                  /\ state' = "Failed"
+                                  /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
+                                                                                     pc        |->  "loop" ] >>
+                                                                                 \o stack["fuertethread"]]
+                                  /\ pc' = [pc EXCEPT !["fuertethread"] = "terminateActivityBegin"]
                   ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
                        /\ UNCHANGED << state, alarm, iocontext, reading, stack >>
             /\ UNCHANGED << active, queueSize, asyncRunning, writing >>
@@ -586,15 +628,18 @@ handleIdleAlarm == /\ pc["fuertethread"] = "handleIdleAlarm"
                    /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm"
                          THEN /\ iocontext' = Tail(iocontext)
                               /\ IF state = "Connected"
-                                    THEN /\ state' = "Disconnected"
+                                    THEN /\ state' = "Failed"
                                          /\ alarm' = "off"
-                                    ELSE /\ TRUE
-                                         /\ UNCHANGED << state, alarm >>
-                         ELSE /\ TRUE
-                              /\ UNCHANGED << state, alarm, iocontext >>
-                   /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                                         /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
+                                                                                            pc        |->  "loop" ] >>
+                                                                                        \o stack["fuertethread"]]
+                                         /\ pc' = [pc EXCEPT !["fuertethread"] = "terminateActivityBegin"]
+                                    ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                                         /\ UNCHANGED << state, alarm, stack >>
+                         ELSE /\ pc' = [pc EXCEPT !["fuertethread"] = "loop"]
+                              /\ UNCHANGED << state, alarm, iocontext, stack >>
                    /\ UNCHANGED << active, queueSize, asyncRunning, reading, 
-                                   writing, stack >>
+                                   writing >>
 
 fuerte == loop \/ activate \/ connectDone \/ writeDone \/ readDone
              \/ cancellation \/ alarmTriggered \/ asyncFinished
@@ -602,7 +647,7 @@ fuerte == loop \/ activate \/ connectDone \/ writeDone \/ readDone
              \/ handleIdleAlarm
 
 sendMessage == /\ pc["clientthread"] = "sendMessage"
-               /\ queueSize < 2
+               /\ queueSize < 2 /\ state /= "Failed"
                /\ pc' = [pc EXCEPT !["clientthread"] = "pushQueue"]
                /\ UNCHANGED << state, active, queueSize, alarm, asyncRunning, 
                                iocontext, reading, writing, stack >>
@@ -635,6 +680,7 @@ cancel == cancelBegin
 
 Next == fuerte \/ client \/ cancel
            \/ (\E self \in ProcSet:  \/ startConnection(self)
+                                     \/ terminateActivity(self)
                                      \/ asyncWriteNextRequest(self))
 
 Spec == Init /\ [][Next]_vars
@@ -661,10 +707,18 @@ WorkingIfActive == active => \/ asyncRunning /= "none"
                              \/ Len(iocontext) > 0
                              \/ pc["fuertethread"] = "startConnectionBegin"
                              \/ pc["fuertethread"] = "asyncWriteNextRequestBegin"
-                             \/ pc["fuertethread"] = "check1"
+                             \/ pc["fuertethread"] = "check"
                              \/ pc["fuertethread"] = "deactivate"
+                             \/ pc["fuertethread"] = "checkAgain"
+                             \/ pc["fuertethread"] = "reactivate"
+                             \/ pc["fuertethread"] = "drain"
+                             \/ pc["fuertethread"] = "deactivate2"
+                             \/ pc["fuertethread"] = "checkAgain2"
+                             \/ pc["fuertethread"] = "reactivate2"
                              \/ pc["fuertethread"] = "pop"
- 
+                             \/ pc["fuertethread"] = "terminateActivityBegin"
+                             \/ pc["fuertethread"] = "terminateLoop"
+                             
 (* We basically want to either have an empty queue or want to be active.
    There are very tiny moments in time when both are violated, one is
    exactly when a new message is on the queue but the fuerte thread is not
@@ -673,8 +727,12 @@ WorkingIfActive == active => \/ asyncRunning /= "none"
 NothingForgottenOnQueue == \/ queueSize = 0
                            \/ active
                            \/ pc["clientthread"] = "postActivate"
-                           \/ pc["fuertethread"] = "check2"
+                           \/ pc["fuertethread"] = "check"
                            \/ pc["fuertethread"] = "reactivate"
+                           \/ pc["fuertethread"] = "checkAgain"
+                           \/ pc["fuertethread"] = "drain"
+                           \/ pc["fuertethread"] = "reactivate2"
+                           \/ pc["fuertethread"] = "checkAgain2"
                            
 NoSleepingBarber == /\ NothingForgottenOnQueue
                     /\ WorkingIfActive
@@ -682,5 +740,5 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Apr 29 14:11:27 CEST 2020 by neunhoef
+\* Last modified Thu Apr 30 17:33:02 CEST 2020 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
