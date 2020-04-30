@@ -254,6 +254,9 @@ class IResearchLogTopic final : public arangodb::LogTopic {
                         static_cast<arangoLogLevelType>(arangodb::LogLevel::TRACE) - 1,
                 "inconsistent log level mapping");
 
+  static void log_appender(void* context, const char* function, const char* file, int line,
+                           irs::logger::level_t level, const char* message,
+                           size_t message_len); 
   static void setIResearchLogLevel(arangodb::LogLevel level) {
     if (level == arangodb::LogLevel::DEFAULT) {
       level = DEFAULT_LEVEL;
@@ -264,8 +267,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
-
-    irs::logger::output_le(irsLevel, stderr);
+    irs::logger::output_le(irsLevel, log_appender, nullptr);
   }
 };  // IResearchLogTopic
 
@@ -606,6 +608,15 @@ void registerTransactionDataSourceRegistrationCallback() {
 
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
+
+void IResearchLogTopic::log_appender(void* context, const char* function, const char* file, int line,
+                                     irs::logger::level_t level, const char* message,
+                                     size_t message_len) {
+  auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
+  std::string msg = LIBIRESEARCH.displayName();
+  msg.append(message, message_len); 
+  arangodb::Logger::log(function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
+}
 
 }  // namespace
 

@@ -65,7 +65,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -146,6 +145,10 @@ class IResearchFilterBooleanTest
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchFilterBooleanTest, Ternary) {
+
+//  arangodb::aql::Query q(arangodb::transaction::StandaloneContext::Create(this->vocbase()),
+//                         arangodb::aql::QueryString(), nullptr, nullptr);
+//  
   // can evaluate expression
   {
     ExpressionContextMock ctx;
@@ -361,7 +364,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -407,7 +410,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // string expression, analyzer
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -457,7 +460,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   }
   // filter with constexpr analyzer
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -641,7 +644,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -826,7 +829,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1054,7 +1057,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1213,10 +1216,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         ")] == '1') RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1272,11 +1274,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')] == '1'
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
-                                                  &irs::sub_reader::empty(), ref};
+                                                  &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1293,10 +1297,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "]) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1352,10 +1355,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // '1' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1370,10 +1376,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "FOR d IN collection FILTER not (d.a < _NONDETERM_('1')) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1429,10 +1434,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1448,10 +1456,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1508,10 +1515,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1528,10 +1538,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1587,10 +1596,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1606,10 +1618,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "1.5) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1666,10 +1677,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       expr.init(*dummyPlan, *ast,
                 *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1685,10 +1699,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
         "FOR d IN collection FILTER not (d.a < 1+d.b) RETURN d";
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1744,10 +1757,13 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a < 1+d.b
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -2635,10 +2651,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') or d.a.b.c < "
         "'40' RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -2702,9 +2717,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         opts->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
+      
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -2721,10 +2739,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         "FOR d IN collection FILTER boost(d.a.b.c > _NONDETERM_('15') or "
         "d.a.b.c < '40', 2.5) RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -2789,9 +2806,12 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         opts->range.max_type = irs::BoundType::EXCLUSIVE;
       }
 
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
+      
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -3057,10 +3077,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' "
         "RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3124,10 +3143,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // not d.c.b.a == '2'
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -3457,10 +3479,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3520,10 +3541,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -3540,10 +3564,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER boost(d.a[*].b > 15, 0.5) and d.a[*].b < "
         "40 RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3606,10 +3629,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -3886,10 +3912,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b >= 15 and d.a[*].b <= 40 RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3949,10 +3974,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -4054,10 +4082,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     std::string const queryString =
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b <= 40 RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4117,10 +4144,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -6047,10 +6077,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') and d.a.b.c < "
         "'40' RETURN d";
 
-    arangodb::aql::Query query(false, vocbase,
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
                                arangodb::aql::QueryString(queryString), nullptr,
-                               std::make_shared<arangodb::velocypack::Builder>(),
-                               arangodb::aql::PART_MAIN);
+                               std::make_shared<arangodb::velocypack::Builder>());
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -6113,10 +6142,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
         opts->range.max_type = irs::BoundType::EXCLUSIVE;
       }
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));

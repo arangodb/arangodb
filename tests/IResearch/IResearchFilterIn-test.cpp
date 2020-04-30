@@ -65,7 +65,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -674,7 +673,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // reference in array
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -888,8 +887,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -938,10 +937,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -993,8 +995,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1043,10 +1045,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1099,8 +1104,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1149,10 +1154,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1204,8 +1212,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1254,10 +1262,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1310,8 +1321,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1360,10 +1371,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1404,8 +1418,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -1454,10 +1468,13 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -1956,7 +1973,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // numeric expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1991,7 +2008,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // numeric expression in range, boost
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2252,7 +2269,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // string expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2466,7 +2483,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // boolean expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2639,7 +2656,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // null expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2673,7 +2690,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
 
   // null expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3601,7 +3618,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // reference in array
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3643,7 +3660,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // reference in array, analyzer
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3685,7 +3702,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // reference in array, analyzer, boost
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3744,8 +3761,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3794,10 +3811,13 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -3856,8 +3876,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -3907,9 +3927,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
+      
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -3968,8 +3991,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4018,10 +4041,13 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -4080,8 +4106,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4130,10 +4156,13 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -4193,8 +4222,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4243,10 +4272,13 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -4304,8 +4336,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4354,10 +4386,13 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
                                          {}, {}, {}, arangodb::transaction::Options());
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+      
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -4401,8 +4436,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
@@ -4452,9 +4487,12 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
       auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
+      ExpressionContextMock exprCtx;
+      exprCtx.setTrx(&trx);
+      
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &ExpressionContextMock::EMPTY,
+                                                  &exprCtx,
                                                   &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
@@ -4918,7 +4956,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // numeric expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5129,7 +5167,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // string expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5305,7 +5343,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // boolean expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5481,7 +5519,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
 
   // null expression in range
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 

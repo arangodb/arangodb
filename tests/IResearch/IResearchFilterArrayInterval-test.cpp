@@ -62,7 +62,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -441,7 +440,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
         "d.a.b.c.e.f RETURN d");
       SCOPED_TRACE(testing::Message("Query:") << queryString);
 
-      arangodb::aql::Variable var("c", 0);
+      arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
       arangodb::aql::AqlValue value(arangodb::aql::AqlValue("2"));
       arangodb::aql::AqlValueGuard guard(value, true);
       ExpressionContextMock ctx;

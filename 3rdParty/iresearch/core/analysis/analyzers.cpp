@@ -281,8 +281,6 @@ analyzer_registrar::analyzer_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 

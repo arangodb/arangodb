@@ -145,11 +145,10 @@ class RocksDBEngine final : public StorageEngine {
   void unprepare() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<TransactionState> createTransactionState(
+  std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -196,9 +195,8 @@ class RocksDBEngine final : public StorageEngine {
   Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
+                    velocypack::Builder& builder) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management
@@ -214,8 +212,8 @@ class RocksDBEngine final : public StorageEngine {
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 int& status) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
-  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
+  Result writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
+  Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
@@ -236,6 +234,7 @@ class RocksDBEngine final : public StorageEngine {
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
+  void prepareDropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,

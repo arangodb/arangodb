@@ -377,6 +377,7 @@ function assertIsProfilePlanObject (plan) {
     expect(variable).to.have.all.keys([
       'id',
       'name',
+      'isDataFromCollection'
     ]);
 
     expect(variable.id).to.be.a('number');

@@ -63,7 +63,7 @@ namespace {
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
     TRI_voc_cid_t cid,                    // collection identifier
-    Query& query) {
+    aql::QueryContext& query) {
   TRI_ASSERT(trx.state());
 
   // `Methods::documentCollection(TRI_voc_cid_t)` may throw exception
@@ -74,7 +74,7 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
     msg << "failed to find collection while reading document from arangosearch "
            "view, cid '"
         << cid << "'";
-    query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+    query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
     return nullptr;  // not a valid collection reference
   }
@@ -102,7 +102,7 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::shared_ptr<const IResearchView::Snapshot> reader, OutRegisters outRegisters,
-    std::vector<RegisterId> scoreRegisters, Query& query, std::vector<Scorer> const& scorers,
+    std::vector<RegisterId> scoreRegisters, QueryContext& query, std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -148,7 +148,7 @@ std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchVie
   return _reader;
 }
 
-Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
+aql::QueryContext& IResearchViewExecutorInfos::getQuery() noexcept { return _query; }
 
 const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
     noexcept {
@@ -381,16 +381,17 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::assert
 template <typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
     IResearchViewExecutorBase::Fetcher&, IResearchViewExecutorBase::Infos& infos)
-    : _infos(infos),
+    : _trx(infos.getQuery().newTrxContext()),
+      _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size()),
       _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
-      _ctx(&infos.getQuery(), infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
+      _ctx(_trx, infos.getQuery(), _regexCache,
+           infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
-      _execCtx(*infos.getQuery().trx(), _ctx),
+      _execCtx(_ctx),
       _isInitialized(false) {
-  TRI_ASSERT(infos.getQuery().trx() != nullptr);
 
   // add expression execution context
   _filterCtx.emplace(_execCtx);
@@ -557,8 +558,8 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
 
   ExecutionPlan const* plan = &infos().plan();
 
-  QueryContext const queryCtx = {infos().getQuery().trx(), plan, plan->getAst(),
-                                 &_ctx, _reader.get(), &infos().outVariable()};
+  iresearch::QueryContext const queryCtx = {&_trx, plan, plan->getAst(),
+                                            &_ctx, nullptr, &infos().outVariable()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
@@ -566,11 +567,12 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
 
     if (rv.fail()) {
+      arangodb::velocypack::Builder builder;
+      infos().filterCondition().toVelocyPack(builder, true);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           rv.errorNumber(),
           "failed to build filter while querying arangosearch view, query '" +
-              infos().filterCondition().toVelocyPack(true)->toJson() +
-              "': " + rv.errorMessage());
+              builder.toJson() + "': " + rv.errorMessage());
     }
 
     if (infos().volatileSort() || !_isInitialized) {
@@ -663,8 +665,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(infos().getQuery().trx(), documentId,
-                                                          ctx.getDocumentCallback()))) {
+    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(&_trx, documentId, ctx.callback))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==
@@ -861,15 +862,15 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       // collection so we don't have to look it up every time.
 
       TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
-      Query& query = this->infos().getQuery();
-      auto collection = lookupCollection(*query.trx(), cid, query);
+      aql::QueryContext& query = this->_infos.getQuery();
+      auto collection = lookupCollection(this->_trx, cid, query);
 
       if (!collection) {
         std::stringstream msg;
         msg << "failed to find collection while reading document from "
                "arangosearch view, cid '"
             << cid << "'";
-        query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+        query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
         // We don't have a collection, skip the current reader.
         ++_readerOffset;
@@ -1059,15 +1060,15 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
     // collection so we don't have to look it up every time.
 
     TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
-    Query& query = this->infos().getQuery();
-    auto collection = lookupCollection(*query.trx(), cid, query);
+    aql::QueryContext& query = this->_infos.getQuery();
+    auto collection = lookupCollection(this->_trx, cid, query);
 
     if (!collection) {
       std::stringstream msg;
       msg << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";
-      query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+      query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
       // We don't have a collection, skip the current reader.
       ++_readerOffset;
@@ -1216,15 +1217,15 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
     }
 
     TRI_voc_cid_t const cid = this->_reader->cid(i);
-    Query& query = this->infos().getQuery();
-    auto collection = lookupCollection(*query.trx(), cid, query);
+    aql::QueryContext& query = this->_infos.getQuery();
+    auto collection = lookupCollection(this->_trx, cid, query);
 
     if (!collection) {
       std::stringstream msg;
       msg << "failed to find collection while reading document from "
              "arangosearch view, cid '"
           << cid << "'";
-      query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+      query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
 
       // We don't have a collection, skip the current segment.
       continue;

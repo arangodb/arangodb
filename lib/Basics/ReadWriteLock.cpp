@@ -177,3 +177,15 @@ void ReadWriteLock::unlockRead() noexcept {
     _writers_bell.notify_one();
   }
 }
+
+bool ReadWriteLock::isLocked() const noexcept {
+  return (_state.load(std::memory_order_relaxed) & ~QUEUED_WRITER_MASK) != 0;
+}
+
+bool ReadWriteLock::isLockedRead() const noexcept {
+  return (_state.load(std::memory_order_relaxed) & READER_MASK) > 0;
+}
+
+bool ReadWriteLock::isLockedWrite() const noexcept {
+  return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
+}

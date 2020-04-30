@@ -961,6 +961,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecur
       },
       60);
 
+  TRI_ASSERT(v8::Isolate::GetCurrent() == nullptr);
+
   V8Context* context = nullptr;
 
   // look for a free context
@@ -1707,12 +1709,8 @@ V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& 
     : _isolate(isolate),
       _context(nullptr),
       _active(isolate ? false : true) {
+  TRI_ASSERT(vocbase != nullptr);
   if (_active) {
-    if (!vocbase) {
-      res.reset(TRI_ERROR_INTERNAL,
-                "V8ConditionalContextGuard - no vocbase provided");
-      return;
-    }
     _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
     if (!_context) {
       res.reset(TRI_ERROR_INTERNAL,

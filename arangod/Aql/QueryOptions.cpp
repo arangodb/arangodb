@@ -52,7 +52,8 @@ QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
       fullCount(false),
       count(false),
       verboseErrors(false),
-      inspectSimplePlans(true) {
+      inspectSimplePlans(true)
+{
   // now set some default values from server configuration options
   // use global memory limit value
   uint64_t globalLimit = feature.queryMemoryLimit();
@@ -189,7 +190,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     while (it.valid()) {
       VPackSlice value = it.value();
       if (value.isString()) {
-        shardIds.emplace(value.copyString());
+        restrictToShards.emplace(value.copyString());
       }
       it.next();
     }
@@ -208,6 +209,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     }
   }
 #endif
+  
+  value = slice.get("exportCollection");
+  if (value.isString()) {
+    exportCollection = value.copyString();
+  }
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
@@ -249,9 +255,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   }
   builder.close();  // optimizer
 
-  if (!shardIds.empty()) {
+  if (!restrictToShards.empty()) {
     builder.add("shardIds", VPackValue(VPackValueType::Array));
-    for (auto const& it : shardIds) {
+    for (auto const& it : restrictToShards) {
       builder.add(VPackValue(it));
     }
     builder.close();  // shardIds
@@ -266,6 +272,8 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
+  
+  // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

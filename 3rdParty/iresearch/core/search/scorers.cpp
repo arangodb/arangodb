@@ -187,8 +187,6 @@ scorer_registrar::scorer_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }}
 
 scorer_registrar::operator bool() const noexcept {

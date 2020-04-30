@@ -27,7 +27,9 @@
 #include "Aql/types.h"
 #include "VocBase/AccessMode.h"
 
+#include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -35,11 +37,16 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
 struct Collection;
 
 class Collections {
  public:
+  Collections(Collections const& other) = delete;
   Collections& operator=(Collections const& other) = delete;
 
   explicit Collections(TRI_vocbase_t*);
@@ -53,16 +60,16 @@ class Collections {
 
   std::vector<std::string> collectionNames() const;
 
-  AqlCollectionMap* collections();
-
-  AqlCollectionMap const* collections() const;
-
   bool empty() const;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  
+  void visit(std::function<bool(std::string const&, Collection*)> const& visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;
 
-  AqlCollectionMap _collections;
+  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>> _collections;
 
   static size_t const MaxCollections = 2048;
 };

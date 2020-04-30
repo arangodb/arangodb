@@ -65,7 +65,6 @@
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -270,8 +269,6 @@ struct IResearchExpressionFilterTest
     features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
                               system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
-                          false);  // must be before AqlFeature
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
@@ -417,6 +414,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -429,9 +430,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("b", value);
     }
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
+    
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -472,7 +471,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -490,7 +489,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
-
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
+    
     ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
@@ -503,8 +506,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -545,7 +546,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -563,6 +564,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -576,8 +581,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -618,7 +621,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -653,6 +656,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -666,8 +673,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -708,7 +713,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -744,6 +749,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
+
     ExpressionContextMock ctx;
     {
       arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{1});
@@ -755,9 +764,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("b", value);
     }
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
+    
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -798,7 +805,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = nullptr;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -834,6 +841,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -847,8 +858,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -889,7 +898,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = nullptr;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -907,6 +916,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -920,8 +933,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -962,8 +973,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = nullptr;
-    execCtx.ctx = &ctx;
+    ctx.setTrx(&trx);
+    execCtx.ctx = nullptr;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
 
@@ -981,6 +992,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -989,8 +1004,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -1031,7 +1044,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -1117,6 +1130,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -1125,8 +1142,6 @@ TEST_F(IResearchExpressionFilterTest, test) {
       ctx.vars.emplace("b", value);
     }
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -1167,7 +1182,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);
@@ -1238,6 +1253,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     std::string const queryString =
         "LET c=1 LET b=2 FOR d IN testView FILTER "
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
+    
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                               arangodb::aql::QueryString(queryString),
+                               bindVars, options);
 
     ExpressionContextMock ctx;
     {
@@ -1245,9 +1264,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("b", value);
     }
-
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               bindVars, options, arangodb::aql::PART_MAIN);
+    
     auto const parseResult = query.parse();
     ASSERT_TRUE(parseResult.result.ok());
 
@@ -1288,7 +1305,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
-    execCtx.trx = &trx;
+    ctx.setTrx(&trx);
     execCtx.ctx = &ctx;
     irs::attribute_view queryCtx;
     queryCtx.emplace(execCtx);

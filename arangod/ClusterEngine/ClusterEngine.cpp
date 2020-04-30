@@ -118,15 +118,15 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
   return std::make_unique<transaction::Manager>(feature);
 }
 
-std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
+std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, tid, options);
+  return std::make_shared<ClusterTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> ClusterEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
-      new ClusterTransactionCollection(&state, cid, accessType, nestingLevel));
+      new ClusterTransactionCollection(&state, cid, accessType));
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
@@ -201,15 +201,6 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDat
   auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   status = TRI_ERROR_NO_ERROR;
   return rv;
-}
-
-int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-void ClusterEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
-                                        bool useWriteMarker, int& status) {
-  status = TRI_ERROR_NO_ERROR;
 }
 
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {

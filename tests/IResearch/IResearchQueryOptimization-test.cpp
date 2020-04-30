@@ -56,10 +56,10 @@ bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
       //    "{ \"tracing\" : 1 }"
       "{ }");
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
-  query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};

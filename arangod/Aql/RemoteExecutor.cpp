@@ -25,12 +25,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RestAqlHandler.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
@@ -66,7 +68,7 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
     std::string const& queryId, Api const api)
     : ExecutionBlock(engine, node),
       _registerInfos(std::move(registerInfos)),
-      _query(*engine->getQuery()),
+      _query(engine->getQuery()),
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
@@ -300,8 +302,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
-  input.toVelocyPack(_engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
-                     builder);
+  input.toVelocyPack(&_engine->getQuery().vpackOptions(), builder);
   builder.close();
 
   builder.close();
@@ -387,22 +388,23 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
     VPackSlice slice = response->slice();
     if (slice.isObject()) {
+      
       if (slice.hasKey("stats")) {
         ExecutionStats newStats(slice.get("stats"));
-        _engine->_stats.add(newStats);
+        _engine->globalStats().add(newStats);
       }
 
       // read "warnings" attribute if present and add it to our query
       VPackSlice warnings = slice.get("warnings");
       if (warnings.isArray()) {
-        auto query = _engine->getQuery();
+        aql::QueryContext& query = _engine->getQuery();
         for (VPackSlice it : VPackArrayIterator(warnings)) {
           if (it.isObject()) {
             VPackSlice code = it.get("code");
             VPackSlice message = it.get("message");
             if (code.isNumber() && message.isString()) {
-              query->registerWarning(code.getNumericValue<int>(),
-                                     message.copyString().c_str());
+              query.warnings().registerWarning(code.getNumericValue<int>(),
+                                               message.copyString().c_str());
             }
           }
         }
@@ -469,7 +471,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::execute(AqlCallStack stack)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
-  return traceExecuteEnd(res);
+  traceExecuteEnd(res);
+  return res;
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(AqlCallStack stack)
@@ -631,7 +634,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                                                             std::string const& urlPart,
                                                             VPackBuffer<uint8_t>&& body) {
   NetworkFeature const& nf =
-      _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
+    _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown
@@ -665,7 +668,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
 
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
-  conn->sendRequest(std::move(req), [this, ticket, spec, sqs = _query.sharedState()](
+  conn->sendRequest(std::move(req), [this, ticket, spec, sqs = _engine->sharedState()](
                                         fuerte::Error err, std::unique_ptr<fuerte::Request> req,
                                         std::unique_ptr<fuerte::Response> res) {
     // `this` is only valid as long as sharedState is valid.
@@ -684,8 +687,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       return false;
     });
   });
-
-  ++_engine->_stats.requests;
+  
+  _engine->getQuery().incHttpRequests(unsigned(1));
 
   return {TRI_ERROR_NO_ERROR};
 }
@@ -723,7 +726,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
                                                       VPackSlice const slice,
                                                       std::string const& args) {
   if (_profile >= PROFILE_LEVEL_TRACE_1) {
-    auto const queryId = this->_engine->getQuery()->id();
+    auto const queryId = this->_engine->getQuery().id();
     auto const remoteQueryId = _queryId;
     LOG_TOPIC("92c71", INFO, Logger::QUERIES)
         << "[query#" << queryId << "] remote request sent: " << rpc

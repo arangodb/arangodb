@@ -201,8 +201,6 @@ format_registrar::format_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 

@@ -524,7 +524,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col, double ttl,
+  Result createBlockingTransaction(TRI_voc_tid_t tid, LogicalCollection& col, double ttl,
                                    AccessMode::Type access, RebootId const& rebootId,
                                    std::string const& serverId);
 
@@ -535,7 +535,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error, if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> isLockHeld(aql::QueryId id) const;
+  ResultT<bool> isLockHeld(TRI_voc_tick_t tid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compute a local checksum for the given collection
