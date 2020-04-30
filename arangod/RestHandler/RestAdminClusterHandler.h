@@ -138,7 +138,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handlePostRemoveServer(std::string const& server);
 
   std::string resolveServerNameID(std::string const&);
-  std::string resolveServerNameID(velocypack::Slice);
 
  public:
   struct CollectionShardPair {

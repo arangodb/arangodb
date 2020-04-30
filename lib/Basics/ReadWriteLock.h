@@ -78,6 +78,10 @@ class ReadWriteLock {
 
   /// @brief releases the write-lock
   void unlockWrite() noexcept;
+  
+  [[nodiscard]] bool isLocked() const noexcept;
+  [[nodiscard]] bool isLockedRead() const noexcept;
+  [[nodiscard]] bool isLockedWrite() const noexcept;
 
  private:
   /// @brief mutex for _readers_bell cv

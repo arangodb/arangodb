@@ -111,7 +111,7 @@ class SimpleModifier {
   void reset();
 
   Result accumulate(InputAqlItemRow& row);
-  void transact();
+  void transact(transaction::Methods& trx);
 
   // The two numbers below may not be the same: Operations
   // can skip or ignore documents.

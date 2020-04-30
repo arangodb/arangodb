@@ -58,7 +58,7 @@ class SortedCollectExecutorInfos {
                              std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<std::string, RegisterId>>&& variables,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             transaction::Methods* trxPtr, bool count);
+                             velocypack::Options const*, bool count);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) noexcept = default;
@@ -76,7 +76,7 @@ class SortedCollectExecutorInfos {
     return _aggregateTypes;
   }
   bool getCount() const noexcept { return _count; };
-  transaction::Methods* getTransaction() const { return _trxPtr; }
+  velocypack::Options const* getVPackOptions() const { return _vpackOptions; }
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
   RegisterId getExpressionRegister() const noexcept {
     return _expressionRegister;
@@ -114,12 +114,12 @@ class SortedCollectExecutorInfos {
 
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;
+  
+  /// @brief the transaction for this query
+  velocypack::Options const* _vpackOptions;
 
   /// @brief COUNTing node?
   bool _count;
-
-  /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;

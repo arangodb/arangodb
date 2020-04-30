@@ -24,8 +24,7 @@
 #include "AqlTransaction.h"
 
 #include "Aql/Collection.h"
-#include "Logger/Logger.h"
-#include "StorageEngine/TransactionCollection.h"
+#include "Aql/Collections.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -37,31 +36,45 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::shared_ptr<AqlTransaction> AqlTransaction::create(
+std::unique_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
-    AqlCollectionMap const* collections, transaction::Options const& options,
-    bool isMainTransaction, std::unordered_set<std::string> inaccessibleCollections) {
+    aql::Collections const& collections, transaction::Options const& options,
+    std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
-  if (options.skipInaccessibleCollections) {
-    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(
-        transactionContext, collections, options, isMainTransaction,
+  if (!inaccessibleCollections.empty()) {
+    return std::make_unique<transaction::IgnoreNoAccessAqlTransaction>(
+        transactionContext, collections, options,
         std::move(inaccessibleCollections));
   }
 #endif
-  return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);
+  return std::make_unique<AqlTransaction>(transactionContext, collections, options);
 }
 
-/// @brief add a list of collections to the transaction
-Result AqlTransaction::addCollections(AqlCollectionMap const& collections) {
-  Result res;
-  for (auto const& it : collections) {
-    res = processCollection(it.second);
+AqlTransaction::AqlTransaction(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) {
+  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+}
 
-    if (!res.ok()) {
-      break;
+  /// protected so we can create different subclasses
+AqlTransaction::AqlTransaction(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    aql::Collections const& collections,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) { 
+  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+
+  Result res;
+  collections.visit([this, &res](std::string const&, aql::Collection* collection) {
+    res = processCollection(collection);
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
-  }
-  return res;
+
+    return true;
+  });
 }
 
 /// @brief add a collection to the transaction
@@ -90,43 +103,4 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
   }
 
   return res;
-}
-
-LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
-  TransactionCollection* trxColl = this->trxCollection(cid);
-  TRI_ASSERT(trxColl != nullptr);
-  return trxColl->collection().get();
-}
-
-/// @brief lockCollections, this is needed in a corner case in AQL: we need
-/// to lock all shards in a controlled way when we set up a distributed
-/// execution engine. To this end, we prevent the standard mechanism to
-/// lock collections on the DBservers when we instantiate the query. Then,
-/// in a second round, we need to lock the shards in exactly the right
-/// order via an HTTP call. This method is used to implement that HTTP action.
-
-int AqlTransaction::lockCollections() { return state()->lockCollections(); }
-
-
-AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
-    transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) {
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-}
-
-  /// protected so we can create different subclasses
-AqlTransaction::AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                               AqlCollectionMap const* collections,
-                               transaction::Options const& options, bool isMainTransaction)
-    : transaction::Methods(transactionContext, options), _collections(*collections) {
-  if (!isMainTransaction) {
-    addHint(transaction::Hints::Hint::LOCK_NEVER);
-  }
-  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-
-  Result res = addCollections(*collections);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }

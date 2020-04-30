@@ -93,12 +93,9 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase, std::string cons
   binds->close();  // obj
 
   {
-    bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
-    arangodb::aql::Query query(contextOwnedByExterior, vocbase,
-                               arangodb::aql::QueryString(aql), binds, nullptr,
-                               arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::registry();
-    aql::QueryResult queryResult = query.executeSync(queryRegistry);
+    arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                               arangodb::aql::QueryString(aql), binds, nullptr);
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -159,12 +156,9 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
       "REMOVE { _key: fn._key} in @@col RETURN 1");
 
   {
-    bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
-    arangodb::aql::Query query(contextOwnedByExterior, vocbase,
-                               arangodb::aql::QueryString(aql), binds, nullptr,
-                               arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::registry();
-    aql::QueryResult queryResult = query.executeSync(queryRegistry);
+    arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                               arangodb::aql::QueryString(aql), binds, nullptr);
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -293,6 +287,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   {
     arangodb::OperationOptions opOptions;
     opOptions.waitForSync = true;
+    opOptions.returnOld = true;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
@@ -306,9 +302,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     arangodb::OperationResult result;
     result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
 
-    if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-      replacedExisting = true;
-      result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
+    if (result.ok()) {
+      VPackSlice oldSlice = result.slice().get(StaticStrings::Old);
+      replacedExisting = !(oldSlice.isNone() || oldSlice.isNull());
     }
     // Will commit if no error occured.
     // or abort if an error occured.
@@ -352,12 +348,9 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
   binds->add("@col", VPackValue(collectionName));
   binds->close();
 
-  bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
-  arangodb::aql::Query query(contextOwnedByExterior, vocbase,
-                             arangodb::aql::QueryString(aql), binds, nullptr,
-                             arangodb::aql::PART_MAIN);
-  auto queryRegistry = QueryRegistryFeature::registry();
-  aql::QueryResult queryResult = query.executeSync(queryRegistry);
+  arangodb::aql::Query query(transaction::V8Context::CreateWhenRequired(vocbase, true),
+                             arangodb::aql::QueryString(aql), binds, nullptr);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||

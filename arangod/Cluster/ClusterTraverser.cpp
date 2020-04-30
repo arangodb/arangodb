@@ -47,9 +47,9 @@ using namespace arangodb::graph;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
 ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
-                                   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                                   std::string const& dbname, transaction::Methods* trx)
-    : Traverser(opts, trx), 
+                                   std::unordered_map<ServerID, aql::EngineId> const* engines,
+                                   std::string const& dbname)
+    : Traverser(opts), 
       _dbname(dbname), 
       _engines(engines) { 
   _opts->linkTraverser(this);
