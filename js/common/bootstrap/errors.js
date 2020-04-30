@@ -358,7 +358,8 @@
     "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" },
     "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" },
-    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" :  7012, "message" : " \"hot backup not all db servers reachable\"" }
+    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" :  7012, "message" : " \"hot backup not all db servers reachable\"" },
+    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" :  7021, "message" : " \"analyzers in plan could not be modified\"" }
   };
 
   // For compatibility with <= 3.3
