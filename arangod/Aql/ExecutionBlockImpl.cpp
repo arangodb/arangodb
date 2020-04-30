@@ -184,8 +184,10 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     // Check that all output registers are empty.
     for (auto const& reg : *_registerInfos.getOutputRegisters()) {
       for (size_t row = 0; row < newBlock->size(); row++) {
-        AqlValue const& val = newBlock->getValueReference(row, reg);
-        TRI_ASSERT(val.isEmpty());
+        if (!newBlock->isShadowRow(row)) {
+          AqlValue const& val = newBlock->getValueReference(row, reg);
+          TRI_ASSERT(val.isEmpty());
+        }
       }
     }
   }
