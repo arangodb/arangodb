@@ -466,6 +466,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
+      LOG_TOPIC("fead2", DEBUG, Logger::MAINTENANCE)
+          << "Did not find action with same hash: " << description << " adding to queue";
       newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
@@ -474,6 +476,9 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
                      "createAction rejected parameters.");
       }  // if
     } else {
+      LOG_TOPIC("fead3", DEBUG, Logger::MAINTENANCE)
+          << "Found actiondescription with same hash: " << description
+          << " found: " << *curAction << " not adding again";
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
