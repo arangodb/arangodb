@@ -49,7 +49,7 @@ function repairAnalyzersRevisionTestSuite () {
     let timeout = false;
     const start = Date.now();
 
-    while(unfinishedJobs > 0 && ! timeout) {
+    while (unfinishedJobs > 0 && ! timeout) {
       const duration = (Date.now() - start) / 1000;
       const result = global.ArangoAgency.read([paths]);
       const target = result[0][prefix]["Target"];
@@ -82,9 +82,9 @@ function repairAnalyzersRevisionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRepairPlan: function() {
-      let n = 2;
+      const n = 2;
+      const dbName = "testDbName";
       let revisionNumber = 0;
-      let dbName = "testDbName";
       let coordinator = "";
       let rebootId = 1;
       // Create databases
@@ -113,11 +113,12 @@ function repairAnalyzersRevisionTestSuite () {
         assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
         assertEqual(revisionNumber, revision.revision);
         assertEqual(revisionNumber, revision.buildingRevision);
+
         coordinator = revision.coordinator;
         rebootId = revision.coordinatorRebootId;
       }
       // Break analyzers revision
-      let value = {"revision": revisionNumber - 1,
+      const value = {"revision": revisionNumber - 1,
           "buildingRevision": revisionNumber,
           "coordinator": coordinator,
           "coordinatorRebootId": rebootId + 1};
