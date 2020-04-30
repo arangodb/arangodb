@@ -82,63 +82,79 @@ function repairAnalyzersRevisionTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRepairPlan: function() {
-      db._useDatabase("_system");
-      let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
-
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
+      let n = 2;
       let revisionNumber = 0;
+      let dbName = "testDbName";
+      let coordinator = "";
+      let rebootId = 1;
+      // Create databases
+      for (let i = 0; i < n; i++) {
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName + i); } catch (e) {}
 
-      let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("revision"));
-      assertTrue(revision.hasOwnProperty("buildingRevision"));
-      assertFalse(revision.hasOwnProperty("coordinator"));
-      assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
-      assertEqual(revisionNumber, revision.revision);
-      assertEqual(revisionNumber, revision.buildingRevision);
+        db._createDatabase(dbName + i);
+        db._useDatabase(dbName + i);
+        revisionNumber = 0;
 
-      analyzers.save("valid", "identity");
-      revisionNumber++;
-      revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("revision"));
-      assertTrue(revision.hasOwnProperty("buildingRevision"));
-      assertTrue(revision.hasOwnProperty("coordinator"));
-      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
-      assertEqual(revisionNumber, revision.revision);
-      assertEqual(revisionNumber, revision.buildingRevision);
+        let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName + i);
+        assertTrue(revision.hasOwnProperty("revision"));
+        assertTrue(revision.hasOwnProperty("buildingRevision"));
+        assertFalse(revision.hasOwnProperty("coordinator"));
+        assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
+        assertEqual(revisionNumber, revision.revision);
+        assertEqual(revisionNumber, revision.buildingRevision);
 
+        analyzers.save("valid", "identity");
+        revisionNumber++;
+        revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName + i);
+        assertTrue(revision.hasOwnProperty("revision"));
+        assertTrue(revision.hasOwnProperty("buildingRevision"));
+        assertTrue(revision.hasOwnProperty("coordinator"));
+        assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+        assertEqual(revisionNumber, revision.revision);
+        assertEqual(revisionNumber, revision.buildingRevision);
+        coordinator = revision.coordinator;
+        rebootId = revision.coordinatorRebootId;
+      }
+      // Break analyzers revision
       let value = {"revision": revisionNumber - 1,
           "buildingRevision": revisionNumber,
-          "coordinator": revision.coordinator,
-          "coordinatorRebootId": revision.coordinatorRebootId + 1};
-
-      // Break analyzers revision
-      global.ArangoAgency.set(`Plan/Analyzers/${dbName}`, value);
+          "coordinator": coordinator,
+          "coordinatorRebootId": rebootId + 1};
+      for (let i = 0; i < n; i++) {
+        global.ArangoAgency.set("Plan/Analyzers/" + dbName + i, value);
+      }
       global.ArangoAgency.increaseVersion("Plan/Version");
 
       // Repair analyzers revision
       expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');
 
-      revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("revision"));
-      assertTrue(revision.hasOwnProperty("buildingRevision"));
-      assertFalse(revision.hasOwnProperty("coordinator"));
-      assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
-      assertEqual(revisionNumber - 1, revision.revision);
-      assertEqual(revisionNumber - 1, revision.buildingRevision);
+      // Check repair
+      for (let i = 0; i < n; i++) {
+        let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName + i);
+        assertTrue(revision.hasOwnProperty("revision"));
+        assertTrue(revision.hasOwnProperty("buildingRevision"));
+        assertFalse(revision.hasOwnProperty("coordinator"));
+        assertFalse(revision.hasOwnProperty("coordinatorRebootId"));
+        assertEqual(revisionNumber - 1, revision.revision);
+        assertEqual(revisionNumber - 1, revision.buildingRevision);
 
-      analyzers.remove("valid", true);
-      revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
-      assertTrue(revision.hasOwnProperty("revision"));
-      assertTrue(revision.hasOwnProperty("buildingRevision"));
-      assertTrue(revision.hasOwnProperty("coordinator"));
-      assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
-      assertEqual(revisionNumber, revision.revision);
-      assertEqual(revisionNumber, revision.buildingRevision);
+        db._useDatabase(dbName + i);
+        analyzers.remove("valid", true);
+        revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName + i);
+        assertTrue(revision.hasOwnProperty("revision"));
+        assertTrue(revision.hasOwnProperty("buildingRevision"));
+        assertTrue(revision.hasOwnProperty("coordinator"));
+        assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
+        assertEqual(revisionNumber, revision.revision);
+        assertEqual(revisionNumber, revision.buildingRevision);
+      }
 
+      // Drop databases
       db._useDatabase("_system");
-      db._dropDatabase(dbName);
+      for (let i = 0; i < n; i++) {
+        db._dropDatabase(dbName + i);
+      }
     }
   };
 }
