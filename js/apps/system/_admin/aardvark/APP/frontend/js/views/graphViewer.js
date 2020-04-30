@@ -1099,7 +1099,7 @@
         // then clear states
         self.clearOldContextMenu(true);
         window.modalView.hide();
-      };
+      }.bind(this)
 
       var body;
       try {
