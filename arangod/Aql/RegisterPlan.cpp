@@ -74,7 +74,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       auto const outputVariables = en->getOutputVariables();
       for (VariableId const& v : outputVariables) {
         TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
-        plan->registerVariable(v, unusedRegisters);
+        plan->registerVariable(v, unusedRegisters.back());
       }
     }
   };
@@ -122,9 +122,20 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     return regsToClear;
   };
 
+  switch (en->getType()) {
+    case ExecutionNode::SUBQUERY_START:
+      unusedRegisters.emplace_back(unusedRegisters.back());
+      break;
+    case ExecutionNode::SUBQUERY_END:
+      unusedRegisters.pop_back();
+      break;
+    default:
+      break;
+  }
+
   planRegistersForCurrentNode(en, true);
   auto regsToClear = calculateRegistersToClear(en);
-  unusedRegisters.insert(regsToClear.begin(), regsToClear.end());
+  unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
   // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
   planRegistersForCurrentNode(en, false);
 
@@ -199,6 +210,7 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
     nrRegs.emplace_back(it.getNumericValue<RegisterId>());
   }
 }
+
 template <typename T>
 auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   auto other = std::make_shared<RegisterPlanT>();
