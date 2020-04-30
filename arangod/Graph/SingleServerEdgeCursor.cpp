@@ -30,7 +30,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -47,7 +46,7 @@ IndexIteratorOptions defaultIndexIteratorOptions;
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions const* opts,
+SingleServerEdgeCursor::SingleServerEdgeCursor(BaseOptions* opts,
                                                aql::Variable const* tmpVar,
                                                std::vector<size_t> const* mapping,
                                                std::vector<BaseOptions::LookupInfo> const& lookupInfo)
@@ -82,13 +81,13 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge)
 }
 #endif
 
-void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeCursor::Callback const& callback) {
+void SingleServerEdgeCursor::getDocAndRunCallback(IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
   collection->readDocumentWithCallback(
       _trx, etkn.localDocumentId(), [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-        if (_trx->state()->options().skipInaccessibleCollections) {
+        if (_trx->skipInaccessible()) {
           // TODO: we only need to check one of these
           VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
           VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
@@ -108,8 +107,8 @@ void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeC
       });
 }
 
-bool SingleServerEdgeCursor::advanceCursor(OperationCursor*& cursor,
-                                           std::vector<std::unique_ptr<OperationCursor>>*& cursorSet) {
+bool SingleServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
+                                           std::vector<std::unique_ptr<IndexIterator>>*& cursorSet) {
   TRI_ASSERT(!_cursors.empty());
   ++_currentSubCursor;
   if (_currentSubCursor >= cursorSet->size()) {
@@ -165,8 +164,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
         auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge) {
           if (token.isSet()) {
 #ifdef USE_ENTERPRISE
-            if (_trx->state()->options().skipInaccessibleCollections &&
-                CheckInaccessible(_trx, edge)) {
+            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
               return false;
             }
 #endif
@@ -182,7 +180,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
           }
           return false;
         };
-        cursor->nextWithExtra(extraCB, 1);
+        cursor->nextExtra(extraCB, 1);
         if (operationSuccessful) {
           return true;
         }
@@ -224,7 +222,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       if (cursor->hasExtra()) {
         auto cb = [&](LocalDocumentId const& token, VPackSlice edge) {
 #ifdef USE_ENTERPRISE
-          if (_trx->state()->options().skipInaccessibleCollections &&
+          if (_trx->skipInaccessible() &&
               CheckInaccessible(_trx, edge)) {
             return false;
           }
@@ -232,12 +230,12 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         };
-        cursor->allWithExtra(cb);
+        cursor->allExtra(cb);
       } else {
         auto cb = [&](LocalDocumentId const& token) {
           return collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-            if (_trx->state()->options().skipInaccessibleCollections) {
+            if (_trx->skipInaccessible()) {
               // TODO: we only need to check one of these
               VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
               VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
@@ -289,17 +287,17 @@ void SingleServerEdgeCursor::rearm(arangodb::velocypack::StringRef vertex, uint6
     auto& csrs = _cursors[i++];
     size_t j = 0;
     for (auto const& it : info.idxHandles) {
-      auto* cursor = csrs[j].get();
+      auto& cursor = csrs[j];
       // check if the underlying index iterator supports rearming
-      IndexIterator* idxIterator = cursor->indexIterator();
-      if (idxIterator->canRearm()) {
+      if (cursor->canRearm()) {
         // rearming supported
-        idxIterator->rearm(node, _tmpVar, ::defaultIndexIteratorOptions);
-        cursor->reset();
+        if (!cursor->rearm(node, _tmpVar, ::defaultIndexIteratorOptions)) {
+          cursor = std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
+        }
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
-        csrs[j] = std::make_unique<OperationCursor>(_trx->indexScanForCondition(it, node, _tmpVar, ::defaultIndexIteratorOptions));
+        cursor = _trx->indexScanForCondition(it, node, _tmpVar, ::defaultIndexIteratorOptions);
       }
       ++j;
     }
@@ -324,7 +322,8 @@ void SingleServerEdgeCursor::buildLookupInfo(arangodb::velocypack::StringRef ver
   TRI_ASSERT(_internalCursorMapping == nullptr || _internalCursorMapping->size() == _cursors.size());
 }
 
-void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex) {
+void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
+                                       arangodb::velocypack::StringRef vertex) {
   auto& node = info.indexCondition;
   TRI_ASSERT(node->numMembers() > 0);
   if (info.conditionNeedUpdate) {
@@ -344,8 +343,7 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info, aran
   _cursors.emplace_back();
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
-  for (auto const& it : info.idxHandles) {
-    csrs.emplace_back(
-        std::make_unique<OperationCursor>(_trx->indexScanForCondition(it, node, _tmpVar, ::defaultIndexIteratorOptions)));
+  for (std::shared_ptr<Index> const& index : info.idxHandles) {
+    csrs.emplace_back(_trx->indexScanForCondition(index, node, _tmpVar, ::defaultIndexIteratorOptions));
   }
 }

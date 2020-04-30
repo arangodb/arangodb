@@ -4015,7 +4015,7 @@ function transactionAQLStreamSuite () {
           assertEqual(i, cursor.next());
         }
 
-      } catch(err) {
+      } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor) {
@@ -4052,8 +4052,7 @@ function transactionAQLStreamSuite () {
           while (cursor.hasNext()) {
             cursor.next();
           }
-  
-        } catch(err) {
+        } catch (err) {
           fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
           if (cursor) {
@@ -4101,7 +4100,7 @@ function transactionAQLStreamSuite () {
         assertEqual(100, extras.stats.writesExecuted);
         assertEqual(100, tc.count());
 
-      } catch(err) {
+      } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor1) {
@@ -4121,7 +4120,6 @@ function transactionAQLStreamSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUndeclaredTraversalCollectionStream: function () {
-
       let result;
       // begin trx
       let trx = db._createTransaction({

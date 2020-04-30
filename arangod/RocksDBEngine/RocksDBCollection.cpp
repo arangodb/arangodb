@@ -56,6 +56,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -740,18 +741,20 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
-  TRI_vocbase_col_status_e status;
   if (!vocbase.use()) { // someone dropped the database
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  Result res = vocbase.useCollection(&_logicalCollection, status);
 
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+  std::unique_ptr<CollectionGuard> guard;
+  try {
+    guard = std::make_unique<CollectionGuard>(&vocbase, _logicalCollection.id());
+  } catch (...) {
+    vocbase.release();
+    throw;
   }
+
   _numIndexCreations.fetch_add(1, std::memory_order_release);
   auto colGuard = scopeGuard([&] {
-    vocbase.releaseCollection(&_logicalCollection);
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
     vocbase.release();
   });
@@ -820,6 +823,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       }
     }
   }
+
+  Result res;
 
   do {
 

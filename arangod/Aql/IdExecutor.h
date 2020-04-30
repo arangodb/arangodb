@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/Stats.h"
 
 #include <tuple>
 #include <utility>

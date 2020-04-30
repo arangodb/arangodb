@@ -84,7 +84,7 @@ class UpsertModifier {
   void reset();
 
   Result accumulate(InputAqlItemRow& row);
-  Result transact();
+  Result transact(transaction::Methods& trx);
 
   size_t nrOfOperations() const;
   size_t nrOfDocuments() const;

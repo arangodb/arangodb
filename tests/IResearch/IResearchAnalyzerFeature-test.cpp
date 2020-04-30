@@ -61,7 +61,6 @@
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -381,7 +380,6 @@ class IResearchAnalyzerFeatureTest
     arangodb::tests::init();
 
     server.addFeature<arangodb::QueryRegistryFeature>(false);
-    server.addFeature<arangodb::TraverserEngineRegistryFeature>(false);
     server.addFeature<arangodb::AqlFeature>(true);
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 

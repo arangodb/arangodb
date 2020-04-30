@@ -38,8 +38,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 
 #include <Logger/LogMacros.h>
 #include <utility>
@@ -52,11 +52,11 @@ std::vector<size_t> const emptyAttributePositions;
 }
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, ExecutionEngine* engine,
+    RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions, bool random)
-    : _engine(engine),
+    : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
@@ -66,10 +66,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _produceResult(produceResult),
       _random(random) {}
 
-ExecutionEngine* EnumerateCollectionExecutorInfos::getEngine() {
-  return _engine;
-}
-
 Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
   return _collection;
 }
@@ -78,12 +74,8 @@ Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-Query* EnumerateCollectionExecutorInfos::getQuery() const {
-  return _engine->getQuery();
-}
-
-transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
-  return _engine->getQuery()->trx();
+QueryContext& EnumerateCollectionExecutorInfos::getQuery() const {
+  return _query;
 }
 
 Expression* EnumerateCollectionExecutorInfos::getFilter() const {
@@ -108,23 +100,25 @@ RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
 }
 
-EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher&, Infos& infos)
-    : _infos(infos),
-      _documentProducer(nullptr),
+EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
+    :
+      _trx(infos.getQuery().newTrxContext()),
+      _infos(infos),
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
-                                        _infos.getProduceResult(), _infos.getQuery(),
+                                        _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
                                         true, false),
-      _state(ExecutionState::HASMORE),
+
+_state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
-  _cursor = std::make_unique<OperationCursor>(
-      _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
+  TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
+  _cursor = _trx.indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL)));
+                                         : transaction::Methods::CursorType::ALL));
 
   if (_infos.getProduceResult()) {
     _documentProducer =

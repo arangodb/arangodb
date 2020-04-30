@@ -597,10 +597,11 @@ void Constituent::run() {
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, *_vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                               arangodb::aql::QueryString(aql),
+                               bindVars, nullptr);
 
-    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);

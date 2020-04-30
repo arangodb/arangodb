@@ -55,7 +55,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Sharding/ShardingFeature.h"
