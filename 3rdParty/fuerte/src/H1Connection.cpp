@@ -190,6 +190,13 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->callback = std::move(cb);
   item->request = std::move(req);
 
+  // Don't send once in Failed state:
+  if (this->_state.load(std::memory_order_relaxed) == Connection::State::Failed) {
+    FUERTE_LOG_ERROR << "connection already failed\n";
+    item->invokeOnError(Error::Canceled);
+    return;
+  }
+
   // Prepare a new request
   this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   if (!_queue.push(item.get())) {
@@ -284,9 +291,13 @@ void H1Connection<ST>::startWriting() {
 /// sleeping barbers
 template <SocketType ST>
 void H1Connection<ST>::terminateActivity() {
-  FUERTE_ASSERT(_active.load());
+  // Usually, we are `active == true` when we get here, except for the following
+  // case: If we are inactive but the connection is still open and then the
+  // idle timeout goes off, then we shutdownConnection and in the TLS case we
+  // call this method here. In this case it is OK to simply proceed, therefore
+  // no assertion on `_active`.
   FUERTE_ASSERT(this->_state.load() == Connection::State::Failed);
-  FUERTE_LOG_HTTPTRACE << "terminateAcitivate: active=true, this=" << this << "\n";
+  FUERTE_LOG_HTTPTRACE << "terminateActivity: active=true, this=" << this << "\n";
   while (true) {
     drainQueue(Error::Canceled);
     _active.store(false);
