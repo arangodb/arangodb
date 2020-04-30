@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
@@ -143,8 +144,7 @@ UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
   Result result;
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    TRI_ASSERT(_infos._trx->resolver() != nullptr);
-    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
     // We are only interested in the key from `inDoc`
     result = getKey(collectionNameResolver, inDoc, key);
@@ -238,22 +238,22 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   return Result{};
 }
 
-Result UpsertModifier::transact() {
+Result UpsertModifier::transact(transaction::Methods& trx) {
   auto toInsert = _insertAccumulator->closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
-        _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+        trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
     throwOperationResultException(_infos, _insertResults);
   }
 
   auto toUpdate = _updateAccumulator->closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
-      _updateResults = _infos._trx->replace(_infos._aqlCollection->name(),
-                                            toUpdate, _infos._options);
+      _updateResults = trx.replace(_infos._aqlCollection->name(),
+                                   toUpdate, _infos._options);
     } else {
-      _updateResults = _infos._trx->update(_infos._aqlCollection->name(),
-                                           toUpdate, _infos._options);
+      _updateResults = trx.update(_infos._aqlCollection->name(),
+                                  toUpdate, _infos._options);
     }
     throwOperationResultException(_infos, _updateResults);
   }

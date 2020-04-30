@@ -71,7 +71,7 @@ auto AqlExecuteResult::block() const noexcept -> SharedAqlItemBlockPtr const& {
 }
 
 void AqlExecuteResult::toVelocyPack(velocypack::Builder& builder,
-                                    velocypack::Options const* const options) {
+                                    velocypack::Options const* const options) const {
   using namespace arangodb::velocypack;
   auto const stateToValue = [](ExecutionState state) -> Value {
     switch (state) {

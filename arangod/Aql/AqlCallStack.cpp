@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlCallStack.h"
+#include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

@@ -68,20 +68,15 @@ struct ExpressionExecutionContext : irs::attribute {
 
   ExpressionExecutionContext() = default;
 
-  explicit ExpressionExecutionContext(arangodb::transaction::Methods& trx) noexcept
-      : trx(&trx) {}
+  ExpressionExecutionContext(arangodb::iresearch::ViewExpressionContextBase& ctx) noexcept
+      : ctx(&ctx) {}
 
-  ExpressionExecutionContext(arangodb::transaction::Methods& trx,
-                             arangodb::iresearch::ViewExpressionContextBase& ctx) noexcept
-      : ctx(&ctx), trx(&trx) {}
-
-  explicit operator bool() const noexcept { return trx && ctx; }
+  explicit operator bool() const noexcept { return ctx; }
 
   // FIXME change 'ctx' to be 'arangodb::aql::ExpressionContext'
   // once IResearchView will be able to evaluate epxressions
   // with loop variable in SEARCH expressions
   arangodb::iresearch::ViewExpressionContextBase* ctx{};
-  arangodb::transaction::Methods* trx{};
 };  // ExpressionFilterContext
 
 ///////////////////////////////////////////////////////////////////////////////

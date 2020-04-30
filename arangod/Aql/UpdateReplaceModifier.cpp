@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -65,8 +66,7 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   //
   // We must never take _rev from the document if there is a key
   // expression.
-  TRI_ASSERT(_infos._trx->resolver() != nullptr);
-  CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+  CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
   Result result;
   auto key = std::string{};
@@ -107,10 +107,10 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   }
 }
 
-OperationResult UpdateReplaceModifierCompletion::transact(VPackSlice const& data) {
+OperationResult UpdateReplaceModifierCompletion::transact(transaction::Methods& trx, VPackSlice const data) {
   if (_infos._isReplace) {
-    return _infos._trx->replace(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.replace(_infos._aqlCollection->name(), data, _infos._options);
   } else {
-    return _infos._trx->update(_infos._aqlCollection->name(), data, _infos._options);
+    return trx.update(_infos._aqlCollection->name(), data, _infos._options);
   }
 }

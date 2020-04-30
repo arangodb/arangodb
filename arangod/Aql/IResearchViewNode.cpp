@@ -252,15 +252,15 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
   return true;
 }
 
-bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const* optionsNode,
+bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNode const* optionsNode,
                   IResearchViewNode::Options& options, std::string& error) {
-  typedef bool (*OptionHandler)(aql::Query&, LogicalView const& view, aql::AstNode const&,
+  typedef bool (*OptionHandler)(aql::QueryContext&, LogicalView const& view, aql::AstNode const&,
                                 IResearchViewNode::Options&, std::string&);
 
   static std::map<irs::string_ref, OptionHandler> const Handlers{
       // cppcheck-suppress constStatement
       {"collections",
-       [](aql::Query& query, LogicalView const& view, aql::AstNode const& value,
+       [](aql::QueryContext& query, LogicalView const& view, aql::AstNode const& value,
           IResearchViewNode::Options& options, std::string& error) {
          if (value.isNullValue()) {
            // have nothing to restrict
@@ -345,9 +345,9 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          return true;
        }},
       // cppcheck-suppress constStatement
-      {"waitForSync",
-       [](aql::Query& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
-          IResearchViewNode::Options& options, std::string& error) {
+      {"waitForSync", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                         aql::AstNode const& value,
+                         IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'waitForSync'";
            return false;
@@ -357,9 +357,9 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          return true;
        }},
       // cppcheck-suppress constStatement
-      {"noMaterialization",
-       [](aql::Query& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
-          IResearchViewNode::Options& options, std::string& error) {
+      {"noMaterialization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                               aql::AstNode const& value,
+                               IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
            error = "boolean value expected for option 'noMaterialization'";
            return false;
@@ -368,10 +368,10 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
          options.noMaterialization = value.getBoolValue();
          return true;
        }},
-      // cppcheck-suppress constStatement
-      {"conditionOptimization",
-       [](aql::Query& /*query*/, LogicalView const& /*view*/, aql::AstNode const& value,
-          IResearchViewNode::Options& options, std::string& error) {
+     // cppcheck-suppress constStatement
+     {"conditionOptimization", [](aql::QueryContext& /*query*/, LogicalView const& /*view*/,
+                                  aql::AstNode const& value,
+                                  IResearchViewNode::Options& options, std::string& error) {
          if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
            error = "string value expected for option 'conditionOptimization'";
            return false;
@@ -875,11 +875,10 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   TRI_ASSERT(LogicalView::category() == _view->category());
 
   auto* ast = plan.getAst();
-  TRI_ASSERT(ast && ast->query());
 
   // FIXME any other way to validate options before object creation???
   std::string error;
-  if (!parseOptions(*ast->query(), *_view, options, _options, error)) {
+  if (!parseOptions(ast->query(), *_view, options, _options, error)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid ArangoSearch options provided: " + error);
   }
@@ -887,7 +886,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice const& base)
     : aql::ExecutionNode(&plan, base),
-      _vocbase(plan.getAst()->query()->vocbase()),
+      _vocbase(plan.getAst()->query().vocbase()),
       _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_VARIABLE_PARAM)),
       _outNonMaterializedDocId(
           aql::Variable::varFromVPack(plan.getAst(), base, NODE_OUT_NM_DOC_PARAM, true)),
@@ -945,13 +944,12 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   auto const shardsSlice = base.get(NODE_SHARDS_PARAM);
 
   if (shardsSlice.isArray()) {
-    TRI_ASSERT(plan.getAst() && plan.getAst()->query());
-    auto const* collections = plan.getAst()->query()->collections();
-    TRI_ASSERT(collections);
+    TRI_ASSERT(plan.getAst());
+    auto const& collections = plan.getAst()->query().collections();
 
     for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
       auto const shardId = shardSlice.copyString();  // shardID is collection name on db server
-      auto const* shard = collections->get(shardId);
+      auto const* shard = collections.get(shardId);
 
       if (!shard) {
         LOG_TOPIC("6fba2", ERR, arangodb::iresearch::TOPIC)
@@ -969,7 +967,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 
   // options
-  TRI_ASSERT(plan.getAst() && plan.getAst()->query());
+  TRI_ASSERT(plan.getAst());
 
   auto const options = base.get(NODE_OPTIONS_PARAM);
 
@@ -1240,15 +1238,14 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 }
 
 std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::collections() const {
-  TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
-  auto const* collections = _plan->getAst()->query()->collections();
-  TRI_ASSERT(collections);
+  TRI_ASSERT(_plan && _plan->getAst());
+ auto const& collections = _plan->getAst()->query().collections();
 
   std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
 
-  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid) -> bool {
+  auto visitor = [&viewCollections, &collections](TRI_voc_cid_t cid) -> bool {
     auto const id = basics::StringUtils::itoa(cid);
-    auto const* collection = collections->get(id);
+    auto const* collection = collections.get(id);
 
     if (collection) {
       viewCollections.push_back(*collection);
@@ -1419,12 +1416,9 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
-
-
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
     auto emptyRegisterInfos = createRegisterInfos(aql::make_shared_unordered_set(),
                                                   aql::make_shared_unordered_set());
-
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
 
@@ -1433,7 +1427,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   };
 
   auto const createSnapshot = [this](aql::ExecutionEngine& engine) {
-    transaction::Methods* const trx = engine.getQuery()->trx();
+    auto* trx = &engine.getQuery().trxForOptimization();
+   
     if (!trx) {
       LOG_TOPIC("7c905", WARN, arangodb::iresearch::TOPIC)
           << "failed to get transaction while creating IResearchView "
@@ -1443,15 +1438,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "failed to get transaction while creating "
                                      "IResearchView ExecutionBlock");
     }
-
+  
     if (options().forceSync &&
         trx->state()->hasHint(arangodb::transaction::Hints::Hint::GLOBAL_MANAGED)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "cannot use waitForSync with "
                                      "views and transactions");
     }
-
+  
     auto& view = LogicalView::cast<IResearchView>(*this->view());
+
     std::shared_ptr<IResearchView::Snapshot const> reader;
 
     LOG_TOPIC("82af6", TRACE, arangodb::iresearch::TOPIC)
@@ -1476,9 +1472,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "arangosearch view ExecutionBlock");
     }
 
-    LOG_TOPIC("33853", TRACE, arangodb::iresearch::TOPIC)
-        << "Finish getting snapshot for view '" << view.name() << "'";
-
     return reader;
   };
 
@@ -1498,10 +1491,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
     }
-
-    // We have one output register for documents, which is always the first
-    // after the input registers.
-
+  
+    // We have one output register for documents, which is always the first after
+    // the input registers.
+    
     auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
     auto numViewVarsRegisters =
         std::accumulate(_outNonMaterializedViewVars.cbegin(),
@@ -1552,11 +1545,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     auto const& varInfos = getRegisterPlan()->varInfo;  // TODO remove if not needed
 
     ViewValuesRegisters outNonMaterializedViewRegs;
+
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldsVars : columnFieldsVars.second) {
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
         auto const it = varInfos.find(fieldsVars.var->id);
         TRI_ASSERT(it != varInfos.cend());
+
         auto const regId = it->second.registerId;
         writableOutputRegisters->emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);
@@ -1569,11 +1564,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::RegisterInfos registerInfos =
         createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
 
-    auto executorInfos =
+    auto executorInfos = 
         aql::IResearchViewExecutorInfos{std::move(reader),
                                         outRegister,
                                         std::move(scoreRegisters),
-                                        *engine.getQuery(),
+                                        engine.getQuery(),
                                         scorers(),
                                         _sort,
                                         ::storedValues(*_view),
@@ -1590,9 +1585,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
-#endif
     return createNoResultsExecutor(engine);
   }
 

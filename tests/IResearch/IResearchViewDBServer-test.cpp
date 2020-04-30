@@ -609,7 +609,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0);
+    arangodb::aql::Variable variable("testVariable", 0, false);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {

@@ -53,8 +53,10 @@ class SharedScatterExecutionBlockTest {
 
   SharedScatterExecutionBlockTest() {
     auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
+      std::make_unique<ExecutionEngine>(*fakedQuery,
+                                        itemBlockManager,
+                                        SerializationFormat::SHADOWROWS);
+    /// TODO fakedQuery->setEngine(engine.release());
   }
 
   auto buildStack(AqlCall call, size_t subqueryDepth = 0) -> AqlCallStack {
@@ -81,15 +83,19 @@ class SharedScatterExecutionBlockTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   auto generateNodeDummy() -> ExecutionNode* {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
+    auto dummy = std::make_unique<SingletonNode>(
+      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+      ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
   }
 
   auto generateScatterNode() -> ScatterNode* {
-    auto dummy = std::make_unique<ScatterNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()},
-                                               ScatterNode::ScatterType::SHARD);
+    auto dummy = std::make_unique<ScatterNode>(
+            const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+            ExecutionNodeId{_execNodes.size()},
+            ScatterNode::ScatterType::SHARD);
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -117,7 +123,7 @@ class SharedScatterExecutionBlockTest {
                       size_t subqueryDepth = 0) -> WaitingExecutionBlockMock {
     // TODO add input splicing
 
-    return WaitingExecutionBlockMock{fakedQuery->engine(), generateNodeDummy(),
+    return WaitingExecutionBlockMock{fakedQuery->rootEngine(), generateNodeDummy(),
                                      std::move(blockDeque),
                                      WaitingExecutionBlockMock::WaitingBehaviour::NEVER,
                                      subqueryDepth};
@@ -172,7 +178,7 @@ TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -193,7 +199,7 @@ TEST_P(RandomOrderTest, all_clients_can_skip_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -216,7 +222,7 @@ TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
   auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -240,7 +246,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -302,7 +308,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
   size_t subqueryDepth = 1;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -344,7 +350,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
   size_t subqueryDepth = 2;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -385,7 +391,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
   size_t subqueryDepth = 2;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -425,7 +431,7 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
   size_t subqueryDepth = 2;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -466,7 +472,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
   size_t subqueryDepth = 1;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                              generateScatterNode(),
                                              generateRegisterInfos(),
                                              generateExecutorInfos()};
@@ -603,7 +609,7 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
   // Now we do all permuation of potentiall call ordering
   do {
     auto producer = createProducer(blockDeque);
-    ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
+    ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
                                                generateScatterNode(),
                                                generateRegisterInfos(),
                                                generateExecutorInfos()};

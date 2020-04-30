@@ -46,13 +46,13 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
+    velocypack::Options const* opts, bool count)
     : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
       _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
-      _count(count),
-      _trxPtr(trxPtr) {
+      _vpackOptions(opts),
+      _count(count) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -68,19 +68,19 @@ std::vector<std::string> HashedCollectExecutorInfos::getAggregateTypes() const {
   return _aggregateTypes;
 }
 
-bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
-
-transaction::Methods* HashedCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* HashedCollectExecutorInfos::getVPackOptions() const {
+  return _vpackOptions;
 }
+
+bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
 
 RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
   return _collectRegister;
 }
 
-std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
+std::vector<Aggregator::Factory>
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
-  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
+  std::vector<Aggregator::Factory> aggregatorFactories;
 
   if (infos.getAggregateTypes().empty()) {
     // no aggregate registers. this means we'll only count the number of items
@@ -105,9 +105,8 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
-                 AqlValueGroupHash(_infos.getTransaction(),
-                                   _infos.getGroupRegisters().size()),
-                 AqlValueGroupEqual(_infos.getTransaction())),
+                 AqlValueGroupHash(_infos.getGroupRegisters().size()),
+                 AqlValueGroupEqual(_infos.getVPackOptions())),
       _isInitialized(false),
       _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
@@ -323,9 +322,9 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
-  auto trx = _infos.getTransaction();
-  for (auto const& it : _aggregatorFactories) {
-    aggregateValues->emplace_back((*it)(trx));
+  auto* vpackOpts = _infos.getVPackOptions();
+  for (auto const& factory : _aggregatorFactories) {
+    aggregateValues->emplace_back((*factory)(vpackOpts));
   }
 
   // note: aggregateValues may be a nullptr!

@@ -305,7 +305,7 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
     TRI_ASSERT(state != nullptr);
 
     // check state of the top-most transaction only
-    if (!state || !state->isTopLevelTransaction()) {
+    if (!state) {
       return;  // NOOP
     }
 
@@ -1373,7 +1373,7 @@ void IResearchLink::setupMaintenance() {
       auto res = consolidateUnsafe(state._consolidationPolicy, state._progress);
 
       if (!res.ok()) {
-        LOG_TOPIC("bce4f", WARN, iresearch::TOPIC)
+        LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
             << "error while consolidating arangosearch link '" << id()
             << "': " << res.errorNumber() << " " << res.errorMessage();
       } else if (state._cleanupIntervalStep // if enabled

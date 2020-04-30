@@ -24,7 +24,6 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
