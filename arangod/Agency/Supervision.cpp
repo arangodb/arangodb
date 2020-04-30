@@ -2038,8 +2038,8 @@ void Supervision::checkBrokenAnalyzers() {
 
   for (auto const& dbData : node.children()) {
     auto const& revisions = dbData.second;
-    auto revision = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
-    auto buildingRevision = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
+    auto const revision = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
+    auto const buildingRevision = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
     if (revision.second && buildingRevision.second && revision.first != buildingRevision.first) {
       resourceCreatorLost(revisions, [this, &dbData, &revision, &buildingRevision](ResourceCreatorLostEvent const& ev) {
         LOG_TOPIC("ae5a3", INFO, Logger::SUPERVISION)
