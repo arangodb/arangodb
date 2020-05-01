@@ -32,12 +32,17 @@
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
 
+#include "pdd30.h"
+#include "pdd31.h"
+#include "pdd40.h"
 #include "Basics/voc-errors.h"
 
 namespace {
 
+using namespace arangodb::iresearch;
+
 irs::parametric_description readParametricDescription(
-    std::pair<irs::string_ref, size_t> args) {
+    std::pair<irs::bytes_ref, size_t> args) {
   auto const rawSize = args.second;
   const auto& data = args.first;
 
@@ -76,16 +81,14 @@ irs::parametric_description const DESCRIPTIONS[] = {
 
   // distance 3
   readParametricDescription(
-    #include "PD30"
-  ),
+    { { pdd30::PDD, pdd30::PDD_COMPRESSED_LEN }, pdd30::PDD_RAW_LEN }),
+
   readParametricDescription(
-    #include "PD31"
-  ),
+    { { pdd31::PDD, pdd31::PDD_COMPRESSED_LEN }, pdd31::PDD_RAW_LEN }),
 
   // distance 4
   readParametricDescription(
-    #include "PD40"
-  ),
+    { { pdd40::PDD, pdd40::PDD_COMPRESSED_LEN }, pdd40::PDD_RAW_LEN }),
 };
 
 size_t args2index(irs::byte_type distance,
