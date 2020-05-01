@@ -1958,6 +1958,11 @@ function iResearchAqlTestSuite () {
       assertEqual(1, result.length);
     },
 
+    testPhraseLevenshteinMatchNoLimit : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {LEVENSHTEIN_MATCH: ['queck', 1, false, 0]}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+      assertEqual(1, result.length);
+    },
+
     testPhraseLevenshteinMatchViaArray : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [{LEVENSHTEIN_MATCH: ['queck', 1, false]}, 'brown'], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
       assertEqual(1, result.length);
