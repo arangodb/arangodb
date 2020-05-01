@@ -1063,7 +1063,7 @@ class ClusterInfo final {
   static double const reloadServerListTimeout;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief check analyzers precondition timeout
+  /// @brief check analyzers precondition timeout in seconds
   //////////////////////////////////////////////////////////////////////////////
 
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;

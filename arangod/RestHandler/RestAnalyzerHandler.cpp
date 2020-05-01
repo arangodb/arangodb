@@ -200,23 +200,20 @@ void RestAnalyzerHandler::createAnalyzer( // create
   if (!startPlanModyfing(databaseID)) {
     return;
   }
+  bool restore = true;
+  TRI_DEFER( if (restore) {
+      finishPlanModifying(databaseID, true);
+  });
 
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
 
   if (res.fail()) {
-    if (!finishPlanModifying(databaseID, true)) {
-      return;
-    }
     generateError(res);
-
     return;
   }
 
   if (!result.first) {
-    if (!finishPlanModifying(databaseID, true)) {
-      return;
-    }
     generateError(
       arangodb::rest::ResponseCode::BAD,
       TRI_errno(),
@@ -230,7 +227,9 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
   pool->toVelocyPack(builder, false);
 
-  if (!finishPlanModifying(databaseID, false)) {
+  if (finishPlanModifying(databaseID, false)) {
+    restore = false;
+  } else {
     return;
   }
 
@@ -444,17 +443,20 @@ void RestAnalyzerHandler::removeAnalyzer(
   if (!startPlanModyfing(databaseID)) {
     return;
   }
+  bool restore = true;
+  TRI_DEFER(if (restore) {
+    finishPlanModifying(databaseID, true);
+  });
 
   auto res = analyzers.remove(normalizedName, force);
   if (!res.ok()) {
-    if (!finishPlanModifying(databaseID, true)) {
-      return;
-    }
     generateError(res);
     return;
   }
 
-  if (!finishPlanModifying(databaseID, false)) {
+  if (finishPlanModifying(databaseID, false)) {
+    restore = false;
+  } else {
     return;
   }
 
@@ -488,8 +490,14 @@ bool RestAnalyzerHandler::finishPlanModifying(irs::string_ref const& databaseID,
     auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
     auto res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
     if (res.fail()) {
-      generateError(res);
-
+      if (!restore) {
+        generateError(res);
+      } else {
+        // if we are restoring we have more important error from operation execution
+        // do no mask. Just log our error here
+        LOG_TOPIC("80e64", WARN, Logger::CLUSTER) << "Failed to restore analyzers revision for database "
+          << databaseID << " error:" << res;
+      }
       return false;
     }
   }

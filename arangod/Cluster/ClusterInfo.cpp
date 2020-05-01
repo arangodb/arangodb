@@ -3011,7 +3011,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 /// @brief start creating or deleting an analyzer in coordinator,
 /// the return value is an ArangoDB error code
 /// and the errorMsg is set accordingly. One possible error
-/// is a timeout, a timeout of 0.0 means no timeout.
+/// is a timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& databaseID) {
   VPackBuilder serverIDBuilder;
@@ -3096,7 +3096,7 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
 /// @brief finish creating or deleting an analyzer in coordinator,
 /// the return value is an ArangoDB error code
 /// and the errorMsg is set accordingly. One possible error
-/// is a timeout, a timeout of 0.0 means no timeout.
+/// is a timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore) {
   VPackBuilder serverIDBuilder;

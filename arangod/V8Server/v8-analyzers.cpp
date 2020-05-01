@@ -97,7 +97,13 @@ void FinishPlanModifying(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string
     auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
     auto const res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
     if (res.fail()) {
-      TRI_V8_THROW_EXCEPTION(res);
+      if (!restore) {
+        TRI_V8_THROW_EXCEPTION(res);
+      } else {
+        // do not mask upstream error. Just log our here
+        LOG_TOPIC("8a2a3", WARN, arangodb::Logger::CLUSTER) << "Failed to restore analyzers revision for database "
+          << databaseID << " error:" << res;
+      }
     }
   }
 }
@@ -398,42 +404,39 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   StartPlanModyfing(isolate, v8g, databaseID);
+  bool restore = true;
+  TRI_DEFER( if (restore) {
+    FinishPlanModifying(isolate, v8g, databaseID, true);
+  });
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto res = analyzers.emplace(result, name, type, propertiesSlice, features);
 
     if (!res.ok()) {
-      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION(res);
     }
 
     if (!result.first) {
-      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
         TRI_ERROR_INTERNAL, // code
         "problem creating view" // message
       );
     }
-
     auto v8Result = WrapAnalyzer(isolate, result.first);
-
     if (v8Result.IsEmpty()) {
-      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
     FinishPlanModifying(isolate, v8g, databaseID, false);
+    restore = false;
 
     TRI_V8_RETURN(v8Result);
   } catch (arangodb::basics::Exception const& ex) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_INTERNAL, // code
       "cannot create analyzer" // message
@@ -682,32 +685,32 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   StartPlanModyfing(isolate, v8g, databaseID);
+  bool restore = true;
+  TRI_DEFER( if (restore) {
+      FinishPlanModifying(isolate, v8g, databaseID, true);
+  });
 
   try {
     auto res = analyzers.remove(name, force);
 
     if (!res.ok()) {
-      FinishPlanModifying(isolate, v8g, databaseID, true);
       TRI_V8_THROW_EXCEPTION(res);
     }
 
     FinishPlanModifying(isolate, v8g, databaseID, false);
+    restore = false;
 
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
     TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
       TRI_ERROR_INTERNAL, // code
       "cannot remove analyzer" // message
     );
   }
-
   TRI_V8_TRY_CATCH_END
 }
 
