@@ -503,16 +503,10 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
 
 namespace arangodb::consensus {
 
-UpgradeCollection::UpgradeCollection(Node const& snapshot, AgentInterface* agent,
-                                     std::string const& jobId, std::string const& creator,
-                                     std::string const& database, std::string const& collection)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
-      _database(database),
-      _collection(collection) {}
-
-UpgradeCollection::UpgradeCollection(Node const& snapshot, AgentInterface* agent,
-                               JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+UpgradeCollection::UpgradeCollection(Supervision& supervision,
+                                     Node const& snapshot, AgentInterface* agent,
+                                     JOB_STATUS status, std::string const& jobId)
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto [tmpDatabase, foundDatabase] = _snapshot.hasAsString(path + "database");
@@ -523,6 +517,7 @@ UpgradeCollection::UpgradeCollection(Node const& snapshot, AgentInterface* agent
   auto [tmpCreated, foundCreated] = _snapshot.hasAsString(path + "timeCreated");
 
   auto [tmpError, errorFound] = _snapshot.hasAsString(path + "error");
+  auto [tmpChild, childFound] = _snapshot.hasAsBool(path + "isSmartChild");
 
   if (foundDatabase && foundCollection && foundCreator && foundCreated) {
     _database = tmpDatabase;
@@ -540,6 +535,8 @@ UpgradeCollection::UpgradeCollection(Node const& snapshot, AgentInterface* agent
   if (errorFound && !tmpError.empty()) {
     _error = tmpError;
   }
+
+  _smartChild = childFound && tmpChild;
 }
 
 UpgradeCollection::~UpgradeCollection() = default;
@@ -566,7 +563,7 @@ bool UpgradeCollection::create(std::shared_ptr<VPackBuilder> envelope) {
   {
     velocypack::ObjectBuilder todo(_jb.get());
     _jb->add("creator", velocypack::Value(_creator));
-    _jb->add("type", velocypack::Value("upgradeCollection"));
+    _jb->add("type", velocypack::Value(maintenance::UPGRADE_COLLECTION));
     _jb->add("database", velocypack::Value(_database));
     _jb->add("collection", velocypack::Value(_collection));
     _jb->add("jobId", velocypack::Value(_jobId));

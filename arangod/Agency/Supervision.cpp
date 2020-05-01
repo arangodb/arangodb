@@ -381,7 +381,7 @@ void Supervision::upgradeBackupKey(VPackBuilder& builder) {
   }
 }
 
-void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
+void handleOnStatusDBServer(Supervision& supervision, Agent* agent, Node const& snapshot,
                             HealthRecord& persisted, HealthRecord& transisted,
                             std::string const& serverID, uint64_t const& jobId,
                             std::shared_ptr<VPackBuilder>& envelope) {
@@ -412,7 +412,8 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
       agent->supervision()._supervision_failed_server_counter.operator++();
-      FailedServer(snapshot, agent, std::to_string(jobId), "supervision", serverID)
+      FailedServer(supervision, snapshot, agent, std::to_string(jobId),
+                   "supervision", serverID)
           .create(envelope);
     }
   }
@@ -436,9 +437,10 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot, HealthRecord&
   }
 }
 
-void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& persisted,
-                          HealthRecord& transisted, std::string const& serverID,
-                          uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatusSingle(Supervision& supervision, Agent* agent, Node const& snapshot,
+                          HealthRecord& persisted, HealthRecord& transisted,
+                          std::string const& serverID, uint64_t const& jobId,
+                          std::shared_ptr<VPackBuilder>& envelope) {
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -465,21 +467,25 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
-      ActiveFailover(snapshot, agent, std::to_string(jobId), "supervision", serverID)
+      ActiveFailover(supervision, snapshot, agent, std::to_string(jobId),
+                     "supervision", serverID)
           .create(envelope);
     }
   }
 }
 
-void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
-                    HealthRecord& transisted, std::string const& serverID,
-                    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatus(Supervision& supervision, Agent* agent, Node const& snapshot,
+                    HealthRecord& persisted, HealthRecord& transisted,
+                    std::string const& serverID, uint64_t const& jobId,
+                    std::shared_ptr<VPackBuilder>& envelope) {
   if (serverID.compare(0, 4, "PRMR") == 0) {
-    handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
+    handleOnStatusDBServer(supervision, agent, snapshot, persisted, transisted,
+                           serverID, jobId, envelope);
   } else if (serverID.compare(0, 4, "CRDN") == 0) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
-    handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
+    handleOnStatusSingle(supervision, agent, snapshot, persisted, transisted,
+                         serverID, jobId, envelope);
   } else {
     LOG_TOPIC("86191", ERR, Logger::SUPERVISION)
         << "Unknown server type. No supervision action taken. " << serverID;
@@ -687,7 +693,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         LOG_TOPIC("bbbde", DEBUG, Logger::SUPERVISION)
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
-        handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId, envelope);
+        handleOnStatus(*this, _agent, snapshot(), persist, transist, serverID,
+                       _jobId, envelope);
         persist = transist;  // Now copy Status, SyncStatus from transient to persited
       } else {
         LOG_TOPIC("44253", TRACE, Logger::SUPERVISION)
@@ -1615,6 +1622,14 @@ void Supervision::unlockHotBackup() {
   }
 }
 
+uint64_t Supervision::nextJobId() {
+  _lock.assertLockedByCurrentThread();
+  if (_jobId == 0 || _jobId == _jobIdMax) {
+    getUniqueIds();  // cannot fail but only hang
+  }
+  return _jobId++;
+}
+
 // Guarded by caller
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
@@ -1754,7 +1769,8 @@ void Supervision::workJobs() {
 
       LOG_TOPIC("87812", TRACE, Logger::SUPERVISION)
           << "Begin JobContext::run()";
-      JobContext(TODO, jobNode.hasAsString("jobId").first, snapshot(), _agent).run(_haveAborts);
+      JobContext(*this, TODO, jobNode.hasAsString("jobId").first, snapshot(), _agent)
+          .run(_haveAborts);
       LOG_TOPIC("98115", TRACE, Logger::SUPERVISION)
           << "Finish JobContext::run()";
       it = todos.erase(it);
@@ -1777,7 +1793,8 @@ void Supervision::workJobs() {
       if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) != 0) {
         LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION)
             << "Begin JobContext::run()";
-        JobContext(TODO, jobNode.hasAsString("jobId").first, snapshot(), _agent).run(dummy);
+        JobContext(*this, TODO, jobNode.hasAsString("jobId").first, snapshot(), _agent)
+            .run(dummy);
         LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION)
             << "Finish JobContext::run()";
       }
@@ -1799,7 +1816,8 @@ void Supervision::workJobs() {
     }
     auto const& jobNode = *(pendEnt.second);
     LOG_TOPIC("009ba", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
-    JobContext(PENDING, jobNode.hasAsString("jobId").first, snapshot(), _agent).run(dummy);
+    JobContext(*this, PENDING, jobNode.hasAsString("jobId").first, snapshot(), _agent)
+        .run(dummy);
     LOG_TOPIC("99006", TRACE, Logger::SUPERVISION)
         << "Finish JobContext::run()";
   }
@@ -2251,7 +2269,7 @@ void Supervision::enforceReplication() {
             }
             if (!found) {
               if (actualReplicationFactor < replicationFactor) {
-                AddFollower(snapshot(), _agent, std::to_string(_jobId++),
+                AddFollower(*this, snapshot(), _agent, std::to_string(_jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
                     .create();
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
@@ -2259,7 +2277,7 @@ void Supervision::enforceReplication() {
                 }
               } else if (apparentReplicationFactor > replicationFactor &&
                          inSyncReplicationFactor >= replicationFactor) {
-                RemoveFollower(snapshot(), _agent, std::to_string(_jobId++),
+                RemoveFollower(*this, snapshot(), _agent, std::to_string(_jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
                     .create();
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
@@ -2399,7 +2417,7 @@ void Supervision::shrinkCluster() {
 
         // Schedule last server for cleanout
         bool dummy;
-        CleanOutServer(snapshot(), _agent, std::to_string(_jobId++),
+        CleanOutServer(*this, snapshot(), _agent, std::to_string(_jobId++),
                        "supervision", availServers.back())
             .run(dummy);
       }

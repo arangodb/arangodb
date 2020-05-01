@@ -30,11 +30,12 @@ namespace arangodb {
 namespace consensus {
 
 struct ActiveFailover final : public Job {
-  ActiveFailover(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+  ActiveFailover(Supervision& supervision, Node const& snapshot,
+                 AgentInterface* agent, std::string const& jobId,
                  std::string const& creator, std::string const& failed);
 
-  ActiveFailover(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-                 std::string const& jobId);
+  ActiveFailover(Supervision& supervision, Node const& snapshot,
+                 AgentInterface* agent, JOB_STATUS status, std::string const& jobId);
 
   virtual ~ActiveFailover();
 

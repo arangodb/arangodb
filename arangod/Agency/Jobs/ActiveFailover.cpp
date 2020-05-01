@@ -32,14 +32,15 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-ActiveFailover::ActiveFailover(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId, std::string const& creator,
-                               std::string const& failed)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(failed) {}
+ActiveFailover::ActiveFailover(Supervision& supervision, Node const& snapshot,
+                               AgentInterface* agent, std::string const& jobId,
+                               std::string const& creator, std::string const& failed)
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator), _server(failed) {}
 
-ActiveFailover::ActiveFailover(Node const& snapshot, AgentInterface* agent,
-                               JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+ActiveFailover::ActiveFailover(Supervision& supervision, Node const& snapshot,
+                               AgentInterface* agent, JOB_STATUS status,
+                               std::string const& jobId)
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
@@ -156,7 +157,7 @@ bool ActiveFailover::start(bool&) {
   if (jobId.second && !abortable(_snapshot, jobId.first)) {
     return false;
   } else if (jobId.second) {
-    JobContext(PENDING, jobId.first, _snapshot, _agent)
+    JobContext(_supervision, PENDING, jobId.first, _snapshot, _agent)
         .abort("ActiveFailover requests abort");
   }
 

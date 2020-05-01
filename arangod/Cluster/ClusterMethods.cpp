@@ -892,9 +892,13 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> upgradeOnCoordinator(TRI
     auto matchExistingInList = [&vocbase, &collection, &existingJob,
                                 &job](velocypack::Slice list) -> void {
       for (velocypack::ObjectIteratorPair it : velocypack::ObjectIterator(list)) {
+        velocypack::Slice typeSlice = it.value.get("type");
         velocypack::Slice dbSlice = it.value.get(maintenance::DATABASE);
         velocypack::Slice cSlice = it.value.get(maintenance::COLLECTION);
-        if (dbSlice.isString() && dbSlice.isEqualString(vocbase.name()) &&
+        if (typeSlice.isString() &&
+            (typeSlice.isEqualString(maintenance::UPGRADE_COLLECTION) ||
+             typeSlice.isEqualString(maintenance::UPGRADE_VIRTUAL_COLLECTION)) &&
+            dbSlice.isString() && dbSlice.isEqualString(vocbase.name()) &&
             cSlice.isString() && cSlice.isEqualString(std::to_string(collection.id()))) {
           existingJob = true;
           job->add(it.value);
@@ -926,9 +930,13 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> upgradeOnCoordinator(TRI
   }
 
   if (!existingJob) {
+    std::string type =
+        (collection.isSmart() && collection.type() == TRI_col_type_e::TRI_COL_TYPE_EDGE)
+            ? maintenance::UPGRADE_VIRTUAL_COLLECTION
+            : maintenance::UPGRADE_COLLECTION;
     {
       velocypack::ObjectBuilder guard(job.get());
-      job->add("type", velocypack::Value("upgradeCollection"));
+      job->add("type", velocypack::Value(type));
       job->add("database", velocypack::Value(vocbase.name()));
       job->add("collection", velocypack::Value(std::to_string(collection.id())));
       job->add("jobId", velocypack::Value(std::to_string(jobId)));

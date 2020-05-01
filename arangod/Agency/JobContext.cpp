@@ -33,11 +33,13 @@
 #include "Agency/Jobs/RemoveFollower.h"
 #include "Agency/Jobs/ResignLeadership.h"
 #include "Agency/Jobs/UpgradeCollection.h"
+#include "Agency/Jobs/UpgradeVirtualCollection.h"
+#include "Cluster/Maintenance/MaintenanceStrings.h"
 
 using namespace arangodb::consensus;
 
-JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
-                       AgentInterface* agent)
+JobContext::JobContext(Supervision& supervision, JOB_STATUS status,
+                       std::string id, Node const& snapshot, AgentInterface* agent)
     : _job(nullptr) {
   std::string path = pos[status] + id;
   auto typePair = snapshot.hasAsString(path + "/type");
@@ -48,25 +50,28 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
   }  // if
 
   if (type == "failedLeader") {
-    _job = std::make_unique<FailedLeader>(snapshot, agent, status, id);
+    _job = std::make_unique<FailedLeader>(supervision, snapshot, agent, status, id);
   } else if (type == "failedFollower") {
-    _job = std::make_unique<FailedFollower>(snapshot, agent, status, id);
+    _job = std::make_unique<FailedFollower>(supervision, snapshot, agent, status, id);
   } else if (type == "failedServer") {
-    _job = std::make_unique<FailedServer>(snapshot, agent, status, id);
+    _job = std::make_unique<FailedServer>(supervision, snapshot, agent, status, id);
   } else if (type == "cleanOutServer") {
-    _job = std::make_unique<CleanOutServer>(snapshot, agent, status, id);
+    _job = std::make_unique<CleanOutServer>(supervision, snapshot, agent, status, id);
   } else if (type == "resignLeadership") {
-    _job = std::make_unique<ResignLeadership>(snapshot, agent, status, id);
+    _job = std::make_unique<ResignLeadership>(supervision, snapshot, agent, status, id);
   } else if (type == "moveShard") {
-    _job = std::make_unique<MoveShard>(snapshot, agent, status, id);
+    _job = std::make_unique<MoveShard>(supervision, snapshot, agent, status, id);
   } else if (type == "addFollower") {
-    _job = std::make_unique<AddFollower>(snapshot, agent, status, id);
+    _job = std::make_unique<AddFollower>(supervision, snapshot, agent, status, id);
   } else if (type == "removeFollower") {
-    _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
+    _job = std::make_unique<RemoveFollower>(supervision, snapshot, agent, status, id);
   } else if (type == "activeFailover") {
-    _job = std::make_unique<ActiveFailover>(snapshot, agent, status, id);
-  } else if (type == "upgradeCollection") {
-    _job = std::make_unique<UpgradeCollection>(snapshot, agent, status, id);
+    _job = std::make_unique<ActiveFailover>(supervision, snapshot, agent, status, id);
+  } else if (type == maintenance::UPGRADE_COLLECTION) {
+    _job = std::make_unique<UpgradeCollection>(supervision, snapshot, agent, status, id);
+  } else if (type == maintenance::UPGRADE_VIRTUAL_COLLECTION) {
+    _job = std::make_unique<UpgradeVirtualCollection>(supervision, snapshot,
+                                                      agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;

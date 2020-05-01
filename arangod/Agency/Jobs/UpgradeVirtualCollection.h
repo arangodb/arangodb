@@ -21,8 +21,10 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_JOB_FAILED_FOLLOWER_H
-#define ARANGOD_AGENCY_JOB_FAILED_FOLLOWER_H 1
+#ifndef ARANGOD_AGENCY_JOB_UPGRADE_VIRTUAL_COLLECTION_H
+#define ARANGOD_AGENCY_JOB_UPGRADE_VIRTUAL_COLLECTION_H 1
+
+#include <velocypack/Builder.h>
 
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
@@ -30,18 +32,12 @@
 namespace arangodb {
 namespace consensus {
 
-struct FailedFollower : public Job {
-  FailedFollower(Supervision& supervision, Node const& snapshot, AgentInterface* agent,
-                 std::string const& jobId, std::string const& creator = std::string(),
-                 std::string const& database = std::string(),
-                 std::string const& collection = std::string(),
-                 std::string const& shard = std::string(),
-                 std::string const& from = std::string());
+struct UpgradeVirtualCollection : public Job {
+  UpgradeVirtualCollection(Supervision& supervision, Node const& snapshot,
+                           AgentInterface* agent, JOB_STATUS status,
+                           std::string const& jobId);
 
-  FailedFollower(Supervision& supervision, Node const& snapshot,
-                 AgentInterface* agent, JOB_STATUS status, std::string const& jobId);
-
-  virtual ~FailedFollower();
+  virtual ~UpgradeVirtualCollection();
 
   virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
   virtual void run(bool&) override final;
@@ -49,12 +45,19 @@ struct FailedFollower : public Job {
   virtual JOB_STATUS status() override final;
   virtual Result abort(std::string const& reason) override final;
 
+ private:
+  std::string jobPrefix() const;
+  velocypack::Slice job() const;
+  bool writeTransaction(velocypack::Builder const&, std::string const&);
+  bool registerError(std::string const&);
+  void prepareChildJob(velocypack::Builder&, std::string const&, std::string const&);
+
   std::string _database;
   std::string _collection;
-  std::string _shard;
-  std::string _from;
-  std::string _to;
   std::chrono::system_clock::time_point _created;
+  std::string _error;
+  std::vector<std::string> _children;
+  std::size_t _timeout;
 };
 }  // namespace consensus
 }  // namespace arangodb

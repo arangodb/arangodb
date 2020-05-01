@@ -41,6 +41,7 @@
 #include "Agency/Jobs/FailedLeader.h"
 #include "Agency/Jobs/MoveShard.h"
 #include "Agency/Node.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
 
@@ -126,13 +127,17 @@ class FailedLeaderTest
   write_ret_t fakeWriteResult;
   std::shared_ptr<Builder> transBuilder;
   trans_ret_t fakeTransResult;
+  arangodb::application_features::ApplicationServer server;
+  arangodb::consensus::Supervision supervision;
 
   FailedLeaderTest()
       : baseStructure(createRootNode()),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
         transBuilder(std::make_shared<Builder>()),
-        fakeTransResult(true, "", 1, 0, transBuilder) {
+        fakeTransResult(true, "", 1, 0, transBuilder),
+        server{nullptr, nullptr},
+        supervision{server} {
     RandomGenerator::seed(3);
     baseStructure.toBuilder(builder);
     VPackArrayBuilder a(transBuilder.get());
@@ -175,8 +180,8 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(baseStructure, &agent, jobId, "unittest",
-                                   DATABASE, COLLECTION, SHARD, SHARD_LEADER);
+  auto failedLeader = FailedLeader(supervision, baseStructure, &agent, jobId,
+                                   "unittest", DATABASE, COLLECTION, SHARD, SHARD_LEADER);
   failedLeader.create();
 }
 
@@ -232,7 +237,8 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -287,7 +293,8 @@ TEST_F(FailedLeaderTest, distributeshardslike_should_immediately_fail) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -343,7 +350,8 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write)).Exactly(Once);
@@ -385,7 +393,8 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_no_server_is_in_sync) {
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
 }
 
@@ -437,7 +446,8 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_distributeshardslike_shard_i
     return trans_ret_t();
   });
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -459,9 +469,9 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
   });
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface& moveShardAgent = moveShardMockAgent.get();
-  auto moveShard =
-      MoveShard(baseStructure("arango"), &moveShardAgent, "2", "strunz", DATABASE,
-                COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
+  auto moveShard = MoveShard(supervision, baseStructure("arango"),
+                             &moveShardAgent, "2", "strunz", DATABASE, COLLECTION,
+                             SHARD, SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
 
   std::string jobId = "1";
@@ -514,7 +524,8 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, write));
 }
@@ -690,7 +701,8 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -760,7 +772,8 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish_2) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -819,7 +832,8 @@ TEST_F(FailedLeaderTest, if_new_leader_doesnt_catch_up_we_wait) {
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -913,7 +927,8 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -993,7 +1008,8 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1049,7 +1065,8 @@ TEST_F(FailedLeaderTest, failedleader_must_not_take_follower_into_account_if_it_
 
   // new server will randomly be selected...so seed the random number generator
   srand(1);
-  auto failedLeader = FailedLeader(agency("arango"), &agent, JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 

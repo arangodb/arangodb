@@ -33,13 +33,8 @@ namespace arangodb {
 namespace consensus {
 
 struct UpgradeCollection : public Job {
-  UpgradeCollection(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-                 std::string const& creator = std::string(),
-                 std::string const& database = std::string(),
-                 std::string const& collection = std::string());
-
-  UpgradeCollection(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-                 std::string const& jobId);
+  UpgradeCollection(Supervision& supervision, Node const& snapshot,
+                    AgentInterface* agent, JOB_STATUS status, std::string const& jobId);
 
   virtual ~UpgradeCollection();
 
@@ -59,6 +54,7 @@ struct UpgradeCollection : public Job {
   std::string _collection;
   std::chrono::system_clock::time_point _created;
   std::string _error;
+  bool _smartChild;
 };
 }  // namespace consensus
 }  // namespace arangodb

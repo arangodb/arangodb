@@ -31,12 +31,13 @@ namespace arangodb {
 namespace consensus {
 
 struct AddFollower : public Job {
-  AddFollower(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+  AddFollower(Supervision& supervision, Node const& snapshot,
+              AgentInterface* agent, std::string const& jobId,
               std::string const& creator, std::string const& database,
               std::string const& collection, std::string const& shard);
 
-  AddFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-              std::string const& jobId);
+  AddFollower(Supervision& supervision, Node const& snapshot,
+              AgentInterface* agent, JOB_STATUS status, std::string const& jobId);
 
   virtual ~AddFollower();
 

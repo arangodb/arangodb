@@ -38,6 +38,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
+#include "Agency/Supervision.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
@@ -79,8 +80,9 @@ struct Job {
         : collection(c), shard(s) {}
   };
 
-  Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
-      std::string const& jobId, std::string const& creator = std::string());
+  Job(Supervision& supervision, JOB_STATUS status, Node const& snapshot,
+      AgentInterface* agent, std::string const& jobId,
+      std::string const& creator = std::string());
 
   virtual ~Job();
 
@@ -156,6 +158,7 @@ struct Job {
                                                                std::string const& col,
                                                                std::string const& shrd);
 
+  Supervision& _supervision;
   JOB_STATUS _status;
   Node const& _snapshot;
   AgentInterface* _agent;

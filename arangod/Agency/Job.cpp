@@ -72,9 +72,10 @@ std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
-Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
-         std::string const& jobId, std::string const& creator)
-    : _status(status),
+Job::Job(Supervision& supervision, JOB_STATUS status, Node const& snapshot,
+         AgentInterface* agent, std::string const& jobId, std::string const& creator)
+    : _supervision(supervision),
+      _status(status),
       _snapshot(snapshot),
       _agent(agent),
       _jobId(jobId),

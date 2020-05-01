@@ -32,14 +32,14 @@
 
 using namespace arangodb::consensus;
 
-FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
-                           std::string const& jobId, std::string const& creator,
-                           std::string const& server)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
+FailedServer::FailedServer(Supervision& supervision, Node const& snapshot,
+                           AgentInterface* agent, std::string const& jobId,
+                           std::string const& creator, std::string const& server)
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
 
-FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
-                           JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+FailedServer::FailedServer(Supervision& supervision, Node const& snapshot,
+                           AgentInterface* agent, JOB_STATUS status, std::string const& jobId)
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from jobId:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
@@ -85,7 +85,7 @@ bool FailedServer::start(bool& aborts) {
     if (!abortable(_snapshot, jobId)) {
       return false;
     }
-    JobContext(PENDING, s.copyString(), _snapshot, _agent)
+    JobContext(_supervision, PENDING, s.copyString(), _snapshot, _agent)
         .abort("failed server");
     aborts = true;
     return true;
@@ -200,13 +200,13 @@ bool FailedServer::start(bool& aborts) {
 
                 if (dbs == _server || dbs == "_" + _server) {
                   if (pos == 0) {
-                    FailedLeader(_snapshot, _agent,
+                    FailedLeader(_supervision, _snapshot, _agent,
                                  _jobId + "-" + std::to_string(sub++), _jobId,
                                  database.first, collptr.first, shard.first, _server)
                         .create(transactions);
                   } else {
                     if (!isSatellite) {
-                      FailedFollower(_snapshot, _agent,
+                      FailedFollower(_supervision, _snapshot, _agent,
                                      _jobId + "-" + std::to_string(sub++), _jobId,
                                      database.first, collptr.first, shard.first, _server)
                           .create(transactions);

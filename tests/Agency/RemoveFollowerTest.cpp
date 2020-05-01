@@ -34,6 +34,7 @@
 #include "Agency/Jobs/MoveShard.h"
 #include "Agency/Jobs/RemoveFollower.h"
 #include "Agency/Node.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
 
@@ -115,13 +116,17 @@ class RemoveFollowerTest : public ::testing::Test {
   std::string jobId;
   write_ret_t fakeWriteResult;
   trans_ret_t fakeTransResult;
+  arangodb::application_features::ApplicationServer server;
+  arangodb::consensus::Supervision supervision;
 
   RemoveFollowerTest()
       : baseStructure(createRootNode()),
         jobId("1"),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()) {
+        fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()),
+        server{nullptr, nullptr},
+        supervision{server} {
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     baseStructure.toBuilder(builder);
   }
@@ -158,8 +163,8 @@ TEST_F(RemoveFollowerTest, creating_a_job_should_create_a_job_in_todo) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto removeFollower = RemoveFollower(baseStructure, &agent, jobId, "unittest",
-                                       DATABASE, COLLECTION, SHARD);
+  auto removeFollower = RemoveFollower(supervision, baseStructure, &agent, jobId,
+                                       "unittest", DATABASE, COLLECTION, SHARD);
 
   removeFollower.create();
 }
@@ -216,7 +221,7 @@ TEST_F(RemoveFollowerTest, collection_still_exists_if_missing_job_is_finished_mo
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest,
@@ -267,7 +272,7 @@ TEST_F(RemoveFollowerTest,
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest, condition_still_holds_for_the_mentioned_collections_move_to_finished) {
@@ -324,7 +329,7 @@ TEST_F(RemoveFollowerTest, condition_still_holds_for_the_mentioned_collections_m
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest,
@@ -383,7 +388,7 @@ TEST_F(RemoveFollowerTest,
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
 TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
@@ -430,7 +435,7 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
 }
@@ -466,6 +471,9 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
+
+  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  arangodb::consensus::Supervision supervision{server};
 
   // The reason for using so much DBServers is to make it nearly impossible
   // for the test to pass by accident. Trying with lower numbers
@@ -601,7 +609,7 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
 }

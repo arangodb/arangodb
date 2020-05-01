@@ -32,19 +32,20 @@
 
 using namespace arangodb::consensus;
 
-FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
-                           std::string const& jobId, std::string const& creator,
-                           std::string const& database, std::string const& collection,
+FailedLeader::FailedLeader(Supervision& supervision, Node const& snapshot,
+                           AgentInterface* agent, std::string const& jobId,
+                           std::string const& creator, std::string const& database,
+                           std::string const& collection,
                            std::string const& shard, std::string const& from)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
       _from(from) {}
 
-FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
-                           JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+FailedLeader::FailedLeader(Supervision& supervision, Node const& snapshot,
+                           AgentInterface* agent, JOB_STATUS status, std::string const& jobId)
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_database = _snapshot.hasAsString(path + "database");
@@ -317,7 +318,7 @@ bool FailedLeader::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent)
+      JobContext(_supervision, PENDING, jobId.first, _snapshot, _agent)
           .abort("failed leader requests abort");
       return false;
     }

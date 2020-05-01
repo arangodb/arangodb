@@ -32,12 +32,12 @@ using namespace arangodb::consensus;
 
 constexpr auto PARENT_JOB_ID = "parentJob";
 
-MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
+MoveShard::MoveShard(Supervision& supervision, Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
                      std::string const& shard, std::string const& from,
                      std::string const& to, bool isLeader, bool remainsFollower)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -47,11 +47,12 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _remainsFollower(remainsFollower),
       _toServerIsFollower(false) {}
 
-MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+MoveShard::MoveShard(Supervision& supervision, Node const& snapshot,
+                     AgentInterface* agent, std::string const& jobId,
                      std::string const& creator, std::string const& database,
                      std::string const& collection, std::string const& shard,
                      std::string const& from, std::string const& to, bool isLeader)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
@@ -61,9 +62,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string co
       _remainsFollower(isLeader),
       _toServerIsFollower(false) {}
 
-MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
-                     JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+MoveShard::MoveShard(Supervision& supervision, Node const& snapshot,
+                     AgentInterface* agent, JOB_STATUS status, std::string const& jobId)
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_database = _snapshot.hasAsString(path + "database");

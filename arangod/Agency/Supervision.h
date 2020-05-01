@@ -28,6 +28,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/Store.h"
 #include "Agency/TimeString.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Cluster/CriticalThread.h"
@@ -118,6 +119,8 @@ class Supervision : public arangodb::CriticalThread {
 
   /// @brief remove hotbackup lock in agency, if expired
   void unlockHotBackup();
+
+  uint64_t nextJobId();
 
   static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";

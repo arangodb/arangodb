@@ -32,14 +32,16 @@
 
 using namespace arangodb::consensus;
 
-ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
-                                   std::string const& jobId, std::string const& creator,
-                                   std::string const& server)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
+ResignLeadership::ResignLeadership(Supervision& supervision, Node const& snapshot,
+                                   AgentInterface* agent, std::string const& jobId,
+                                   std::string const& creator, std::string const& server)
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator),
+      _server(id(server)) {}
 
-ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
+ResignLeadership::ResignLeadership(Supervision& supervision,
+                                   Node const& snapshot, AgentInterface* agent,
                                    JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
@@ -398,9 +400,9 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
             continue;  // can not resign from that shard
           }
 
-          MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, true)
+          MoveShard(_supervision, _snapshot, _agent,
+                    _jobId + "-" + std::to_string(sub++), _jobId, database.first,
+                    collptr.first, shard.first, _server, toServer, isLeader, true)
               .withParent(_jobId)
               .create(trx);
 
@@ -456,12 +458,12 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
 
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
+      JobContext(_supervision, TODO, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
     }
   }
   for (auto const& subJob : pends) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
+      JobContext(_supervision, PENDING, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
     }
   }
 

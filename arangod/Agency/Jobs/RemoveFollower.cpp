@@ -29,18 +29,19 @@
 
 using namespace arangodb::consensus;
 
-RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId, std::string const& creator,
-                               std::string const& database,
+RemoveFollower::RemoveFollower(Supervision& supervision, Node const& snapshot,
+                               AgentInterface* agent, std::string const& jobId,
+                               std::string const& creator, std::string const& database,
                                std::string const& collection, std::string const& shard)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+    : Job(supervision, NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard) {}
 
-RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
-                               JOB_STATUS status, std::string const& jobId)
-    : Job(status, snapshot, agent, jobId) {
+RemoveFollower::RemoveFollower(Supervision& supervision, Node const& snapshot,
+                               AgentInterface* agent, JOB_STATUS status,
+                               std::string const& jobId)
+    : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_database = _snapshot.hasAsString(path + "database");

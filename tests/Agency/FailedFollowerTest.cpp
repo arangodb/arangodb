@@ -125,13 +125,17 @@ class FailedFollowerTest
   Node baseStructure;
   write_ret_t fakeWriteResult;
   trans_ret_t fakeTransResult;
+  arangodb::application_features::ApplicationServer server;
+  arangodb::consensus::Supervision supervision;
 
   FailedFollowerTest()
       : transBuilder(std::make_shared<Builder>()),
         baseStructure(createRootNode()),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        fakeTransResult(true, "", 1, 0, transBuilder) {
+        fakeTransResult(true, "", 1, 0, transBuilder),
+        server{nullptr, nullptr},
+        supervision{server} {
     RandomGenerator::seed(3);
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
@@ -173,8 +177,9 @@ TEST_F(FailedFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedFollower = FailedFollower(baseStructure, &agent, jobId, "unittest",
-                                       DATABASE, COLLECTION, SHARD, SHARD_FOLLOWER1);
+  auto failedFollower =
+      FailedFollower(supervision, baseStructure, &agent, jobId, "unittest",
+                     DATABASE, COLLECTION, SHARD, SHARD_FOLLOWER1);
   failedFollower.create();
   Verify(Method(mockAgent, write));
 }
@@ -234,7 +239,8 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
 }
 
@@ -293,7 +299,8 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
 }
 
@@ -354,7 +361,8 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write));
@@ -410,7 +418,8 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
@@ -430,9 +439,9 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   });
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface& moveShardAgent = moveShardMockAgent.get();
-  auto moveShard =
-      MoveShard(baseStructure(PREFIX), &moveShardAgent, "2", "strunz", DATABASE,
-                COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
+  auto moveShard = MoveShard(supervision, baseStructure(PREFIX), &moveShardAgent,
+                             "2", "strunz", DATABASE, COLLECTION, SHARD,
+                             SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
@@ -486,7 +495,8 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   });
 
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
@@ -570,7 +580,8 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
 }
@@ -715,7 +726,8 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
 }
@@ -778,7 +790,8 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -828,7 +841,8 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+  auto failedFollower =
+      FailedFollower(supervision, agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   failedFollower.abort("test abort");
   Verify(Method(mockAgent, write));
 }

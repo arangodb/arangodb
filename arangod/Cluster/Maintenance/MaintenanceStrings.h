@@ -74,6 +74,7 @@ constexpr char const* TIMEOUT = "timeout";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* UPGRADE_COLLECTION = "UpgradeCollection";
+constexpr char const* UPGRADE_VIRTUAL_COLLECTION = "UpgradeVirtualCollection";
 constexpr char const* UPGRADE_STATUS = "upgradeStatus";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
