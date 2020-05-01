@@ -1864,12 +1864,6 @@
         assertEqual("other half", res[2].name);
       },
 
-      testLevenshteinMatch2BM25 : function() {
-        var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'dog', 2, false), 'text_en') OPTIONS { waitForSync : true } SORT BM25(doc) DESC LIMIT 1 RETURN doc").toArray();
-        assertEqual(1, res.length);
-        assertEqual("full", res[0].name);
-      },
-
       testPhraseTerm : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {TERM: 'quick'}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
         assertEqual(1, result.length);
