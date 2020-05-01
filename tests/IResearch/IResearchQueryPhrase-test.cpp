@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
+#include "common.h"
 
 #include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
@@ -1694,6 +1695,80 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     EXPECT_EQ(i, expected.size());
   }
 
+  // test custom analyzer with LEVenshtein_match via [] + limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(), insertedDocs[37].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', {LEVenshtein_match: ['y', 1, false, 1]}], "
+      "'test_analyzer') SORT BM25(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with LEVenshtein_match via [] + default limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(), insertedDocs[37].slice(),
+      insertedDocs[6].slice(), insertedDocs[9].slice(),
+      insertedDocs[31].slice(),
+
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', {LEVenshtein_match: ['y', 1, false]}], "
+      "'test_analyzer') SORT BM25(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with LEVenshtein_match via [] + no limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(), insertedDocs[37].slice(),
+      insertedDocs[6].slice(), insertedDocs[9].slice(),
+      insertedDocs[31].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', {LEVenshtein_match: ['y', 1, false, 0]}], "
+      "'test_analyzer') SORT BM25(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test custom analyzer with levenshtein_match (not Damerau-Levenshtein)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1713,8 +1788,7 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
