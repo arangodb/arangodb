@@ -174,7 +174,3 @@ TEST_F(analyzer_test, test_load) {
   ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"stopwords\":\"abc\"}}"));
   ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"stopwords\":[1, 2, 3]}}"));
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -28,6 +28,14 @@
 
 NS_LOCAL
 
+irs::by_column_existence make_filter(const irs::string_ref& field,
+                                     bool prefix_match) {
+  irs::by_column_existence filter;
+  *filter.mutable_field() = field;
+  filter.mutable_options()->prefix_match = prefix_match;
+  return filter;
+}
+
 class column_existence_filter_test_case : public tests::filter_test_case_base {
  protected:
   void simple_sequential_mask() {
@@ -67,9 +75,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "prefix";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -100,9 +106,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "name";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -136,9 +140,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "seq";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -168,9 +170,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "same";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -203,9 +203,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "value";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -234,9 +232,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "duplicated";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -265,9 +261,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "invalid_column";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -302,9 +296,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "prefix";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -335,9 +327,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "name";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -371,9 +361,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "seq";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -403,9 +391,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "same";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -438,9 +424,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "value";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -469,9 +453,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "duplicated";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -500,9 +482,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "invalid_column";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -537,9 +517,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_prefix = "foo";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_prefix);
+      irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -606,9 +584,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_prefix = "koob";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_prefix);
+      irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -651,9 +627,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_prefix = "oob";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_prefix);
+      irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -696,9 +670,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_prefix = "collection";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_prefix);
+      irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -738,9 +710,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_prefix = "invalid_prefix";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_prefix);
+      irs::by_column_existence filter = make_filter(column_prefix, true);
 
       auto prepared = filter.prepare(
         *rdr, irs::order::prepared::unordered()
@@ -775,9 +745,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "seq";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(false);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, false);
 
       irs::order order;
       size_t collector_collect_field_count = 0;
@@ -860,9 +828,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
     {
       const std::string column_name = "seq";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, true);
 
       irs::order order;
       size_t collector_collect_field_count = 0;
@@ -942,9 +908,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       const std::string column_name = "s";
       const std::string column_name_full = "seq";
 
-      irs::by_column_existence filter;
-      filter.prefix_match(true);
-      filter.field(column_name);
+      irs::by_column_existence filter = make_filter(column_name, true);
 
       irs::order order;
       size_t collector_collect_field_count = 0;
@@ -1031,10 +995,15 @@ TEST_P(column_existence_filter_test_case, exact_prefix_match) {
   simple_sequential_order();
 }
 
+TEST(by_column_existence, options) {
+  irs::by_column_existence_options opts;
+  ASSERT_FALSE(opts.prefix_match);
+}
+
 TEST(by_column_existence, ctor) {
   irs::by_column_existence filter;
   ASSERT_EQ(irs::by_column_existence::type(), filter.type());
-  ASSERT_FALSE(filter.prefix_match());
+  ASSERT_EQ(irs::by_column_existence_options{}, filter.options());
   ASSERT_TRUE(filter.field().empty());
   ASSERT_EQ(irs::no_boost(), filter.boost());
 }
@@ -1047,33 +1016,21 @@ TEST(by_column_existence, equal) {
   ASSERT_EQ(irs::by_column_existence(), irs::by_column_existence());
 
   {
-    irs::by_column_existence q0;
-    q0.field("name");
-
-    irs::by_column_existence q1;
-    q1.field("name");
+    irs::by_column_existence q0 = make_filter("name", false);
+    irs::by_column_existence q1 = make_filter("name", false);
     ASSERT_EQ(q0, q1);
     ASSERT_EQ(q0.hash(), q1.hash());
   }
 
   {
-    irs::by_column_existence q0;
-    q0.field("name");
-    q0.prefix_match(true);
-
-    irs::by_column_existence q1;
-    q1.field("name");
+    irs::by_column_existence q0 = make_filter("name", true);
+    irs::by_column_existence q1 = make_filter("name", false);
     ASSERT_NE(q0, q1);
   }
 
   {
-    irs::by_column_existence q0;
-    q0.field("name");
-    q0.prefix_match(true);
-
-    irs::by_column_existence q1;
-    q1.field("name1");
-    q1.prefix_match(true);
+    irs::by_column_existence q0 = make_filter("name", true);
+    irs::by_column_existence q1 = make_filter("name1", true);
     ASSERT_NE(q0, q1);
   }
 }
@@ -1093,7 +1050,3 @@ INSTANTIATE_TEST_CASE_P(
 );
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
