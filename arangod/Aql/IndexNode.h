@@ -155,7 +155,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const;
 
   bool isProduceResult() const {
-    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !canCount();
+    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
   }
   
   /// @brief adds a UNIQUE() to a dynamic IN condition

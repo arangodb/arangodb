@@ -477,6 +477,10 @@ struct Functions {
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue SchemaValidate(arangodb::aql::ExpressionContext*,
                                  transaction::Methods*, VPackFunctionParameters const&);
+ 
+  /// @brief this function is internal only and cannot be called by users
+  static AqlValue InternalCount(arangodb::aql::ExpressionContext*,
+                                transaction::Methods*, VPackFunctionParameters const&);
 
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,

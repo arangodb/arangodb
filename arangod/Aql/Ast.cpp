@@ -1497,11 +1497,16 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
 
   if (normalized.second) {
     // built-in function
+    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+    TRI_ASSERT(func != nullptr);
+   
+    if (func->hasFlag(Function::Flags::Internal)) {
+      // end users are not supposed to use internal functions
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, functionName);
+    }
+
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
-    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
-
-    TRI_ASSERT(func != nullptr);
     node->setData(static_cast<void const*>(func));
 
     TRI_ASSERT(arguments != nullptr);

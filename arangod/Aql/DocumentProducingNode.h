@@ -81,7 +81,7 @@ class DocumentProducingNode {
   }
   
   /// @brief wheter or not the node can be used for counting
-  bool canCount() const;
+  bool doCount() const;
 
  protected:
   Variable const* _outVariable;

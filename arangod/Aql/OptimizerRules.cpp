@@ -7462,7 +7462,7 @@ bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
 }
 }
 
-/// @brief turn LENGTH(FOR doc IN ...) INTO an optimized count operation
+/// @brief turn LENGTH(FOR doc IN ...) subqueries into an optimized count operation
 void arangodb::aql::optimizeCountRule(Optimizer* opt,
                                       std::unique_ptr<ExecutionPlan> plan,
                                       OptimizerRule const& rule) {
@@ -7475,19 +7475,19 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
   ::arangodb::containers::HashSet<Variable const*> vars;
   std::unordered_map<ExecutionNode*, std::pair<bool, std::unordered_set<AstNode const*>>> candidates;
 
+  // find all calculation nodes in the plan
   for (auto const& n : nodes) {
     auto cn = ExecutionNode::castTo<CalculationNode*>(n);
     auto expr = cn->expression();
-    if (expr == nullptr) {
-      continue;
-    }
-
     AstNode const* root = expr->node();
     if (root == nullptr) {
       continue;
     }
+  
+    std::unordered_map<ExecutionNode*, std::pair<bool, std::unordered_set<AstNode const*>>> localCandidates;
 
-    auto visitor = [&candidates, &plan](AstNode const* node) -> bool {
+    // look for all expressions that contain COUNT(subquery) or LENGTH(subquery)
+    auto visitor = [&localCandidates, &plan](AstNode const* node) -> bool {
       if (node->type == NODE_TYPE_FCALL && node->numMembers() > 0) {
         auto func = static_cast<Function const*>(node->getData());
         auto args = node->getMember(0);
@@ -7497,16 +7497,27 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
                 static_cast<Variable const*>(args->getMember(0)->getData());
             auto setter = plan->getVarSetBy(v->id);
             if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
-              // COUNT(subquery)
-              auto sn = ExecutionNode::castTo<SubqueryNode const*>(setter);
+              // COUNT(subquery) / LENGTH(subquery)
+              auto sn = ExecutionNode::castTo<SubqueryNode*>(setter);
               if (sn->isModificationSubquery()) {
+                // subquery modifies data
                 // cannot apply optimization for data-modification queries
                 return true;
               }
+              if (!sn->isDeterministic()) {
+                // subquery is non-deterministic. cannot apply the optimization
+                return true;
+              }
+    
+              auto current = sn->getSubquery();
+              if (current == nullptr || current->getType() != EN::RETURN) {
+                // subquery does not end with a RETURN instruction - we cannot handle this
+                return true;
+              }
 
-              auto it = candidates.find(setter);
-              if (it == candidates.end()) {
-                candidates.emplace(setter, std::make_pair(true, std::unordered_set<AstNode const*>({node})));
+              auto it = localCandidates.find(setter);
+              if (it == localCandidates.end()) {
+                localCandidates.emplace(setter, std::make_pair(true, std::unordered_set<AstNode const*>({node})));
               } else {
                 (*it).second.second.emplace(node);
               }
@@ -7518,8 +7529,10 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         Variable const* v = static_cast<Variable const*>(node->getData());
         auto setter = plan->getVarSetBy(v->id);
         if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
-          // subquery used for something else inside the calculation
-          candidates[setter].first = false;
+          // subquery used for something else inside the calculation,
+          // e.g. FIRST(subquery).
+          // we cannot continue with the optimization for this subquery, but for others
+          localCandidates[setter].first = false;
           return false;
         }
       }
@@ -7528,23 +7541,42 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
 
     Ast::traverseReadOnly(root, visitor, [](AstNode const*) {});
 
-    for (auto it = candidates.begin(); it != candidates.end(); /* no hoisting */) {
-      SubqueryNode const* sn = ExecutionNode::castTo<SubqueryNode const*>((*it).first);
-      // check if subquery result is used later elsewhere
-      if (!(*it).second.first) {
+    for (auto const& it : localCandidates) {
+      // check if subquery result is used for something else than LENGTH/COUNT in *this* calculation
+      if (!it.second.first) {
         // subquery result is used for other calculations than COUNT(subquery)
-        it = candidates.erase(it);
-      } else if (n->isVarUsedLater(sn->outVariable())) {
-        // subquery result is also used elsewhere - we cannot optimize
-        it = candidates.erase(it);
-      } else {
+        continue;
+      }
+      
+      SubqueryNode const* sn = ExecutionNode::castTo<SubqueryNode const*>(it.first);
+      if (n->isVarUsedLater(sn->outVariable())) {
+        // subquery result is used elsewhere later - we cannot optimize
+        continue;
+      }
+     
+      bool valid = true;
+      // check if subquery result is used somewhere else before the current calculation
+      // we are looking at
+      auto current = sn->getFirstParent();
+      while (current != nullptr && current != n) {
+        vars.clear();
+        current->getVariablesUsedHere(vars);
+        if (vars.find(sn->outVariable()) != vars.end()) {
+          valid = false;
+          break;
+        }
+        current = current->getFirstParent();
+      }
+
+      if (valid) {
         // subquery result is not used elsewhere - we can continue optimizing
-        ++it;
+        // transfer the candidate into the global result
+        candidates.emplace(it.first, it.second);
       }
     }
   }
 
-  for (auto& it : candidates) {
+  for (auto const& it : candidates) {
     TRI_ASSERT(it.second.first);
     ExecutionNode* cn = it.first;
     TRI_ASSERT(cn->getType() == EN::SUBQUERY);
@@ -7553,9 +7585,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     // scan from the subquery node to the bottom of the ExecutionPlan to check
     // if any of the following nodes also use the subquery result
     auto current = sn->getSubquery();
-    if (current == nullptr || current->getType() != EN::RETURN) {
-      continue;
-    }
+    TRI_ASSERT(current->getType() == EN::RETURN);
     auto returnNode = ExecutionNode::castTo<ReturnNode*>(current);
     auto returnSetter = plan->getVarSetBy(returnNode->inVariable()->id);
     if (returnSetter == nullptr) {
@@ -7571,12 +7601,11 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     }
     
     // find the head of the plan/subquery
-    while (true) {
-      if (!current->hasDependency()) {
-        break;
-      }
+    while (current->hasDependency()) {
       current = current->getFirstDependency();
     } 
+
+    TRI_ASSERT(current != nullptr);
 
     if (current->getType() != EN::SINGLETON) {
       continue;
@@ -7607,9 +7636,9 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
             } else {
               outVariable = dynamic_cast<DocumentProducingNode*>(current)->outVariable();
         
-              if (outVariable != returnNode->inVariable() &&
-                  (returnSetter->getType() == EN::ENUMERATE_COLLECTION || returnSetter->getType() == EN::INDEX)) {
-                // we are returning data from a FOR loop, but from a different one!
+              if (type == EN::INDEX && ExecutionNode::castTo<IndexNode const*>(current)->getIndexes().size() != 1) {
+                // more than one index, so we would need to run uniqueness checks on the
+                // results. this is currently unsupported, so don't apply the optimization
                 valid = false;
               } else {
                 // a FOR loop without an early pruning filter. this is what we are
@@ -7621,27 +7650,36 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           break;
         }
 
-        case EN::LIMIT: 
-          // TODO: add support for LIMIT
         case EN::REMOTE:
         case EN::SCATTER:
         case EN::GATHER:
         case EN::DISTRIBUTE:
+
         case EN::INSERT:
         case EN::UPDATE:
         case EN::REPLACE:
         case EN::REMOVE:
         case EN::UPSERT:
+          // we don't handle data-modification queries
+
+        case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::K_SHORTEST_PATHS:
         case EN::ENUMERATE_IRESEARCH_VIEW: {
+          // we don't handle nested FOR loops
           found = nullptr;
           valid = false;
           break;
         }
+        
+        case EN::LIMIT: { 
+          // LIMIT is supported
+          break;
+        }
 
         case EN::RETURN:{
+          // we reached the end
           break;
         }
 
@@ -7659,17 +7697,19 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           break;
         }
       }
+      
       if (!valid) {
         break;
       }
+
       current = current->getFirstParent();
     }
 
     if (valid && found != nullptr) {
-      auto func = AqlFunctionFeature::getFunctionByName("FIRST");
-      TRI_ASSERT(func != nullptr);
       dynamic_cast<DocumentProducingNode*>(found)->setCountFlag();
       returnNode->inVariable(outVariable);
+    
+      auto func = AqlFunctionFeature::getFunctionByName("INTERNAL_COUNT");
       for (AstNode const* funcNode : it.second.second) {
         const_cast<AstNode*>(funcNode)->setData(static_cast<void const*>(func));
       }

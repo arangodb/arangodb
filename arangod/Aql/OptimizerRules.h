@@ -279,7 +279,7 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
-/// @brief turns LENGTH(FOR doc IN collection) into an optimized count
+/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized count operation
 void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 /// @brief parallelize Gather nodes (cluster-only)

@@ -159,7 +159,11 @@ function pad(n) {
   return new Array(n).join(' ');
 }
 
-/* print functions */
+// strip INTERNAL prefix from function name
+// (used for INTERNAL_COUNT)
+function stripInternal(name) {
+  return name.replace(/^INTERNAL_/, '');
+}
 
 /* print query string */
 function printQuery(query, cacheable) {
@@ -390,7 +394,7 @@ function printFunctions(functions) {
   let maxCacheableLen = String('Cacheable').length;
   let maxV8Len = String('Uses V8').length;
   funcArray.forEach(function (f) {
-    let l = String(f.name).length;
+    let l = String(stripInternal(f.name)).length;
     if (l > maxNameLen) {
       maxNameLen = l;
     }
@@ -409,7 +413,7 @@ function printFunctions(functions) {
     let cacheable = String(funcArray[i].cacheable || false);
     let usesV8 = String(funcArray[i].usesV8 || false);
     line = ' ' +
-      variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
+      variable(stripInternal(funcArray[i].name)) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
       value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
       value(cacheable) + pad(1 + maxCacheableLen - cacheable.length) + '   ' +
       value(usesV8) + pad(1 + maxV8Len - usesV8.length);
@@ -928,7 +932,7 @@ function processQuery(query, explain, planIndex) {
       case 'user function call':
         return func(node.name) + '(' + ((node.subNodes && node.subNodes[0].subNodes) || []).map(buildExpression).join(', ') + ')' + '   ' + annotation('/* user-defined function */');
       case 'function call':
-        return func(node.name) + '(' + ((node.subNodes && node.subNodes[0].subNodes) || []).map(buildExpression).join(', ') + ')';
+        return func(stripInternal(node.name)) + '(' + ((node.subNodes && node.subNodes[0].subNodes) || []).map(buildExpression).join(', ') + ')';
       case 'plus':
         return '(' + binaryOperator(node, '+') + ')';
       case 'minus':
@@ -1580,7 +1584,7 @@ function processQuery(query, explain, planIndex) {
       }
       case 'CalculationNode':
         (node.functions || []).forEach(function (f) {
-          functions[f.name] = f;
+          functions[stripInternal(f.name)] = f;
         });
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
       case 'FilterNode':

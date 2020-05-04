@@ -102,9 +102,13 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   }
 
   // "producesResult" is read by AQL explainer. don't remove it!
-  builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
-  
-  builder.add("count", VPackValue(canCount()));
+  builder.add("count", VPackValue(doCount()));
+  if (doCount()) {
+    TRI_ASSERT(_filter == nullptr);
+    builder.add(::producesResultKey, VPackValue(false));
+  } else {
+    builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+  }
 }
 
 Variable const* DocumentProducingNode::outVariable() const {
@@ -140,6 +144,6 @@ std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePosition
   return _coveringIndexAttributePositions;
 }
   
-bool DocumentProducingNode::canCount() const {
-  return _count && (_filter == nullptr); // && (!dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable));
+bool DocumentProducingNode::doCount() const {
+  return _count && (_filter == nullptr); 
 }

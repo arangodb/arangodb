@@ -317,6 +317,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
   add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
   add({"INTERLEAVE", ".,.|+", flags, &Functions::Interleave});
+  
+  add({"INTERNAL_COUNT", ".", Function::makeFlags(FF::Internal), &Functions::InternalCount});
 
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
