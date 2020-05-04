@@ -324,12 +324,15 @@ class OutputAqlItemRow {
     return *_block;
   }
 
-  enum class CopyRowType {
-    PassedItemRowType,
-    CreateShadowRowFromInputRow
+  enum class AdaptRowDepth : signed int {
+    DecreaseDepth = -1,
+    Unchanged = 0,
+    IncreaseDepth = 1
   };
 
-  template <class ItemRowType, CopyOrMove, CopyRowType copyRowType = CopyRowType::PassedItemRowType>
+  static auto depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
+
+  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
   void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
 
   template <class ItemRowType, CopyOrMove>

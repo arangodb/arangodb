@@ -343,7 +343,7 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(!sourceRow.internalBlockIs(_block));
 #endif
   block().makeShadowRow(_baseIndex);
-  doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, CopyRowType::CreateShadowRowFromInputRow>(sourceRow, true);
+  doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
 }
 
 void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
@@ -396,30 +396,32 @@ void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow c
 template <class T>
 struct dependent_false : std::false_type {};
 
-template <class ItemRowType, OutputAqlItemRow::CopyOrMove copyOrMove, OutputAqlItemRow::CopyRowType copyRowType>
+template <class ItemRowType, OutputAqlItemRow::CopyOrMove copyOrMove, OutputAqlItemRow::AdaptRowDepth copyRowType>
 void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(!_doNotCopyInputRow);
-  bool constexpr createShadowRow = copyRowType == CopyRowType::CreateShadowRowFromInputRow;
+  bool constexpr createShadowRow = copyRowType == AdaptRowDepth::IncreaseDepth;
   bool mustClone = testIfWeMustClone(sourceRow) || createShadowRow;
 
-  auto const& regsToKeep = std::invoke([&] {
-    static_assert(createShadowRow != (copyRowType == CopyRowType::PassedItemRowType));
-    if constexpr (std::is_same_v<ItemRowType, InputAqlItemRow> && !createShadowRow) {
+  static_assert(copyRowType != AdaptRowDepth::DecreaseDepth); // Not yet implemented
+
+  auto const& regsToKeep = std::invoke([&]() {
+    static_assert(createShadowRow != (copyRowType == AdaptRowDepth::Unchanged));
+    if constexpr (std::is_same_v<std::decay_t<ItemRowType>, InputAqlItemRow> && !createShadowRow) {
       return registersToKeep().back();
     } else {
-      static_assert(std::is_same_v<ItemRowType, ShadowAqlItemRow> ||
-                    (std::is_same_v<ItemRowType, InputAqlItemRow> && createShadowRow));
+      static_assert(std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow> ||
+                    (std::is_same_v<std::decay_t<ItemRowType>, InputAqlItemRow> && createShadowRow));
       if (registersToKeep().size() == 1) {
         // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
         return registersToKeep().back();
       }
       auto depth = std::invoke([&]() -> size_t {
-        if constexpr (std::is_same_v<ItemRowType, ShadowAqlItemRow>) {
+        if constexpr (std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>) {
           return static_cast<size_t>(sourceRow.getDepth());
         } else {
-          static_assert(std::is_same_v<ItemRowType, InputAqlItemRow> && createShadowRow);
+          static_assert(std::is_same_v<std::decay_t<ItemRowType>, InputAqlItemRow> && createShadowRow);
           // Create a relevant shadow row, that is, depth 0.
           return 0;
         }
@@ -495,6 +497,11 @@ void OutputAqlItemRow::doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId item
   } else {
     static_assert(dependent_false<ItemRowType>::value, "Unhandled value");
   }
+}
+
+auto OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
+    -> std::underlying_type_t<OutputAqlItemRow::AdaptRowDepth> {
+  return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
 }
 
 template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,
