@@ -1,6 +1,8 @@
 v3.5.5 (2020-04-24)
 -------------------
 
+* Upgraded Swagger UI to 3.25.1
+
 * Updated OpenSSL to 1.1.1g.
 
 * Fixed internal issue #686: 'docs out of order' error during ArangoSearch
