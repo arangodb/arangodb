@@ -563,9 +563,9 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       }
     }
 
-    auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
-    TRI_ASSERT(collectionAccessingNode != nullptr);
     if (exp.doExpand) {
+      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
+      TRI_ASSERT(collectionAccessingNode != nullptr);
       TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
       // All parts need to have exact same size, they need to be permutated pairwise!
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
