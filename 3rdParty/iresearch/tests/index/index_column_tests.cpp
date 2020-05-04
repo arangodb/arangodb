@@ -8802,9 +8802,11 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(
       &tests::memory_directory,
       &tests::fs_directory,
-      &tests::mmap_directory
-    ),
-    ::testing::Values("1_0", "1_1", "1_2")
+      &tests::mmap_directory),
+    ::testing::Values(
+      tests::format_info{"1_0"},
+      tests::format_info{"1_1", "1_0"},
+      tests::format_info{"1_2", "1_0"})
   ),
   tests::to_string
 );

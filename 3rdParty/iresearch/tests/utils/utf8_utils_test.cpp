@@ -273,6 +273,7 @@ TEST(utf8_utils_test, find) {
   // null sequence
   {
     const auto str = irs::bytes_ref::NIL;
+    ASSERT_EQ(0, irs::utf8_utils::utf8_length(str));
     ASSERT_EQ(irs::bstring::npos, irs::utf8_utils::find<true>(str.begin(), str.size(), 0x80));
     ASSERT_EQ(irs::bstring::npos, irs::utf8_utils::find<false>(str.begin(), str.size(), 0x80));
     ASSERT_EQ(str.end(), irs::utf8_utils::find<true>(str.begin(), str.end(), 0x81));
@@ -292,6 +293,8 @@ TEST(utf8_utils_test, find) {
   {
     const irs::bytes_ref str = irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"));
     const std::vector<uint32_t> expected = { 0x0061, 0x0062, 0x0063, 0x0064 };
+
+    ASSERT_EQ(expected.size(), irs::utf8_utils::utf8_length(str));
 
     size_t i = 0;
     auto begin = str.begin();
@@ -314,6 +317,8 @@ TEST(utf8_utils_test, find) {
   {
     const irs::bytes_ref str = irs::ref_cast<irs::byte_type>(irs::string_ref("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
     const std::vector<uint32_t> expected = { 0x043F, 0x0440, 0x0438, 0x0432, 0x0435, 0x0442};
+
+    ASSERT_EQ(expected.size(), irs::utf8_utils::utf8_length(str));
 
     size_t i = 0;
     auto begin = str.begin();
@@ -340,6 +345,8 @@ TEST(utf8_utils_test, find) {
       0x2764  // heavy black heart
     };
 
+    ASSERT_EQ(expected.size(), irs::utf8_utils::utf8_length(str));
+
     size_t i = 0;
     auto begin = str.begin();
     for (auto expected_value : expected) {
@@ -364,6 +371,8 @@ TEST(utf8_utils_test, find) {
       0x1F601, // grinning face with smiling eyes
       0x1F602, // face with tears of joy
     };
+
+    ASSERT_EQ(expected.size(), irs::utf8_utils::utf8_length(str));
 
     size_t i = 0;
     auto begin = str.begin();

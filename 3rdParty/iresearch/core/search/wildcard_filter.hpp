@@ -23,19 +23,58 @@
 #ifndef IRESEARCH_WILDCARD_FILTER_H
 #define IRESEARCH_WILDCARD_FILTER_H
 
-#include "filter.hpp"
-#include "prefix_filter.hpp"
+#include "search/filter.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
 
+class by_wildcard;
 struct filter_visitor;
+
+struct IRESEARCH_API by_wildcard_filter_options {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search wildcard
+  //////////////////////////////////////////////////////////////////////////////
+  bstring term;
+
+  bool operator==(const by_wildcard_filter_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<bstring>()(term);
+  }
+}; // by_wildcard_filter_options
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_prefix_options
+/// @brief options for wildcard filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_wildcard_options : by_wildcard_filter_options {
+  using filter_type = by_wildcard;
+  using filter_options = by_wildcard_filter_options;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t scored_terms_limit{1024};
+
+  bool operator==(const by_wildcard_options& rhs) const noexcept {
+    return filter_options::operator==(rhs) &&
+      scored_terms_limit == rhs.scored_terms_limit;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(filter_options::hash(), scored_terms_limit);
+  }
+}; // by_wildcard_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_wildcard
 /// @brief user-side wildcard filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_wildcard final : public by_prefix {
+class IRESEARCH_API by_wildcard final
+    : public filter_base<by_wildcard_options> {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
@@ -45,22 +84,10 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     const order::prepared& order,
     boost_t boost,
     const string_ref& field,
-    bytes_ref term,
+    const bytes_ref& term,
     size_t scored_terms_limit);
 
-  static void visit(
-    const term_reader& reader,
-    bytes_ref term,
-    filter_visitor& fv);
-
-  explicit by_wildcard() noexcept;
-
-  using by_prefix::field;
-
-  by_wildcard& field(std::string fld) {
-    by_prefix::field(std::move(fld));
-    return *this;
-  }
+  static field_visitor visitor(const bytes_ref& term);
 
   using filter::prepare;
 
@@ -70,23 +97,22 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
       boost_t boost,
       const attribute_view& /*ctx*/) const override {
     return prepare(index, order, this->boost()*boost,
-                   field(), term(), scored_terms_limit());
+                   field(), options().term,
+                   options().scored_terms_limit);
   }
-
-
-  using by_prefix::scored_terms_limit;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_wildcard& scored_terms_limit(size_t limit) noexcept {
-    by_prefix::scored_terms_limit(limit);
-    return *this;
-  }
-
-  
 }; // by_wildcard
 
-#endif // IRESEARCH_WILDCARD_FILTER_H
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_wildcard_options> {
+  size_t operator()(const ::iresearch::by_wildcard_options& v) const noexcept {
+    return v.hash();
+  }
+};
 
 NS_END
+
+#endif // IRESEARCH_WILDCARD_FILTER_H

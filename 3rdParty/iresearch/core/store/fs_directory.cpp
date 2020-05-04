@@ -675,7 +675,3 @@ bool fs_directory::sync(const std::string& name) noexcept {
 
 MSVC_ONLY(__pragma(warning(pop)))
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

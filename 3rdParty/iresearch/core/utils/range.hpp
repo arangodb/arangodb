@@ -40,22 +40,11 @@ class range {
   }
   constexpr bool empty() const noexcept { return begin_ == end_; }
   constexpr size_t size() const noexcept { return std::distance(begin_, end_); }
-
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
   constexpr value_type& operator[](size_t i) noexcept {
     return IRS_ASSERT(i < size()), begin_[i];
   }
   constexpr value_type* begin() noexcept { return begin_; }
   constexpr value_type* end() noexcept { return end_; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  value_type& operator[](size_t i) noexcept {
-    return IRS_ASSERT(i < size()), begin_[i];
-  }
-  value_type* begin() noexcept { return begin_; }
-  value_type* end() noexcept { return end_; }
-#endif
   constexpr const value_type* begin() const noexcept { return begin_; }
   constexpr const value_type* end() const noexcept { return end_; }
 

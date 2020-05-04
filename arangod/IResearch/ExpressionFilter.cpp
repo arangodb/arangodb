@@ -46,9 +46,11 @@ inline irs::filter::prepared::ptr compileQuery(
   typedef typename std::enable_if<std::is_base_of<irs::filter::prepared, T>::value, T>::type type_t;
 
   irs::bstring stats(order.stats_size(), 0);
+  auto* stats_buf = const_cast<irs::byte_type*>(stats.data());
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  irs::fixed_terms_collectors(order, 0).finish(&stats[0], index);
+  order.prepare_stats(stats_buf);
+  order.prepare_collectors(stats_buf, index);
 
   return irs::filter::prepared::make<type_t>(ctx, std::move(stats), boost);
 }

@@ -42,9 +42,15 @@ namespace utf8 {
 namespace unchecked {
 
 template<typename octet_iterator>
-class break_iterator : public std::iterator<std::forward_iterator_tag, std::string> {
-  public:
-  typedef unchecked::iterator<octet_iterator> utf8iterator;
+class break_iterator {
+ public:
+  using utf8iterator = unchecked::iterator<octet_iterator>;
+
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = std::string;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
 
   break_iterator(utf8::uint32_t delim, const octet_iterator& begin, const octet_iterator& end)
     : delim_(delim), wbegin_(begin), wend_(begin), end_(end) {
@@ -521,7 +527,3 @@ void json_doc_generator::reset() {
 }
 
 NS_END // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
