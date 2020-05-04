@@ -1,7 +1,10 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Upgraded Swagger UI to 3.25.1
+* Fixed issue #11525: Address security vulnerability by updating
+  Swagger-UI dependency
+
+  Upgraded Swagger UI to 3.25.1
 
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
