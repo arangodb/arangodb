@@ -246,6 +246,53 @@ class OutputAqlItemRow {
   template <class ItemRowType>
   void moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard);
 
+  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {
+    return numRowsWritten();
+  }
+
+  [[nodiscard]] size_t numRegistersToWrite() const {
+    return outputRegisters().size();
+  }
+
+  [[nodiscard]] bool allValuesWritten() const {
+    // If we have a shadowRow in the output, it counts as written
+    // if not it only counts is written, if we have all registers filled.
+    return block().isShadowRow(_baseIndex) || _numValuesWritten == numRegistersToWrite();
+  }
+
+  [[nodiscard]] inline AqlItemBlock const& block() const {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
+  inline AqlItemBlock& block() {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
+  enum class AdaptRowDepth : signed int {
+    DecreaseDepth = -1,
+    Unchanged = 0,
+    IncreaseDepth = 1
+  };
+
+  static auto depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
+
+  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
+  void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
+
+  template <class ItemRowType, CopyOrMove>
+  void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
+
+  template <class ItemRowType>
+  void memorizeRow(ItemRowType const& sourceRow);
+
+  template <class ItemRowType>
+  bool testIfWeMustClone(ItemRowType const& sourceRow) const;
+
+  template <class ItemRowType>
+  void adjustShadowRowDepth(ItemRowType const& sourceRow);
+
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
@@ -298,54 +345,6 @@ class OutputAqlItemRow {
   std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
   RegIdSetStack const& _registersToKeep;
   std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
-
- private:
-  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {
-    return numRowsWritten();
-  }
-
-  [[nodiscard]] size_t numRegistersToWrite() const {
-    return outputRegisters().size();
-  }
-
-  [[nodiscard]] bool allValuesWritten() const {
-    // If we have a shadowRow in the output, it counts as written
-    // if not it only counts is written, if we have all registers filled.
-    return block().isShadowRow(_baseIndex) || _numValuesWritten == numRegistersToWrite();
-  }
-
-  [[nodiscard]] inline AqlItemBlock const& block() const {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
-
-  inline AqlItemBlock& block() {
-    TRI_ASSERT(_block != nullptr);
-    return *_block;
-  }
-
-  enum class AdaptRowDepth : signed int {
-    DecreaseDepth = -1,
-    Unchanged = 0,
-    IncreaseDepth = 1
-  };
-
-  static auto depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
-
-  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
-  void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
-
-  template <class ItemRowType, CopyOrMove>
-  void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
-
-  template <class ItemRowType>
-  void memorizeRow(ItemRowType const& sourceRow);
-
-  template <class ItemRowType>
-  bool testIfWeMustClone(ItemRowType const& sourceRow) const;
-
-  template <class ItemRowType>
-  void adjustShadowRowDepth(ItemRowType const& sourceRow);
 };
 }  // namespace arangodb::aql
 
