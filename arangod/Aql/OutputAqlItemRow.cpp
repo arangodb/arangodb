@@ -413,9 +413,9 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   // The exceptions are SubqueryStart and SubqueryEnd nodes, where the depth
   // of all rows increases or decreases, respectively. In these cases, we have
   // to adapt the depth by plus one or minus one, respectively.
-  auto const rowDepth = std::invoke([&]() -> size_t {
-    bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
-    auto const baseRowDepth = std::invoke([&]() -> size_t {
+  auto const rowDepth = std::invoke([&sourceRow]() -> size_t {
+    static bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
+    auto const baseRowDepth = std::invoke([&sourceRow]() -> size_t {
       if constexpr (isShadowRow) {
         return sourceRow.getDepth() + 1;
       } else {
@@ -426,7 +426,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
     static_assert(isShadowRow || delta >= 0);
     return baseRowDepth + delta;
   });
-  auto const& regsToKeep = std::invoke([&] {
+  auto const& regsToKeep = std::invoke([this, rowDepth] {
     auto const roffset = rowDepth + 1;
 
     TRI_ASSERT(roffset <= registersToKeep().size());
