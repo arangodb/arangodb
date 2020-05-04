@@ -198,6 +198,7 @@ struct Socket<fuerte::SocketType::Unix> {
   }
 
   void cancel() {
+    timer.cancel();
     if (socket.is_open()) {  // non-graceful shutdown
       asio_ns::error_code ec;
       socket.close(ec);

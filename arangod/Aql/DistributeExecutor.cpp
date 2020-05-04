@@ -190,7 +190,7 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
       // the API requires to know what it is.
       if (block->isShadowRow(i)) {
         ShadowAqlItemRow toCopy{block, i};
-        output.copyRow(toCopy);
+        output.moveRow(toCopy);
       } else {
         InputAqlItemRow toCopy{block, i};
         output.copyRow(toCopy);

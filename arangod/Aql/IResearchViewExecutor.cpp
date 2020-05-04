@@ -559,7 +559,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   ExecutionPlan const* plan = &infos().plan();
 
   iresearch::QueryContext const queryCtx = {&_trx, plan, plan->getAst(),
-                                  &_ctx, &infos().outVariable()};
+                                            &_ctx, _reader.get(), &infos().outVariable()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;

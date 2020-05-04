@@ -124,7 +124,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
 
   // optimization time check
   {
-    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
@@ -149,7 +149,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
       mockCtx->setTrx(&trx);
     }
 
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);

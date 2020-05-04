@@ -41,6 +41,9 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   ~SharedQueryState() = default;
 
   void invalidate();
+  bool isValid() const {
+    return _valid.load(std::memory_order_relaxed);
+  }
 
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
@@ -85,6 +88,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   void setWakeupHandler(std::function<bool()> const& cb);
 
   void resetWakeupHandler();
+  
+  void resetNumWakeups();
   
   /// execute a task in parallel if capacity is there
   template<typename F>

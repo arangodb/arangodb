@@ -28,6 +28,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/lz4compression.hpp"
 #include "index/merge_writer.hpp"
+#include "index/comparer.hpp"
 
 namespace tests {
   class merge_writer_tests: public ::testing::Test {
@@ -2469,6 +2470,125 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+namespace {
+struct binary_comparer : public iresearch::comparer {
+ protected:
+  bool less(const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs) const override {
+    if (rhs.null() != lhs.null()) {
+      return lhs.null();
+    }
+    if (!lhs.null()) {
+      return lhs < rhs;
+    }
+    return false;
+  }
+};
+} // namespace
+
+TEST_F(merge_writer_tests, test_merge_writer_sorted) {
+  std::string field("title");
+  std::string field2("trigger"); // field present in all docs with same term -> will trigger out of order
+  std::string value2{ "AAA" };
+  std::string data1("A");
+  std::string data2("C");
+  std::string data3("B");
+  std::string data4("D");
+  tests::document doc1;
+  tests::document doc2;
+  tests::document doc3;
+  tests::document doc4;
+
+  doc1.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc1.insert(std::make_shared<tests::templates::string_field>(field, data1));
+  doc1.sorted = doc1.indexed.find(field)[0];
+  doc2.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc2.insert(std::make_shared<tests::templates::string_field>(field, data2));
+  doc2.sorted = doc2.indexed.find(field)[0];
+  doc3.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc3.insert(std::make_shared<tests::templates::string_field>(field, data3));
+  doc3.sorted = doc3.indexed.find(field)[0];
+  doc4.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc4.insert(std::make_shared<tests::templates::string_field>(field, data4));
+  doc4.sorted = doc4.indexed.find(field)[0];
+
+  auto codec_ptr = irs::formats::get("1_3");
+  ASSERT_NE(nullptr, codec_ptr);
+  irs::memory_directory dir;
+  binary_comparer test_comparer;
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true);
+  };
+  // populate directory
+  {
+    iresearch::index_writer::init_options opts;
+    opts.comparator = &test_comparer;
+    opts.column_info = column_info;
+    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE, opts);
+    ASSERT_TRUE(insert(*writer,
+      doc1.indexed.begin(), doc1.indexed.end(),
+      doc1.stored.begin(), doc1.stored.end(),
+      doc1.sorted));
+    ASSERT_TRUE(insert(*writer,
+      doc2.indexed.begin(), doc2.indexed.end(),
+      doc2.stored.begin(), doc2.stored.end(),
+      doc2.sorted));
+    writer->commit();
+
+    ASSERT_TRUE(insert(*writer,
+      doc3.indexed.begin(), doc3.indexed.end(),
+      doc3.stored.begin(), doc3.stored.end(),
+      doc3.sorted));
+    ASSERT_TRUE(insert(*writer,
+      doc4.indexed.begin(), doc4.indexed.end(),
+      doc4.stored.begin(), doc4.stored.end(),
+      doc4.sorted));
+    writer->commit();
+
+    // this missing doc will trigger sorting error in merge writer as it will be mapped to eof
+    // and block all documents from same segment to be written in correct order.
+    // to trigger error documents from second segment need docuemnt from first segment to maintain merged order
+    auto query_doc1 = iresearch::iql::query_builder().build(field + "==A", std::locale::classic());
+    writer->documents().remove(std::move(query_doc1.filter));
+    writer->commit();
+  }
+
+
+  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(2, reader[0].docs_count());
+  ASSERT_EQ(2, reader[1].docs_count());
+  ASSERT_EQ(1, reader[0].live_docs_count());
+  ASSERT_EQ(2, reader[1].live_docs_count());
+
+
+  irs::merge_writer writer(dir, column_info, &test_comparer);
+  writer.add(reader[0]);
+  writer.add(reader[1]);
+
+  irs::index_meta::index_segment_t index_segment;
+
+  index_segment.meta.codec = codec_ptr;
+  ASSERT_TRUE(writer.flush(index_segment));
+
+  auto segment = irs::segment_reader::open(dir, index_segment.meta);
+  ASSERT_EQ(3, segment.docs_count());
+  ASSERT_EQ(3, segment.live_docs_count());
+  auto docs = segment.docs_iterator();
+  auto column = segment.column_reader(field);
+  auto bytes_values = column->values();
+
+  auto expected_id = iresearch::doc_limits::min();
+  irs::bytes_ref value;
+  irs::bytes_ref_input in;
+  std::vector<std::string> expected_columns{ "B", "C", "D" };
+  size_t idx = 0;
+  while (docs->next()) {
+    SCOPED_TRACE(testing::Message("Doc id ") << expected_id);
+    EXPECT_EQ(expected_id, docs->value());
+    ASSERT_TRUE(bytes_values(expected_id, value)); in.reset(value);
+    auto actual = irs::read_string<std::string>(in);
+    EXPECT_EQ(expected_columns[idx++], actual);
+    ++expected_id;
+  }
+}
