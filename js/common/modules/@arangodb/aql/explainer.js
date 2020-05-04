@@ -1620,6 +1620,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
+      case 'ParallelStartNode':
+        return `${keyword('PARALLEL')} ( ${annotation(`/* parallelization begin */`)}` ;
+      case 'ParallelEndNode':
+        return `) ${annotation(`/* parallelization end */`)}`;
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
       case 'SubqueryStartNode':
@@ -1845,6 +1849,8 @@ function processQuery(query, explain, planIndex) {
     if (node.type === 'SubqueryEndNode' && !node.inVariable && subqueries.length > 0) {
       // special hack for spliced subqueries that do not return any data
       --level;
+    } else if (node.type === 'ParallelEndNode') {
+      --level;
     }
   };
 
@@ -1860,6 +1866,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'ParallelStartNode',
       'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
