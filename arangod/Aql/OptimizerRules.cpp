@@ -7650,9 +7650,6 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           break;
         }
 
-        case EN::REMOTE:
-        case EN::SCATTER:
-        case EN::GATHER:
         case EN::DISTRIBUTE:
 
         case EN::INSERT:

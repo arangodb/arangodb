@@ -7644,12 +7644,15 @@ AqlValue Functions::InternalCount(arangodb::aql::ExpressionContext* expressionCo
     return AqlValue(AqlValueHintNull());
   }
 
-  if (value.length() == 0) {
-    return AqlValue(AqlValueHintUInt(0));
+  uint64_t sum = 0;
+  size_t const n = value.length();
+  for (size_t i = 0; i < n; ++i) {
+    bool mustDestroy;
+    AqlValue v = value.at(static_cast<int64_t>(i), mustDestroy, false);
+    sum += static_cast<uint64_t>(v.toInt64());
   }
 
-  bool mustDestroy;
-  return value.at(0, mustDestroy, true);
+  return AqlValue(AqlValueHintUInt(sum));
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
