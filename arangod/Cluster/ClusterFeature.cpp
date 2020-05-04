@@ -526,7 +526,7 @@ void ClusterFeature::start() {
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache->start();
     LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
-    _agencyCache->waitFor(1);
+    _agencyCache->waitFor(1).get();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER) << "Agency cache is ready.";
   }
 

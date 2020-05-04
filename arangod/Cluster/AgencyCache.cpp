@@ -138,19 +138,16 @@ void AgencyCache::run() {
   _commitIndex = 0;
   _readDB.clear();
   double wait = 0.0;
-  VPackBuilder rb;
-  std::unordered_set<uint64_t> toCall;
+
   // Long poll to agency
   auto sendTransaction =
-    [&](VPackBuilder& r) {
+    [&]() {
       index_t commitIndex = 0;
       {
         std::lock_guard g(_storeLock);
-        commitIndex = _commitIndex;
+        commitIndex = _commitIndex+1;
       }
-      auto ret = AsyncAgencyComm().poll(60s, commitIndex+1);
-      //r.add(ret.value());
-      return ret;
+      return AsyncAgencyComm().poll(60s, commitIndex);
     };
 
   // while not stopping
@@ -162,10 +159,9 @@ void AgencyCache::run() {
   //       apply logs to local cache
   //   else
   //     wait ever longer until success
-
+  std::unordered_set<uint64_t> toCall;
   while (!this->isStopping()) {
-
-    rb.clear();
+    
     toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
 
@@ -175,10 +171,15 @@ void AgencyCache::run() {
     // * Incremental change to cache (firstIndex != 0)
     //   {..., result:{commitIndex:X, firstIndex:Y, log:[]}}
 
-    auto ret = sendTransaction(rb)
+    auto ret = sendTransaction()
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
           if (rb.ok() && rb.statusCode() == arangodb::fuerte::StatusOK) {
+            index_t curIndex = 0;
+            {
+              std::lock_guard g(_storeLock);
+              curIndex = _commitIndex;
+            }
             auto slc = rb.slice();
             wait = 0.;
             TRI_ASSERT(slc.hasKey("result"));
@@ -191,6 +192,14 @@ void AgencyCache::run() {
             index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
 
             if (firstIndex > 0) {
+              if (firstIndex != curIndex) {
+                LOG_TOPIC("a9a09", WARN, Logger::CLUSTER) <<
+                  "Logs from poll start with index " << firstIndex <<
+                  " we requested logs from and including " << curIndex << " retrying.";
+                if (wait <= 1.9) {
+                  wait += 0.1;
+                }
+              }
               std::lock_guard g(_storeLock);
               TRI_ASSERT(rs.hasKey("log"));
               TRI_ASSERT(rs.get("log").isArray());
