@@ -1347,6 +1347,9 @@ bool ExecutionNode::alwaysCopiesRows() const {
     case ExecutionNode::REMOTE:
     case ExecutionNode::SCATTER:
     case ExecutionNode::GATHER:
+    case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       TRI_ASSERT(false);
@@ -2492,8 +2495,8 @@ void ParallelStartNode::cloneRegisterPlan(ExecutionNode* dependency) {
   TRI_ASSERT(getFirstDependency() == dependency);
   _registerPlan = dependency->getRegisterPlan();
   _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
 }
 
@@ -2513,8 +2516,8 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto regsToKeep = calcRegsToKeep();
+  auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before
   TRI_ASSERT(regsToClear.empty());
@@ -2557,8 +2560,8 @@ void ParallelEndNode::cloneRegisterPlan(ExecutionNode* dependency) {
   TRI_ASSERT(getFirstDependency() == dependency);
   _registerPlan = dependency->getRegisterPlan();
   _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
 }
 
