@@ -236,16 +236,6 @@ class OutputAqlItemRow {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
-  enum class CopyOrMove { COPY, MOVE };
-
-  template <class ItemRowType, CopyOrMove copyOrMove>
-  void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
-
-  /// @brief move the value into the given output registers and count the value
-  /// as written in _numValuesWritten.
-  template <class ItemRowType>
-  void moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard);
-
   [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {
     return numRowsWritten();
   }
@@ -270,6 +260,8 @@ class OutputAqlItemRow {
     return *_block;
   }
 
+  enum class CopyOrMove { COPY, MOVE };
+
   enum class AdaptRowDepth : signed int {
     DecreaseDepth = -1,
     Unchanged = 0,
@@ -278,11 +270,19 @@ class OutputAqlItemRow {
 
   static auto depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
 
+  template <class ItemRowType, CopyOrMove copyOrMove>
+  void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
+
   template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
   void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
 
   template <class ItemRowType, CopyOrMove>
   void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
+
+  /// @brief move the value into the given output registers and count the value
+  /// as written in _numValuesWritten.
+  template <class ItemRowType>
+  void moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard);
 
   template <class ItemRowType>
   void memorizeRow(ItemRowType const& sourceRow);
