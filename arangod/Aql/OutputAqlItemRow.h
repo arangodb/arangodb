@@ -87,6 +87,20 @@ class OutputAqlItemRow {
   void consumeShadowRow(RegisterId registerId,
                         ShadowAqlItemRow const& sourceRow, AqlValueGuard& guard);
 
+  // Transform the given input AqlItemRow into a relevant ShadowRow.
+  // The data of this row will be copied.
+  void createShadowRow(InputAqlItemRow const& sourceRow);
+
+  // Increase the depth of the given shadowRow. This needs to be called
+  // whenever you start a nested subquery on every outer subquery shadowrow
+  // The data of this row will be copied.
+  void increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
+
+  // Decrease the depth of the given shadowRow. This needs to be called
+  // whenever you finish a nested subquery on every outer subquery shadowrow
+  // The data of this row will be copied.
+  void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
+
   // Reuses the value of the given register that has been inserted in the output
   // row before. This call cannot be used on the first row of this output block.
   // If the reusing does not work this call will return `false` caller needs to
@@ -184,20 +198,6 @@ class OutputAqlItemRow {
   // the number of written rows contained in the block than
   // the number of written rows, that could potentially be more.
   void setMaxBaseIndex(std::size_t index);
-
-  // Transform the given input AqlItemRow into a relevant ShadowRow.
-  // The data of this row will be copied.
-  void createShadowRow(InputAqlItemRow const& sourceRow);
-
-  // Increase the depth of the given shadowRow. This needs to be called
-  // whenever you start a nested subquery on every outer subquery shadowrow
-  // The data of this row will be copied.
-  void increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
-
-  // Decrease the depth of the given shadowRow. This needs to be called
-  // whenever you finish a nested subquery on every outer subquery shadowrow
-  // The data of this row will be copied.
-  void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
 
   void toVelocyPack(velocypack::Options const* options, velocypack::Builder& builder);
 
