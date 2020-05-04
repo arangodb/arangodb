@@ -322,6 +322,9 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+    // remove parallel start and end nodes from queries in which they are unsupported
+    deParallelizeRule,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.

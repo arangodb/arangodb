@@ -4495,6 +4495,8 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
       }
 
       switch (type) {
+        case EN::PARALLEL_START:
+        case EN::PARALLEL_END:
         case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
         case EN::INSERT:
@@ -7872,4 +7874,61 @@ void arangodb::aql::decayUnnecessarySortedGather(Optimizer* opt,
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief remove parallel start and end nodes from queries in which they are unsupported
+void arangodb::aql::deParallelizeRule(Optimizer* opt, 
+                                      std::unique_ptr<ExecutionPlan> plan, 
+                                      OptimizerRule const& rule) {
+  ::arangodb::containers::HashSet<ExecutionNode*> toRemove;
+  std::vector<std::pair<ExecutionNode*, bool>> found;
+    
+  std::function<bool(ExecutionNode*, std::vector<std::pair<ExecutionNode*, bool>>&)> visit = 
+      [&toRemove, &visit](ExecutionNode* root, std::vector<std::pair<ExecutionNode*, bool>>& found) {
+    // true on coordinator, false on DB-Server
+    bool isCoordinator = !ServerState::instance()->isClusterRole();
+    bool isSafe = found.empty() || found.back().second;
+    auto current = root;
+    while (current != nullptr) {
+      auto type = current->getType();
+      if (type == EN::REMOTE) {
+        // flip location
+        isCoordinator = !isCoordinator;
+        if (!found.empty()) {
+          isSafe = false;
+        }
+      } else if (type == EN::INSERT || type == EN::UPDATE || type == EN::REPLACE || type == EN::REMOVE || type == EN::UPSERT) {
+        // parallelization of modification operations is currently unsupported 
+        isSafe = false;
+      } else if (type == EN::PARALLEL_START) {
+        TRI_ASSERT(!found.empty());
+        auto& top = found.back();
+        if (!top.second || !isSafe) {
+          toRemove.emplace(top.first);
+          toRemove.emplace(current);
+        }
+        found.pop_back();
+      } else if (type == EN::PARALLEL_END) {
+        if (!found.empty()) {
+          isSafe = false;
+        }
+        found.push_back(std::make_pair(current, isSafe));
+      } else if (type == EN::SUBQUERY) {
+        // call ourselves recursively
+        auto sn = ExecutionNode::castTo<SubqueryNode const*>(current);
+        isSafe = visit(sn->getSubquery(), found);
+      }
+
+      current = current->getFirstDependency();
+    }
+
+    return isSafe;
+  };
+
+  visit(plan->root(), found);
+
+  if (!toRemove.empty()) {
+    plan->unlinkNodes(toRemove);
+  }
+  opt->addPlan(std::move(plan), rule, !toRemove.empty());
 }
