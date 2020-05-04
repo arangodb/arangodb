@@ -41,6 +41,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -247,21 +248,16 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     }
     vocbase.release();
   });
-  
-  TRI_vocbase_col_status_e status;
-  int res = vocbase.useCollection(&_logicalCollection, status);
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  auto collGuard =
-  scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
+
+  // makes sure collection doesn't get unloaded
+  CollectionGuard guard(&vocbase, _logicalCollection.id());
   
   uint64_t snapNumberOfDocuments = 0;
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
     auto lockGuard = scopeGuard([this] { unlockWrite(); });
-    res = lockWrite(transaction::Options::defaultLockTimeout);
+    int res = lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);

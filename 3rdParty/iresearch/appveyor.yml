@@ -16,40 +16,6 @@ environment:
   matrix:
 
   ############################################################################
-  # Visual Studio 2015
-  ############################################################################
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      USE_SIMDCOMP: Off
-      CONFIGURATION: Debug
-      
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*type_utils*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Debug
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs*
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      USE_SIMDCOMP: Off
-      CONFIGURATION: Release
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:*europarl*/fs* # tests with europarl_docs take longer than an hour on MSVC2015
-      VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
-      BOOST_ROOT: C:/Libraries/boost_1_60_0
-      CONFIGURATION: Release
-
-  ############################################################################
   # Visual Studio 2017
   ############################################################################
 

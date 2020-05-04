@@ -1,6 +1,22 @@
 devel
 -----
 
+* Fixed a bug in Maintenance which could prevent collection creation from
+  working (made CreateCollection action idempotent).
+
+* Integrated libiresearch log topic properly into ArangoDB logging system
+
+* Fix potential undefined behavior in some operations issued to the REST
+  handler at `/_api/collection` in cluster mode.
+
+* Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
+  is not another one hiding somewhere.
+
+* Fix spurious bugs in `resilience_move` tests due to replication context of 
+  to-be-dropped collections lingering around until timeout.
+
+* Fix invalid value of `isSystem` attribute for non-system databases.
+
 * Fix REST API `/_admin/cluster/removeServer`.
   This also fixes the removal of servers via the web interface.
 

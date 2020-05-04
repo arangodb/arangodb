@@ -123,8 +123,6 @@ class LogicalCollection : public LogicalDataSource {
   TRI_vocbase_col_status_e getStatusLocked();
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-  void executeWhileStatusLocked(std::function<void()> const& callback);
-  bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
   /// @brief try to fetch the collection status under a lock
   /// the boolean value will be set to true if the lock could be acquired

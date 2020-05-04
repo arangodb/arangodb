@@ -26,9 +26,8 @@
 
 using namespace arangodb;
 
-// ServerDefaults ServerDefaults::createDefaults(TRI_vocbase_t&& vocbase) {}
-ServerDefaults::ServerDefaults(TRI_vocbase_t& vocbase) {
-  auto& cl = vocbase.server().getFeature<ClusterFeature>();
+ServerDefaults::ServerDefaults(application_features::ApplicationServer& server) {
+  auto const& cl = server.getFeature<ClusterFeature>();
   writeConcern = cl.writeConcern();
   replicationFactor = cl.defaultReplicationFactor();
 }

@@ -761,26 +761,26 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   irs::bytes_ref actual_value;
 
   query_builder::branch_builder_function_t fnFail = [](
-    boolean_function::contextual_buffer_t&,
-    const std::locale&,
-    const iresearch::string_ref&,
-    void* cookie,
-    const boolean_function::contextual_function_args_t&
-  )->bool {
+      boolean_function::contextual_buffer_t&,
+      const std::locale&,
+      const iresearch::string_ref&,
+      void* cookie,
+      const boolean_function::contextual_function_args_t&)->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
   query_builder::branch_builder_function_t fnEqual = [](
-    boolean_function::contextual_buffer_t& node,
-    const std::locale& locale,
-    const iresearch::string_ref& field,
-    void* cookie,
-    const boolean_function::contextual_function_args_t& args
-  )->bool {
+      boolean_function::contextual_buffer_t& node,
+      const std::locale& locale,
+      const iresearch::string_ref& field,
+      void* cookie,
+      const boolean_function::contextual_function_args_t& args)->bool {
     iresearch::bstring value;
     bool bValue;
     args[0].value(value, bValue, locale, cookie);
-    node.proxy<iresearch::by_term>().field(field).term(std::move(value));
+    auto& filter = node.proxy<iresearch::by_term>();
+    *filter.mutable_field() = field;
+    filter.mutable_options()->term = std::move(value);
     return true;
   };
   iresearch::memory_directory dir;
@@ -901,7 +901,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     bool bValue;
     args[0].value(field, bField, locale, cookie);
     args[1].value(value, bValue, locale, cookie);
-    node.proxy<iresearch::by_term>().field(iresearch::ref_cast<char>(field)).term(std::move(value));
+    auto& filter = node.proxy<iresearch::by_term>();
+    *filter.mutable_field() = iresearch::ref_cast<char>(field);
+    filter.mutable_options()->term = std::move(value);
     return true;
   };
   iresearch::memory_directory dir;
@@ -990,7 +992,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
         return false;
       }
 
-      root.add<iresearch::by_term>().field("name").term(std::move(value));
+      auto& filter = root.add<iresearch::by_term>();
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->term = std::move(value);
 
       return true;
     };
@@ -1321,7 +1325,3 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_EQ(0, query.error->find("order conversion error, node: @9\n'b'('c'()@8)@9 ASC"));
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

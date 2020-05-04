@@ -41,19 +41,19 @@ namespace aql {
 //
 class ModificationExecutorAccumulator {
  public:
-  ModificationExecutorAccumulator() { _accumulator.openArray(); };
+  ModificationExecutorAccumulator() { _accumulator.openArray(); }
 
   VPackSlice closeAndGetContents() {
     _accumulator.close();
     return _accumulator.slice();
-  };
+  }
 
   void add(VPackSlice const& doc) {
     TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.add(doc);
-  };
+  }
 
-  size_t nrOfDocuments() const { return _accumulator.slice().length(); };
+  size_t nrOfDocuments() const { return _accumulator.slice().length(); }
 
  private:
   VPackBuilder _accumulator;

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -1478,7 +1478,7 @@ class position final : public irs::position,
       refill();
       this->buf_pos_ = 0;
     }
-    if /*constexpr*/ (IteratorTraits::one_based_position_storage()) {
+    if constexpr (IteratorTraits::one_based_position_storage()) {
       value_ += (uint32_t)(!pos_limits::valid(value_));
     }
     value_ += this->pos_deltas_[this->buf_pos_];
@@ -1576,8 +1576,8 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
       const features& field,
       const attribute_view& attrs,
       const index_input* doc_in,
-      const index_input* pos_in,
-      const index_input* pay_in) {
+      [[maybe_unused]] const index_input* pos_in,
+      [[maybe_unused]] const index_input* pay_in) {
     features_ = field; // set field features
 
     assert(!IteratorTraits::frequency() || IteratorTraits::frequency() == features_.freq());
@@ -1613,12 +1613,12 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     estimate(term_state_.docs_count); // estimate iterator
     attrs_.emplace(scr_); // make score accessible from outside
 
-    if /*constexpr*/ (IteratorTraits::frequency()) {
+    if constexpr (IteratorTraits::frequency()) {
       assert(attrs.contains<frequency>());
       attrs_.emplace(freq_);
       term_freq_ = attrs.get<frequency>()->value;
 
-      if /*constexpr*/ (IteratorTraits::position()) {
+      if constexpr (IteratorTraits::position()) {
         doc_state state;
         state.pos_in = pos_in;
         state.pay_in = pay_in;
@@ -1671,9 +1671,9 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     while (begin_ < end_) {
       doc_.value += *begin_++;
 
-      if /*constexpr*/ (!IteratorTraits::position()) {
+      if constexpr (!IteratorTraits::position()) {
         if (doc_.value >= target) {
-          if /*constexpr*/ (IteratorTraits::frequency()) {
+          if constexpr (IteratorTraits::frequency()) {
             doc_freq_ = doc_freqs_ + relative_pos();
             assert((doc_freq_ - 1) >= doc_freqs_ && (doc_freq_ - 1) < std::end(doc_freqs_));
             freq_.value = doc_freq_[-1];
@@ -1726,10 +1726,10 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
     doc_.value += *begin_++; // update document attribute
 
-    if /*constexpr*/ (IteratorTraits::frequency()) {
+    if constexpr (IteratorTraits::frequency()) {
       freq_.value = *doc_freq_++; // update frequency attribute
 
-      if /*constexpr*/ (IteratorTraits::position()) {
+      if constexpr (IteratorTraits::position()) {
         pos_.notify(freq_.value);
         pos_.clear();
       }
@@ -1805,7 +1805,7 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
         docs_
       );
 
-      if /*constexpr*/ (IteratorTraits::frequency()) {
+      if constexpr (IteratorTraits::frequency()) {
         IteratorTraits::read_block(
           *doc_in_,
           postings_writer_base::BLOCK_SIZE,
@@ -1916,7 +1916,7 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
       doc_.value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
-      if /*constexpr*/ (IteratorTraits::position()) {
+      if constexpr (IteratorTraits::position()) {
         pos_.prepare(last); // notify positions
       }
     }
@@ -5781,8 +5781,10 @@ void init() {
   REGISTER_FORMAT(::format10);
   REGISTER_FORMAT(::format11);
   REGISTER_FORMAT(::format12);
+  REGISTER_FORMAT(::format13);
 #ifdef IRESEARCH_SSE2
   REGISTER_FORMAT(::format12simd);
+  REGISTER_FORMAT(::format13simd);
 #endif // IRESEARCH_SSE2
 #endif
 }
@@ -5797,7 +5799,3 @@ format::format(const irs::format::type_id& type) noexcept
 
 NS_END // version10
 NS_END // root
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

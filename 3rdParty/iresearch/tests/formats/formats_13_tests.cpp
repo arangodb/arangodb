@@ -43,7 +43,7 @@ TEST_P(format_13_test_case, read_zero_block_encryption) {
 
   // write segment with format13
   {
-    auto codec = irs::formats::get("1_3");
+    auto codec = irs::formats::get("1_3", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -77,7 +77,7 @@ TEST_P(format_13_test_case, write_zero_block_encryption) {
   dir().attributes().emplace<tests::rot13_encryption>(0);
 
   // write segment with format13
-  auto codec = irs::formats::get("1_3");
+  auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
   auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
@@ -113,7 +113,7 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
   field.name = "field";
   field.norm = 5;
 
-  auto codec = irs::formats::get("1_3");
+  auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
 
@@ -154,7 +154,7 @@ TEST_P(format_13_test_case, fields_read_write_wrong_encryption) {
 }
 
 TEST_P(format_13_test_case, column_meta_read_write_wrong_encryption) {
-  auto codec = irs::formats::get("1_3");
+  auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
 
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
@@ -202,7 +202,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_wrong_encryption) {
 
   // write segment with format10
   {
-    auto codec = irs::formats::get("1_3");
+    auto codec = irs::formats::get("1_3", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -233,7 +233,7 @@ TEST_P(format_13_test_case, open_ecnrypted_with_non_encrypted) {
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_3");
+    auto codec = irs::formats::get("1_3", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -265,7 +265,7 @@ TEST_P(format_13_test_case, open_non_ecnrypted_with_encrypted) {
 
   // write segment with format13
   {
-    auto codec = irs::formats::get("1_3");
+    auto codec = irs::formats::get("1_3", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -339,7 +339,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
   }
 
   // check index
-  auto codec = irs::formats::get("1_3");
+  auto codec = irs::formats::get("1_3", "1_0");
   ASSERT_NE(nullptr, codec);
   auto index = irs::directory_reader::open(dir(), codec);
   ASSERT_TRUE(index);
@@ -400,7 +400,7 @@ TEST_P(format_13_test_case, formats_10_13) {
 
   // write segment with format13
   {
-    auto codec = irs::formats::get("1_3");
+    auto codec = irs::formats::get("1_3", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_APPEND);
     ASSERT_NE(nullptr, writer);
@@ -502,7 +502,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 7>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 7>
     ),
-    ::testing::Values("1_3")
+    ::testing::Values(tests::format_info{"1_3", "1_0"})
   ),
   tests::to_string
 );

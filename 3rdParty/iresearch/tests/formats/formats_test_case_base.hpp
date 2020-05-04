@@ -88,8 +88,8 @@ class format_test_case : public index_test_base {
     friend class postings;
 
     uint32_t end_;
-    irs::offset offs_{};
-    irs::payload pay_{};
+    irs::offset offs_;
+    irs::payload pay_;
     char pay_data_[21]; // enough to hold numbers up to max of uint64_t
   };
 

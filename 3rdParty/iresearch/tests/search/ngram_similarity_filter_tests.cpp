@@ -29,19 +29,40 @@
 
 #include <functional>
 
+NS_LOCAL
+
+irs::by_ngram_similarity make_filter(const irs::string_ref& field,
+                                     const std::vector<irs::string_ref>& ngrams,
+                                     float_t threshold = 1.f) {
+  irs::by_ngram_similarity filter;
+  *filter.mutable_field() = field;
+  auto* opts = filter.mutable_options();
+  for (auto& ngram : ngrams) {
+    opts->ngrams.emplace_back(irs::ref_cast<irs::byte_type>(ngram));
+  }
+  opts->threshold = threshold;
+  return filter;
+}
+
+NS_END
+
 NS_BEGIN(tests)
 
 // ----------------------------------------------------------------------------
 // --SECTION--                            by_ngram_similarity filter base tests
 // ----------------------------------------------------------------------------
+
+TEST(ngram_similarity_base_test, options) {
+  irs::by_ngram_similarity_options opts;
+  ASSERT_TRUE(opts.ngrams.empty());
+  ASSERT_EQ(1.f, opts.threshold);
+}
+
 TEST(ngram_similarity_base_test, ctor) {
   irs::by_ngram_similarity q;
   ASSERT_EQ(irs::by_ngram_similarity::type(), q.type());
-  ASSERT_TRUE(q.empty());
-  ASSERT_EQ(0, q.size());
-  ASSERT_EQ(q.begin(), q.end());
+  ASSERT_EQ(irs::by_ngram_similarity_options{}, q.options());
   ASSERT_EQ(irs::no_boost(), q.boost());
-  ASSERT_DOUBLE_EQ(1., q.threshold());
   ASSERT_EQ("", q.field());
 
 
@@ -49,41 +70,6 @@ TEST(ngram_similarity_base_test, ctor) {
   ASSERT_EQ(2, features.size());
   ASSERT_TRUE(features.check<irs::frequency>());
   ASSERT_TRUE(features.check<irs::position>());
-}
-
-TEST(ngram_similarity_base_test, push_back_insert_clear) {
-  irs::by_ngram_similarity q;
-
-  // push_back
-  {
-    q.push_back("1");
-    const std::string s2 = "2";
-    q.push_back(s2);
-    const irs::bstring s3 = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
-    q.push_back(s3);
-    ASSERT_FALSE(q.empty());
-    ASSERT_EQ(3, q.size());
-
-    // check elements via iterators
-    {
-      auto it = q.begin();
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("1")), *it);
-      ++it;
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("2")), *it);
-      ++it;
-      ASSERT_NE(q.end(), it);
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("3")), *it);
-      ++it;
-      ASSERT_EQ(q.end(), it);
-    }
-  }
-
-  q.clear();
-  ASSERT_TRUE(q.empty());
-  ASSERT_EQ(0, q.size());
-  ASSERT_EQ(q.begin(), q.end());
 }
 
 TEST(ngram_similarity_base_test, boost) {
@@ -100,8 +86,7 @@ TEST(ngram_similarity_base_test, boost) {
 
     // simple disjunction
     {
-      irs::by_ngram_similarity q;
-      q.field("field").push_back("1").push_back("2").threshold(0.5f);
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -109,8 +94,7 @@ TEST(ngram_similarity_base_test, boost) {
 
     // multiple terms
     {
-      irs::by_ngram_similarity q;
-      q.field("field").push_back("1").push_back("2").push_back("3").push_back("4").threshold(0.5f);
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(irs::no_boost(), prepared->boost());
@@ -132,8 +116,7 @@ TEST(ngram_similarity_base_test, boost) {
 
     // simple disjunction
     {
-      irs::by_ngram_similarity q;
-      q.field("field").push_back("1").push_back("2").threshold(0.5f);
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
       q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
@@ -142,9 +125,8 @@ TEST(ngram_similarity_base_test, boost) {
 
     // multiple terms
     {
-      irs::by_ngram_similarity q;
-      q.field("field").push_back("1").push_back("2").push_back("3").push_back("4")
-        .threshold(0.5f).boost(boost);
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
+      q.boost(boost);
 
       auto prepared = q.prepare(irs::sub_reader::empty());
       ASSERT_EQ(boost, prepared->boost());
@@ -156,57 +138,28 @@ TEST(ngram_similarity_base_test, equal) {
   ASSERT_EQ(irs::by_ngram_similarity(), irs::by_ngram_similarity());
 
   {
-    irs::by_ngram_similarity q0;
-    q0.field("a");
-    q0.push_back("1");
-    q0.push_back("2");
-    q0.threshold(0.5);
-
-    irs::by_ngram_similarity q1;
-    q1.field("a");
-    q1.push_back("1");
-    q1.push_back("2");
-    q1.threshold(0.5);
+    irs::by_ngram_similarity q0 = make_filter("a", {"1", "2"}, 0.5f);
+    irs::by_ngram_similarity q1 = make_filter("a", {"1", "2"}, 0.5f);
     ASSERT_EQ(q0, q1);
 
     // different threshold
-    irs::by_ngram_similarity q2;
-    q2.field("a");
-    q2.push_back("1");
-    q2.push_back("2");
-    q2.threshold(0.25);
+    irs::by_ngram_similarity q2 = make_filter("a", {"1", "2"}, 0.25f);
     ASSERT_NE(q0, q2);
 
     // different terms
-    irs::by_ngram_similarity q3;
-    q3.field("a");
-    q3.push_back("1");
-    q3.push_back("3");
-    q3.threshold(0.5);
+    irs::by_ngram_similarity q3 = make_filter("a", {"1", "3"}, 0.5f);
     ASSERT_NE(q0, q3);
 
     // different terms count (less)
-    irs::by_ngram_similarity q4;
-    q4.field("a");
-    q4.push_back("1");
-    q4.threshold(0.5);
+    irs::by_ngram_similarity q4 = make_filter("a", {"1"}, 0.5f);
     ASSERT_NE(q0, q4);
 
     // different terms count (more)
-    irs::by_ngram_similarity q5;
-    q5.field("a");
-    q5.push_back("1");
-    q5.push_back("2");
-    q5.push_back("2");
-    q5.threshold(0.5);
+    irs::by_ngram_similarity q5 = make_filter("a", {"1", "2", "2"}, 0.5f);
     ASSERT_NE(q0, q5);
 
     //different field
-    irs::by_ngram_similarity q6;
-    q6.field("b");
-    q6.push_back("1");
-    q6.push_back("2");
-    q6.threshold(0.5);
+    irs::by_ngram_similarity q6 = make_filter("b", {"1", "2"}, 0.5f);
     ASSERT_NE(q0, q6);
   }
 }
@@ -230,14 +183,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1")
-    .push_back("2").push_back("3").push_back("4");
+  order.add<tests::sort::custom_sort>(false);
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -272,14 +222,11 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1")
-    .push_back("2").push_back("3").push_back("4");
+  order.add<tests::sort::custom_sort>(false);
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -314,14 +261,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1")
-    .push_back("2").push_back("3").push_back("4");
+  order.add<tests::sort::custom_sort>(false);
+
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -356,14 +301,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1")
-    .push_back("1");
+  order.add<tests::sort::custom_sort>(false);
+
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -399,14 +342,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1")
-    .push_back("2").push_back("1");
+  order.add<tests::sort::custom_sort>(false);
+
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "1"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -442,13 +383,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(1.).field("field").push_back("1").push_back("1");
+  order.add<tests::sort::custom_sort>(false);
+
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 1.0f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -476,21 +416,20 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     // sequence 2 4 2 4 1 3 1 3 pattern 1 2 3 4-> longest is 1 3  and 2 4 but frequency is 2
     // as only first longest counted
     {
-        tests::json_doc_generator gen(
-            "[{ \"seq\" : 1, \"field\": [ \"2\", \"4\", \"2\", \"4\", \"1\", \"3\", \"1\", \"3\"] }]",
-            &tests::generic_json_field_factory);
-        add_segment(gen);
+      tests::json_doc_generator gen(
+        "[{ \"seq\" : 1, \"field\": [ \"2\", \"4\", \"2\", \"4\", \"1\", \"3\", \"1\", \"3\"] }]",
+        &tests::generic_json_field_factory);
+      add_segment(gen);
     }
 
     auto rdr = open_reader();
     irs::order order;
-    auto& scorer = order.add<tests::sort::custom_sort>(false);
-    irs::by_ngram_similarity filter;
-    filter.threshold(0.5).field("field").push_back("1").push_back("2").push_back("3").push_back("4");
+    order.add<tests::sort::custom_sort>(false);
+
+    irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
     auto prepared_order = order.prepare();
     auto prepared = filter.prepare(rdr, prepared_order);
-    size_t count = 0;
     for (const auto& sub : rdr) {
         auto docs = prepared->execute(sub, prepared_order);
         auto& doc = docs->attributes().get<irs::document>();
@@ -526,13 +465,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1").push_back("5").push_back("6").push_back("2");
+  order.add<tests::sort::custom_sort>(false);
+
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "5", "6", "2"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -568,15 +506,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("1")
-    .push_back("2").push_back("3").push_back("4").push_back("5").push_back("1");
+  order.add<tests::sort::custom_sort>(false);
 
+  irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "3", "4", "5", "1"}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -612,14 +547,12 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
 
   auto rdr = open_reader();
   irs::order order;
-  auto& scorer = order.add<tests::sort::custom_sort>(false);
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("");
+  order.add<tests::sort::custom_sort>(false);
 
+  irs::by_ngram_similarity filter = make_filter("field", {""}, 0.5f);
 
   auto prepared_order = order.prepare();
   auto prepared = filter.prepare(rdr, prepared_order);
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
     auto& doc = docs->attributes().get<irs::document>();
@@ -653,13 +586,9 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.1f).field("field").push_back("ee")
-    .push_back("we").push_back("qq").push_back("rr")
-    .push_back("ff").push_back("never_match");
+  irs::by_ngram_similarity filter = make_filter("field", {"ee", "we", "qq", "rr", "ff", "never_match"}, 0.1f);
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
@@ -681,12 +610,9 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("ee")
-    .push_back("ss").push_back("pa").push_back("rr");
+  irs::by_ngram_similarity filter = make_filter("field", {"ee", "ss", "pa", "rr" }, 0.5f);
 
   auto prepared = filter.prepare(rdr, irs::order::prepared::unordered());
-  size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
     auto& doc = docs->attributes().get<irs::document>();
@@ -707,10 +633,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.1f).field("field").push_back("ee")
-    .push_back("ss").push_back("qq").push_back("rr")
-    .push_back("ff").push_back("never_match");
+  irs::by_ngram_similarity filter = make_filter("field", {"ee", "ss", "qq", "rr", "ff", "never_match"}, 0.1f);
 
   docs_t expected{ 1, 3, 5, 6, 7, 8, 9, 10, 12};
   const size_t expected_size = expected.size();
@@ -741,10 +664,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5).field("field").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll").push_back("never_match");
+  irs::by_ngram_similarity filter = make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.5f);
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
@@ -775,10 +695,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
@@ -809,10 +726,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.33f).field("field").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll").push_back("never_match");
+  irs::by_ngram_similarity filter = make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.33f);
 
   docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
@@ -844,10 +758,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.333f).field("field").push_back("at")
-    .push_back("never_match").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"at", "never_match", "la", "as", "ll"}, 0.333f);
 
   docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
@@ -879,10 +790,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("at")
-    .push_back("never_match").push_back("never_match2").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"at", "never_match", "never_match2", "la", "as", "ll"}, 0.5f);
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
@@ -914,10 +822,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.28f).field("field").push_back("at")
-    .push_back("never_match").push_back("tl").push_back("never_match2").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"at", "never_match", "tl", "never_match2", "la", "as", "ll"}, 0.28f);
 
   docs_t expected{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
@@ -959,10 +864,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll").push_back("never_match");
+  irs::by_ngram_similarity filter = make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.5f);
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   irs::order order;
@@ -982,10 +884,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     ++finish_count;
   };
   scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-    return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+    return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-    return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+    return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
 
 
@@ -1028,10 +930,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
   docs_t expected{ 1, 2, 5, 8, 11, 12, 13};
   irs::order order;
@@ -1051,10 +950,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     ++finish_count;
   };
   scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-    return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+    return irs::memory::make_unique<tests::sort::custom_sort::prepared::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-    return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+    return irs::memory::make_unique<tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
 
 
@@ -1098,10 +997,9 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   }
 
   auto rdr = open_reader();
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll");
+
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
+
   docs_t expected{ 11, 12, 8, 13, 5, 1, 2};
   irs::order order;
   order.add<irs::tfidf_sort>(false).normalize(true);
@@ -1118,10 +1016,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
+
   docs_t expected{ 11, 12, 13, 1, 2, 8, 5};
   irs::order order;
   order.add<irs::tfidf_sort>(false).normalize(false);
@@ -1139,10 +1035,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
+
   docs_t expected{13, 11, 12, 2, 1, 8, 5};
   irs::order order;
   order.add<irs::bm25_sort>(false);
@@ -1160,10 +1054,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   auto rdr = open_reader();
 
-  irs::by_ngram_similarity filter;
-  filter.threshold(0.5f).field("field").push_back("never_match").push_back("at")
-    .push_back("tl").push_back("la").push_back("as")
-    .push_back("ll");
+  irs::by_ngram_similarity filter = make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
+
   docs_t expected{ 13, 11, 12, 2, 1, 8, 5};
   irs::order order;
   order.add<irs::bm25_sort>(false).b(1); // set to BM15 mode
@@ -1181,11 +1073,8 @@ INSTANTIATE_TEST_CASE_P(
       &tests::memory_directory,
       &tests::fs_directory,
       &tests::mmap_directory),
-    ::testing::Values("1_0", "1_3")),
+    ::testing::Values(tests::format_info{"1_0"},
+                      tests::format_info{"1_3", "1_0"})),
     tests::to_string);
 
 NS_END // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

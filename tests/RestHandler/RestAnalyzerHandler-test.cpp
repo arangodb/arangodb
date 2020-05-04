@@ -114,7 +114,6 @@ class RestAnalyzerHandlerTest
                                 arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope;  // (&execContext);
-  arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()
 
   RestAnalyzerHandlerTest()
       : server(),
@@ -124,11 +123,8 @@ class RestAnalyzerHandlerTest
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
         execContext(),
-        execContextScope(&execContext),
-        queryRegistry(0) {
+        execContextScope(&execContext) {
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
-
-    userManager->setQueryRegistry(&queryRegistry);
 
     // TODO: This should at the very least happen in the mock
     // create system vocbase

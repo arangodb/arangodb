@@ -28,6 +28,7 @@
 #ifndef IRESEARCH_DLL
   #include "tfidf.hpp"
   #include "bm25.hpp"
+  #include "boost_sort.hpp"
 #endif
 #include "utils/register.hpp"
 
@@ -120,6 +121,7 @@ NS_ROOT
   #ifndef IRESEARCH_DLL
     irs::bm25_sort::init();
     irs::tfidf_sort::init();
+    irs::boost_sort::init();
   #endif
 }
 
@@ -185,8 +187,6 @@ scorer_registrar::scorer_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }}
 
 scorer_registrar::operator bool() const noexcept {
@@ -194,7 +194,3 @@ scorer_registrar::operator bool() const noexcept {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

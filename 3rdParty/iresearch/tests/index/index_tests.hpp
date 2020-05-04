@@ -152,25 +152,27 @@ struct blocking_directory : directory_mock {
   std::mutex intermediate_commits_lock;
 }; // blocking_directory
 
-typedef std::tuple<dir_factory_f, const char*> index_test_context;
+struct format_info {
+  constexpr format_info(
+      const char* codec = nullptr,
+      const char* module = nullptr) noexcept
+    : codec(codec),
+      module(module) {
+  }
+
+  const char* codec;
+  const char* module;
+};
+
+typedef std::tuple<dir_factory_f, format_info> index_test_context;
 
 std::string to_string(const testing::TestParamInfo<index_test_context>& info);
 
 class index_test_base : public virtual test_param_base<index_test_context> {
  protected:
-  std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const {
-    dir_factory_f factory;
-    std::tie(factory, std::ignore) = GetParam();
+  std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
 
-    return (*factory)(&ctx).first;
-  }
-
-  irs::format::ptr get_codec() const {
-    const char* codec_name;
-    std::tie(std::ignore, codec_name) = GetParam();
-
-    return irs::formats::get(codec_name);
-  }
+  irs::format::ptr get_codec() const;
 
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }

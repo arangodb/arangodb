@@ -542,8 +542,8 @@ class IRESEARCH_API formats {
   //////////////////////////////////////////////////////////////////////////////
   static format::ptr get(
     const string_ref& name,
-    bool load_library = true
-  ) noexcept;
+    const string_ref& module = string_ref::NIL,
+    bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known formats in lib

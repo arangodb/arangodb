@@ -63,7 +63,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
   }
 
   if (target_size < ngram_size || src_size < ngram_size) {
-    if /*constexpr*/ (!search_semantics) {
+    if constexpr (!search_semantics) {
       if (target_size == 0 && src_size == 0) {
         return 1; // consider two empty strings as matched
       }
@@ -103,7 +103,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
       const T* rhs_ngram_end = s_ngram_start + ngram_size;
       float_t similarity = !search_semantics ? 0 : 1;
       for (const T* l = t_ngram_start, *r = s_ngram_start; l != t_ngram_end && r != rhs_ngram_end; ++l, ++r) {
-        if /*constexpr*/ (search_semantics) {
+        if constexpr (search_semantics) {
           if (*l != *r) {
             similarity = 0;
             break;
@@ -114,7 +114,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
           }
         }
       }
-      if /*constexpr*/ (!search_semantics) {
+      if constexpr (!search_semantics) {
         similarity = similarity / float_t(ngram_size);
       }
 

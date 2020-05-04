@@ -181,7 +181,7 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   GraphManager gmngr{vocbase};
   VPackBuilder result;
-  OperationResult r = gmngr.readGraphs(result, arangodb::aql::PART_DEPENDENT);
+  OperationResult r = gmngr.readGraphs(result);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -204,7 +204,7 @@ static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   GraphManager gmngr{vocbase};
   VPackBuilder result;
-  OperationResult r = gmngr.readGraphKeys(result, arangodb::aql::PART_DEPENDENT);
+  OperationResult r = gmngr.readGraphKeys(result);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());

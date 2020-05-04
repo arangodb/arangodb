@@ -164,7 +164,7 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   auto executorInfos = ModificationExecutorInfos(
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
-      _plan->getAst()->query()->trx(), std::move(options), collection(),
+      _plan->getAst()->query(), std::move(options), collection(),
       ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
@@ -256,7 +256,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   ModificationExecutorInfos infos(
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
-      _plan->getAst()->query()->trx(), std::move(options), collection(),
+      _plan->getAst()->query(), std::move(options), collection(),
       ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
@@ -370,7 +370,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
 
   auto executorInfos = ModificationExecutorInfos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query()->trx(),
+      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
@@ -457,7 +457,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 
   auto executorInfos = ModificationExecutorInfos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query()->trx(),
+      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
@@ -567,7 +567,7 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   auto executorInfos = ModificationExecutorInfos(
       inDoc, insert, update, outputNew, outputOld,
-      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query()->trx(),
+      RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
       std::move(options), collection(), ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),

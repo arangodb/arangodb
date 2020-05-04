@@ -24,11 +24,11 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_METHODS_H
 #define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
+#include "Aql/types.h"
 #include "Agency/AgencyComm.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
@@ -150,7 +150,7 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 ///        TraversalVariant
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+                             std::unordered_map<ServerID, aql::EngineId> const*,
                              arangodb::velocypack::Slice vertexId, size_t depth,
                              std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
                              std::vector<arangodb::velocypack::Slice>&,
@@ -170,7 +170,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
 Result fetchEdgesFromEngines(
             transaction::Methods& trx,
-            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+            std::unordered_map<ServerID, aql::EngineId> const* engines,
             arangodb::velocypack::Slice vertexId, bool backward,
             std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
             std::vector<arangodb::velocypack::Slice>& result,
@@ -188,7 +188,7 @@ Result fetchEdgesFromEngines(
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
+    std::unordered_map<ServerID, aql::EngineId> const*,
     std::unordered_set<arangodb::velocypack::StringRef>&,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
     std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake,
