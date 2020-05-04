@@ -412,6 +412,8 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
       << "Starting up with role " << roleString;
 }
 
+// IMPORTANT: Please make sure that you understand that the agency is not
+// available before ::start and this should not be accessed in this section.
 void ClusterFeature::prepare() {
   if (_enableCluster && _requirePersistedId && !ServerState::instance()->hasPersistedId()) {
     LOG_TOPIC("d2194", FATAL, arangodb::Logger::CLUSTER)
@@ -484,9 +486,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  //if (AsyncAgencyCommManager::INSTANCE != nullptr) {
-    //}
-
   if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myEndpoint,
                                                      _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
@@ -505,10 +504,10 @@ void ClusterFeature::prepare() {
         << "'. No role configured in agency (" << endpoints << ")";
     FATAL_ERROR_EXIT();
   }
-
-
 }
 
+// IMPORTANT: Please read the first comment block a couple of lines down, before
+// Adding code to this section.
 void ClusterFeature::start() {
 
   auto role = ServerState::instance()->getRole();
@@ -518,18 +517,24 @@ void ClusterFeature::start() {
     return;
   }
 
-  // if nonempty, it has already been set above
+  // We need to wait for any cluster operation, which needs access to the
+  // agency cache for it to become ready. The essentials in the cluster, namely
+  // ClusterInfo etc, need to start after first poll result from the agency.
+  // This is of great importance to not accidentally delete data facing an
+  // empty agency. There are also other measures that guard against such a
+  // outcome. But there is also no point continuing with a first agency poll. 
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache->start();
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
+    _agencyCache->waitFor(1);
+    LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER) << "Agency cache is ready.";
+  }
 
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
-  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->start();
-  }
-
   if (role == ServerState::ROLE_COORDINATOR) {
     double start = TRI_microtime();
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // in maintainer mode, a developer does not want to spend that much time
     // waiting for extra nodes to start up
