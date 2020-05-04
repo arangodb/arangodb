@@ -76,6 +76,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 
   VPackSlice result;
   std::shared_ptr<VPackBuilder> builder;
+  AgencyCommResult tmp;
   consensus::index_t idx = 0;
   if (_local) {
     auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
@@ -91,7 +92,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
       return;
     }
   } else {
-    AgencyCommResult tmp = _agency.getValues(key);
+    tmp = _agency.getValues(key);
     if (!tmp.successful()) {
       if (!_agency.server().isStopping()) {
         // only log errors if we are not already shutting down...
