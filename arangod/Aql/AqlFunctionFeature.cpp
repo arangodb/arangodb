@@ -219,7 +219,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
-  add({"LEVENSHTEIN_MATCH", ".,.,.|.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions])
+  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions, max terms])
   add({"NGRAM_MATCH", ".,.|.,.", flags, &Functions::NgramMatch}); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)

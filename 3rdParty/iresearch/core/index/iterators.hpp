@@ -50,7 +50,7 @@ NS_ROOT
 ///   - 'type_limits<type_t>::eof()' must always return
 ///     'type_limits<type_t>::eof()'
 ///
-/// Once iterator has become exhausted:
+/// Once iterator is exhausted:
 ///   - 'next()' must constantly return 'false'
 ///   - 'seek()' to any value must return 'type_limits<type_t>::eof()'
 ///   - 'value()' must return 'type_limits<type_t>::eof()'

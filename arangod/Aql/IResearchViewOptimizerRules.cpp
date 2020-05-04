@@ -130,7 +130,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
   if (searchCondition.root()) {
     auto filterCreated = FilterFactory::filter(
       nullptr,
-      { &query.trxForOptimization(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
+      { &query.trxForOptimization(), nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
       *searchCondition.root());
 
     if (filterCreated.fail()) {

@@ -146,7 +146,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   }
 
   virtual MatchType Type(bool test) const override {
-    if /*constexpr*/ (MATCH_TYPE == MATCH_NONE) {
+    if constexpr (MATCH_TYPE == MATCH_NONE) {
       return MATCH_TYPE;
     }
 

@@ -176,16 +176,9 @@ class compound_attributes: public irs::attribute_view {
   void add(const irs::attribute_view& attributes) {
     auto visitor = [this](
         const irs::attribute::type_id& type_id,
-        const irs::attribute_view::ref<irs::attribute>::type&
-    ) ->bool {
-#if defined(__GNUC__) && (__GNUC__ < 5)
-      // GCCs before 5 are unable to call protected
-      // member of base class from lambda
-      this->insert(type_id);
-#else
+        const irs::attribute_view::ref<irs::attribute>::type&) ->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id);
-#endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
 
@@ -194,45 +187,23 @@ class compound_attributes: public irs::attribute_view {
 
   void set(const irs::attribute_view& attributes) {
     auto visitor_unset = [](
-      const irs::attribute::type_id&,
-      irs::attribute_view::ref<irs::attribute>::type& value
-    )->bool {
+        const irs::attribute::type_id&,
+        irs::attribute_view::ref<irs::attribute>::type& value)->bool {
       value = nullptr;
       return true;
     };
+
     auto visitor_update = [this](
-      const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>::type& value
-    )->bool {
-#if defined(__GNUC__) && (__GNUC__ < 5)
-      // GCCs before 5 are unable to call protected
-      // member of base class from lambda
-      this->insert(type_id, value);
-#else
+        const irs::attribute::type_id& type_id,
+        const irs::attribute_view::ref<irs::attribute>::type& value)->bool {
       bool inserted;
       attribute_map::emplace(inserted, type_id) = value;
-#endif // defined(__GNUC__) && (__GNUC__ < 5)
       return true;
     };
 
     visit(visitor_unset); // unset
     attributes.visit(visitor_update); // set
   }
-
-#if defined(__GNUC__) && (__GNUC__ < 5)
- private:
-  void insert(const irs::attribute::type_id& type_id) {
-    bool inserted;
-    attribute_map::emplace(inserted, type_id);
-  }
-
-  void insert(
-      const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>::type& value) {
-    bool inserted;
-    attribute_map::emplace(inserted, type_id) = value;
-  }
-#endif // defined(__GNUC__) && (__GNUC__ < 5)
 }; // compound_attributes
 
 //////////////////////////////////////////////////////////////////////////////
@@ -396,7 +367,14 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     // advance
     bool operator()(const size_t i) const {
       assert(i < itrs_.get().size());
-      return itrs_.get()[i].first->next();
+      auto& doc_it = itrs_.get()[i];
+      auto const& map = *doc_it.second;
+      while (doc_it.first->next()) {
+        if (!irs::doc_limits::eof(map(doc_it.first->value()))) {
+          return true;
+        }
+      }
+      return false;
     }
 
     // compare
@@ -1750,7 +1728,3 @@ bool merge_writer::flush(
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

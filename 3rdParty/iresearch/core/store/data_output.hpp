@@ -36,8 +36,12 @@ NS_ROOT
 /// @struct data_output
 /// @brief base interface for all low-level output data streams
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_output
-    : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
+struct IRESEARCH_API data_output {
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   virtual ~data_output() = default;
 
