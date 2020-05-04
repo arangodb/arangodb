@@ -41,7 +41,6 @@
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
-#include <cassert>
 #include <atomic>
 
 NS_ROOT

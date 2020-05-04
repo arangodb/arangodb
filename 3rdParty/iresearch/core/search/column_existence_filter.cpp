@@ -22,8 +22,6 @@
 
 #include "column_existence_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "formats/empty_term_reader.hpp"
 #include "index/field_meta.hpp"
 #include "search/score_doc_iterators.hpp"
@@ -189,26 +187,6 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_column_existence)
 DEFINE_FACTORY_DEFAULT(by_column_existence)
 
-by_column_existence::by_column_existence() noexcept
-  : filter(by_column_existence::type()) {
-}
-
-bool by_column_existence::equals(const filter& rhs) const noexcept {
-  const auto& trhs = static_cast<const by_column_existence&>(rhs);
-
-  return filter::equals(rhs)
-    && field_ == trhs.field_
-    && prefix_match_ == trhs.prefix_match_;
-}
-
-size_t by_column_existence::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  ::boost::hash_combine(seed, field_);
-  ::boost::hash_combine(seed, prefix_match_);
-  return seed;
-}
-
 filter::prepared::ptr by_column_existence::prepare(
     const index_reader& reader,
     const order::prepared& order,
@@ -226,13 +204,9 @@ filter::prepared::ptr by_column_existence::prepare(
 
   filter_boost *= boost();
 
-  return prefix_match_
-    ? filter::prepared::make<column_prefix_existence_query>(field_, std::move(stats), filter_boost)
-    : filter::prepared::make<column_existence_query>(field_, std::move(stats), filter_boost);
+  return options().prefix_match
+    ? filter::prepared::make<column_prefix_existence_query>(field(), std::move(stats), filter_boost)
+    : filter::prepared::make<column_existence_query>(field(), std::move(stats), filter_boost);
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

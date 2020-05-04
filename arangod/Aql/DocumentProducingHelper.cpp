@@ -98,49 +98,9 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    AqlValue v(b.get());
+    AqlValue v(b->slice());
     AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
-
-    return true;
-  };
-}
-
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
-                                                 DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
-    if constexpr (checkUniqueness) {
-      if (!context.checkUniqueness(token)) {
-        // Document already found, skip it
-        return false;
-      }
-    }
-
-    context.incrScanned();
-
-    if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
-        context.incrFiltered();
-        return false;
-      }
-    }
-    
-    if constexpr (skip) {
-      return true;
-    }
-
-    InputAqlItemRow const& input = context.getInputRow();
-    OutputAqlItemRow& output = context.getOutputRow();
-    RegisterId registerId = context.getOutputRegister();
-    uint8_t const* vpack = slice.begin();
-    // With NoCopy we do not clone
-    TRI_ASSERT(!output.isFull());
-    AqlValue v{AqlValueHintDocumentNoCopy{vpack}};
-    AqlValueGuard guard{v, false};
     output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
@@ -249,13 +209,14 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
     InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
     RegisterId const outputRegister, bool produceResult,
-    Query* query, Expression* filter,
+    aql::QueryContext& query, transaction::Methods& trx, Expression* filter,
     std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool allowCoveringIndexOptimization, bool checkUniqueness)
     : _inputRow(inputRow),
       _outputRow(outputRow),
       _query(query),
+      _trx(trx),
       _filter(filter),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _numScanned(0),
@@ -291,7 +252,7 @@ std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunc
 }
 
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexcept {
-  return _query->trx();
+  return &_trx;
 }
 
 std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const
@@ -357,20 +318,20 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_query, slice);
+  DocumentExpressionContext ctx(_trx, _query, _regexCache, slice);
   return checkFilter(ctx);
 }
 
 bool DocumentProducingFunctionContext::checkFilter(
     AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
     void const* filterContext) {
-  DocumentIndexExpressionContext ctx(_query, getValue, filterContext);
+  DocumentIndexExpressionContext ctx(_trx, _query, _regexCache, getValue, filterContext);
   return checkFilter(ctx);
 }
 
 bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
   bool mustDestroy;  // will get filled by execution
-  AqlValue a = _filter->execute(getTrxPtr(), &ctx, mustDestroy);
+  AqlValue a = _filter->execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
   return a.toBoolean();
@@ -461,7 +422,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       InputAqlItemRow const& input = context.getInputRow();
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
-      AqlValue v(b.get());
+      AqlValue v(b->slice());
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
       output.moveValueInto(registerId, input, guard);
@@ -482,11 +443,6 @@ template IndexIterator::DocumentCallback aql::getCallback<false, false>(Document
 template IndexIterator::DocumentCallback aql::getCallback<true, false>(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex, DocumentProducingFunctionContext& context);
 template IndexIterator::DocumentCallback aql::getCallback<false, true>(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex, DocumentProducingFunctionContext& context);
 template IndexIterator::DocumentCallback aql::getCallback<true, true>(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex, DocumentProducingFunctionContext& context);
-
-template IndexIterator::DocumentCallback aql::getCallback<false, false>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, false>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<false, true>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, true>(DocumentProducingCallbackVariant::DocumentWithRawPointer, DocumentProducingFunctionContext& context);
 
 template IndexIterator::DocumentCallback aql::getCallback<false, false>(DocumentProducingCallbackVariant::DocumentCopy, DocumentProducingFunctionContext& context);
 template IndexIterator::DocumentCallback aql::getCallback<true, false>(DocumentProducingCallbackVariant::DocumentCopy, DocumentProducingFunctionContext& context);

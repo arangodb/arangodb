@@ -30,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace aql {
@@ -37,7 +38,7 @@ namespace aql {
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   SingleRemoteModificationInfos(RegisterId inputRegister, RegisterId outputNewRegisterId,
                                 RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-                                transaction::Methods* trx, OperationOptions options,
+                                arangodb::aql::QueryContext& query, OperationOptions options,
                                 aql::Collection const* aqlCollection,
                                 ConsultAqlWriteFilter consultAqlWriteFilter,
                                 IgnoreErrors ignoreErrors,
@@ -45,7 +46,7 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
                                 std::string key, bool hasParent, bool replaceIndex)
       : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
-                                  outputOldRegisterId, outputRegisterId, trx,
+                                  outputOldRegisterId, outputRegisterId, query,
                                   std::move(options), aqlCollection,
                                   ProducesResults(false), consultAqlWriteFilter,
                                   ignoreErrors, DoCount(true), IsReplace(false),
@@ -102,7 +103,8 @@ struct SingleRemoteModificationExecutor {
   auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
   auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
                                         OperationResult&) -> void;
-
+  
+  transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;
 };

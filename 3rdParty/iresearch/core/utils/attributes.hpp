@@ -373,8 +373,7 @@ template<
 
   template<typename A>
   inline typename ref<A>::type& get(
-      typename ref<A>::type& fallback
-  ) noexcept {
+      typename ref<A>::type& fallback) noexcept {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
     >::type type;
@@ -387,8 +386,7 @@ template<
 
   template<typename A>
   inline const typename ref<A>::type& get(
-      const typename ref<A>::type& fallback = ref<A>::NIL
-  ) const noexcept {
+      const typename ref<A>::type& fallback = ref<A>::NIL) const noexcept {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
     >::type type;
@@ -428,7 +426,7 @@ template<
 
  protected:
   typename ref<T>::type& emplace(bool& inserted, const attribute::type_id& type) {
-    auto res = map_utils::try_emplace(map_, &type);
+    const auto res = map_.try_emplace(&type);
 
     inserted = res.second;
 
@@ -436,24 +434,22 @@ template<
   }
 
   typename ref<T>::type* get(const attribute::type_id& type) noexcept {
-    auto itr = map_.find(&type);
+    const auto itr = map_.find(&type);
 
     return map_.end() == itr ? nullptr : &(itr->second);
   }
 
   typename ref<T>::type& get(
       const attribute::type_id& type,
-      typename ref<T>::type& fallback
-  ) noexcept {
-    auto itr = map_.find(&type);
+      typename ref<T>::type& fallback) noexcept {
+    const auto itr = map_.find(&type);
 
     return map_.end() == itr ? fallback : itr->second;
   }
 
   const typename ref<T>::type& get(
       const attribute::type_id& type,
-      const typename ref<T>::type& fallback = ref<T>::NIL
-  ) const noexcept {
+      const typename ref<T>::type& fallback = ref<T>::NIL) const noexcept {
     return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
   }
 

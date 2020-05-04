@@ -127,7 +127,7 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 /// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : DistributeConsumerNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _server(base.get("server").copyString()),
       _queryId(base.get("queryId").copyString()),
       _apiToUse(getApiProperty(base, StaticStrings::AqlRemoteApi)) {
@@ -453,7 +453,7 @@ CostEstimate DistributeNode::estimateCost() const {
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _elements(elements),
       _sortmode(SortMode::MinElement),
       _parallelism(Parallelism::Undefined),
@@ -467,9 +467,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
              "creating 'GatherNode' from vpack";
     }
 
-    _limit =
-        basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
-                                                                    "limit", 0);
+    _limit = VelocyPackHelper::getNumericValue<decltype(_limit)>(base, "limit", 0);
   }
 
   setParallelism(parallelismFromString(
@@ -479,7 +477,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
                        SortMode sortMode, Parallelism parallelism) noexcept
     : ExecutionNode(plan, id),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _sortmode(sortMode),
       _parallelism(parallelism),
       _limit(0) {}
@@ -543,14 +541,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 
   Parallelism p = _parallelism;
   if (ServerState::instance()->isDBServer()) {
-    p = Parallelism::Serial;  // not supported in v36
+    p = Parallelism::Serial; // not supported in v36
   }
 
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
+
   auto executorInfos =
       SortingGatherExecutorInfos(std::move(sortRegister),
-                                 _plan->getAst()->query()->trx(), sortMode(),
+                                 _plan->getAst()->query(), sortMode(),
                                  constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
@@ -574,75 +573,7 @@ bool GatherNode::isSortingGather() const noexcept {
   return !elements().empty();
 }
 
-/// @brief is the node parallelizable?
-struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(TRI_vocbase_t const& _vocbase)
-      : _parallelizeWrites(
-            _vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
-        _isParallelizable(true) {}
-
-  ~ParallelizableFinder() = default;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
-  }
-
-  bool before(ExecutionNode* node) override final {
-    auto nodeType = node->getType();
-
-    if (nodeType == ExecutionNode::SCATTER || nodeType == ExecutionNode::GATHER ||
-        nodeType == ExecutionNode::DISTRIBUTE) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
-    if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
-        nodeType == ExecutionNode::K_SHORTEST_PATHS) {
-      auto* gn = ExecutionNode::castTo<GraphNode*>(node);
-      if (!gn->isSatelliteNode()) {
-        _isParallelizable = false;
-        return true;  // true to abort the whole walking process
-      }
-    }
-
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
-                                 node->getType() != ExecutionNode::REPLACE &&
-                                 node->getType() != ExecutionNode::UPDATE))) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
-    // continue inspecting
-    return false;
-  }
-};
-
-/// no modification nodes, ScatterNodes etc
-bool GatherNode::isParallelizable() const {
-  if (_parallelism == Parallelism::Serial) {
-    // node already defined to be serial
-    return false;
-  }
-
-  ParallelizableFinder finder(*_vocbase);
-  for (ExecutionNode* e : _dependencies) {
-    e->walk(finder);
-    if (!finder._isParallelizable) {
-      return false;
-    }
-  }
-  return true;
-}
-
 void GatherNode::setParallelism(GatherNode::Parallelism value) {
-  TRI_ASSERT(value != Parallelism::Parallel || isParallelizable());
   _parallelism = value;
 }
 
@@ -734,7 +665,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = SingleRemoteModificationInfos(
-      in, outputNew, outputOld, out, _plan->getAst()->query()->trx(), std::move(options),
+      in, outputNew, outputOld, out, _plan->getAst()->query(), std::move(options),
       collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,

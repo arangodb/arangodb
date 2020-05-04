@@ -25,7 +25,6 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
-#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Range.h"
@@ -451,6 +450,38 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
       a.erase();
     }
   }
+}
+
+SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
+  auto const numRows = size();
+
+  std::unordered_set<AqlValue> cache;
+  cache.reserve(_valueCount.size());
+  SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, getNrRegs())};
+
+  for (size_t row = 0; row < numRows; row++) {
+    for (RegisterId col = 0; col < getNrRegs(); col++) {
+      if (isShadowRow(row)) {
+        AqlValue a = stealAndEraseValue(row, col);
+        AqlValueGuard guard{a, true};
+        auto [it, inserted] =  cache.emplace(a);
+        res->setValue(row, col, *it);
+        // TRI_ASSERT(inserted); // I'm not 100% sure yet that this is true.
+        if (inserted) {
+          // otherwise, destroy this; we used a cached value.
+          guard.steal();
+        }
+      } else {
+        AqlValue a = getValue(row, col);
+        ::CopyValueOver(cache, a, row, col, res);
+      }
+    }
+
+    res->copySubQueryDepthFromOtherBlock(row, *this, row);
+  }
+  TRI_ASSERT(res->size() == numRows);
+
+  return res;
 }
 
 /// @brief slice/clone, this does a deep copy of all entries
@@ -915,9 +946,9 @@ void AqlItemBlock::eraseAll() {
   _valueCount.clear();
 }
 
-void AqlItemBlock::copyValuesFromRow(size_t currentRow,
-                                     std::unordered_set<RegisterId> const& regs,
-                                     size_t fromRow) {
+void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
+                                          std::unordered_set<RegisterId> const& regs,
+                                          size_t fromRow) {
   TRI_ASSERT(currentRow != fromRow);
 
   for (auto const reg : regs) {
@@ -940,6 +971,18 @@ void AqlItemBlock::steal(AqlValue const& value) {
       decreaseMemoryUsage(value.memoryUsage());
     }
   }
+}
+
+AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
+  auto& element = _data[getAddress(index, varNr)];
+
+  auto value = element;
+
+  steal(element);
+
+  element.erase();
+
+  return value;
 }
 
 RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }

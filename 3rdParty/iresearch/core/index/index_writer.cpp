@@ -1231,7 +1231,6 @@ index_writer::index_writer(
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
-
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
     flush_context_pool_[i].dir_ = memory::make_unique<ref_tracking_directory>(dir);
@@ -1481,7 +1480,7 @@ bool index_writer::consolidate(
 
     if (found != candidates.size()) {
       // not all candidates are valid
-      IR_FRMT_WARN(
+      IR_FRMT_DEBUG(
         "Failed to start consolidation for index generation '" IR_UINT64_T_SPECIFIER "', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
         committed_meta->generation(),
         found,
@@ -1607,7 +1606,7 @@ bool index_writer::consolidate(
       if (res.second != candidates.size()) {
         // at least one candidate is missing
         // can't finish consolidation
-        IR_FRMT_WARN(
+        IR_FRMT_DEBUG(
           "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
           run_id,
           consolidation_segment.meta.name.c_str(),
@@ -1624,7 +1623,7 @@ bool index_writer::consolidate(
 
         if (!map_removals(mappings, merger, cached_readers_, docs_mask)) {
           // consolidated segment has docs missing from current_committed_meta->segments()
-          IR_FRMT_WARN(
+          IR_FRMT_DEBUG(
             "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER "' for segment '%s', due removed documents still present the consolidation candidates",
             run_id,
             consolidation_segment.meta.name.c_str()
@@ -1990,7 +1989,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
       if (res.second != candidates.size()) {
         // at least one candidate is missing
         // in pending meta can't finish consolidation
-        IR_FRMT_WARN(
+        IR_FRMT_DEBUG(
           "Failed to finish merge for segment '%s', found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
           pending_segment.segment.meta.name.c_str(),
           res.second,
@@ -2025,7 +2024,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
         if (!success) {
           // consolidated segment has docs missing from 'segments'
-          IR_FRMT_WARN(
+          IR_FRMT_DEBUG(
             "Failed to finish merge for segment '%s', due removed documents still present the consolidation candidates",
             pending_segment.segment.meta.name.c_str()
           );
@@ -2448,7 +2447,3 @@ void index_writer::abort() {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

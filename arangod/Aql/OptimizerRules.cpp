@@ -43,6 +43,7 @@
 #include "Aql/KShortestPathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -67,6 +68,7 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
@@ -826,18 +828,17 @@ namespace arangodb {
 namespace aql {
 
 // TODO cleanup this f-ing aql::Collection(s) mess
-Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert) {
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert) {
   aql::Collection* coll = nullptr;
 
   if (!cname.empty()) {
-    coll = query->addCollection(cname, AccessMode::Type::READ);
-
+    coll = query.collections().add(cname, AccessMode::Type::READ);
+    // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
+    // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      auto cptr = query->trx()->vocbase().lookupCollection(cname);
-
-      coll->setCollection(cptr);
-      query->trx()->addCollectionAtRuntime(cname, AccessMode::Type::READ);
+      coll->setCollection(query.vocbase().lookupCollection(cname));
+      query.trxForOptimization().addCollectionAtRuntime(cname, AccessMode::Type::READ);
     }
   }
 
@@ -991,7 +992,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
         ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
 
     auto outVar = ast->variables()->createTemporaryVariable();
-    auto expression = std::make_unique<Expression>(plan.get(), ast, sorted);
+    auto expression = std::make_unique<Expression>(ast, sorted);
     ExecutionNode* calculationNode =
         new CalculationNode(plan.get(), plan->nextId(), std::move(expression), outVar);
     plan->registerNode(calculationNode);
@@ -1643,6 +1644,10 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         break;
       }
 
+      if (current->getType() == EN::PARALLEL_START || current->getType() == EN::PARALLEL_END) {
+        break;
+      }
+
       if (current->getType() == EN::LIMIT) {
         if (!arangodb::ServerState::instance()->isCoordinator()) {
           // do not move calculations beyond a LIMIT on a single server,
@@ -1752,6 +1757,10 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
       }
 
       auto const currentType = current->getType();
+      
+      if (currentType == EN::PARALLEL_START || currentType == EN::PARALLEL_END) {
+        break;
+      }
 
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
@@ -3061,11 +3070,14 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
-      bool canBeUsed = trx->getIndexForSortCondition(
-          enumerateCollectionNode->collection()->name(), &sortCondition,
-          outVariable, enumerateCollectionNode->collection()->count(trx),
+      
+      Collection const* coll = enumerateCollectionNode->collection();
+      TRI_ASSERT(coll != nullptr);
+      size_t numDocs = coll->count(&_plan->getAst()->query().trxForOptimization(), transaction::CountType::TryCache);
+      
+      bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(*coll,
+          &sortCondition, outVariable, numDocs,
           enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
       if (canBeUsed) {
         // If this bit is set, then usedIndexes has length exactly one
@@ -3269,6 +3281,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::GATHER:
       case EN::REMOTE:
       case EN::LIMIT:  // LIMIT is criterion to stop
+      case EN::PARALLEL_START:
+      case EN::PARALLEL_END:
         return true;   // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.
@@ -3401,7 +3415,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
+              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
               CalculationNode* cn =
                   new CalculationNode(plan.get(), plan->nextId(), std::move(expr),
                                       calculationNode->outVariable());
@@ -3859,10 +3873,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ::scatterInClusterNodeTypes, true);
 
-  TRI_ASSERT(plan->getAst() && plan->getAst()->query() &&
-             plan->getAst()->query()->trx());
-  auto* resolver = plan->getAst()->query()->trx()->resolver();
-  TRI_ASSERT(resolver);
+  TRI_ASSERT(plan->getAst());
 
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
@@ -4651,6 +4662,8 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::PARALLEL_START:
+        case EN::PARALLEL_END:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4684,6 +4697,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
+        case EN::ASYNC: // should be added much later
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
           TRI_ASSERT(false);
@@ -5508,7 +5522,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt, std::unique_ptr<Executio
     auto newRoot = simplifier.simplify(root);
 
     if (newRoot != root) {
-      auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newRoot);
+      auto expr = std::make_unique<Expression>(plan->getAst(), newRoot);
 
       TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -5678,7 +5692,7 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
     if (remover.hasRedundantCondition(cn->expression()->node())) {
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), astNode);
+      auto expr = std::make_unique<Expression>(plan->getAst(), astNode);
       ExecutionNode* newNode =
           new CalculationNode(plan.get(), plan->nextId(), std::move(expr), outVar);
       plan->registerNode(newNode);
@@ -6019,7 +6033,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
+              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
               CalculationNode* cn =
                   new CalculationNode(plan.get(), plan->nextId(), std::move(expr),
                                       calculationNode->outVariable());
@@ -6389,8 +6403,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   }
 
   // we should not access the LogicalCollection directly
-  Query* query = plan->getAst()->query();
-  auto indexes = query->trx()->indexesForCollection(collNode->collection()->name());
+  auto indexes = collNode->collection()->indexes();
   // check for suitiable indexes
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
@@ -6467,8 +6480,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   }
 
   // we should not access the LogicalCollection directly
-  Query* query = plan->getAst()->query();
-  auto indexes = query->trx()->indexesForCollection(collNode->collection()->name());
+  auto indexes = collNode->collection()->indexes();
   // check for suitiable indexes
   for (std::shared_ptr<arangodb::Index> idx : indexes) {
     // check if current index is a geo-index
@@ -6976,6 +6988,9 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
+    case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
       return true;
     case ExecutionNode::GATHER:
       // sorting gather is allowed
@@ -7238,8 +7253,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         // COUNT(FOR doc IN collection RETURN 1)
         Ast* ast = plan->getAst();
         // generate a calculation node that only produces "true"
-        auto expr = std::make_unique<Expression>(plan.get(), ast,
-                                                 Ast::createNodeValueBool(true));
+        auto expr = std::make_unique<Expression>(ast, Ast::createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
@@ -7333,10 +7347,10 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
                                                        existingFilter->node(),
                                                        expr->node());
 
-          en->setFilter(std::make_unique<Expression>(plan.get(), plan->getAst(), merged));
+          en->setFilter(std::make_unique<Expression>(plan->getAst(), merged));
         } else {
           // node did not yet have a filter
-          en->setFilter(expr->clone(plan.get(), plan->getAst()));
+          en->setFilter(expr->clone(plan->getAst()));
         }
 
         // remove the filter
@@ -7376,6 +7390,76 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
   }
 
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+namespace {
+
+/// @brief is the node parallelizable?
+struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
+  bool const _parallelizeWrites;
+  bool _isParallelizable;
+
+  explicit ParallelizableFinder(bool parallelizeWrites)
+      : _parallelizeWrites(parallelizeWrites),
+        _isParallelizable(true) {}
+
+  ~ParallelizableFinder() = default;
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return false;
+  }
+
+  bool before(ExecutionNode* node) override final {
+    if (node->getType() == ExecutionNode::SCATTER ||
+        node->getType() == ExecutionNode::GATHER ||
+        node->getType() == ExecutionNode::DISTRIBUTE) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
+    if (node->getType() == ExecutionNode::TRAVERSAL ||
+        node->getType() == ExecutionNode::SHORTEST_PATH ||
+        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      if (!gn->isSatelliteNode()) {
+        _isParallelizable = false;
+        return true;  // true to abort the whole walking process
+      }
+    }
+
+    // write operations of type REMOVE, REPLACE and UPDATE
+    // can be parallelized, provided the rest of the plan
+    // does not prohibit this
+    if (node->isModificationNode() &&
+        (!_parallelizeWrites ||
+         (node->getType() != ExecutionNode::REMOVE &&
+          node->getType() != ExecutionNode::REPLACE &&
+          node->getType() != ExecutionNode::UPDATE))) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
+    // continue inspecting
+    return false;
+  }
+};
+
+/// no modification nodes, ScatterNodes etc
+bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
+  if (node->parallelism() == GatherNode::Parallelism::Serial) {
+    // node already defined to be serial
+    return false;
+  }
+
+  ParallelizableFinder finder(parallelizeWrites);
+  for (ExecutionNode* e : node->getDependencies()) {
+    e->walk(finder);
+    if (!finder._isParallelizable) {
+      return false;
+    }
+  }
+  return true;
+}
 }
 
 /// @brief parallelize coordinator GatherNodes
@@ -7427,9 +7511,11 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
   if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+    TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
+    bool parallelizeWrites = vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites();
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
-    if (!gn->isInSubquery() && gn->isParallelizable()) {
+    if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
       // find all graph nodes and make sure that they all are using satellite
       nodes.clear();
       plan->findNodesOfType(nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS}, true);
@@ -7442,6 +7528,8 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
         gn->setParallelism(GatherNode::Parallelism::Parallel);
         modified = true;
       }
+    } else {
+      gn->setParallelism(GatherNode::Parallelism::Serial);
     }
   }
 
@@ -7479,6 +7567,11 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
+    case ExecutionNode::ASYNC:
+    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::PARALLEL_END:
+      // These nodes do not initiate a skip themselves, and thus are fine.
+      return false;
     case ExecutionNode::NORESULTS:
     case ExecutionNode::LIMIT:
     case ExecutionNode::COLLECT:
@@ -7690,7 +7783,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
               plan->createNode<ScatterNode>(plan.get(), plan->nextId(), ScatterNode::SHARD);
           auto const remoteNode =
               plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
-                                           &plan->getAst()->query()->vocbase(),
+                                           &plan->getAst()->query().vocbase(),
                                            "", "", "");
           scatterNode->setIsInSplicedSubquery(true);
           remoteNode->setIsInSplicedSubquery(true);

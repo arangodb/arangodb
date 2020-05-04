@@ -149,8 +149,6 @@ void StatisticsWorker::collectGarbage() {
 }
 
 void StatisticsWorker::collectGarbage(std::string const& name, double start) const {
-  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -159,13 +157,13 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(false, _vocbase,
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(garbageCollectionQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+                             _bindVars, nullptr);
 
   query.queryOptions().cache = false;
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -267,8 +265,6 @@ void StatisticsWorker::historianAverage() {
 
 std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     std::string const& collectionName, double start) const {
-  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -282,13 +278,13 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, _vocbase,
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(_clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+                             _bindVars, nullptr);
 
   query.queryOptions().cache = false;
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -298,8 +294,6 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
-  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -312,14 +306,14 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, _vocbase,
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(
                                  _clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+                             _bindVars, nullptr);
 
   query.queryOptions().cache = false;
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -999,7 +993,7 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(rssp), "residentSizePercent");
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
-  appendMetric(result, std::to_string(serverInfo._uptime), "uptime");
+  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
 
   // _clientStatistics()
   appendMetric(result, std::to_string(httpConnections._count), "clientHttpConnections");
@@ -1164,7 +1158,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("uptime", VPackValue(serverInfo._uptime));
+  builder.add("uptime", VPackValue(serverInfo.uptime()));
   builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
   builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));

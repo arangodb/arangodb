@@ -26,8 +26,10 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
+#include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Transaction/Methods.h"
 #include "Aql/RegisterInfos.h"
 #include "DocumentProducingHelper.h"
 
@@ -37,7 +39,7 @@
 #include <vector>
 
 namespace arangodb {
-struct OperationCursor;
+class IndexIterator;
 namespace transaction {
 class Methods;
 }
@@ -52,6 +54,7 @@ class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
+class QueryContext;
 struct Variable;
 
 template <BlockPassthrough>
@@ -59,7 +62,7 @@ class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(RegisterId outputRegister, ExecutionEngine* engine,
+  EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
                                    Collection const* collection, Variable const* outVariable,
                                    bool produceResult, Expression* filter,
                                    std::vector<std::string> const& projections,
@@ -71,11 +74,9 @@ class EnumerateCollectionExecutorInfos {
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
-  ExecutionEngine* getEngine();
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
-  Query* getQuery() const;
-  transaction::Methods* getTrxPtr() const;
+  QueryContext& getQuery() const;
   Expression* getFilter() const;
   std::vector<std::string> const& getProjections() const noexcept;
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
@@ -84,7 +85,7 @@ class EnumerateCollectionExecutorInfos {
   RegisterId getOutputRegisterId() const;
 
  private:
-  ExecutionEngine* _engine;
+  aql::QueryContext& _query;
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
@@ -112,7 +113,7 @@ class EnumerateCollectionExecutor {
   using Stats = EnumerateCollectionStats;
 
   EnumerateCollectionExecutor() = delete;
-  EnumerateCollectionExecutor(EnumerateCollectionExecutor&&) = default;
+  EnumerateCollectionExecutor(EnumerateCollectionExecutor&&) = delete;
   EnumerateCollectionExecutor(EnumerateCollectionExecutor const&) = delete;
   EnumerateCollectionExecutor(Fetcher& fetcher, Infos&);
   ~EnumerateCollectionExecutor();
@@ -147,6 +148,7 @@ class EnumerateCollectionExecutor {
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
  private:
+  transaction::Methods _trx;
   Infos& _infos;
   IndexIterator::DocumentCallback _documentProducer;
   IndexIterator::DocumentCallback _documentSkipper;
@@ -156,7 +158,7 @@ class EnumerateCollectionExecutor {
   bool _cursorHasMore;
   InputAqlItemRow _currentRow;
   ExecutorState _currentRowState;
-  std::unique_ptr<OperationCursor> _cursor;
+  std::unique_ptr<IndexIterator> _cursor;
 };
 
 }  // namespace aql

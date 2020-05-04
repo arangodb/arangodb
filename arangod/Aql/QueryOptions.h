@@ -57,9 +57,9 @@ struct QueryOptions {
   explicit QueryOptions(QueryRegistryFeature&);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const&);
+  void fromVelocyPack(arangodb::velocypack::Slice const& slice);
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
-  TEST_VIRTUAL ProfileLevel getProfileLevel() { return profile; };
+  TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; };
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -80,8 +80,17 @@ struct QueryOptions {
   bool count;
   bool verboseErrors;
   bool inspectSimplePlans;
+  
+  /// @brief hack to be used only for /_api/export, contains the name of
+  /// the target collection
+  std::string exportCollection;
+  
+  /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
-  std::unordered_set<std::string> shardIds;
+  
+  /// @brief manual restriction to certain shards
+  std::unordered_set<std::string> restrictToShards;
+
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions
   std::unordered_set<std::string> inaccessibleCollections;

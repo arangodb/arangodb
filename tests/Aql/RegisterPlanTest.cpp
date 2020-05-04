@@ -186,7 +186,7 @@ class RegisterPlanTest : public ::testing::Test {
     vars.reserve(amount);
     std::array<Variable*, amount> ptrs{};
     for (size_t i = 0; i < amount; ++i) {
-      vars.emplace_back("var" + arangodb::basics::StringUtils::itoa(i), i);
+      vars.emplace_back("var" + arangodb::basics::StringUtils::itoa(i), i, false);
       ptrs[i] = &vars[i];
     }
 

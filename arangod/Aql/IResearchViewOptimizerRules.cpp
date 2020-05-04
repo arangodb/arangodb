@@ -75,24 +75,20 @@ inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const
   return viewImpl.storedValues();
 }
 
-bool addView(arangodb::LogicalView const& view, Query& query) {
-  auto* collections = query.collections();
-
-  if (!collections) {
-    return false;
-  }
+bool addView(arangodb::LogicalView const& view, arangodb::aql::QueryContext& query) {
+  auto& collections = query.collections();
 
   // linked collections
-  auto visitor = [&query](TRI_voc_cid_t cid) {
-    query.addCollection(arangodb::basics::StringUtils::itoa(cid),
-                        arangodb::AccessMode::Type::READ);
+  auto visitor = [&collections](TRI_voc_cid_t cid) {
+    collections.add(arangodb::basics::StringUtils::itoa(cid),
+                    arangodb::AccessMode::Type::READ);
     return true;
   };
 
   return view.visitCollections(visitor);
 }
 
-bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, ExecutionPlan& plan) {
+bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryContext& query, ExecutionPlan& plan) {
   auto view = viewNode.view();
 
   // add view and linked collections to the query
@@ -134,7 +130,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
   if (searchCondition.root()) {
     auto filterCreated = FilterFactory::filter(
       nullptr,
-      { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
+      { &query.trxForOptimization(), nullptr, nullptr, nullptr, nullptr, &viewNode.outVariable() },
       *searchCondition.root());
 
     if (filterCreated.fail()) {
@@ -643,7 +639,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
 void handleViewsRule(Optimizer* opt,
                      std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
-  TRI_ASSERT(plan && plan->getAst() && plan->getAst()->query());
+  TRI_ASSERT(plan && plan->getAst());
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
@@ -677,7 +673,7 @@ void handleViewsRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
-  auto& query = *plan->getAst()->query();
+  aql::QueryContext& query = plan->getAst()->query();
 
   std::vector<Scorer> scorers;
 
@@ -740,11 +736,6 @@ void scatterViewInClusterRule(Optimizer* opt,
   // EnumerateIResearchViewNode
   nodes.clear();
   plan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-
-  TRI_ASSERT(plan->getAst() && plan->getAst()->query() &&
-             plan->getAst()->query()->trx());
-  auto* resolver = plan->getAst()->query()->trx()->resolver();
-  TRI_ASSERT(resolver);
 
   for (auto* node : nodes) {
     TRI_ASSERT(node);

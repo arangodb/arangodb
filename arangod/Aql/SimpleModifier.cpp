@@ -134,8 +134,8 @@ Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& r
 }
 
 template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::transact() {
-  _results = _completion.transact(_accumulator->closeAndGetContents());
+void SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
+  _results = _completion.transact(trx, _accumulator->closeAndGetContents());
 
   throwOperationResultException(_infos, _results);
 }

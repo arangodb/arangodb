@@ -159,7 +159,7 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
       _itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
-    _dependencyMocks.emplace_back(DependencyProxyMock<passBlocksThrough>{monitor, nrRegisters});
+    _dependencyMocks.emplace_back(std::make_unique<DependencyProxyMock<passBlocksThrough>>(monitor, nrRegisters));
   }
 }
 
@@ -173,7 +173,7 @@ MultiDependencyProxyMock<passBlocksThrough>::fetchBlockForDependency(size_t depe
 template <BlockPassthrough passBlocksThrough>
 bool MultiDependencyProxyMock<passBlocksThrough>::allBlocksFetched() const {
   for (auto& dep : _dependencyMocks) {
-    if (!dep.allBlocksFetched()) {
+    if (!dep->allBlocksFetched()) {
       return false;
     }
   }
@@ -184,7 +184,7 @@ template <BlockPassthrough passBlocksThrough>
 size_t MultiDependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
   size_t res = 0;
   for (auto& dep : _dependencyMocks) {
-    res += dep.numFetchBlockCalls();
+    res += dep->numFetchBlockCalls();
   }
   return res;
 }

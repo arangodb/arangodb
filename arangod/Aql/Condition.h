@@ -225,7 +225,7 @@ class Condition {
   AstNode* deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
-  AstNode* mergeInOperations(transaction::Methods* trx, AstNode const*, AstNode const*);
+  AstNode* mergeInOperations(AstNode const*, AstNode const*);
 
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);

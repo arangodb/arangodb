@@ -167,6 +167,9 @@ class ExecutionNode {
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
     MATERIALIZE = 31,
+    ASYNC = 32,
+    PARALLEL_START = 33,
+    PARALLEL_END = 34,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -993,6 +996,74 @@ class NoResultsNode : public ExecutionNode {
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
 
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+};
+
+/// @brief class ParallelStartNode
+class ParallelStartNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+  /// @brief constructor with an id
+ public:
+  ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id);
+
+  ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final;
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief the cost of a AsyncNode is whatever is 0
+  CostEstimate estimateCost() const override final;
+  
+  void cloneRegisterPlan(ExecutionNode* dependency);
+  
+  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+};
+
+/// @brief class ParallelEndNode
+class ParallelEndNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+  /// @brief constructor with an id
+ public:
+  ParallelEndNode(ExecutionPlan* plan, ExecutionNodeId id);
+
+  ParallelEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final;
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief the cost of a AsyncNode is whatever is 0
+  CostEstimate estimateCost() const override final;
+  
+  void cloneRegisterPlan(ExecutionNode* dependency);
+  
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 

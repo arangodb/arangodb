@@ -271,7 +271,3 @@ TEST_F(token_masking_stream_tests, test_load) {
 //  std::string actual;
 //  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
 //}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -313,30 +313,20 @@ struct TRI_vocbase_t {
   /// write lock for using the collection.
   arangodb::Result dropCollection(TRI_voc_cid_t cid, bool allowDropSystem, double timeout);
 
-  /// @brief callback for collection dropping
-  static bool DropCollectionCallback(arangodb::LogicalCollection& collection);
-
   /// @brief unloads a collection
-  int unloadCollection(arangodb::LogicalCollection* collection, bool force);
-
-  /// @brief locks a collection for usage, loading or manifesting it
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself.
-  int useCollection(arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e&);
+  arangodb::Result unloadCollection(arangodb::LogicalCollection* collection, bool force);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid,
-                                                             TRI_vocbase_col_status_e&);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid, bool checkPermissions);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
-                                                             TRI_vocbase_col_status_e&);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name, bool checkPermissions);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
@@ -349,23 +339,25 @@ struct TRI_vocbase_t {
   bool visitDataSources(dataSourceVisitor const& visitor, bool lockWrite = false);
 
  private:
+  /// @brief callback for collection dropping
+  static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
+
   /// @brief check some invariants on the various lists of collections
   void checkCollectionInvariants() const;
 
   std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
-      std::shared_ptr<arangodb::LogicalCollection>, TRI_vocbase_col_status_e& status);
+      std::shared_ptr<arangodb::LogicalCollection> const&, bool checkPermissions);
 
-  int loadCollection(arangodb::LogicalCollection* collection,
-                     TRI_vocbase_col_status_e& status, bool setStatus = true);
+  arangodb::Result loadCollection(arangodb::LogicalCollection& collection,
+                                  bool checkPermissions);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock
-  void registerCollection(bool doLock,
-                          std::shared_ptr<arangodb::LogicalCollection> const& collection);
+  void registerCollection(bool doLock, std::shared_ptr<arangodb::LogicalCollection> const& collection);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
-  bool unregisterCollection(arangodb::LogicalCollection* collection);
+  void unregisterCollection(arangodb::LogicalCollection& collection);
 
   /// @brief creates a new collection, worker function
   std::shared_ptr<arangodb::LogicalCollection> createCollectionWorker(arangodb::velocypack::Slice parameters);

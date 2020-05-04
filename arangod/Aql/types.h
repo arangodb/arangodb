@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNodeId.h"
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -46,6 +47,7 @@ typedef RegisterId RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
+typedef uint64_t EngineId;
 
 // Map RemoteID->ServerID->[SnippetId]
 using MapRemoteToSnippet =
@@ -53,6 +55,10 @@ using MapRemoteToSnippet =
 
 // Enable/Disable block passthrough in fetchers
 enum class BlockPassthrough { Disable, Enable };
+
+class ExecutionEngine;
+// list of snippets on coordinators
+using SnippetList = std::vector<std::pair<QueryId, std::unique_ptr<ExecutionEngine>>>;
 
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
@@ -63,6 +69,13 @@ using RegIdSetStack = std::vector<std::unordered_set<RegisterId>>;
 using RegIdOrderedSetStack = std::vector<std::set<RegisterId>>;
 
 }  // namespace aql
+
+namespace traverser {
+class BaseEngine;
+// list of graph engines on coordinators
+using GraphEngineList = std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
+}  // namespace traverser
+
 }  // namespace arangodb
 
 #endif

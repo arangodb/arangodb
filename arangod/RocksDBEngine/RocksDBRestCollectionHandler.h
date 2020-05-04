@@ -33,7 +33,7 @@ class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
                                GeneralRequest*, GeneralResponse*);
 
  protected:
-  Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+  Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll, std::string const& command,
                                velocypack::Builder& builder) override final;
 };
 

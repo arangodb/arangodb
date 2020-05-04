@@ -42,6 +42,7 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -100,11 +101,17 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   _indexes.reserve(indexes.length());
-
-  auto trx = plan->getAst()->query()->trx();
+  
+  aql::Collections const& collections = plan->getAst()->query().collections();
+  auto* coll = collections.get(collection()->name());
+  if (!coll) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+        
   for (VPackSlice it : VPackArrayIterator(indexes)) {
     std::string iid = it.get("id").copyString();
-    _indexes.emplace_back(trx->getIndexByIdentifier(collection()->name(), iid));
+    _indexes.emplace_back(coll->indexByIdentifier(iid));
   }
 
   VPackSlice condition = base.get("condition");
@@ -291,16 +298,13 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition
-arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
-                                              transaction::Methods* trx) const {
+arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
     auto ast = _plan->getAst();
     auto array = _plan->getAst()->createNodeArray();
     array->addMember(node);
-
-    TRI_ASSERT(trx != nullptr);
-
+    
     // Here it does not matter which index we choose for the isSorted/isSparse
     // check, we need them all sorted here.
 
@@ -325,12 +329,11 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
 
 void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                                std::vector<RegisterId>& inRegs,
-                               std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
-                               transaction::Methods* trxPtr) const {
+                               std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const {
   // instantiate expressions:
   auto instantiateExpression = [&](AstNode* a, std::vector<size_t>&& idxs) -> void {
     // all new AstNodes are registered with the Ast in the Query
-    auto e = std::make_unique<Expression>(_plan, _plan->getAst(), a);
+    auto e = std::make_unique<Expression>(_plan->getAst(), a);
 
     TRI_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -412,7 +415,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
           // has to be evaluated
           if (!rhs->isConstant()) {
             if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-              rhs = makeUnique(rhs, trxPtr);
+              rhs = makeUnique(rhs);
             }
             instantiateExpression(rhs, {i, j, 1});
             TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
@@ -444,15 +447,13 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  if (!engine.waitForSatellites(collection())) {
-    double maxWait = engine.getQuery()->queryOptions().satelliteSyncWait;
+  if (!engine.waitForSatellites(engine.getQuery(), collection())) {
+    double maxWait = engine.getQuery().queryOptions().satelliteSyncWait;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
                                    "collection " + collection()->name() +
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-
-  transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
   bool hasV8Expression = false;
   /// @brief _inVars, a vector containing for each expression above
@@ -466,7 +467,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
   std::vector<std::unique_ptr<NonConstExpression>> nonConstExpressions;
-  initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions, trxPtr);
+  initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions);
 
   auto const outVariable = isLateMaterialized() ? _outNonMaterializedDocId : _outVariable;
   auto const outRegister = variableToRegisterId(outVariable);
@@ -509,9 +510,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
 
   auto executorInfos =
-      IndexExecutorInfos(outRegister, &engine, this->collection(), _outVariable,
-                         isProduceResult(), this->_filter.get(), this->projections(),
-                         this->coveringIndexAttributePositions(),
+      IndexExecutorInfos(outRegister, engine.getQuery(), this->collection(),
+                         _outVariable, isProduceResult(), this->_filter.get(),
+                         this->projections(), this->coveringIndexAttributePositions(),
                          std::move(nonConstExpressions), std::move(inVars),
                          std::move(inRegs), hasV8Expression, _condition->root(),
                          this->getIndexes(), _plan->getAst(), this->options(),
@@ -567,9 +568,9 @@ CostEstimate IndexNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   size_t incoming = estimate.estimatedNrItems;
 
-  transaction::Methods* trx = _plan->getAst()->query()->trx();
+  transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   // estimate for the number of documents in the collection. may be outdated...
-  size_t const itemsInCollection = collection()->count(trx);
+  size_t const itemsInCollection = collection()->count(&trx, transaction::CountType::TryCache);
   size_t totalItems = 0;
   double totalCost = 0.0;
 

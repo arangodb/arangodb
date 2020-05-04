@@ -84,8 +84,8 @@ class OutputAqlItemRow {
   // for the next consumer of this block.
   // Requires that sourceRow.isRelevant() holds.
   // Also requires that we still have the next row "free" to write to.
-  void consumeShadowRow(RegisterId registerId,
-                        ShadowAqlItemRow const& sourceRow, AqlValueGuard& guard);
+  void consumeShadowRow(RegisterId registerId, ShadowAqlItemRow& sourceRow,
+                        AqlValueGuard& guard);
 
   // Transform the given input AqlItemRow into a relevant ShadowRow.
   // The data of this row will be copied.
@@ -94,18 +94,20 @@ class OutputAqlItemRow {
   // Increase the depth of the given shadowRow. This needs to be called
   // whenever you start a nested subquery on every outer subquery shadowrow
   // The data of this row will be copied.
-  void increaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
+  void increaseShadowRowDepth(ShadowAqlItemRow& sourceRow);
 
   // Decrease the depth of the given shadowRow. This needs to be called
   // whenever you finish a nested subquery on every outer subquery shadowrow
   // The data of this row will be copied.
-  void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
+  void decreaseShadowRowDepth(ShadowAqlItemRow& sourceRow);
 
   // Reuses the value of the given register that has been inserted in the output
   // row before. This call cannot be used on the first row of this output block.
   // If the reusing does not work this call will return `false` caller needs to
   // react accordingly.
   bool reuseLastStoredValue(RegisterId registerId, InputAqlItemRow const& sourceRow);
+
+  void moveRow(ShadowAqlItemRow& sourceRow, bool ignoreMissing = false);
 
   template <class ItemRowType>
   void copyRow(ItemRowType const& sourceRow, bool ignoreMissing = false);
@@ -234,11 +236,20 @@ class OutputAqlItemRow {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
+  enum class CopyOrMove { COPY, MOVE };
+
+  template <class ItemRowType, CopyOrMove copyOrMove>
+  void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
+
+  /// @brief move the value into the given output registers and count the value
+  /// as written in _numValuesWritten.
+  template <class ItemRowType>
+  void moveValueWithoutRowCopy(RegisterId registerId, AqlValueGuard& guard);
+
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
- public:
   SharedAqlItemBlockPtr _block;
 
   /**
@@ -318,8 +329,11 @@ class OutputAqlItemRow {
     CreateShadowRowFromInputRow
   };
 
-  template <class ItemRowType, CopyRowType copyRowType = CopyRowType::PassedItemRowType>
-  void doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing);
+  template <class ItemRowType, CopyOrMove, CopyRowType copyRowType = CopyRowType::PassedItemRowType>
+  void doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
+
+  template <class ItemRowType, CopyOrMove>
+  void doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId);
 
   template <class ItemRowType>
   void memorizeRow(ItemRowType const& sourceRow);

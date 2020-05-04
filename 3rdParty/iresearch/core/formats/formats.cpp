@@ -116,9 +116,10 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
 
 /*static*/ format::ptr formats::get(
     const string_ref& name,
+    const string_ref& module /*= string_ref::NIL*/,
     bool load_library /*= true*/) noexcept {
   try {
-    auto const key = std::make_pair(name, string_ref::NIL);
+    auto const key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
 
     return factory ? factory() : nullptr;
@@ -200,8 +201,6 @@ format_registrar::format_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 
@@ -210,7 +209,3 @@ format_registrar::operator bool() const noexcept {
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

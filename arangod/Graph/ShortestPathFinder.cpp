@@ -46,7 +46,7 @@ void ShortestPathFinder::destroyEngines() {
     return;
   }
   NetworkFeature const& nf =
-      _options.query()->vocbase().server().getFeature<NetworkFeature>();
+  _options.query().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   // We have to clean up the engines in Coordinator Case.
   if (pool == nullptr) {
