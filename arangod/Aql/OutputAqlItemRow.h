@@ -268,9 +268,9 @@ class OutputAqlItemRow {
     IncreaseDepth = 1
   };
 
-  static auto depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
+  static auto constexpr depthDelta(AdaptRowDepth) -> std::underlying_type_t<AdaptRowDepth>;
 
-  template <class ItemRowType, CopyOrMove copyOrMove>
+  template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
   void copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing);
 
   template <class ItemRowType, CopyOrMove, AdaptRowDepth = AdaptRowDepth::Unchanged>
