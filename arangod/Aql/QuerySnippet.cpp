@@ -230,14 +230,11 @@ void QuerySnippet::serializeIntoBuilder(
           TRI_ASSERT(colAcc != nullptr);
           if (colAcc->collection() == distCollection) {
             // Found one, use all shards of it
-            TRI_ASSERT(exp.second.size() == 1);
-            // unordered_map of collections to sets of ids
-            for (auto const& collectionMap : exp.second) {
-              // set of shard ids
-              TRI_ASSERT(collectionMap.first == colAcc->collection()->name());
-              for (auto const& shardIds : collectionMap.second) {
-                distIds.emplace_back(shardIds);
-              }
+            auto const collectionMap = exp.second.find(distCollection->name());
+            TRI_ASSERT(collectionMap != exp.second.end());
+            TRI_ASSERT(!collectionMap->second.empty());
+            for (auto const& shardIds : collectionMap->second) {
+              distIds.emplace_back(shardIds);
             }
             break;
           }
@@ -300,16 +297,10 @@ void QuerySnippet::serializeIntoBuilder(
         ExecutionNode* clone = current->clone(plan, false, false);
         auto permuter = localExpansions.find(current);
         if (permuter != localExpansions.end()) {
-          auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
-          if (collectionAccessingNode != nullptr) {
-            // we guarantee that we only have one collection here
-            TRI_ASSERT(permuter->second.size() == 1);
-            std::string const& cName = collectionAccessingNode->collection()->name();
-            // Get the `i` th shard
-            // TODO optimize cName
-            collectionAccessingNode->setUsedShard(*std::next(permuter->second.at(cName).begin(), i));
-          } else {
-            // GraphNodes are not CollectionAccessingNodes! (they handle multiple collections)
+          if (clone->getType() == ExecutionNode::TRAVERSAL ||
+              clone->getType() == ExecutionNode::SHORTEST_PATH ||
+              clone->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+            // GraphNodes handle multiple collections
             auto graphNode = dynamic_cast<GraphNode*>(clone);
             if (graphNode != nullptr) {
               if (graphNode->isDisjoint()) {
@@ -321,6 +312,20 @@ void QuerySnippet::serializeIntoBuilder(
                   graphNode->addCollectionToShard(cName, *std::next(myExp.second.begin(), i));
                 }
               }
+            } else {
+              TRI_ASSERT(false);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+            }
+          } else {
+            auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
+            if (collectionAccessingNode != nullptr) {
+              // we guarantee that we only have one collection here
+              TRI_ASSERT(permuter->second.size() == 1);
+              std::string const& cName = collectionAccessingNode->collection()->name();
+              // Get the `i` th shard
+              // TODO optimize cName
+              collectionAccessingNode->setUsedShard(
+                  *std::next(permuter->second.at(cName).begin(), i));
             } else {
               TRI_ASSERT(false);
               THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -485,13 +490,11 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for disjoint smart graphs
       if (localGraphNode->isDisjoint()) {
-        size_t size = myExpFinal.begin()->second.size();
+        size_t numberOfShards = myExpFinal.begin()->second.size();
+        // We need one expansion for every collection in the Graph
+        TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
         for (auto const& expDefinition : myExpFinal) {
-          for (auto const& myExp : expDefinition.second) {
-            // We need one expansion for every collection in the Graph
-            TRI_ASSERT(myExp.size() == localGraphNode->collections().size());
-            TRI_ASSERT(myExp.size() == size);
-          }
+          TRI_ASSERT(expDefinition.second.size() == numberOfShards);
         }
       }
 #endif
@@ -578,7 +581,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       if (myExpFinal.size() > 0 ) {
         numberOfShardsToPermutate = myExpFinal.begin()->second.size();
       }
-      
+
       if (numberOfShardsToPermutate > 1) {
         // Only in this case we really need to do an expansion
         // Otherwise we get away with only using the main stream for
