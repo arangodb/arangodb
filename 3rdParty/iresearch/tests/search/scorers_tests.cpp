@@ -75,7 +75,3 @@ TEST(scorers_tests, duplicate_register) {
   ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::text, irs::string_ref::NIL));
   ASSERT_NE(nullptr, irs::scorers::get("dummy_scorer", irs::text_format::xml, irs::string_ref::NIL));
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

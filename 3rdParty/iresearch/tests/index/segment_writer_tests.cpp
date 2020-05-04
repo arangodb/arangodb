@@ -143,7 +143,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer_sorted->reset(segment);
   ASSERT_EQ(0, writer_sorted->memory_active());
   writer_unsorted->reset(segment);
@@ -200,7 +200,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -250,7 +250,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -300,7 +300,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -344,7 +344,7 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -472,7 +472,3 @@ TEST_F(segment_writer_tests, index_field) {
     writer->commit();
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

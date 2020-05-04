@@ -236,6 +236,7 @@ struct QueryContext {
   aql::ExecutionPlan const* plan;
   aql::Ast* ast;
   aql::ExpressionContext* ctx;
+  irs::index_reader const* index;
   aql::Variable const* ref;
   AnalyzersRevision::Revision const analyzers_revision{};
 };  // QueryContext
