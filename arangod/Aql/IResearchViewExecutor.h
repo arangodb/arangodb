@@ -100,6 +100,7 @@ class IResearchViewExecutorInfos {
       noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   aql::QueryContext& getQuery() noexcept;
+  aql::QueryContext const& getQueryConst() const noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;

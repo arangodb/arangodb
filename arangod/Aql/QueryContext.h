@@ -33,7 +33,7 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
-
+#include "Cluster/ClusterTypes.h"
 #include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
@@ -97,6 +97,10 @@ class QueryContext {
   TRI_voc_tick_t id() const { return _queryId; }
   
   aql::Ast* ast();
+
+  arangodb::AnalyzersRevision::Revision analyzersRevision() const noexcept {
+    return _analyzersRevision;
+  }
  
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
@@ -159,6 +163,9 @@ public:
   std::unique_ptr<Ast> _ast;
   
   std::atomic<unsigned> _numRequests;
+
+  ///@brief _analyzersRevision, revision of ArangoSearch Analyzers used to run the query
+  arangodb::AnalyzersRevision::Revision _analyzersRevision{ arangodb::AnalyzersRevision::MIN };
 };
 
 }  // namespace aql

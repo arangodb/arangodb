@@ -1263,7 +1263,8 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice variables,
                                        VPackSlice snippets,
                                        VPackSlice travererSlice,
-                                       VPackBuilder& answerBuilder) {
+                                       VPackBuilder& answerBuilder,
+                                       arangodb::AnalyzersRevision::Revision analyzersRevision) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                              << "Query::prepareQuerySnippets"
                                              << " this: " << (uintptr_t)this;
@@ -1360,6 +1361,8 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     }
     answerBuilder.close();  // traverserEngines
   }
+
+  _analyzersRevision = analyzersRevision;
 
   TRI_ASSERT(_trx != nullptr);
   enterState(QueryExecutionState::ValueType::EXECUTION);

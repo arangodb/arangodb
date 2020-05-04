@@ -252,9 +252,15 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   
   answerBuilder.add("queryId", VPackValue(query->id()));
+
+  auto analyzersRevision = static_cast<AnalyzersRevision::Revision>(
+    VelocyPackHelper::getNumericValue<AnalyzersRevision::Revision>(
+      querySlice, StaticStrings::ArangoSearchAnalyzersRevision,
+      AnalyzersRevision::MIN));
+
   query->prepareClusterQuery(format, collectionBuilder.slice(),
                              variablesSlice, snippetsSlice,
-                             traverserSlice, answerBuilder);
+                             traverserSlice, answerBuilder, analyzersRevision);
 
 //  if (!traverserSlice.isNone()) {
 //    bool needLocking = false;

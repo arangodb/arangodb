@@ -314,6 +314,7 @@ class StaticStrings {
   static std::string const AqlRemoteStateHasmore;
   static std::string const AqlCallListSpecific;
   static std::string const AqlCallListDefault;
+  static std::string const ArangoSearchAnalyzersRevision;
 
   // validation
   static std::string const ValidationLevelNone;

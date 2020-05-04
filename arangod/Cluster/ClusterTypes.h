@@ -84,7 +84,8 @@ class Slice;
 class AnalyzersRevision {
  public:
   using Revision = uint64_t;
- static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
+  static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
+  static constexpr Revision MIN = 0;
 
   AnalyzersRevision(Revision revision, Revision buildingRevision,
                     ServerID&& serverID, uint64_t rebootID)

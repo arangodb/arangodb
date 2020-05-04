@@ -340,6 +340,7 @@ std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
+std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzers_revision");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");

@@ -124,7 +124,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   std::string _name;       // ArangoDB alias for an IResearch analyzer configuration
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
-  arangodb::AnalyzersRevision::Revision _revision{};
+  arangodb::AnalyzersRevision::Revision _revision{ arangodb::AnalyzersRevision::MIN };
 }; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////
