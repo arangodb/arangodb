@@ -145,7 +145,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     std::string const healthPath = "Supervision/Health";
 
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] = cache.get(std::vector<std::string>{
+    auto [acb, idx] = cache.read(std::vector<std::string>{
         AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)});
     auto result = acb->slice();
 

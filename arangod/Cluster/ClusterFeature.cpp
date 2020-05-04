@@ -580,7 +580,7 @@ void ClusterFeature::start() {
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
       << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
 
-  auto [acb,idx] = _agencyCache->get(
+  auto [acb,idx] = _agencyCache->read(
     std::vector<std::string>{AgencyCommManager::path("Sync/HeartbeatIntervalMs")});
   auto result = acb->slice();
 

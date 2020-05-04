@@ -62,7 +62,7 @@ public:
     std::string const& path = std::string("/")) const;
 
   /// @brief Get velocypack from node downward
-  std::tuple <consensus::query_t, consensus::index_t> const get(
+  std::tuple <consensus::query_t, consensus::index_t> const read(
     std::vector<std::string> const& paths) const;
 
   /// @brief Get current commit index
@@ -90,6 +90,8 @@ public:
   consensus::Store& store();
 
 private:
+
+  void handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& toCall);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock

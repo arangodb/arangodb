@@ -22,6 +22,7 @@
 
 #include "AgencyCache.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/Node.h"
 #include "GeneralServer/RestHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -59,7 +60,7 @@ std::tuple <query_t, index_t> const AgencyCache::get(
 }
 
 // Get Builder from readDB mainly /Plan /Current
-std::tuple <query_t, index_t> const AgencyCache::get(
+std::tuple <query_t, index_t> const AgencyCache::read(
   std::vector<std::string> const& paths) const {
   std::lock_guard g(_storeLock);
 
@@ -92,6 +93,43 @@ index_t AgencyCache::index() const {
   return _commitIndex;
 }
 
+
+void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& toCall) {
+
+  if (!slice.isObject()) {
+    LOG_TOPIC("31514", DEBUG, Logger::CLUSTER) <<
+      "Cannot handle callback on non-object " << slice.toJson();
+    return;
+  }
+
+  // Collect and normalize keys
+  std::vector<std::string> keys;
+  keys.reserve(slice.length());
+  for (auto const& i : VPackObjectIterator(slice)) {
+    keys.push_back(Node::normalize(i.key.copyString()));
+  }
+  std::sort(keys.begin(), keys.end());
+
+  for (auto const& cb : _callbacks) {
+    std::vector<std::string>::iterator pos = keys.begin();
+    do {
+      pos = std::find_if(
+        pos, keys.end(),
+        [&cb](std::string const& key) {
+          return (key.size() <= cb.first.size()) ?
+            key.compare(cb.first) == 0 : key.compare(0, cb.first.size(), cb.first) == 0;
+        });
+      if (pos != keys.end()) {
+        if(toCall.emplace(cb.second).second) {
+          LOG_TOPIC("27182", TRACE, Logger::CLUSTER)
+            << "Calling callback " << cb.second << " for " << cb.first;
+        }
+        pos++;
+      }
+    } while (pos != keys.end());
+  }
+}
+
 void AgencyCache::run() {
 
   using namespace std::chrono;
@@ -101,7 +139,7 @@ void AgencyCache::run() {
   _readDB.clear();
   double wait = 0.0;
   VPackBuilder rb;
-  std::vector<uint64_t> toCall;
+  std::unordered_set<uint64_t> toCall;
   // Long poll to agency
   auto sendTransaction =
     [&](VPackBuilder& r) {
@@ -158,22 +196,13 @@ void AgencyCache::run() {
               TRI_ASSERT(rs.get("log").isArray());
               for (auto const& i : VPackArrayIterator(rs.get("log"))) {
                 _readDB.applyTransaction(i); // apply logs
-                for (auto const& q : VPackObjectIterator(i.get("query"))) {
-                  auto const& key = q.key.copyString();
-                  std::lock_guard g(_callbacksLock);
-                  for (auto i : _callbacks) {
-                    if (key.find(i.first) != std::string::npos) {
-                      LOG_TOPIC("76ff8", DEBUG, Logger::CLUSTER)
-                        << "Agency callback " << i.second << " triggered for "
-                        << i.first << " refetching!";
-                      toCall.push_back(i.second);
-                    }
-                  }
-                }
+                std::lock_guard g(_callbacksLock);
+                handleCallbacksNoLock(i.get("query"), toCall);
               }
               _commitIndex = commitIndex;
             } else {
               TRI_ASSERT(rs.hasKey("readDB"));
+              std::lock_guard g(_storeLock);
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
             }
@@ -251,22 +280,21 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
 
 /// Register local call back
 bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
-  LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER)
-    << "Registering callback for " <<  AgencyCommManager::path(key);
+  std::string const ckey = Node::normalize(AgencyCommManager::path(key));
+  LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER) << "Registering callback for " << ckey;
   std::lock_guard g(_callbacksLock);
-  _callbacks.emplace(AgencyCommManager::path(key),id);
-  /*LOG_DEVEL
-    << "Registered callback for "
-    << AgencyCommManager::path(key) << " " << _callbacks.size();*/
+  _callbacks.emplace(ckey,id);
+  LOG_TOPIC("31415", TRACE, Logger::CLUSTER)
+    << "Registered callback for " << ckey << " " << _callbacks.size();
   return true;
 }
 
 /// Register local call back
 bool AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id) {
-  LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER)
-    << "Unregistering callback for " <<  AgencyCommManager::path(key);
+  std::string const ckey = Node::normalize(AgencyCommManager::path(key));
+  LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER) << "Unregistering callback for " << ckey;
   std::lock_guard g(_callbacksLock);
-  auto range = _callbacks.equal_range(AgencyCommManager::path(key));
+  auto range = _callbacks.equal_range(ckey);
   for (auto it = range.first; it != range.second;) {
     if (it->second == id) {
       it = _callbacks.erase(it);
@@ -275,9 +303,8 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id)
       ++it;
     }
   }
-  /*LOG_DEVEL
-    << "Unregistered callback for "
-    << AgencyCommManager::path(key) << " " << _callbacks.size();*/
+  LOG_TOPIC("034cc", TRACE, Logger::CLUSTER)
+    << "Unregistered callback for " << ckey << " " << _callbacks.size();
   return true;
 }
 
@@ -290,6 +317,7 @@ void AgencyCache::beginShutdown() {
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
       pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      ++pit;
     }
     _waiting.clear();
   }

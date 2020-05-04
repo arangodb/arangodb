@@ -47,13 +47,22 @@ AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, 
       _agency(server),
       _cb(cb),
       _needsValue(needsValue),
-      _wasSignaled(false) {
+      _wasSignaled(false),
+      _local(true) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true, false);
   }
 }
 
-void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck, bool local) {
+void AgencyCallback::local(bool b) {
+  _local = b;
+}
+
+bool AgencyCallback::local() const {
+  return _local;
+}
+
+void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) {
   if (!_needsValue) {
     // no need to pass any value to the callback
     if (needToAcquireMutex) {
@@ -68,9 +77,9 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck, 
   VPackSlice result;
   std::shared_ptr<VPackBuilder> builder;
   consensus::index_t idx = 0;
-  if (local) {
+  if (_local) {
     auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-    std::tie(builder, idx) = _cache.get(std::vector<std::string>{AgencyCommManager::path(key)});
+    std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommManager::path(key)});
     result = builder->slice();
     if (!result.isArray()) {
       if (!_agency.server().isStopping()) {

@@ -145,7 +145,7 @@ class PlanCollectionReader {
     auto& agencyCache =
       collection.vocbase().server().getFeature<ClusterFeature>().agencyCache();
     consensus::index_t idx = 0;
-    std::tie(_read, idx) = agencyCache.get(path);
+    std::tie(_read, idx) = agencyCache.read(path);
 
     _collection = _read->slice()[0];
 
@@ -340,7 +340,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = agencyCache.get(std::vector<std::string>{"/"});
+  auto [acb, idx] = agencyCache.read(std::vector<std::string>{"/"});
   auto res = acb->slice();
 
   if (!res.isNone()) {
@@ -2551,7 +2551,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   size_t numberOfShards = 0;
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
       AgencyCommManager::path(
         "Plan/Collections/" + dbName + "/" + collectionID + "/shards")});
@@ -2673,7 +2673,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
       AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
 
@@ -2901,7 +2901,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
                                                  VPackSlice const& json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
       AgencyCommManager::path("Plan/Views/" + databaseName + "/" + viewID)});
 
@@ -2957,7 +2957,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
 
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
       AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
   std::vector<std::string> vpath(
@@ -3493,7 +3493,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{AgencyCommManager::path(planCollKey)});
   auto previous = acb->slice();
 
@@ -3690,7 +3690,7 @@ void ClusterInfo::loadServers() {
   }
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
                               AgencyCommManager::path(mapUniqueToShortId),
                               AgencyCommManager::path(prefixServersKnown)}));
@@ -3945,7 +3945,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
   // Now contact the agency:
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{AgencyCommManager::path(prefixCurrentCoordinators)});
   auto result = acb->slice();
 
@@ -3992,7 +3992,7 @@ void ClusterInfo::loadCurrentMappings() {
 
   // Now contact the agency:
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(
+  auto [acb, index] = agencyCache.read(
     std::vector<std::string>{AgencyCommManager::path(prefixMappings)});
   auto result = acb->slice();
 
@@ -4055,7 +4055,7 @@ void ClusterInfo::loadCurrentDBServers() {
   }
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(std::vector<std::string>{
+  auto [acb, index] = agencyCache.read(std::vector<std::string>{
       AgencyCommManager::path(prefixCurrentDBServers),
         AgencyCommManager::path(prefixTarget)});
   auto result = acb->slice();
@@ -4521,7 +4521,7 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.get(std::vector<std::string>{"Plan"});
+  auto [acb, index] = agencyCache.read(std::vector<std::string>{"Plan"});
   body->add(acb->slice());
   return Result();
 }
@@ -4905,7 +4905,7 @@ VPackSlice PlanCollectionReader::indexes() {
 
 CollectionWatcher::~CollectionWatcher() {
   try {
-    _agencyCallbackRegistry->unregisterCallback(_agencyCallback, true);
+    _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
   } catch (std::exception const& ex) {
     LOG_TOPIC("42af2", WARN, Logger::CLUSTER) << "caught unexpected exception in CollectionWatcher: " << ex.what();
   }

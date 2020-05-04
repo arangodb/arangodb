@@ -68,6 +68,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
       ok = cache.registerCallback(cb->key, rand);
     } else {
       ok = _agency.registerCallback(cb->key, getEndpointUrl(rand)).successful();
+      cb->local(false);
     }
     if (!ok) {
       LOG_TOPIC("b88f4", ERR, Logger::CLUSTER) << "Registering callback failed";
@@ -95,7 +96,7 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id)
   return (*it).second;
 }
 
-bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
+bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
   bool found = false;
   uint64_t endpointToDelete = 0;
   {
@@ -104,7 +105,7 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
     for (auto const& it : _endpoints) {
       if (it.second.get() == cb.get()) {
         endpointToDelete = it.first;
-        if (local) {
+        if (cb->local()) {
           auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
           cache.unregisterCallback(cb->key, endpointToDelete);
         } else {

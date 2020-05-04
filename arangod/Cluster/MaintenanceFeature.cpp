@@ -308,7 +308,7 @@ void MaintenanceFeature::beginShutdown() {
         std::string const& path, uint64_t jobId) -> bool {
         try {
           auto [acb, idx] =
-            cf->agencyCache().get(std::vector<std::string>{
+            cf->agencyCache().read(std::vector<std::string>{
                 AgencyCommManager::path("Target/" + path + "/" + std::to_string(jobId))});
           auto result = acb->slice();
           if (!result.isNone()) {

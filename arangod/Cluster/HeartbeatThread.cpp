@@ -292,7 +292,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   auto start = std::chrono::steady_clock::now();
 
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb,idx] = cache.get(
+  auto [acb,idx] = cache.read(
   std::vector<std::string>{
     AgencyCommManager::path("Shutdown"), AgencyCommManager::path("Current/Version"),
       AgencyCommManager::path("Target/FailedServers"), "/.agency"});
@@ -553,7 +553,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
   auto start = std::chrono::steady_clock::now();
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = cache.get(std::vector<std::string>{
+  auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommManager::path("Current/Version"), AgencyCommManager::path("Current/Foxxmaster"),
         AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
         AgencyCommManager::path("Plan/Version"), AgencyCommManager::path("Readonly"),
@@ -798,7 +798,7 @@ void HeartbeatThread::runSingleServer() {
       }
 
       auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-      auto [acb, idx] = cache.get(
+      auto [acb, idx] = cache.read(
         std::vector<std::string>{
           AgencyCommManager::path("Shutdown"), AgencyCommManager::path("Readonly"),
             AgencyCommManager::path("Plan/AsyncReplication"), "/.agency"});
@@ -1184,7 +1184,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   LOG_TOPIC("eda7d", TRACE, Logger::HEARTBEAT) << "found a plan update";
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = cache.get(
+  auto [acb, idx] = cache.read(
     std::vector<std::string>{AgencyCommManager::path(prefixPlanChangeCoordinator)});
   auto result = acb->slice();
 
