@@ -86,6 +86,7 @@
         ],
         layout: "StandaloneLayout",
         //#region ArangoDB-specific changes
+        validatorUrl: null,
         docExpansion: "none",
         requestInterceptor: function (request) {
           var jwt = sessionStorage.getItem("jwt");
