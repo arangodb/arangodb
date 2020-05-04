@@ -256,6 +256,13 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
                                              LogicalCollection const& collection) = 0;
 
+  // method that is called prior to deletion of a collection. allows the storage
+  // engine to clean up arbitrary data for this collection before the collection
+  // moves into status "deleted". this method may be called multiple times for
+  // the same collection
+  virtual void prepareDropCollection(TRI_vocbase_t& vocbase,
+                                     LogicalCollection& collection) {}
+
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
   // be carried out by this call, as there may
