@@ -91,6 +91,16 @@ public:
 
 private:
 
+  /// @brief invoke all callbacks
+  void invokeAllCallbacks() const;
+  
+  /// @brief invoke given callbacks
+  void invokeCallbacks(std::unordered_set<uint64_t> const&) const;
+
+  /// @brief invoke given callbacks
+  void invokeCallbackNoLock(uint64_t const&, std::string const& = std::string()) const;
+
+  /// @brief handle callbacks for specific log document 
   void handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& toCall);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex

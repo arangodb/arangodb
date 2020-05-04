@@ -209,27 +209,17 @@ void AgencyCache::run() {
                 handleCallbacksNoLock(i.get("query"), toCall);
               }
               _commitIndex = commitIndex;
+              if (!toCall.empty()) {
+                invokeCallbacks(toCall);
+              }
             } else {
               TRI_ASSERT(rs.hasKey("readDB"));
               std::lock_guard g(_storeLock);
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
+              invokeAllCallbacks();
             }
             triggerWaitingNoLock(commitIndex);
-            for (auto i : toCall) {
-              auto cb = _callbackRegistry.getCallback(i);
-              if (cb.get() != nullptr) {
-                try {
-                  cb->refetchAndUpdate(true, false);
-                  LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
-                    << "Agency callback " << i << " has been triggered. refetching!";
-                } catch (arangodb::basics::Exception const& e) {
-                  LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
-                    << "Error executing callback: " << e.message();
-                }
-              }
-            }
-
           } else {
             if (wait <= 1.9) {
               wait += 0.1;
@@ -365,4 +355,33 @@ std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const 
     ret.push_back(_readDB.has(i));
   }
   return ret;
+}
+
+
+void AgencyCache::invokeCallbackNoLock(uint64_t const& id, std::string const& key) const {
+  auto cb = _callbackRegistry.getCallback(id);
+  if (cb.get() != nullptr) {
+    try {
+      cb->refetchAndUpdate(true, false);
+      LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+        << "Agency callback " << id << " has been triggered. refetching " + key;
+    } catch (arangodb::basics::Exception const& e) {
+      LOG_TOPIC("c3091", WARN, Logger::AGENCYCOMM)
+        << "Error executing callback: " << e.message();
+    }
+  }
+}
+
+void AgencyCache::invokeCallbacks(std::unordered_set<uint64_t> const& toCall) const {
+  std::lock_guard g(_callbacksLock);
+  for (auto i : toCall) {
+    invokeCallbackNoLock(i);
+  }
+}
+
+void AgencyCache::invokeAllCallbacks() const {
+  std::lock_guard g(_callbacksLock);
+  for (auto i : _callbacks) {
+    invokeCallbackNoLock(i.second, i.first);
+  }
 }
