@@ -419,6 +419,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
       if constexpr (isShadowRow) {
         return sourceRow.getDepth() + 1;
       } else {
+        (void)sourceRow;
         return 0;
       }
     });

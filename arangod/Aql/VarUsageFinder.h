@@ -46,8 +46,6 @@ template <class T>
 struct VarUsageFinderT final : public WalkerWorker<T> {
   VarSetStack _usedLaterStack = VarSetStack{{}};
   VarSetStack _varsValidStack = VarSetStack{{}};
-  VarSet _usedLater;
-  VarSet _valid;
   std::unordered_map<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 
