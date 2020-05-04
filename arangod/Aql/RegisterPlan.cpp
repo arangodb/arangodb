@@ -115,7 +115,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     return regsToClear;
   };
 
-  planRegistersForCurrentNode(en, true);
+  if (!mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
 
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
