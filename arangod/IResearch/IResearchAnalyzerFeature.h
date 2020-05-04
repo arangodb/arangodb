@@ -49,6 +49,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterInfo.h"
 
 namespace iresearch {
 namespace text_format {
@@ -82,7 +83,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   irs::string_ref const& type() const noexcept { return _type; }
-
+  AnalyzersRevision::Revision  revision() const noexcept { return _revision; }
   // definition to be stored in _analyzers collection or shown to the end user
   void toVelocyPack(velocypack::Builder& builder,
                     bool forPersistence = false);
@@ -123,6 +124,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   std::string _name;       // ArangoDB alias for an IResearch analyzer configuration
   VPackSlice _properties;  // IResearch analyzer configuration
   irs::string_ref _type;   // IResearch analyzer name
+  arangodb::AnalyzersRevision::Revision _revision{};
 }; // AnalyzerPool
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -252,8 +254,9 @@ class IResearchAnalyzerFeature final
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
+                        AnalyzersRevision::Revision const revision = AnalyzersRevision::LATEST,
                         bool onlyCached = false) const noexcept {
-    return get(name, splitAnalyzerName(name), onlyCached);
+    return get(name, splitAnalyzerName(name), revision, onlyCached);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -267,6 +270,7 @@ class IResearchAnalyzerFeature final
   AnalyzerPool::ptr get(irs::string_ref const& name,
                         TRI_vocbase_t const& activeVocbase,
                         TRI_vocbase_t const& systemVocbase,
+                        AnalyzersRevision::Revision const revision = AnalyzersRevision::LATEST,
                         bool onlyCached = false) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -291,6 +295,12 @@ class IResearchAnalyzerFeature final
   /// @param vocbase  database to invalidate analyzers
   ///////////////////////////////////////////////////////////////////////////////
   void invalidate(const TRI_vocbase_t& vocbase);
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief return latest known analyzers revision
+  /// @return revision number. always 0 for single server and before plan is loaded
+  ///////////////////////////////////////////////////////////////////////////////
+  AnalyzersRevision::Revision getLatestRevision(const TRI_vocbase_t& vocbase) const;
 
   virtual void prepare() override;
   virtual void start() override;
@@ -322,7 +332,8 @@ class IResearchAnalyzerFeature final
   );
 
   AnalyzerPool::ptr get(irs::string_ref const& normalizedName,
-                        AnalyzerName const& name, bool onlyCached) const noexcept;
+                        AnalyzerName const& name, AnalyzersRevision::Revision const revision,
+                        bool onlyCached) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief load the analyzers for the specific database, analyzers read from

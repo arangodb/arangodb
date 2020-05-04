@@ -312,7 +312,7 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.analyzers_revision);
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -325,7 +325,6 @@ arangodb::Result getAnalyzerByName(
           .append(analyzerId.c_str(), analyzerId.size()).append("'")
     };
   }
-
   return {};
 }
 

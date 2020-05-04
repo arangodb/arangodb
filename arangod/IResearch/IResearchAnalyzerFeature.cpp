@@ -49,7 +49,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearchAnalyzerFeature.h"
@@ -1508,6 +1507,7 @@ Result IResearchAnalyzerFeature::emplace(
 AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& normalizedName,
     AnalyzerName const& name,
+    AnalyzersRevision::Revision const revision,
     bool onlyCached) const noexcept {
   try {
     if (!name.first.null()) { // check if analyzer is static
@@ -1541,7 +1541,12 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     auto pool = itr->second;
 
     if (pool) {
-      return pool;
+      if (pool->revision() <= revision) {
+        return pool;
+      } else {
+        LOG_TOPIC("c4c20e", DEBUG, iresearch::TOPIC)
+          << "invalid analyzer revision. Requested " << revision << " got " << pool->revision();
+      }
     }
 
     LOG_TOPIC("1a29c", WARN, iresearch::TOPIC)
@@ -1568,6 +1573,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     irs::string_ref const& name,
     TRI_vocbase_t const& activeVocbase,
     TRI_vocbase_t const& systemVocbase,
+    arangodb::AnalyzersRevision::Revision const revision,
     bool onlyCached /*= false*/) const {
   auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
 
@@ -1580,7 +1586,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     return nullptr;
   }
 
-  return get(normalizedName, split, onlyCached);
+  return get(normalizedName, split, revision, onlyCached);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2117,6 +2123,17 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   }
 
   return name; // name prefixed with vocbase (or NIL)
+}
+
+AnalyzersRevision::Revision IResearchAnalyzerFeature::getLatestRevision(const TRI_vocbase_t& vocbase) const {
+  if (ServerState::instance()->isRunningInCluster()) {
+    auto const& server = vocbase.server();
+    if (server.hasFeature<arangodb::ClusterFeature>()) {
+      return server.getFeature<arangodb::ClusterFeature>()
+        .clusterInfo().getAnalyzersRevision(vocbase.name())->getRevision();
+    }
+  }
+  return 0;
 }
 
 void IResearchAnalyzerFeature::prepare() {
