@@ -56,7 +56,10 @@ struct RequestMeta {
   bool skipScheduler;
   unsigned tries;
 
-  [[nodiscard]] bool isRetryOnNoResponse() const { return type == RequestType::READ; }
+  [[nodiscard]] bool isRetryOnNoResponse() const {
+    return type == RequestType::READ;
+  }
+
   [[nodiscard]] bool isInquiryOnNoResponse() const {
     return type == RequestType::WRITE && !clientIds.empty();
   }
@@ -146,12 +149,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
     LOG_TOPIC("aac82", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because cancelled";
-    return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     LOG_TOPIC("aac81", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because timeout";
-    return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::Timeout, nullptr});
   }
 
   LOG_TOPIC("aac79", TRACE, Logger::AGENCYCOMM)
@@ -242,12 +245,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
     LOG_TOPIC("aac84", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because cancelled";
-    return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     LOG_TOPIC("aac85", TRACE, Logger::AGENCYCOMM)
         << "agencyAsyncSend [" << meta.requestId << "] "
         << "abort because timeout";
-    return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
+    return futures::makeFuture(AsyncAgencyCommResult{Error::Timeout, nullptr});
   }
 
   LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
@@ -286,7 +289,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
           auto& body = *req;
 
           switch (result.error) {
-            case fuerte::Error::NoError:
+            case Error::NoError:
 
               LOG_TOPIC("aac88", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend [" << meta.requestId
@@ -322,12 +325,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 
               [[fallthrough]];
               /* fallthrough */
-            case fuerte::Error::Timeout:
-            case fuerte::Error::ConnectionClosed:
-            case fuerte::Error::Canceled:
-            case fuerte::Error::ProtocolError:
-            case fuerte::Error::WriteError:
-            case fuerte::Error::ReadError:
+            case Error::Timeout:
+            case Error::ConnectionClosed:
+            case Error::Canceled:
+            case Error::ProtocolError:
+            case Error::WriteError:
+            case Error::ReadError:
             case Error::CloseRequested:
               // inquiry the request
               man.reportError(endpoint);
@@ -335,24 +338,28 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               if (meta.isInquiryOnNoResponse()) {
                 return ::agencyAsyncInquiry(man, std::move(meta),
                                             std::move(body).moveBuffer());
+              } else if (!meta.isRetryOnNoResponse()) {
+                // return error
+                return futures::makeFuture(
+                    AsyncAgencyCommResult{result.error, std::move(resp)});
               }
               // otherwise just send again
               [[fallthrough]];
-            case fuerte::Error::CouldNotConnect:
-              if (meta.isRetryOnNoResponse()) {
-                LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
-                    << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
-                // retry to send the request
-                man.reportError(endpoint);
-              }
+
+            case Error::CouldNotConnect:
+              LOG_TOPIC("aac90", TRACE, Logger::AGENCYCOMM)
+                  << "agencyAsyncSend [" << meta.requestId << "] retry request soon";
+              // retry to send the request
+              man.reportError(endpoint);
               [[fallthrough]];
+
+            case Error::QueueCapacityExceeded:
+              return ::agencyAsyncSend(man, std::move(meta),
+                                       std::move(body).moveBuffer());  // retry always
+
             case Error::VstUnauthorized:
               return futures::makeFuture(AsyncAgencyCommResult{result.error,
                                                                std::move(resp)});  // unrecoverable error
-
-            case fuerte::Error::QueueCapacityExceeded:
-              return ::agencyAsyncSend(man, std::move(meta),
-                                       std::move(body).moveBuffer());  // retry always
           }
 
           ADB_UNREACHABLE;
