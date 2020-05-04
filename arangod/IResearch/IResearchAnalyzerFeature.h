@@ -49,7 +49,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 
 namespace iresearch {
 namespace text_format {
