@@ -40,7 +40,8 @@ template <class T>
 void VarUsageFinderT<T>::after(T* en) {
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
-      _varsValidStack.emplace_back(_varsValidStack.back());
+      auto top = _varsValidStack.back();
+      _varsValidStack.emplace_back(std::move(top));
       break;
     }
 
@@ -61,6 +62,24 @@ void VarUsageFinderT<T>::after(T* en) {
 
   en->setVarsValid(_varsValidStack);
   en->setVarUsageValid();
+}
+
+template <class T>
+bool VarUsageFinderT<T>::enterSubquery(T*, T*) {
+  auto top = _varsValidStack.back();
+  _varsValidStack.emplace_back(std::move(top));
+  _usedLaterStack.emplace_back(std::unordered_set<Variable const*>{});
+  return true;
+}
+
+template <class T>
+void VarUsageFinderT<T>::leaveSubquery(T*, T*) {
+  _varsValidStack.pop_back();
+  TRI_ASSERT(!_varsValidStack.empty());
+  auto top = std::move(_usedLaterStack.back());
+  _usedLaterStack.pop_back();
+  TRI_ASSERT(!_usedLaterStack.empty());
+  _usedLaterStack.back().merge(top);
 }
 
 template struct arangodb::aql::VarUsageFinderT<ExecutionNode>;

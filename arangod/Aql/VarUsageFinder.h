@@ -70,7 +70,7 @@ struct VarUsageFinderT final : public WalkerWorker<T> {
     }
   }
 
-  bool before(T* en) override final;
+  bool before(T* en) final;
 
   /*
    * o  set: x, z   valid = x, z  usedLater = (z, x)
@@ -89,14 +89,9 @@ struct VarUsageFinderT final : public WalkerWorker<T> {
 
   void after(T* en) override final;
 
-  bool enterSubquery(T*, T* sub) override final {
-    VarUsageFinderT subfinder(_varSetBy);
-    subfinder._valid = _valid;  // need a copy for the subquery!
-    sub->walk(subfinder);
+  bool enterSubquery(T*, T*) final;
 
-    // we've fully processed the subquery
-    return false;
-  }
+  void leaveSubquery(T*, T*) final;
 };
 
 }  // namespace arangodb::aql
