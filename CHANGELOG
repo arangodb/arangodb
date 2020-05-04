@@ -1,7 +1,13 @@
-v3.5.5 (2020-04-24)
+v3.5.6 (XXXX-XX-XX)
 -------------------
 
-* Upgraded Swagger UI to 3.25.1
+* Fixed issue #11525: Address security vulnerability by updating
+  Swagger-UI dependency
+
+  Upgraded Swagger UI to 3.25.1
+
+v3.5.5 (2020-04-24)
+-------------------
 
 * Updated OpenSSL to 1.1.1g.
 
