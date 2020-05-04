@@ -914,10 +914,8 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
 
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
-    if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
-      auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-      sq->getSubquery()->planRegisters(s);
-    }
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+    sq->getSubquery()->planRegisters(s);
   }
   walker.reset();
 }

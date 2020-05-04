@@ -59,8 +59,11 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->increaseDepth();
   }
 
-  if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
+  if (en->getType() == ExecutionNode::SUBQUERY) {
     plan->addSubqueryNode(en);
+  }
+
+  if (en->getType() == ExecutionNode::SUBQUERY_START || en->getType() == ExecutionNode::SUBQUERY_END) {
     // is SQS or SQE => mayReuseRegisterImmediately
     TRI_ASSERT(mayReuseRegisterImmediately);
   }
