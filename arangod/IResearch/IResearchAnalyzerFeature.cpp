@@ -1544,7 +1544,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       if (pool->revision() <= revision) {
         return pool;
       } else {
-        LOG_TOPIC("c4c20e", DEBUG, iresearch::TOPIC)
+        LOG_TOPIC("c4c20", DEBUG, iresearch::TOPIC)
           << "invalid analyzer revision. Requested " << revision << " got " << pool->revision();
       }
     }
