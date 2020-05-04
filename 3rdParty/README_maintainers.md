@@ -171,6 +171,11 @@ the _Execute_ button.
 
   This indicates the stylistic CSS changes were applied correctly.
 
+* Scroll to the very end of the page and check the bottom right corner.
+  There should be NO badge reading _INVALID_.
+
+  This confirms that validation is disabled correctly (`validatorUrl`).
+
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
