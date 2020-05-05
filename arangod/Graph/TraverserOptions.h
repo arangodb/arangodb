@@ -84,6 +84,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
+  /// @brief a value of 1 (which is the default) means "no parallelism"
+  size_t parallelism;
+
   bool useBreadthFirst;
 
   bool useNeighbors;

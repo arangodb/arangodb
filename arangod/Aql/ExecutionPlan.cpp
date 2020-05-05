@@ -157,6 +157,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
 
   auto steps = direction->getMember(1);
 
+  bool invalidDepth = false;
+
   if (steps->isNumericValue()) {
     // Check if a double value is integer
     options->minDepth = checkTraversalDepthValue(steps);
@@ -167,10 +169,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
     options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
 
     if (options->maxDepth < options->minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid traversal depth");
+      invalidDepth = true;
     }
   } else {
+    invalidDepth = true;
+  }
+
+  if (invalidDepth) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
@@ -212,6 +217,22 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == "parallelism") {
+          bool invalidValue = false;
+          if (value->isIntValue()) {
+            int64_t p = value->getIntValue();
+            if (p > 0) {
+              options->parallelism = static_cast<size_t>(p);
+            } else {
+              invalidValue = true;
+            }
+          }
+          if (invalidValue) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_BAD_PARAMETER,
+                "parallelism: invalid value"
+            );
+          }
         }
       }
     }
