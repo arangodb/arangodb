@@ -2513,6 +2513,10 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     node.addDependency(&singleton);
 
     // "Trust me, I'm an IT professional"
+    singleton.setVarsUsedLater({{&outVariable}});
+    singleton.setVarsValid({{}});
+    node.setVarsUsedLater({{}});
+    node.setVarsValid({{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
 
@@ -2600,6 +2604,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   node.addDependency(&singleton);
 
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
+  singleton.setVarsUsedLater({{&outVariable}});
+  singleton.setVarsValid({{}});
+  node.setVarsUsedLater({{}});
+  node.setVarsValid({{&outVariable}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
   singleton.planRegisters(nullptr);
@@ -2645,6 +2653,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
+  singleton.setVarsUsedLater({{&outVariable, &outNmColPtr, &outNmDocId}});
+  singleton.setVarsValid({{}});
+  node.setVarsUsedLater({{}});
+  node.setVarsValid({{&outVariable, &outNmColPtr, &outNmDocId}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
   singleton.planRegisters(nullptr);
