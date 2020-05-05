@@ -97,7 +97,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb,idx] = cache.read(std::vector<std::string>{
-        AgencyCommManager::path("Plan/Databases/" + vocbase->name())});
+        AgencyCommHelper::path("Plan/Databases/" + vocbase->name())});
     auto res = acb->slice();
 
     if (!res.isArray()) {
@@ -108,7 +108,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     }
 
     VPackSlice value = res[0].get<std::string>(
-        {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
+        {AgencyCommHelper::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey(StaticStrings::DataSourceName)) {
       std::string name = value.get(StaticStrings::DataSourceName).copyString();
 

@@ -80,11 +80,11 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult tmp;
   
   LOG_TOPIC("a6344", TRACE, Logger::CLUSTER) <<
-    "Refetching and update for " << AgencyCommManager::path(key);
+    "Refetching and update for " << AgencyCommHelper::path(key);
   
   if (_local) {
     auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-    std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommManager::path(key)});
+    std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
     result = builder->slice();
     if (!result.isArray()) {
       if (!_agency.server().isStopping()) {
@@ -111,7 +111,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   }
 
   std::vector<std::string> kv =
-      basics::StringUtils::split(AgencyCommManager::path(key), '/');
+      basics::StringUtils::split(AgencyCommHelper::path(key), '/');
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
 
   auto newData = std::make_shared<VPackBuilder>();

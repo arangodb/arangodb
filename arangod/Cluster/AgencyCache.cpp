@@ -286,7 +286,7 @@ void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
 
 /// Register local call back
 bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
-  std::string const ckey = Node::normalize(AgencyCommManager::path(key));
+  std::string const ckey = Node::normalize(AgencyCommHelper::path(key));
   LOG_TOPIC("67bb8", DEBUG, Logger::CLUSTER) << "Registering callback for " << ckey;
   std::lock_guard g(_callbacksLock);
   _callbacks.emplace(ckey,id);
@@ -297,7 +297,7 @@ bool AgencyCache::registerCallback(std::string const& key, uint64_t const& id) {
 
 /// Register local call back
 bool AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id) {
-  std::string const ckey = Node::normalize(AgencyCommManager::path(key));
+  std::string const ckey = Node::normalize(AgencyCommHelper::path(key));
   LOG_TOPIC("cc768", DEBUG, Logger::CLUSTER) << "Unregistering callback for " << ckey;
   std::lock_guard g(_callbacksLock);
   auto range = _callbacks.equal_range(ckey);
@@ -353,7 +353,7 @@ void AgencyCache::beginShutdown() {
 
 bool AgencyCache::has(std::string const& path) const {
   std::lock_guard g(_storeLock);
-  return _readDB.has(AgencyCommManager::path(path));
+  return _readDB.has(AgencyCommHelper::path(path));
 }
 
 std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const {

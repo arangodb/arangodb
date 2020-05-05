@@ -140,7 +140,7 @@ class PlanCollectionReader {
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
     std::vector<std::string> path{
-      AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)};
+      AgencyCommHelper::path("Plan/Collections/" + databaseName + "/" + collectionID)};
 
     auto& agencyCache =
       collection.vocbase().server().getFeature<ClusterFeature>().agencyCache();
@@ -157,7 +157,7 @@ class PlanCollectionReader {
     _collection = _read->slice()[0];
 
     std::vector<std::string> vpath(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
+      {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID});
 
     if (!_collection.hasKey(vpath)) {
       _state = Result(
@@ -2573,12 +2573,12 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
-      AgencyCommManager::path(
+      AgencyCommHelper::path(
         "Plan/Collections/" + dbName + "/" + collectionID + "/shards")});
 
   velocypack::Slice databaseSlice =
     acb->slice()[0].get(std::vector<std::string>(
-                          {AgencyCommManager::path(), "Plan", "Collections", dbName}));
+                          {AgencyCommHelper::path(), "Plan", "Collections", dbName}));
 
   if (!databaseSlice.isObject()) {
     // database dropped in the meantime
@@ -2697,10 +2697,10 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
-      AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
+      AgencyCommHelper::path("Plan/Collections/" + databaseName + "/" + collectionID)});
 
   velocypack::Slice collection = acb->slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+      {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
 
   if (!collection.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -2925,15 +2925,15 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
-      AgencyCommManager::path("Plan/Views/" + databaseName + "/" + viewID)});
+      AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
   if (!acb->slice()[0].hasKey(
-        {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID})) {
+        {AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID})) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   auto const view = acb->slice()[0].get(std::vector<std::string>{
-      AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
+      AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID});
 
   if (!view.isObject()) {
     logAgencyDump();
@@ -2981,9 +2981,9 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
     std::vector<std::string>{
-      AgencyCommManager::path("Plan/Collections/" + databaseName + "/" + collectionID)});
+      AgencyCommHelper::path("Plan/Collections/" + databaseName + "/" + collectionID)});
   std::vector<std::string> vpath(
-    {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID});
+    {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID});
 
   if (!acb->slice()[0].hasKey(vpath)) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -3517,7 +3517,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
-    std::vector<std::string>{AgencyCommManager::path(planCollKey)});
+    std::vector<std::string>{AgencyCommHelper::path(planCollKey)});
   auto previous = acb->slice();
 
   if (!previous.isArray() || previous.length() == 0) {
@@ -3526,7 +3526,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     return Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   }
   velocypack::Slice collection = previous[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+      {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
   if (!collection.isObject()) {
     events::DropIndex(databaseName, collectionID, idString,
                       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -3714,9 +3714,9 @@ void ClusterInfo::loadServers() {
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
-    std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
-                              AgencyCommManager::path(mapUniqueToShortId),
-                              AgencyCommManager::path(prefixServersKnown)}));
+    std::vector<std::string>({AgencyCommHelper::path(prefixServersRegistered),
+                              AgencyCommHelper::path(mapUniqueToShortId),
+                              AgencyCommHelper::path(prefixServersKnown)}));
   auto result = acb->slice();
   if(!result.isArray()) {
     LOG_TOPIC("be98b", DEBUG, Logger::CLUSTER)
@@ -3727,21 +3727,20 @@ void ClusterInfo::loadServers() {
   VPackSlice serversRegistered, serversAliases, serversKnownSlice;
 
   std::vector<std::string> serversRegisteredPath {
-    AgencyCommManager::path(), "Current", "ServersRegistered"};
+    AgencyCommHelper::path(), "Current", "ServersRegistered"};
   if (result[0].hasKey(serversRegisteredPath)) {
     serversRegistered = result[0].get(serversRegisteredPath);
   }
   std::vector<std::string> mapUniqueToShortIDPath {
-    AgencyCommManager::path(), "Target", "MapUniqueToShortID"};
+    AgencyCommHelper::path(), "Target", "MapUniqueToShortID"};
   if (result[0].hasKey(mapUniqueToShortIDPath)) {
     serversAliases = result[0].get(mapUniqueToShortIDPath);
   }
   std::vector<std::string> serversKnownPath {
-    AgencyCommManager::path(), "Current", "ServersKnown"};
+    AgencyCommHelper::path(), "Current", "ServersKnown"};
   if (result[0].hasKey(serversKnownPath)) {
     serversKnownSlice = result[0].get(serversKnownPath);
   }
-
 
   if (serversRegistered.isObject()) {
     decltype(_servers) newServers;
@@ -3974,12 +3973,12 @@ void ClusterInfo::loadCurrentCoordinators() {
   // Now contact the agency:
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
-    std::vector<std::string>{AgencyCommManager::path(prefixCurrentCoordinators)});
+    std::vector<std::string>{AgencyCommHelper::path(prefixCurrentCoordinators)});
   auto result = acb->slice();
 
   if (result.isArray()) {
     velocypack::Slice currentCoordinators = result[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Current", "Coordinators"}));
+        {AgencyCommHelper::path(), "Current", "Coordinators"}));
 
     if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
@@ -4021,13 +4020,13 @@ void ClusterInfo::loadCurrentMappings() {
   // Now contact the agency:
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(
-    std::vector<std::string>{AgencyCommManager::path(prefixMappings)});
+    std::vector<std::string>{AgencyCommHelper::path(prefixMappings)});
   auto result = acb->slice();
 
   if (result.isArray()) {
 
     velocypack::Slice mappings = result[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+        {AgencyCommHelper::path(), "Target", "MapUniqueToShortID"}));
 
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
@@ -4084,8 +4083,8 @@ void ClusterInfo::loadCurrentDBServers() {
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(std::vector<std::string>{
-      AgencyCommManager::path(prefixCurrentDBServers),
-        AgencyCommManager::path(prefixTarget)});
+      AgencyCommHelper::path(prefixCurrentDBServers),
+        AgencyCommHelper::path(prefixTarget)});
   auto result = acb->slice();
   if (!result.isArray()) {
     return;
@@ -4095,23 +4094,23 @@ void ClusterInfo::loadCurrentDBServers() {
   VPackSlice currentDBServers, failedDBServers, cleanedDBServers, toBeCleanedDBServers;
 
   auto curDBServersPath = std::vector<std::string>{
-    AgencyCommManager::path(), "Current", "DBServers"};
+    AgencyCommHelper::path(), "Current", "DBServers"};
   if (result[0].hasKey(curDBServersPath)) {
     currentDBServers = result[0].get(curDBServersPath);
   }
   auto failedServerPath = std::vector<std::string>{
-    AgencyCommManager::path(), "Target", "FailedServers"};
+    AgencyCommHelper::path(), "Target", "FailedServers"};
   if (result[0].hasKey(failedServerPath)) {
     failedDBServers = result[0].get(failedServerPath);
   }
   auto cleanedServersPath = std::vector<std::string>{
-    AgencyCommManager::path(), "Target", "CleanedServers"};
+    AgencyCommHelper::path(), "Target", "CleanedServers"};
   if (result[0].hasKey(cleanedServersPath)) {
     cleanedDBServers = result[0].get(cleanedServersPath);
   }
 
   auto toBeCleanedServersPath = std::vector<std::string>{
-    AgencyCommManager::path(), "Target", "ToBeCleanedServers"};
+    AgencyCommHelper::path(), "Target", "ToBeCleanedServers"};
   if (result[0].hasKey(toBeCleanedServersPath)) {
     toBeCleanedDBServers = result[0].get(toBeCleanedServersPath);
   }

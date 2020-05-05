@@ -24,6 +24,7 @@
 #include "RestClusterHandler.h"
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCache.h"
@@ -133,20 +134,20 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AgencyCommManager::isEnabled()) {
-      generateError(
-          Result(TRI_ERROR_NOT_IMPLEMENTED, "automatic failover is not enabled"));
+    if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
+      generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                           "automatic failover is not enabled"));
       return;
     }
 
-    TRI_ASSERT(AgencyCommManager::isEnabled());
+    TRI_ASSERT(AsyncAgencyCommManager::isEnabled());
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
 
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
-        AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)});
+        AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
     auto result = acb->slice();
 
     if (!result.isArray()) {
@@ -155,10 +156,10 @@ void RestClusterHandler::handleCommandEndpoints() {
       return;
     }
 
-    std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
+    std::vector<std::string> path = AgencyCommHelper::slicePath(leaderPath);
     VPackSlice slice = result[0].get(path);
     ServerID leaderId = slice.isString() ? slice.copyString() : "";
-    path = AgencyCommManager::slicePath(healthPath);
+    path = AgencyCommHelper::slicePath(healthPath);
     VPackSlice healthMap = result[0].get(path);
 
     if (leaderId.empty()) {
@@ -192,7 +193,8 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints.insert(endpoints.begin(), leaderId);
 
   } else {
-    generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "cannot serve this request for this deployment type"));
+    generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                         "cannot serve this request for this deployment type"));
     return;
   }
 

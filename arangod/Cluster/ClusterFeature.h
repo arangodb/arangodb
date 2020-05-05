@@ -128,7 +128,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
-  std::unique_ptr<network::ConnectionPool> _pool;
+  std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   std::optional<std::reference_wrapper<Counter>> _dropped_follower_counter;
 };
 

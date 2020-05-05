@@ -111,7 +111,7 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
 
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] = cache.read(
-    std::vector<std::string>{AgencyCommManager::path(::upgradeVersionKey)});
+    std::vector<std::string>{AgencyCommHelper::path(::upgradeVersionKey)});
   auto res = acb->slice();
 
   if (!res.isArray()) {
@@ -122,7 +122,7 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
 
   uint64_t latestUpgradeVersion = 0;
   VPackSlice value = res[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), ::upgradeVersionKey}));
+      std::vector<std::string>({AgencyCommHelper::path(), ::upgradeVersionKey}));
   if (value.isNumber()) {
     latestUpgradeVersion = value.getNumber<uint64_t>();
     LOG_TOPIC("54f69", DEBUG, arangodb::Logger::CLUSTER)

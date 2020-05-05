@@ -57,7 +57,7 @@ public:
   // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override;
 
-  /// @brief Get velocypack from node downward. AgencyCommManager::path is prepended
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
   std::tuple <consensus::query_t, consensus::index_t> const get(
     std::string const& path = std::string("/")) const;
 
@@ -77,7 +77,7 @@ public:
   /// @brief Wait to be notified, when a Raft index has arrived.
   futures::Future<Result> waitFor(consensus::index_t index);
 
-  /// @brief Cache has these path? AgencyCommManager::path is prepended
+  /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
 
   /// @brief Cache has these path? Paths are absolute

@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Agency/AsyncAgencyComm.h>
 #include "gtest/gtest.h"
 
 #include "utils/misc.hpp"
@@ -211,7 +212,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -231,7 +233,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView0
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
@@ -240,7 +244,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
   EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade
@@ -249,7 +253,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView1
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
@@ -288,7 +294,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -310,7 +317,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   EXPECT_TRUE(viewDataPath.exists(result) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView0
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
@@ -319,7 +328,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView1);
-  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_NE(link0->id(), link1->id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
   EXPECT_TRUE(linkDataPath.exists(result) && result);  // ensure link directory created after upgrade
@@ -328,7 +337,9 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure view directory not created
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView1
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(1, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 1 after upgrade
 }
@@ -583,7 +594,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
 
   {
     arangodb::iresearch::IResearchFeature feature(server.server());
-    feature.prepare(); // start thread pool
+    feature.prepare();  // start thread pool
     std::shared_ptr<bool> flag(&deallocated,
                                [](bool* ptr) -> void { *ptr = true; });
 
@@ -649,7 +660,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   // expectation is currently deactivated as it is causing sporadic test failures:
   // EXPECT_TRUE(deallocated1);
   //
-  // the reason is that the read_write_mutex::unlock() function in 3rdParty/iresearch/core/utils/async_utils.cpp 
+  // the reason is that the read_write_mutex::unlock() function in 3rdParty/iresearch/core/utils/async_utils.cpp
   // does not acquire a mutex reproducibly.
   // excerpt from that code:
   //
@@ -722,21 +733,14 @@ class IResearchFeatureTestCoordinator
  private:
   arangodb::consensus::Store* _agencyStore;
   arangodb::ServerState::RoleEnum _serverRoleBefore;
+  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
  protected:
   IResearchFeatureTestCoordinator()
       : server(false),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
-    auto* agencyCommManager =
-        new AgencyCommManagerMock(server.server(), "arango");
     server.getFeature<arangodb::ClusterFeature>().allocateMembers();
     _agencyStore = &server.getFeature<arangodb::ClusterFeature>().agencyCache().store();
-    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        server.server(), *_agencyStore);
-    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        server.server(),
-        *_agencyStore);  // need 2 connections or Agency callbacks will fail
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::tests::init();
 
@@ -749,7 +753,18 @@ class IResearchFeatureTestCoordinator
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
 
-    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+    arangodb::AgencyCommHelper::initialize("arango");
+    arangodb::network::ConnectionPool::Config poolConfig;
+    poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    poolConfig.numIOThreads = 1;
+    poolConfig.minOpenConnections = 1;
+    poolConfig.maxOpenConnections = 3;
+    poolConfig.verifyHosts = false;
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(_agencyStore, poolConfig);
+    arangodb::AsyncAgencyCommManager::initialize(server.server());
+    arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
+    arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
+    arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
   }
 
   ~IResearchFeatureTestCoordinator() {
@@ -864,7 +879,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView0->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView0
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
@@ -893,11 +910,13 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
-  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_EQ(link0->id(), link1->id());  // ensure new link
   builder.clear();
   builder.openObject();
-  EXPECT_TRUE(logicalView1->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView1
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
 }
@@ -913,19 +932,15 @@ class IResearchFeatureTestDBServer
  private:
   arangodb::consensus::Store _agencyStore;
   arangodb::ServerState::RoleEnum _serverRoleBefore;
+  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
 
  protected:
   IResearchFeatureTestDBServer()
       : server(false),
         _agencyStore(server.server(), nullptr, "arango"),
-        _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
-    auto* agencyCommManager =
-        new AgencyCommManagerMock(server.server(), "arango");
-    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        server.server(), _agencyStore);
-    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        server.server(), _agencyStore);  // need 2 connections or Agency callbacks will fail
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+        _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
+        _pool(nullptr) {
+
 
     arangodb::tests::init();
 
@@ -938,7 +953,20 @@ class IResearchFeatureTestDBServer
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
 
-    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+    arangodb::AgencyCommHelper::initialize("arango");
+
+    arangodb::network::ConnectionPool::Config poolConfig;
+    poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    poolConfig.numIOThreads = 1;
+    poolConfig.minOpenConnections = 1;
+    poolConfig.maxOpenConnections = 3;
+    poolConfig.verifyHosts = false;
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
+    arangodb::AsyncAgencyCommManager::initialize(server.server());
+    arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
+    arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
+
+    arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
   }
 
   ~IResearchFeatureTestDBServer() {
@@ -1008,7 +1036,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
@@ -1031,7 +1060,9 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   EXPECT_TRUE(viewDataPath.exists(result) && !result);  // ensure no view directory
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
@@ -1078,7 +1109,8 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice());
@@ -1103,7 +1135,9 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   EXPECT_TRUE(viewDataPath.exists(result) && result);
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
+  EXPECT_TRUE(logicalView
+                  ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
+                  .ok());
   builder.close();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 

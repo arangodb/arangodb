@@ -309,12 +309,12 @@ void MaintenanceFeature::beginShutdown() {
         try {
           auto [acb, idx] =
             cf->agencyCache().read(std::vector<std::string>{
-                AgencyCommManager::path("Target/" + path + "/" + std::to_string(jobId))});
+                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
           auto result = acb->slice();
           if (!result.isNone()) {
             VPackSlice value = result[0].get(
               std::vector<std::string>{
-                AgencyCommManager::path(), "Target", path, std::to_string(jobId)});
+                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
             if (value.isObject() && value.hasKey("jobId") &&
                 value.get("jobId").isEqualString(std::to_string(jobId))) {
               return true;

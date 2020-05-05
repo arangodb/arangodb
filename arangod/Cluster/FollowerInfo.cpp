@@ -54,7 +54,7 @@ static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
 
 static VPackSlice CurrentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
   return current.get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Current", "Collections",
+      {AgencyCommHelper::path(), "Current", "Collections",
        col.vocbase().name(), std::to_string(col.planId()), col.name()}));
 }
 
@@ -65,7 +65,7 @@ static std::string PlanShardPath(arangodb::LogicalCollection const& col) {
 
 static VPackSlice PlanShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
   return plan.get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", col.vocbase().name(),
+      {AgencyCommHelper::path(), "Plan", "Collections", col.vocbase().name(),
        std::to_string(col.planId()), "shards", col.name()}));
 }
 
@@ -106,11 +106,6 @@ Result FollowerInfo::add(ServerID const& sid) {
         _failoverCandidates = nextCandidates;  // will cast to std::vector<ServerID> const
       }
     }
-#ifdef DEBUG_SYNC_REPLICATION
-    if (!AgencyCommManager::MANAGER) {
-      return {TRI_ERROR_NO_ERROR};
-    }
-#endif
   }
 
   // Now tell the agency
@@ -189,11 +184,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
                      std::back_inserter(*v.get()), sid);
     _failoverCandidates = v;  // will cast to std::vector<ServerID> const
   }
-#ifdef DEBUG_SYNC_REPLICATION
-  if (!AgencyCommManager::MANAGER) {
-    return {TRI_ERROR_NO_ERROR};
-  }
-#endif
+
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
     // +1 for the leader (me)
@@ -354,7 +345,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(
-        {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
+        {AgencyCommHelper::path(planPath), AgencyCommHelper::path(curPath)}));
     AgencyCommResult res = ac.sendTransactionWithFailover(trx);
     if (res.successful()) {
       TRI_ASSERT(res.slice().isArray() && res.slice().length() == 1);
