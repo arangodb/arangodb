@@ -108,7 +108,7 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(
       &tests::memory_directory
     ),
-    ::testing::Values("1_2")
+    ::testing::Values(tests::format_info{"1_2", "1_0"})
   ),
   tests::to_string
 );

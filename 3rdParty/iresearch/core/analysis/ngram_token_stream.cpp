@@ -392,9 +392,9 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 bool ngram_token_stream<StreamType>::next_symbol(const byte_type*& it) const noexcept {
   IRS_ASSERT(it);
   if (it < data_end_) {
-    if /*constexpr*/ (StreamType == InputType::Binary) {
+    if constexpr (StreamType == InputType::Binary) {
       ++it;
-    } else if /*constexpr*/ (StreamType == InputType::UTF8) {
+    } else if constexpr (StreamType == InputType::UTF8) {
       it = irs::utf8_utils::next(it, data_end_);
     }
     return true;

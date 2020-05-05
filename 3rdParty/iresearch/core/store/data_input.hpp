@@ -41,8 +41,12 @@ NS_ROOT
 /// @struct data_input
 /// @brief base interface for all low-level input data streams
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_input
-    : std::iterator<std::forward_iterator_tag, byte_type, void, void, void> {
+struct IRESEARCH_API data_input {
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = byte_type;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   virtual ~data_input() = default;
 

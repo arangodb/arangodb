@@ -142,11 +142,14 @@ IRESEARCH_API void unpack(
   const uint32_t bit) noexcept;
 
 template<typename T>
-class iterator : public std::iterator<std::random_access_iterator_tag, T> {
+class iterator {
  public:
-  typedef typename std::iterator_traits<iterator>::value_type value_type;
-  typedef typename std::iterator_traits<iterator>::difference_type difference_type;
-  typedef const value_type* const_pointer;
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type = T;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = ptrdiff_t;
+  using const_pointer = const value_type*;
 
   iterator(const_pointer packed, uint32_t bits, size_t i = 0) noexcept
     : packed_(packed), i_(i), bits_(bits) {

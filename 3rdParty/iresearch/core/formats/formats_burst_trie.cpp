@@ -54,13 +54,6 @@
   // NOOP
 #endif
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #if (__GNUC__ >= 7)
-    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
-  #endif
-#endif
-
 #include "shared.hpp"
 #include "format_utils.hpp"
 #include "analysis/token_attributes.hpp"
@@ -1687,7 +1680,7 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
           assert(false);
           return SeekResult::END;
       }
-      // intentional fallthrough
+    [[fallthrough]];
     case SeekResult::END:
       return next()
         ? SeekResult::NOT_FOUND // have moved to the next entry
@@ -2454,11 +2447,3 @@ size_t field_reader::size() const noexcept {
 
 NS_END // burst_trie
 NS_END // ROOT
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

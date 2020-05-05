@@ -38,7 +38,7 @@ FORCE_INLINE size_t hash_combine(size_t seed, size_t v) noexcept {
 }
 
 template<typename T>
-FORCE_INLINE size_t hash_combine(size_t seed, T const& v) {
+FORCE_INLINE size_t hash_combine(size_t seed, T const& v) noexcept(noexcept(std::hash<T>()(v))) {
   return hash_combine(seed, std::hash<T>()(v));
 }
 
@@ -97,6 +97,18 @@ hashed_basic_string_ref<Elem> make_hashed_ref(const basic_string_ref<Elem>& ref,
   return hashed_basic_string_ref<Elem>(hasher(ref), ref, size);
 }
 
+template<typename T>
+inline size_t hash(const T* begin, size_t size) noexcept {
+  assert(begin);
+
+  size_t hash = 0;
+  for (auto end = begin + size; begin != end; ) {
+    hash = hash_combine(hash, *begin++);
+  }
+
+  return hash;
+}
+
 typedef hashed_basic_string_ref<byte_type> hashed_bytes_ref;
 typedef hashed_basic_string_ref<char> hashed_string_ref;
 
@@ -119,6 +131,27 @@ template<>
 struct hash<::iresearch::hashed_string_ref> {
   size_t operator()(const ::iresearch::hashed_string_ref& value) const {
     return value.hash();
+  }
+};
+
+template<>
+struct hash<std::vector<::iresearch::bstring>> {
+  size_t operator()(const std::vector<::iresearch::bstring>& value) const noexcept {
+    return ::iresearch::hash(value.data(), value.size());
+  }
+};
+
+template<typename Char>
+struct hash<std::vector<::iresearch::hashed_basic_string_ref<Char>>> {
+  size_t operator()(const std::vector<::iresearch::hashed_basic_string_ref<Char>>& value) const noexcept {
+    return ::iresearch::hash(value.data(), value.size());
+  }
+};
+
+template<typename Char>
+struct hash<std::vector<::iresearch::basic_string_ref<Char>>> {
+  size_t operator()(const std::vector<::iresearch::basic_string_ref<Char>>& value) const noexcept {
+    return ::iresearch::hash(value.data(), value.size());
   }
 };
 

@@ -28,6 +28,7 @@
 #ifndef IRESEARCH_DLL
   #include "tfidf.hpp"
   #include "bm25.hpp"
+  #include "boost_sort.hpp"
 #endif
 #include "utils/register.hpp"
 
@@ -120,6 +121,7 @@ NS_ROOT
   #ifndef IRESEARCH_DLL
     irs::bm25_sort::init();
     irs::tfidf_sort::init();
+    irs::boost_sort::init();
   #endif
 }
 
