@@ -25,8 +25,6 @@
 #include <fuerte/connection.h>
 #include <fuerte/waitgroup.h>
 
-void (*raus_damit)(std::string str);
-
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Deconstructor
 Connection::~Connection() {

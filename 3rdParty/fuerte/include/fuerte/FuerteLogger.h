@@ -43,7 +43,7 @@
 #define ENABLE_FUERTE_LOG_VST_CHUNK_TRACE 0
 #endif
 
-#define ENABLE_FUERTE_LOG_HTTPTRACE 1
+#define ENABLE_FUERTE_LOG_HTTPTRACE 0
 #ifndef ENABLE_FUERTE_LOG_HTTPTRACE
 #define ENABLE_FUERTE_LOG_HTTPTRACE 0
 #endif
@@ -89,28 +89,7 @@
 #endif
 
 #if ENABLE_FUERTE_LOG_HTTPTRACE > 0
-#include <sstream>
-extern void (*raus_damit)(std::string str);
-
-struct RausDamitStream {
-  std::stringstream ss;
-
-  RausDamitStream() : ss() {}
-
-  ~RausDamitStream() {
-    if (raus_damit) {
-      raus_damit(ss.str());
-    }
-  }
-
-  template <typename T>
-  RausDamitStream& operator<<(T&& t) {
-    ss << std::forward<T>(t);
-    return *this;
-  }
-};
-
-#define FUERTE_LOG_HTTPTRACE RausDamitStream{} << "[http] "
+#define FUERTE_LOG_HTTPTRACE std::cout << "[http] "
 #else
 #define FUERTE_LOG_HTTPTRACE \
   if (0) std::cout
