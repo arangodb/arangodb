@@ -1,6 +1,13 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fix a dead-lock situation in hot-backup case.
+  If the cluster is under high write load, then a hot-backup is requested,
+  and for some reason the coordinator loses connection to one DBServer
+  there is a small chance that this DBServer dead-locks itself. Will not
+  happen if the DBServer has enough threads. This dead-lock can no longer
+  be triggered.
+
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
 
