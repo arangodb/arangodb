@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
+  edges. The option is turned on by default. This normally helps with
+  performance in read-only and read-mostly workloads.
+
 * Fixed a bug in Maintenance which could prevent collection creation from
   working (made CreateCollection action idempotent).
 
