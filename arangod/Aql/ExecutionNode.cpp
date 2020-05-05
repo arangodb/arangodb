@@ -420,7 +420,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
       if (!stackEntrySlice.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-            "\"varsUsedLaterStack\" needs contain arrays");
+            "\"varsUsedLaterStack\" needs to contain arrays");
       }
       auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
 
@@ -470,7 +470,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
           "\"varsValidStack\" needs to be a non-empty array");
     }
 
-    _varsUsedLaterStack.reserve(varsValidStackSlice.length());
+    _varsValidStack.reserve(varsValidStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
       if (!stackEntrySlice.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -588,7 +588,7 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
   } else {
     // point to current AST -> don't do deep copies.
     other._varsUsedLaterStack = _varsUsedLaterStack;
-    other._varsUsedLaterStack = _varsUsedLaterStack;
+    other._varsValidStack = _varsValidStack;
     other._registerPlan = _registerPlan;
   }
 }
