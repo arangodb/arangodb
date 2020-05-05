@@ -489,6 +489,10 @@ void LogicalCollection::setSyncByRevision(bool usesRevisions) {
   }
 }
 
+bool LogicalCollection::useSyncByRevision() const {
+  return !_isAStub && _syncByRevision.load();
+}
+
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
