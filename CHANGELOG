@@ -9,7 +9,7 @@ v3.6.4 (XXXX-XX-XX)
   FOR loop. Whether or not edges were withheld depended on whether edges were
   located within the same prefix domain.
 
-* Added option `--rocksdb.cache-edges` to toggle in-memory caching for 
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
   edges. The option is turned on by default. This normally helps with
   performance in read-only and read-mostly workloads.
 
