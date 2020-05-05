@@ -182,14 +182,14 @@ class format_10_test_case : public tests::format_test_case {
           const size_t inc = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
           const size_t seed = VERSION10_POSTINGS_WRITER_BLOCK_SIZE-1;
           auto it = reader->iterator(field.features, read_attrs, field.features);
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
           postings expected(docs.begin(), docs.end(), field.features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto doc = docs[i];
             ASSERT_EQ(doc, it->seek(doc));
             ASSERT_EQ(doc, it->seek(doc)); // seek to the same doc
-            ASSERT_EQ(doc, it->seek(irs::type_limits<irs::type_t::doc_id_t>::invalid())); // seek to the smaller doc
+            ASSERT_EQ(doc, it->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
             ASSERT_EQ(doc, expected.seek(doc));
             assert_positions(expected, *it);
@@ -201,14 +201,14 @@ class format_10_test_case : public tests::format_test_case {
           const size_t inc = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
           const size_t seed = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
           auto it = reader->iterator(field.features, read_attrs, field.features);
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
           postings expected(docs.begin(), docs.end(), field.features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto doc = docs[i];
             ASSERT_EQ(doc, it->seek(doc));
             ASSERT_EQ(doc, it->seek(doc)); // seek to the same doc
-            ASSERT_EQ(doc, it->seek(irs::type_limits<irs::type_t::doc_id_t>::invalid())); // seek to the smaller doc
+            ASSERT_EQ(doc, it->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
             ASSERT_EQ(doc, expected.seek(doc));
             assert_positions(expected, *it);
@@ -218,22 +218,22 @@ class format_10_test_case : public tests::format_test_case {
         // seek for every document
         {
           auto it = reader->iterator(field.features, read_attrs, field.features);
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
           postings expected(docs.begin(), docs.end(), field.features);
           for (auto doc : docs) {
             ASSERT_EQ(doc, it->seek(doc));
             ASSERT_EQ(doc, it->seek(doc)); // seek to the same doc
-            ASSERT_EQ(doc, it->seek(irs::type_limits<irs::type_t::doc_id_t>::invalid())); // seek to the smaller doc
+            ASSERT_EQ(doc, it->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
             ASSERT_EQ(doc, expected.seek(doc));
             assert_positions(expected, *it);
           }
           ASSERT_FALSE(it->next());
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it->value()));
+          ASSERT_TRUE(irs::doc_limits::eof(it->value()));
 
           // seek after the existing documents
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it->seek(docs.back() + 10)));
+          ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back() + 10)));
         }
 
         // seek for backwards && next
@@ -241,7 +241,7 @@ class format_10_test_case : public tests::format_test_case {
           for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
             postings expected(docs.begin(), docs.end(), field.features);
             auto it = reader->iterator(field.features, read_attrs, field.features);
-            ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
+            ASSERT_FALSE(irs::doc_limits::valid(it->value()));
             ASSERT_EQ(*doc, it->seek(*doc));
 
             ASSERT_EQ(*doc, expected.seek(*doc));
@@ -262,14 +262,14 @@ class format_10_test_case : public tests::format_test_case {
           const size_t inc = 5;
           const size_t seed = 0;
           auto it = reader->iterator(field.features, read_attrs, field.features);
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
           postings expected(docs.begin(), docs.end(), field.features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto doc = docs[i];
             ASSERT_EQ(doc, it->seek(doc));
             ASSERT_EQ(doc, it->seek(doc)); // seek to the same doc
-            ASSERT_EQ(doc, it->seek(irs::type_limits<irs::type_t::doc_id_t>::invalid())); // seek to the smaller doc
+            ASSERT_EQ(doc, it->seek(irs::doc_limits::invalid())); // seek to the smaller doc
 
             ASSERT_EQ(doc, expected.seek(doc));
             assert_positions(expected, *it);
@@ -279,8 +279,8 @@ class format_10_test_case : public tests::format_test_case {
         // seek for INVALID_DOC
         {
           auto it = reader->iterator(field.features, read_attrs, irs::flags::empty_instance());
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->seek(irs::type_limits<irs::type_t::doc_id_t>::invalid())));
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+          ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
           ASSERT_TRUE(it->next());
           ASSERT_EQ(docs.front(), it->value());
         }
@@ -288,10 +288,10 @@ class format_10_test_case : public tests::format_test_case {
         // seek for NO_MORE_DOCS
         {
           auto it = reader->iterator(field.features, read_attrs, irs::flags::empty_instance());
-          ASSERT_FALSE(irs::type_limits<irs::type_t::doc_id_t>::valid(it->value()));
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it->seek(irs::type_limits<irs::type_t::doc_id_t>::eof())));
+          ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+          ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
           ASSERT_FALSE(it->next());
-          ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(it->value()));
+          ASSERT_TRUE(irs::doc_limits::eof(it->value()));
         }
       }
 
@@ -598,7 +598,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   ASSERT_NE(nullptr, writer);
 
   std::vector<irs::doc_id_t> docs0;
-  irs::doc_id_t i = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+  irs::doc_id_t i = (irs::doc_limits::min)();
   for (; i < 1000; ++i) {
     docs0.push_back(i);
   }
@@ -842,7 +842,7 @@ TEST_P(format_10_test_case, postings_seek) {
     {
       const size_t count = 117;
       docs.reserve(count);
-      auto i = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+      auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
     postings_seek(docs, { irs::frequency::type() });
@@ -858,7 +858,7 @@ TEST_P(format_10_test_case, postings_seek) {
     {
       const size_t count = VERSION10_POSTINGS_WRITER_BLOCK_SIZE;
       docs.reserve(count);
-      auto i = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+      auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
     postings_seek(docs, {});
@@ -874,7 +874,7 @@ TEST_P(format_10_test_case, postings_seek) {
     {
       const size_t count = 10000;
       docs.reserve(count);
-      auto i = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+      auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i++;});
     }
     postings_seek(docs, {});
@@ -890,7 +890,7 @@ TEST_P(format_10_test_case, postings_seek) {
     {
       const size_t count = 32768;
       docs.reserve(count);
-      auto i = (irs::type_limits<irs::type_t::doc_id_t>::min)();
+      auto i = (irs::doc_limits::min)();
       std::generate_n(std::back_inserter(docs), count,[&i]() {return i+=2;});
     }
     postings_seek(docs, {});

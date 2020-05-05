@@ -61,7 +61,3 @@ TEST(formats_tests, duplicate_register) {
   ASSERT_TRUE(irs::formats::exists("dummy_format"));
   ASSERT_NE(nullptr, irs::formats::get("dummy_format"));
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
