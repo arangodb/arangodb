@@ -150,8 +150,7 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll();
 
-  void referenceValuesFromRow(size_t currentRow,
-                         std::unordered_set<RegisterId> const& regs, size_t fromRow);
+  void referenceValuesFromRow(size_t currentRow, RegIdSet const& regs, size_t fromRow);
 
   /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
   /// the same value again. Note that once you do this for a single AqlValue
@@ -189,7 +188,7 @@ class AqlItemBlock {
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
-  void clearRegisters(std::unordered_set<RegisterId> const& toClear);
+  void clearRegisters(RegIdSet const& toClear);
 
   /// @brief clone all data rows, but move all shadow rows
   SharedAqlItemBlockPtr cloneDataAndMoveShadow();

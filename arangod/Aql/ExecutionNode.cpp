@@ -1257,7 +1257,7 @@ std::shared_ptr<RegisterPlan> ExecutionNode::getRegisterPlan() const {
 
 int ExecutionNode::getDepth() const { return _depth; }
 
-std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
+RegIdSet const& ExecutionNode::getRegsToClear() const {
   if (getType() == RETURN) {
     auto* returnNode = castTo<ReturnNode const*>(this);
     if (!returnNode->returnInheritedResults()) {

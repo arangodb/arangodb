@@ -31,6 +31,8 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
+#include <Containers/HashSet.h>
+
 #include <memory>
 
 namespace arangodb::aql {
@@ -218,7 +220,7 @@ class OutputAqlItemRow {
   void didSkip(size_t n);
 
  private:
-  [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
+  [[nodiscard]] RegIdSet const& outputRegisters() const {
     return _outputRegisters;
   }
 
@@ -226,7 +228,7 @@ class OutputAqlItemRow {
     return _registersToKeep;
   }
 
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
+  [[nodiscard]] RegIdSet const& registersToClear() const {
     return _registersToClear;
   }
 

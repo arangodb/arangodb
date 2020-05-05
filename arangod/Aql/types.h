@@ -27,6 +27,8 @@
 #include "Basics/debugging.h"
 #include "Aql/ExecutionNodeId.h"
 
+#include <Containers/HashSetFwd.h>
+
 #include <map>
 #include <memory>
 #include <set>
@@ -68,30 +70,13 @@ using SnippetList = std::vector<std::pair<QueryId, std::unique_ptr<ExecutionEngi
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
 struct Variable;
-using VarSet = std::unordered_set<Variable const*>;
+// Note: include <Containers/HashSet.h> to use the following types
+using VarSet = containers::HashSet<Variable const*>;
 using VarSetStack = std::vector<VarSet>;
-
-template<typename T>
-struct non_empty_vector : std::vector<T> {
-  non_empty_vector(std::initializer_list<T> list) : std::vector<T>(std::move(list)) {
-    TRI_ASSERT(!this->empty());
-  }
-
-  non_empty_vector() = default;
-  non_empty_vector(non_empty_vector const&) = default;
-  non_empty_vector(non_empty_vector &&) noexcept = default;
-  non_empty_vector& operator=(non_empty_vector const&) = default;
-  non_empty_vector& operator=(non_empty_vector &&) noexcept = default;
-
-  void pop_back() {
-    std::vector<T>::pop_back();
-    TRI_ASSERT(!this->empty());
-  }
-};
-
-using RegIdSet = std::unordered_set<RegisterId>;
-using RegIdSetStack = non_empty_vector<std::unordered_set<RegisterId>>;
-using RegIdOrderedSetStack = non_empty_vector<std::set<RegisterId>>;
+using RegIdSet = containers::HashSet<RegisterId>;
+using RegIdSetStack = std::vector<RegIdSet>;
+using RegIdOrderedSet = std::set<RegisterId>;
+using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;
 
 }  // namespace aql
 

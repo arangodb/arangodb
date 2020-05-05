@@ -526,7 +526,7 @@ class ExecutionNode {
   /// @brief the following contains the registers which should be cleared
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
-  std::unordered_set<RegisterId> _regsToClear;
+  RegIdSet _regsToClear;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

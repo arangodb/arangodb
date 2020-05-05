@@ -419,7 +419,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
+void AqlItemBlock::clearRegisters(RegIdSet const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
     if (isShadowRow(i)) {
       // Do not clear shadow rows:
@@ -947,8 +947,7 @@ void AqlItemBlock::eraseAll() {
 }
 
 void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
-                                          std::unordered_set<RegisterId> const& regs,
-                                          size_t fromRow) {
+                                          RegIdSet const& regs, size_t fromRow) {
   TRI_ASSERT(currentRow != fromRow);
 
   for (auto const reg : regs) {

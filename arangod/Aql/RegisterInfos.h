@@ -28,6 +28,8 @@
 
 #include "Aql/types.h"
 
+#include <Containers/HashSet.h>
+
 #include <memory>
 #include <unordered_set>
 
@@ -61,11 +63,9 @@ class RegisterInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  RegisterInfos(std::unordered_set<RegisterId> readableInputRegisters,
-                std::unordered_set<RegisterId> writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdSet registersToClear,
-                RegIdSetStack registersToKeep);
+                RegIdSet registersToClear, RegIdSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;

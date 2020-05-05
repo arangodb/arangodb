@@ -177,7 +177,7 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
       _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
-  RegIdSet const noOutputRegisters;
+  RegIdSet const noOutputRegisters{};
   OutputAqlItemRow output{newBlock, noOutputRegisters,
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear()};

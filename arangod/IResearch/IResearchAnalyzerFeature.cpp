@@ -77,6 +77,8 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 
+#include <Containers/HashSet.h>
+
 namespace iresearch {
 namespace text_format {
 
