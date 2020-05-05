@@ -433,6 +433,11 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
     return baseRowDepth + delta;
   });
   auto const& regsToKeep = std::invoke([this, rowDepth] {
+    if (registersToKeep().size() == 1) {
+      // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
+      return registersToKeep().back();
+    }
+
     auto const roffset = rowDepth + 1;
 
     TRI_ASSERT(roffset <= registersToKeep().size());
