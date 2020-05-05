@@ -2653,10 +2653,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
-  singleton.setVarsUsedLater({{&outVariable, &outNmColPtr, &outNmDocId}});
+  singleton.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
-  node.setVarsValid({{&outVariable, &outNmColPtr, &outNmDocId}});
+  node.setVarsValid({{&outNmColPtr, &outNmDocId}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
   singleton.planRegisters(nullptr);

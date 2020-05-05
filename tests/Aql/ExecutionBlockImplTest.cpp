@@ -113,7 +113,7 @@ class SharedExecutionBlockImplTest {
 
     auto readAble = RegIdSet{};
     auto writeAble = RegIdSet{};
-    auto registersToKeep = RegIdSetStack{{}};
+    auto registersToKeep = RegIdSetStack{{}, {}, {}};
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
         readAble.emplace(i);
@@ -324,7 +324,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     RegIdSet registersToClear{};
-    RegIdSetStack registersToKeep{{}};
+    RegIdSetStack registersToKeep{{}, {}, {}, {}};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
@@ -1266,11 +1266,10 @@ class ExecutionBlockImplExecuteIntegrationTest
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     RegIdSet registersToClear{};
-    RegIdSetStack registersToKeep{{}};
+    RegIdSetStack registersToKeep{{}, {}, {}};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
-      registersToKeep.back().emplace(r - 1);
     }
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(

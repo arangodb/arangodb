@@ -60,6 +60,7 @@ RegisterInfos::RegisterInfos(
     TRI_ASSERT(regToClear < nrOutputRegisters);
     TRI_ASSERT(_registersToKeep.back().find(regToClear) == _registersToKeep.back().end());
   }
+  TRI_ASSERT(!_registersToKeep.empty());
   for (RegisterId const regToKeep : _registersToKeep.back()) {
     TRI_ASSERT(regToKeep < nrInputRegisters);
     TRI_ASSERT(_registersToClear.find(regToKeep) == _registersToClear.end());
