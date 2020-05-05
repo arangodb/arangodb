@@ -490,6 +490,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for disjoint smart graphs
       if (localGraphNode->isDisjoint()) {
+        TRI_ASSERT(!myExpFinal.empty());
         size_t numberOfShards = myExpFinal.begin()->second.size();
         // We need one expansion for every collection in the Graph
         TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
@@ -558,6 +559,9 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       TRI_ASSERT(collectionAccessingNode != nullptr);
       collectionAccessingNode->setUsedShard(*myExp.begin());
 
+      if (!exp.doExpand) {
+        TRI_ASSERT(myExp.size() == 1);
+      }
       if (myExp.size() > 0) {
         myExpFinal.insert({col->name(), std::move(myExp)});
       }
@@ -567,20 +571,19 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
       auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
-      // All parts need to have exact same size, they need to be permutated pairwise!
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      for (auto const& myExp : myExpFinal) {
-        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.second.size() == numberOfShardsToPermutate);
-        // TODO: Second assert will never trigger at all?
-      }
-#endif
 
       // set the max loop index (note this will essentially be done only once)
       // we can set first found map to overall size as they all must be the same (asserted above)
-
-      if (myExpFinal.size() > 0 ) {
+      if (myExpFinal.size() > 0) {
         numberOfShardsToPermutate = myExpFinal.begin()->second.size();
       }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      // All parts need to have exact same size, they need to be permutated pairwise!
+      for (auto const& myExp : myExpFinal) {
+        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.second.size() == numberOfShardsToPermutate);
+      }
+#endif
 
       if (numberOfShardsToPermutate > 1) {
         // Only in this case we really need to do an expansion
@@ -590,8 +593,6 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
         // One server might require an expansion (many shards) while another does not (only one shard).
         localExpansions.emplace(exp.node, std::move(myExpFinal));
       }
-    } else {
-      TRI_ASSERT(myExpFinal.begin()->second.size() == 1);
     }
   }  // for _expansions - end;
   return {localExpansions};
