@@ -173,7 +173,9 @@ class GraphNode : public ExecutionNode {
     _collectionToShard = map;
   }
   void addCollectionToShard(std::string const& coll, std::string const& shard) {
-    _collectionToShard.emplace(coll, shard);
+    // NOTE: Do not replace this by emplace or insert.
+    // This is also used to overwrite the existing entry.
+    _collectionToShard[coll] = shard;
   }
 
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
