@@ -1645,10 +1645,6 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         break;
       }
 
-      if (current->getType() == EN::PARALLEL_START || current->getType() == EN::PARALLEL_END) {
-        break;
-      }
-
       if (current->getType() == EN::LIMIT) {
         if (!arangodb::ServerState::instance()->isCoordinator()) {
           // do not move calculations beyond a LIMIT on a single server,
@@ -1759,10 +1755,6 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
 
       auto const currentType = current->getType();
       
-      if (currentType == EN::PARALLEL_START || currentType == EN::PARALLEL_END) {
-        break;
-      }
-
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
         // we found something interesting that justifies moving our node down
@@ -3282,8 +3274,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::GATHER:
       case EN::REMOTE:
       case EN::LIMIT:  // LIMIT is criterion to stop
-      case EN::PARALLEL_START:
-      case EN::PARALLEL_END:
         return true;   // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.
@@ -4495,8 +4485,6 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
       }
 
       switch (type) {
-        case EN::PARALLEL_START:
-        case EN::PARALLEL_END:
         case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
         case EN::INSERT:
@@ -4665,8 +4653,6 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::PARALLEL_START:
-        case EN::PARALLEL_END:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4701,6 +4687,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
         case EN::ASYNC: // should be added much later
+        case EN::PARALLEL_START:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
           TRI_ASSERT(false);
@@ -6992,8 +6979,6 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       return true;
     case ExecutionNode::GATHER:
       // sorting gather is allowed
@@ -7027,6 +7012,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
       return false;
+    case ExecutionNode::PARALLEL_START:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7571,8 +7557,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
     case ExecutionNode::NORESULTS:
@@ -7580,6 +7564,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::COLLECT:
       // These nodes are fine
       return false;
+    case ExecutionNode::PARALLEL_START:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7874,61 +7859,4 @@ void arangodb::aql::decayUnnecessarySortedGather(Optimizer* opt,
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
-}
-
-/// @brief remove parallel start and end nodes from queries in which they are unsupported
-void arangodb::aql::deParallelizeRule(Optimizer* opt, 
-                                      std::unique_ptr<ExecutionPlan> plan, 
-                                      OptimizerRule const& rule) {
-  ::arangodb::containers::HashSet<ExecutionNode*> toRemove;
-  std::vector<std::pair<ExecutionNode*, bool>> found;
-    
-  std::function<bool(ExecutionNode*, std::vector<std::pair<ExecutionNode*, bool>>&)> visit = 
-      [&toRemove, &visit](ExecutionNode* root, std::vector<std::pair<ExecutionNode*, bool>>& found) {
-    // true on coordinator, false on DB-Server
-    bool isCoordinator = !ServerState::instance()->isClusterRole();
-    bool isSafe = found.empty() || found.back().second;
-    auto current = root;
-    while (current != nullptr) {
-      auto type = current->getType();
-      if (type == EN::REMOTE) {
-        // flip location
-        isCoordinator = !isCoordinator;
-        if (!found.empty()) {
-          isSafe = false;
-        }
-      } else if (type == EN::INSERT || type == EN::UPDATE || type == EN::REPLACE || type == EN::REMOVE || type == EN::UPSERT) {
-        // parallelization of modification operations is currently unsupported 
-        isSafe = false;
-      } else if (type == EN::PARALLEL_START) {
-        TRI_ASSERT(!found.empty());
-        auto& top = found.back();
-        if (!top.second || !isSafe || current->getFirstParent() == top.first) {
-          toRemove.emplace(top.first);
-          toRemove.emplace(current);
-        }
-        found.pop_back();
-      } else if (type == EN::PARALLEL_END) {
-        if (!found.empty()) {
-          isSafe = false;
-        }
-        found.push_back(std::make_pair(current, isSafe));
-      } else if (type == EN::SUBQUERY) {
-        // call ourselves recursively
-        auto sn = ExecutionNode::castTo<SubqueryNode const*>(current);
-        isSafe = visit(sn->getSubquery(), found);
-      }
-
-      current = current->getFirstDependency();
-    }
-
-    return isSafe;
-  };
-
-  visit(plan->root(), found);
-
-  if (!toRemove.empty()) {
-    plan->unlinkNodes(toRemove);
-  }
-  opt->addPlan(std::move(plan), rule, !toRemove.empty());
 }

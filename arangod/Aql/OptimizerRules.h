@@ -282,9 +282,6 @@ void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
-/// @brief remove parallel start and end nodes from queries in which they are unsupported
-void deParallelizeRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
-
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 

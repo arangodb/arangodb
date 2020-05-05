@@ -262,7 +262,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
   
 #warning ASYNC not possible yet
-  _isAsyncQuery = _ast->containsParallelNode();
+  _isAsyncQuery = false; // TODO: check if we have parallel traversals in the query
     
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections

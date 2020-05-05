@@ -429,10 +429,6 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
   
-  registerRule("de-parallelize", deParallelizeRule,
-               OptimizerRule::deParallelizeRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
   // add the storage-engine specific rules
   addStorageEngineRules();
 

@@ -117,8 +117,6 @@ class Ast {
   bool containsModificationNode() const;
   void setContainsModificationNode();
   
-  bool containsParallelNode() const;
-
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
@@ -201,12 +199,6 @@ class Ast {
   /// @brief create an AST sort element node
   AstNode* createNodeSortElement(AstNode const*, AstNode const*);
   
-  /// @brief create an AST parallel start node
-  AstNode* createNodeParallelStart();
-  
-  /// @brief create an AST parallel end node
-  AstNode* createNodeParallelEnd();
-
   /// @brief create an AST limit node
   AstNode* createNodeLimit(AstNode const*, AstNode const*);
 
@@ -594,9 +586,6 @@ class Ast {
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
   
-  /// @brief contains PARALLEL_{START, END}
-  bool _containsParrallelNode;
-
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;
 

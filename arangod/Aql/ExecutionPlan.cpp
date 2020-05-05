@@ -89,11 +89,9 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   }
 
   bool done(ExecutionNode* en) override final {
-    if ((!arangodb::ServerState::instance()->isDBServer() &&
-         en->getType() != ExecutionNode::PARALLEL_START) ||
+    if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
-         en->getType() != ExecutionNode::DISTRIBUTE &&
-          en->getType() != ExecutionNode::PARALLEL_START)) {
+         en->getType() != ExecutionNode::DISTRIBUTE)) {
       return WalkerWorker<ExecutionNode>::done(en);
     }
     return false;
@@ -1341,26 +1339,6 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST PARALLEL start node
-ExecutionNode* ExecutionPlan::fromNodeParallelStart(ExecutionNode* previous, AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_PARALLEL_START);
-  
-  // at least one sort criterion remained
-  auto en = registerNode(new ParallelStartNode(this, nextId()));
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST PARALLEL end node
-ExecutionNode* ExecutionPlan::fromNodeParallelEnd(ExecutionNode* previous, AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_PARALLEL_END);
-  
-  // at least one sort criterion remained
-  auto en = registerNode(new ParallelEndNode(this, nextId()));
-
-  return addDependency(previous, en);
-}
-
 /// @brief create an execution plan element from an AST SORT node
 ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous, AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
@@ -2058,16 +2036,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
       
-      case NODE_TYPE_PARALLEL_START: {
-        en = fromNodeParallelStart(en, member);
-        break;
-      }
-      
-      case NODE_TYPE_PARALLEL_END: {
-        en = fromNodeParallelEnd(en, member);
-        break;
-      }
-
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;

@@ -123,7 +123,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::PARALLEL_START), "ParallelStartNode"},
-    {static_cast<int>(ExecutionNode::PARALLEL_END), "ParallelEndNode"},
 };
 }  // namespace
 
@@ -355,8 +354,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new AsyncNode(plan, slice);
     case PARALLEL_START:
       return new ParallelStartNode(plan, slice);
-    case PARALLEL_END:
-      return new ParallelEndNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -2457,57 +2454,6 @@ CostEstimate ParallelStartNode::estimateCost() const {
 }
 
 auto ParallelStartNode::getOutputVariables() const -> VariableIdSet { return {}; }
-
-ParallelEndNode::ParallelEndNode(ExecutionPlan* plan, ExecutionNodeId id)
-    : ExecutionNode(plan, id) {}
-
-ParallelEndNode::ParallelEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base) {}
-
-ExecutionNode::NodeType ParallelEndNode::getType() const { return PARALLEL_END; }
-
-ExecutionNode* ParallelEndNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                      bool withProperties) const {
-  return cloneHelper(std::make_unique<ParallelEndNode>(plan, _id),
-                     withDependencies, withProperties);
-}
-
-void ParallelEndNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
-  setVarUsageValid();
-}
-
-/// @brief toVelocyPack, for ParallelEndNode
-void ParallelEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                         std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
-  // And close it
-  nodes.close();
-}
-
-/// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> ParallelEndNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "createBlock not implemented for ParallelEndNode");
-}
-
-/// @brief estimateCost
-CostEstimate ParallelEndNode::estimateCost() const {
-  if (_dependencies.empty()) {
-    return aql::CostEstimate::empty();
-  }
-  CostEstimate estimate = CostEstimate::empty();
-  return estimate;
-}
-
-auto ParallelEndNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";

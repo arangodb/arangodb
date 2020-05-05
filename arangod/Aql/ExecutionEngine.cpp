@@ -712,6 +712,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
 
 namespace {
 
+#if 0
 void parallelizeQuery(Query& q, ExecutionPlan& plan) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
@@ -795,6 +796,8 @@ void parallelizeQuery(Query& q, ExecutionPlan& plan) {
     q.setIsAsyncQuery();
   }
 }
+#endif
+
 }
 
 // @brief create an execution engine from a plan
@@ -841,9 +844,11 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
     }
     
   } else {
-    
+   
+#warning parallelizeQuery not working anymore
+#if 0
     parallelizeQuery(query, plan);
-    
+#endif 
     // instantiate the engine on a local server
     auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());
 

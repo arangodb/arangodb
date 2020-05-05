@@ -188,8 +188,7 @@ Ast::Ast(QueryContext& query)
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
       _containsBindParameters(false),
-      _containsModificationNode(false),
-      _containsParrallelNode(false) {
+      _containsModificationNode(false) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -604,18 +603,6 @@ AstNode* Ast::createNodeSortElement(AstNode const* expression, AstNode const* as
   node->addMember(ascending);
 
   return node;
-}
-
-/// @brief create an AST parallel start
-AstNode* Ast::createNodeParallelStart() {
-  _containsParrallelNode = true;
-  return createNode(NODE_TYPE_PARALLEL_START);
-}
-
-/// @brief create an AST parallel end
-AstNode* Ast::createNodeParallelEnd() {
-  _containsParrallelNode = true;
-  return createNode(NODE_TYPE_PARALLEL_END);
 }
 
 /// @brief create an AST limit node
@@ -3915,10 +3902,6 @@ bool Ast::containsModificationNode() const { return _containsModificationNode; }
 
 void Ast::setContainsModificationNode() {
   _containsModificationNode = true;
-}
-
-bool Ast::containsParallelNode() const {
-  return _containsParrallelNode;
 }
 
 AstNode* Ast::createNodeAttributeAccess(AstNode const* node,
