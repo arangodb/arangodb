@@ -7903,7 +7903,7 @@ void arangodb::aql::deParallelizeRule(Optimizer* opt,
       } else if (type == EN::PARALLEL_START) {
         TRI_ASSERT(!found.empty());
         auto& top = found.back();
-        if (!top.second || !isSafe) {
+        if (!top.second || !isSafe || current->getFirstParent() == top.first) {
           toRemove.emplace(top.first);
           toRemove.emplace(current);
         }
