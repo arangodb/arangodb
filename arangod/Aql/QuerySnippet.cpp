@@ -323,7 +323,6 @@ void QuerySnippet::serializeIntoBuilder(
               TRI_ASSERT(permuter->second.size() == 1);
               std::string const& cName = collectionAccessingNode->collection()->name();
               // Get the `i` th shard
-              // TODO optimize cName
               collectionAccessingNode->setUsedShard(
                   *std::next(permuter->second.at(cName).begin(), i));
             } else {
