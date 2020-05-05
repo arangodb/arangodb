@@ -108,6 +108,20 @@ function optimizerRuleTestSuite () {
 
         // something else affecting the result
         "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " FILTER doc.value3 == 1 RETURN doc) LET c = COUNT(sub) RETURN [i, c]",
+        
+        // TODO: limit not yet supported
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " LIMIT 0, 1 RETURN doc) LET c = COUNT(sub) RETURN c", 
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " LIMIT 1, 1 RETURN doc) LET c = COUNT(sub) RETURN c", 
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " LIMIT 500, 10 RETURN doc) LET c = COUNT(sub) RETURN c", 
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " LIMIT 999, 2 RETURN doc) LET c = COUNT(sub) RETURN c", 
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " LIMIT 4999, 2 RETURN doc) LET c = COUNT(sub) RETURN c", 
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " LIMIT 5000, 2 RETURN doc) LET c = COUNT(sub) RETURN c", 
+      
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value1 == i LIMIT 1, 1 RETURN doc) LET c = COUNT(sub) RETURN c",
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value2 == i LIMIT 1, 1 RETURN doc) LET c = COUNT(sub) RETURN c", 
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value2 == i LIMIT 1, 1000 RETURN doc) LET c = COUNT(sub) RETURN c",
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value2 == i LIMIT 500, 600 RETURN doc) LET c = COUNT(sub) RETURN c",
+        "FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value2 == i LIMIT 1000, 1 RETURN doc) LET c = COUNT(sub) RETURN c", 
       ];
 
       queries.forEach(function(query) {
@@ -121,18 +135,49 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    testResults : function () {
-      let queries = [ 
+    testFullCount : function () {
+      let query = "FOR i IN 1..100 LET c = COUNT(FOR doc IN " + cn + " RETURN doc) RETURN [i, c]";
+      let result = AQL_EXPLAIN(query, {}, { fullCount: true });
+      assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+    },
+
+    testResultsAllRules : function () {
+      let queries = [
         ["FOR i IN 1..3 LET key = CONCAT('test', i) LET sub = (FOR doc IN " + cn + " FILTER doc._key == key RETURN doc) LET c = COUNT(sub) RETURN [key, c]", [ ["test1", 1], ["test2", 1], ["test3", 1] ] ],
         ["FOR i IN 1..3 LET key = CONCAT('test', i) LET sub = (FOR doc IN " + cn + " RETURN doc) LET c = COUNT(sub) RETURN [key, c]", [ ["test1", 5000], ["test2", 5000], ["test3", 5000] ] ],
         ["FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value1 == i RETURN doc) LET c = COUNT(sub) RETURN c", [ 1, 1, 1 ] ],
         ["FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value2 == i RETURN doc) LET c = COUNT(sub) RETURN c", [ 1000, 1000, 1000 ] ],
+        
+        ["FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " RETURN doc) LET c = COUNT(sub) RETURN c", [ 5000, 5000, 5000 ] ],
+        
+        ["FOR i IN 1..3 LET key = CONCAT('none', i) LET sub = (FOR doc IN " + cn + " FILTER doc._key == key RETURN doc) LET c = COUNT(sub) RETURN [key, c]", [ ["none1", 0], ["none2", 0], ["none3", 0] ] ],
       ];
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query[0]);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result = AQL_EXECUTE(query[0]).json;
+        assertEqual(query[1], result, query);
+      });
+    },
+    
+    testResultsNoProjection : function () {
+      let queries = [
+        ["FOR i IN 1..3 LET key = CONCAT('test', i) LET sub = (FOR doc IN " + cn + " FILTER doc._key == key RETURN doc) LET c = COUNT(sub) RETURN [key, c]", [ ["test1", 1], ["test2", 1], ["test3", 1] ] ],
+        ["FOR i IN 1..3 LET key = CONCAT('test', i) LET sub = (FOR doc IN " + cn + " RETURN doc) LET c = COUNT(sub) RETURN [key, c]", [ ["test1", 5000], ["test2", 5000], ["test3", 5000] ] ],
+        ["FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value1 == i RETURN doc) LET c = COUNT(sub) RETURN c", [ 1, 1, 1 ] ],
+        ["FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " FILTER doc.value2 == i RETURN doc) LET c = COUNT(sub) RETURN c", [ 1000, 1000, 1000 ] ],
+        
+        ["FOR i IN 1..3 LET sub = (FOR doc IN " + cn + " RETURN doc) LET c = COUNT(sub) RETURN c", [ 5000, 5000, 5000 ] ],
+        
+        ["FOR i IN 1..3 LET key = CONCAT('none', i) LET sub = (FOR doc IN " + cn + " FILTER doc._key == key RETURN doc) LET c = COUNT(sub) RETURN [key, c]", [ ["none1", 0], ["none2", 0], ["none3", 0] ] ],
+      ];
+
+      queries.forEach(function(query) {
+        let opts = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
+        let result = AQL_EXPLAIN(query[0], null, opts);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        result = AQL_EXECUTE(query[0], null, opts).json;
         assertEqual(query[1], result, query);
       });
     },

@@ -55,11 +55,7 @@ struct Function {
 
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
-    NoEval = 8,
-  
-    /// @brief function can only be used internally, not by end users
-    /// (the optimizer may insert this function)
-    Internal = 16,
+    NoEval = 8
   };
 
   /// @brief helper for building flags

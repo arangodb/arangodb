@@ -1500,11 +1500,6 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
     auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
     TRI_ASSERT(func != nullptr);
    
-    if (func->hasFlag(Function::Flags::Internal)) {
-      // end users are not supposed to use internal functions
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, functionName);
-    }
-
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
     node->setData(static_cast<void const*>(func));

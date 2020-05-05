@@ -7468,10 +7468,16 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
                                       OptimizerRule const& rule) {
   bool modified = false;
   
+  if (plan->getAst()->query().queryOptions().fullCount) {
+    // fullCount is unsupported yet
+    opt->addPlan(std::move(plan), rule, modified);
+    return;
+  }
+  
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
-
+    
   ::arangodb::containers::HashSet<Variable const*> vars;
   std::unordered_map<ExecutionNode*, std::pair<bool, std::unordered_set<AstNode const*>>> candidates;
 
@@ -7578,9 +7584,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
 
   for (auto const& it : candidates) {
     TRI_ASSERT(it.second.first);
-    ExecutionNode* cn = it.first;
-    TRI_ASSERT(cn->getType() == EN::SUBQUERY);
-    auto sn = ExecutionNode::castTo<SubqueryNode const*>(cn);
+    auto sn = ExecutionNode::castTo<SubqueryNode const*>(it.first);
 
     // scan from the subquery node to the bottom of the ExecutionPlan to check
     // if any of the following nodes also use the subquery result
@@ -7658,6 +7662,9 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         case EN::REMOVE:
         case EN::UPSERT:
           // we don't handle data-modification queries
+        
+        case EN::LIMIT:
+          // limit is not yet supported
 
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
@@ -7670,11 +7677,6 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
           break;
         }
         
-        case EN::LIMIT: { 
-          // LIMIT is supported
-          break;
-        }
-
         case EN::RETURN:{
           // we reached the end
           break;
@@ -7705,8 +7707,9 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
     if (valid && found != nullptr) {
       dynamic_cast<DocumentProducingNode*>(found)->setCountFlag();
       returnNode->inVariable(outVariable);
-    
-      auto func = AqlFunctionFeature::getFunctionByName("INTERNAL_COUNT");
+   
+      // replace COUNT/LENGTH with SUM, as we are getting an array from the subquery
+      auto func = AqlFunctionFeature::getFunctionByName("SUM");
       for (AstNode const* funcNode : it.second.second) {
         const_cast<AstNode*>(funcNode)->setData(static_cast<void const*>(func));
       }

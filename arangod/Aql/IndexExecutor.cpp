@@ -444,6 +444,43 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   return false;
 }
 
+size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
+  TRI_ASSERT(_type != Type::Count);
+  
+  if (!hasMore()) {
+    return 0;
+  }
+
+  uint64_t skipped = 0;
+  if (_infos.getFilter() != nullptr) {
+    switch (_type) {
+      case Type::Covering:
+      case Type::LateMaterialized:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextCovering(_documentSkipper, toSkip);
+        break;
+      case Type::NoResult:
+      case Type::Document:
+      case Type::Count:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextDocument(_documentSkipper, toSkip);
+        break;
+    }
+    skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
+  } else {
+    _cursor->skip(toSkip, skipped);
+  }
+
+  TRI_ASSERT(skipped <= toSkip);
+  TRI_ASSERT(skipped == toSkip || !hasMore());
+
+  return static_cast<size_t>(skipped);
+}
+
+bool IndexExecutor::CursorReader::isCovering() const {
+  return _type == Type::Covering;
+}
+
 void IndexExecutor::CursorReader::reset() {
   if (_condition == nullptr || !_infos.hasNonConstParts()) {
     // Const case
@@ -496,41 +533,6 @@ void IndexExecutor::initializeCursor() {
   // should not be in a half-skipped state
   TRI_ASSERT(_skipped == 0);
   _skipped = 0;
-}
-
-size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
-  if (!hasMore()) {
-    return 0;
-  }
-
-  uint64_t skipped = 0;
-  if (_infos.getFilter() != nullptr) {
-    switch (_type) {
-      case Type::Covering:
-      case Type::LateMaterialized:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextCovering(_documentSkipper, toSkip);
-        break;
-      case Type::NoResult:
-      case Type::Document:
-      case Type::Count:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextDocument(_documentSkipper, toSkip);
-        break;
-    }
-    skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
-  } else {
-    _cursor->skip(toSkip, skipped);
-  }
-
-  TRI_ASSERT(skipped <= toSkip);
-  TRI_ASSERT(skipped == toSkip || !hasMore());
-
-  return static_cast<size_t>(skipped);
-}
-
-bool IndexExecutor::CursorReader::isCovering() const {
-  return _type == Type::Covering;
 }
 
 void IndexExecutor::initIndexes(InputAqlItemRow& input) {

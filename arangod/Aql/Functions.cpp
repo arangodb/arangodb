@@ -7630,30 +7630,6 @@ AqlValue Functions::Interleave(arangodb::aql::ExpressionContext* expressionConte
   builder->close();
   return AqlValue(builder->slice());
 }
-  
-/// @brief this function is internal only and cannot be called by users
-AqlValue Functions::InternalCount(arangodb::aql::ExpressionContext* expressionContext,
-                                  transaction::Methods*, VPackFunctionParameters const& parameters) {
-  static char const* AFN = "INTERNAL_COUNT";
-
-  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-
-  if (!value.isArray()) {
-    // not an array
-    registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  uint64_t sum = 0;
-  size_t const n = value.length();
-  for (size_t i = 0; i < n; ++i) {
-    bool mustDestroy;
-    AqlValue v = value.at(static_cast<int64_t>(i), mustDestroy, false);
-    sum += static_cast<uint64_t>(v.toInt64());
-  }
-
-  return AqlValue(AqlValueHintUInt(sum));
-}
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
                                    transaction::Methods*,
