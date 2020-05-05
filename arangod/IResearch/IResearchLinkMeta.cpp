@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
@@ -748,8 +749,13 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
           }
         }
 
+        arangodb::AnalyzersRevision::Revision revision{ arangodb::AnalyzersRevision::MIN };
+        if (value.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
+          revision = value.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<arangodb::AnalyzersRevision::Revision>();
+        }
+
         AnalyzerPool::ptr analyzer;
-        auto const res = IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties, features);
+        auto const res = IResearchAnalyzerFeature::createAnalyzerPool(analyzer, name, type, properties, revision, features);
 
         if (res.fail() || !analyzer) {
           errorField = fieldName + "[" + std::to_string(itr.index()) + "]";

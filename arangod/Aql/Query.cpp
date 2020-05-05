@@ -63,6 +63,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include <velocypack/Iterator.h>
 
@@ -220,6 +221,15 @@ void Query::prepareQuery(SerializationFormat format) {
 
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+  if (_trx->state()->isCoordinator()) {
+    // for cluser operation we need to set analyzersRevision
+    auto const& vocbase = _trx->vocbase();
+    if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      _analyzersRevision = vocbase.server()
+                             .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
+                               .getLatestRevision(vocbase)->getRevision();
+    }
+  }
     
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us

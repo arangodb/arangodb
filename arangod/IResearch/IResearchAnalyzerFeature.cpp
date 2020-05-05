@@ -965,6 +965,7 @@ void AnalyzerPool::toVelocyPack(
   addStringRef(builder, StaticStrings::AnalyzerNameField, name);
   addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
+  builder.add(arangodb::StaticStrings::AnalyzersRevision, VPackValue(static_cast<uint64_t>(_revision)));
 
   // add features
   VPackArrayBuilder featuresScope(&builder, StaticStrings::AnalyzerFeaturesField);
@@ -1028,7 +1029,8 @@ AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
 }
 
 bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
-  return _name == rhs._name &&
+  // intentionally do not check revision! Revision does not affects analyzer functionality!
+  return _name == rhs._name && 
       _type == rhs._type &&
       _features == rhs._features &&
       basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
@@ -1037,6 +1039,7 @@ bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
 bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
+    AnalyzersRevision::Revision revision,
     irs::flags const& features /*= irs::flags::empty_instance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
@@ -1075,7 +1078,7 @@ bool AnalyzerPool::init(
       }
 
       _features = features;  // store only requested features
-
+      _revision = revision;
       return true;
     }
   } catch (basics::Exception& e) {
@@ -1217,6 +1220,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
+    arangodb::AnalyzersRevision::Revision revision,
     irs::flags const& features) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::text_format::vpack, false)) {
@@ -1270,7 +1274,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 
   auto analyzerPool = std::make_shared<AnalyzerPool>(name);
 
-  if (!analyzerPool->init(type, properties, features)) {
+  if (!analyzerPool->init(type, properties, revision, features)) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
@@ -1296,7 +1300,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
-    irs::flags const& features) {
+    irs::flags const& features,
+    AnalyzersRevision::Revision revision) {
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::text_format::vpack, false)) {
     return {
@@ -1374,7 +1379,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       }
     });
 
-    if (!analyzer->init(type, properties, features)) {
+    if (!analyzer->init(type, properties, revision, features)) {
       return {
         TRI_ERROR_BAD_PARAMETER,
         "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
@@ -1438,7 +1443,8 @@ Result IResearchAnalyzerFeature::emplace(
 
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
-    auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features);
+    auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features, 
+                               getLatestRevision(split.first)->getBuildingRevision());
 
     if (!res.ok()) {
       return res;
@@ -1605,6 +1611,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
         if (!pool || !pool->init(IdentityAnalyzer::type().name(),
                                  VPackSlice::emptyObjectSlice(),
+                                 AnalyzersRevision::MIN,
                                  extraFeatures)) {
           LOG_TOPIC("26de1", WARN, iresearch::TOPIC)
               << "failure creating an arangosearch static analyzer instance "
@@ -1656,7 +1663,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
           auto pool = std::make_shared<AnalyzerPool>(name);
 
-          if (!pool->init(type, properties.slice(), extraFeatures)) {
+          if (!pool->init(type, properties.slice(), AnalyzersRevision::MIN, extraFeatures)) {
             LOG_TOPIC("e25f5", WARN, iresearch::TOPIC)
                 << "failure creating an arangosearch static analyzer instance "
                    "for name '"
@@ -1932,9 +1939,14 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
       }
 
+      AnalyzersRevision::Revision revision{AnalyzersRevision::MIN};
+      if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
+        revision = slice.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<AnalyzersRevision::Revision>();
+      }
+
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
-      auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features);
+      auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
 
       if (!res.ok()) {
         return res; // caught error emplacing analyzer (abort further processing)
@@ -2125,15 +2137,25 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   return name; // name prefixed with vocbase (or NIL)
 }
 
-AnalyzersRevision::Revision IResearchAnalyzerFeature::getLatestRevision(const TRI_vocbase_t& vocbase) const {
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getLatestRevision(const irs::string_ref& vocbaseName) const {
+  TRI_vocbase_t* vocbase{ nullptr };
+  auto& dbFeature = server().getFeature<DatabaseFeature>();
+  vocbase = dbFeature.useDatabase(vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase : vocbaseName);
+  if (vocbase) {
+    return getLatestRevision(*vocbase);
+  }
+  return AnalyzersRevision::getEmptyRevision();
+}
+
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getLatestRevision(const TRI_vocbase_t& vocbase) const {
   if (ServerState::instance()->isRunningInCluster()) {
     auto const& server = vocbase.server();
     if (server.hasFeature<arangodb::ClusterFeature>()) {
       return server.getFeature<arangodb::ClusterFeature>()
-        .clusterInfo().getAnalyzersRevision(vocbase.name())->getRevision();
+        .clusterInfo().getAnalyzersRevision(vocbase.name());
     }
   }
-  return 0;
+  return AnalyzersRevision::getEmptyRevision();
 }
 
 void IResearchAnalyzerFeature::prepare() {

@@ -84,8 +84,11 @@ class Slice;
 class AnalyzersRevision {
  public:
   using Revision = uint64_t;
+  using Ptr = std::shared_ptr<AnalyzersRevision>;
+
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
+
 
   AnalyzersRevision(Revision revision, Revision buildingRevision,
                     ServerID&& serverID, uint64_t rebootID)
@@ -110,11 +113,17 @@ class AnalyzersRevision {
 
   arangodb::velocypack::Builder toVelocyPack() const;
 
+  static Ptr getEmptyRevision() {
+    static Ptr ptr = std::make_shared<AnalyzersRevision>(
+        AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0);
+    return ptr;
+  }
+
  private:
-  Revision _revision{};
-  Revision _buildingRevision{};
-  ServerID _serverID{};
-  RebootId _rebootID{0};
+  Revision _revision;
+  Revision _buildingRevision;
+  ServerID _serverID;
+  RebootId _rebootID;
 };
 
 }  // namespace arangodb

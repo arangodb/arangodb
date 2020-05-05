@@ -1837,7 +1837,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
   arangodb::iresearch::AnalyzerPool::ptr lhs;
   ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                   lhs, "test", "TestAnalyzer",
-                  VPackParser::fromJson("\"abc\"")->slice(), irs::flags())
+                  VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
                   .ok());
   ASSERT_NE(nullptr, lhs);
   ASSERT_EQ(*lhs, *lhs);
@@ -1847,7 +1847,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "test1", "TestAnalyzer",
-                    VPackParser::fromJson("\"abc\"")->slice(), irs::flags())
+                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
@@ -1858,7 +1858,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "test", "ReNormalizingAnalyzer",
-                    VPackParser::fromJson("\"abc\"")->slice(), irs::flags())
+                    VPackParser::fromJson("\"abc\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
@@ -1869,7 +1869,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     arangodb::iresearch::AnalyzerPool::ptr rhs;
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "test", "TestAnalyzer",
-                    VPackParser::fromJson("\"abcd\"")->slice(), irs::flags())
+                    VPackParser::fromJson("\"abcd\"")->slice(), arangodb::AnalyzersRevision::MIN, irs::flags())
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
@@ -1881,10 +1881,24 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "test", "TestAnalyzer",
                     VPackParser::fromJson("\"abcd\"")->slice(),
+                    arangodb::AnalyzersRevision::MIN,
                     irs::flags{irs::frequency::type()})
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
+  }
+
+  // different revision - this is still the same analyzer!
+  {
+    arangodb::iresearch::AnalyzerPool::ptr rhs;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+      rhs, "test", "TestAnalyzer",
+      VPackParser::fromJson("\"abc\"")->slice(),
+      arangodb::AnalyzersRevision::MIN + 1,
+      irs::flags{})
+      .ok());
+    ASSERT_NE(nullptr, rhs);
+    ASSERT_EQ(lhs, rhs);
   }
 }
 

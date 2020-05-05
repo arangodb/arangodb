@@ -112,6 +112,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   bool init(irs::string_ref const& type,
             VPackSlice const properties,
+            AnalyzersRevision::Revision revision,
             irs::flags const& features = irs::flags::empty_instance());
   void setKey(irs::string_ref const& type);
 
@@ -167,6 +168,7 @@ class IResearchAnalyzerFeature final
   /// @param name analyzer name (already normalized)
   /// @param type the underlying IResearch analyzer type
   /// @param properties the configuration for the underlying IResearch type
+  /// @param revision the revision number for analyzer
   /// @param features the expected features the analyzer should produce
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
@@ -174,6 +176,7 @@ class IResearchAnalyzerFeature final
                                    irs::string_ref const& name,
                                    irs::string_ref const& type,
                                    VPackSlice const properties,
+                                   arangodb::AnalyzersRevision::Revision revision,
                                    irs::flags const& features);
 
   static AnalyzerPool::ptr identity() noexcept;  // the identity analyzer
@@ -300,7 +303,9 @@ class IResearchAnalyzerFeature final
   /// @brief return latest known analyzers revision
   /// @return revision number. always 0 for single server and before plan is loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Revision getLatestRevision(const TRI_vocbase_t& vocbase) const;
+  AnalyzersRevision::Ptr getLatestRevision(const TRI_vocbase_t& vocbase) const;
+
+  AnalyzersRevision::Ptr getLatestRevision(const irs::string_ref& vocbaseName) const;
 
   virtual void prepare() override;
   virtual void start() override;
@@ -328,7 +333,8 @@ class IResearchAnalyzerFeature final
     irs::string_ref const& name, // analyzer name
     irs::string_ref const& type, // analyzer type
     VPackSlice const properties, // analyzer properties
-    irs::flags const& features // analyzer features
+    irs::flags const& features, // analyzer features
+    AnalyzersRevision::Revision revision // analyzer revision
   );
 
   AnalyzerPool::ptr get(irs::string_ref const& normalizedName,

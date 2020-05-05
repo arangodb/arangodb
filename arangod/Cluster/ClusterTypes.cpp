@@ -50,5 +50,4 @@ arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
 
   return builder;
 }
-
 }  // namespace arangodb
