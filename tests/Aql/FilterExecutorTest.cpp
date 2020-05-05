@@ -58,15 +58,15 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>>& registersToKeep;
+  RegIdSet outputRegisters;
+  RegIdSetStack registersToKeep;
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(make_shared_unordered_set()),
-        registersToKeep(outputRegisters),
+        outputRegisters(),
+        registersToKeep({}),
         infos(0) {}
 
   auto getSplit() -> FilterExecutorSplitType {
@@ -75,8 +75,7 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
   }
 
   auto buildRegisterInfos() -> RegisterInfos {
-    return RegisterInfos(make_shared_unordered_set({0}),
-                         {}, 2, 2, {}, {0, 1});
+    return RegisterInfos({0}, {}, 2, 2, {}, {{0, 1}});
   }
   auto buildExecutorInfos() -> FilterExecutorInfos {
     return FilterExecutorInfos{0};

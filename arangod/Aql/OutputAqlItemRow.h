@@ -52,9 +52,9 @@ class OutputAqlItemRow {
   enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
   OutputAqlItemRow(SharedAqlItemBlockPtr block,
-                   std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+                   RegIdSet const& outputRegisters,
                    RegIdSetStack const& registersToKeep,
-                   std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+                   RegIdSet const& registersToClear,
                    AqlCall clientCall = AqlCall{},
                    CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
@@ -213,14 +213,13 @@ class OutputAqlItemRow {
 
   AqlCall&& stealClientCall();
 
-  void setCall(AqlCall&& call);
+  void setCall(AqlCall call);
 
   void didSkip(size_t n);
 
  private:
   [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
-    TRI_ASSERT(_outputRegisters != nullptr);
-    return *_outputRegisters;
+    return _outputRegisters;
   }
 
   [[nodiscard]] RegIdSetStack const& registersToKeep() const {
@@ -228,8 +227,7 @@ class OutputAqlItemRow {
   }
 
   [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
-    TRI_ASSERT(_registersToClear != nullptr);
-    return *_registersToClear;
+    return _registersToClear;
   }
 
   [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
@@ -342,9 +340,9 @@ class OutputAqlItemRow {
    */
   AqlCall _call;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> _outputRegisters;
+  RegIdSet const& _outputRegisters;
   RegIdSetStack const& _registersToKeep;
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
+  RegIdSet const& _registersToClear;
 };
 }  // namespace arangodb::aql
 

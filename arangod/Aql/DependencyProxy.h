@@ -69,7 +69,7 @@ class DependencyProxy {
    */
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
-                  std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
+                  RegIdSet const& inputRegisters,
                   RegisterId nrInputRegisters, velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
@@ -127,7 +127,7 @@ class DependencyProxy {
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
   AqlItemBlockManager& _itemBlockManager;
-  std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
+  RegIdSet const& _inputRegisters;
   RegisterId const _nrInputRegisters;
   std::string _distributeId;
 

@@ -449,6 +449,7 @@ class ExecutionNode {
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
   [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
@@ -477,9 +478,8 @@ class ExecutionNode {
 
   RegisterId variableToRegisterOptionalId(Variable const* var) const;
 
-  RegisterInfos createRegisterInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const;
+  RegisterInfos createRegisterInfos(RegIdSet readableInputRegisters,
+                                    RegIdSet writableOutputRegisters) const;
 
   RegisterId getNrInputRegisters() const;
 
@@ -1027,9 +1027,9 @@ class ParallelStartNode : public ExecutionNode {
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
-  
+
   void cloneRegisterPlan(ExecutionNode* dependency);
-  
+
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
@@ -1061,9 +1061,9 @@ class ParallelEndNode : public ExecutionNode {
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
-  
+
   void cloneRegisterPlan(ExecutionNode* dependency);
-  
+
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
@@ -1107,7 +1107,7 @@ class MaterializeNode : public ExecutionNode {
  protected:
   template <typename T>
   auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
-      -> std::shared_ptr<std::unordered_set<RegisterId>>;
+      -> RegIdSet;
 
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
@@ -1122,12 +1122,11 @@ class MaterializeNode : public ExecutionNode {
 template <typename T>
 auto MaterializeNode::getReadableInputRegisters(T const collectionSource,
                                                 RegisterId const inNmDocId) const
-    -> std::shared_ptr<std::unordered_set<RegisterId>> {
+    -> RegIdSet {
   if constexpr (std::is_same_v<T, RegisterId>) {
-    return make_shared_unordered_set(
-        std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
+    return RegIdSet{collectionSource, inNmDocId};
   } else {
-    return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
+    return RegIdSet{inNmDocId};
   }
 }
 

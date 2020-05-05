@@ -40,10 +40,10 @@ using namespace arangodb::tests::aql;
 
 namespace {
 static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> RegisterInfos {
-  auto readInput = make_shared_unordered_set();
-  auto writeOutput = make_shared_unordered_set();
-  std::unordered_set<RegisterId> toClear{};
-  std::unordered_set<RegisterId> toKeep{};
+  auto readInput = RegIdSet{};
+  auto writeOutput = RegIdSet{};
+  RegIdSet toClear{};
+  RegIdSetStack toKeep{{}};
   RegisterId regs = 1;
   for (auto const& b : blocks) {
     if (b != nullptr) {
@@ -60,7 +60,7 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks) -> Re
   // Consider adding data first if the test fails
 
   for (RegisterId r = 0; r < regs; ++r) {
-    toKeep.emplace(r);
+    toKeep.back().emplace(r);
   }
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
 }

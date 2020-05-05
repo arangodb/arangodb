@@ -33,7 +33,7 @@ PruneExpressionEvaluator::PruneExpressionEvaluator(
     transaction::Methods& trx,
     QueryContext& query,
     RegexCache& cache,
-    std::vector<Variable const*> const&& vars, std::vector<RegisterId> const&& regs,
+    std::vector<Variable const*> vars, std::vector<RegisterId> regs,
     size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, Expression* expr)
     : _pruneExpression(expr),
       _ctx(trx, query, cache, std::move(vars),

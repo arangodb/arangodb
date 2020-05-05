@@ -46,7 +46,7 @@ ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                   {},
                   registerInfos.numberOfInputRegisters(),
                   registerInfos.numberOfOutputRegisters(),
-                  *registerInfos.registersToClear(),
+                  registerInfos.registersToClear(),
                   registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(

@@ -111,20 +111,20 @@ class SharedExecutionBlockImplTest {
       EXPECT_EQ(outputRegisters, 0);
     }
 
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
+    auto readAble = RegIdSet{};
+    auto writeAble = RegIdSet{};
+    auto registersToKeep = RegIdSetStack{{}};
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
-        registersToKeep.emplace(i);
+        readAble.emplace(i);
+        registersToKeep.back().emplace(i);
       }
       for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace(i);
       }
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
+        writeAble.emplace(i);
       }
     }
     RegisterId regsToRead =
@@ -307,10 +307,10 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    * @return std::unique_ptr<ExecutionBlock> The singleton ExecutionBlock.
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
-    auto writableOutputRegisters = make_shared_unordered_set({0});
+    auto writableOutputRegisters = RegIdSet{0};
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
-        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, {}, {}},
+        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, {}, {{}}},
         IdExecutorInfos{false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
@@ -321,14 +321,14 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
                                                       RegisterId nrRegs) {
-    auto readableIn = make_shared_unordered_set({});
-    auto writeableOut = make_shared_unordered_set({});
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
+    auto readableIn = RegIdSet{};
+    auto writeableOut = RegIdSet{};
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
-      readableIn->emplace(r - 1);
-      registersToKeep.emplace(r - 1);
+      readableIn.emplace(r - 1);
+      registersToKeep.back().emplace(r - 1);
     }
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
@@ -1263,14 +1263,14 @@ class ExecutionBlockImplExecuteIntegrationTest
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
                                                       RegisterId nrRegs) {
-    auto readableIn = make_shared_unordered_set({});
-    auto writeableOut = make_shared_unordered_set({});
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
+    auto readableIn = RegIdSet{};
+    auto writeableOut = RegIdSet{};
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
-      readableIn->emplace(r - 1);
-      registersToKeep.emplace(r - 1);
+      readableIn.emplace(r - 1);
+      registersToKeep.back().emplace(r - 1);
     }
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
