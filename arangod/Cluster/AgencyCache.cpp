@@ -108,25 +108,23 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
   for (auto const& i : VPackObjectIterator(slice)) {
     keys.push_back(Node::normalize(i.key.copyString()));
   }
-  std::sort(keys.begin(), keys.end());
 
+  std::sort(keys.begin(), keys.end());
+  // Find callbacks, which are a prefix of some key:
   for (auto const& cb : _callbacks) {
-    std::vector<std::string>::iterator pos = keys.begin();
-    do {
-      pos = std::find_if(
-        pos, keys.end(),
-        [&cb](std::string const& key) {
-          return (key.size() <= cb.first.size()) ?
-            key.compare(cb.first) == 0 : key.compare(0, cb.first.size(), cb.first) == 0;
-        });
-      if (pos != keys.end()) {
-        if(toCall.emplace(cb.second).second) {
-          LOG_TOPIC("27182", DEBUG, Logger::CLUSTER)
-            << "Calling callback " << cb.second << " for " << cb.first;
-        }
-        pos++;
-      }
-    } while (pos != keys.end());
+    auto const& cbkey = cb.first;
+    auto it = std::lower_bound(keys.begin(), keys.end(), cbkey);
+    if (it != keys.end() && it->compare(0, cbkey.size(), cbkey) == 0) {
+      toCall.emplace(cb.second);
+    }
+  }
+  // Find keys, which are a prefix of a callback:
+  for (auto const& k : keys) {
+    auto it = _callbacks.lower_bound(k);
+    while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
+      toCall.emplace(it->second);
+      ++it;
+    }
   }
 }
 
