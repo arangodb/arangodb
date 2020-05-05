@@ -26,6 +26,7 @@
 #include <limits>
 #include <string>
 #include <iostream>
+#include <memory>
 
 namespace arangodb {
 
