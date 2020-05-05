@@ -111,7 +111,7 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(firstBranchRes.is(TRI_ERROR_CLUSTER_NOT_LEADER));
     return;
   }
-  std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>& localExpansions =
+  MapNodeToColNameToShards& localExpansions =
       firstBranchRes.get();
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   ExecutionNode* lastNode = _nodes.back();
@@ -366,12 +366,12 @@ void QuerySnippet::serializeIntoBuilder(
   }
 }
 
-ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>> QuerySnippet::prepareFirstBranch(
+auto QuerySnippet::prepareFirstBranch(
     ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    ShardLocking& shardLocking) {
+    ShardLocking& shardLocking) -> ResultT<MapNodeToColNameToShards> {
   size_t numberOfShardsToPermutate = 0;
-  std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>> localExpansions;
+  MapNodeToColNameToShards localExpansions;
   std::unordered_map<ShardID, ServerID> const& shardMapping =
       shardLocking.getShardMapping();
 
