@@ -418,6 +418,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+#ifdef USE_ENTERPRISE
+  registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
+               OptimizerRule::clusterPushSubqueryToDBServer,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+#endif
+
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
