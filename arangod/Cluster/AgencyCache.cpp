@@ -216,7 +216,7 @@ void AgencyCache::run() {
             } else {
               TRI_ASSERT(rs.hasKey("readDB"));
               std::lock_guard g(_storeLock);
-              LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
+              LOG_TOPIC("4579f", TRACE, Logger::CLUSTER) <<
                 "Fresh start: overwriting agency cache with " << rs.toJson();
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
