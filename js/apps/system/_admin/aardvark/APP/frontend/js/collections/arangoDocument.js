@@ -43,14 +43,10 @@ window.ArangoDocument = Backbone.Collection.extend({
     try {
       if (key) {
         body._key = key;
-        body._from = from;
-        body._to = to;
-        newEdge = JSON.stringify(body);
-      } else {
-        body._from = from;
-        body._to = to;
-        newEdge = JSON.stringify(body);
       }
+      body._from = from;
+      body._to = to;
+      newEdge = JSON.stringify(body);
     }
     catch(x) {
       body = {};
