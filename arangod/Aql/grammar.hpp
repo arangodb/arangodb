@@ -94,35 +94,34 @@ extern int Aqldebug;
     T_LE = 299,
     T_GE = 300,
     T_LIKE = 301,
-    T_PARALLEL = 302,
-    T_PLUS = 303,
-    T_MINUS = 304,
-    T_TIMES = 305,
-    T_DIV = 306,
-    T_MOD = 307,
-    T_QUESTION = 308,
-    T_COLON = 309,
-    T_SCOPE = 310,
-    T_RANGE = 311,
-    T_COMMA = 312,
-    T_OPEN = 313,
-    T_CLOSE = 314,
-    T_OBJECT_OPEN = 315,
-    T_OBJECT_CLOSE = 316,
-    T_ARRAY_OPEN = 317,
-    T_ARRAY_CLOSE = 318,
-    T_OUTBOUND = 319,
-    T_INBOUND = 320,
-    T_ANY = 321,
-    T_ALL = 322,
-    T_NONE = 323,
-    UMINUS = 324,
-    UPLUS = 325,
-    UNEGATION = 326,
-    FUNCCALL = 327,
-    REFERENCE = 328,
-    INDEXED = 329,
-    EXPANSION = 330
+    T_PLUS = 302,
+    T_MINUS = 303,
+    T_TIMES = 304,
+    T_DIV = 305,
+    T_MOD = 306,
+    T_QUESTION = 307,
+    T_COLON = 308,
+    T_SCOPE = 309,
+    T_RANGE = 310,
+    T_COMMA = 311,
+    T_OPEN = 312,
+    T_CLOSE = 313,
+    T_OBJECT_OPEN = 314,
+    T_OBJECT_CLOSE = 315,
+    T_ARRAY_OPEN = 316,
+    T_ARRAY_CLOSE = 317,
+    T_OUTBOUND = 318,
+    T_INBOUND = 319,
+    T_ANY = 320,
+    T_ALL = 321,
+    T_NONE = 322,
+    UMINUS = 323,
+    UPLUS = 324,
+    UNEGATION = 325,
+    FUNCCALL = 326,
+    REFERENCE = 327,
+    INDEXED = 328,
+    EXPANSION = 329
   };
 #endif
 
@@ -140,7 +139,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 144 "Aql/grammar.hpp"
+#line 143 "Aql/grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
