@@ -27,6 +27,7 @@
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/QueryContext.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -401,6 +402,15 @@ arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& 
 }
 
 TraverserOptions::~TraverserOptions() = default;
+  
+size_t TraverserOptions::effectiveParallelism() const {
+  // parallelism should not be beyond the number of available cores
+  size_t p = std::min(parallelism, NumberOfCores::getValue());
+  // parallelism must never get below 1
+  p = std::max(size_t(1), p);
+  // further logic can be added here if required
+  return p;
+}
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);

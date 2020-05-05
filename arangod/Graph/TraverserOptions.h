@@ -118,6 +118,10 @@ struct TraverserOptions : public graph::BaseOptions {
 
   virtual ~TraverserOptions();
 
+  /// @brief returns the effective parallelism to use for the traversal
+  /// this may be lower than the requested parallelism value
+  size_t effectiveParallelism() const;
+
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const override;
 

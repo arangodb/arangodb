@@ -529,7 +529,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
 
 #warning TODO: remove me!
-  LOG_DEVEL << "TRAVERSAL PARALLELISM IS SET TO: " << opts->parallelism;
+  LOG_DEVEL << "TRAVERSAL PARALLELISM TO USE: " << opts->effectiveParallelism();
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
