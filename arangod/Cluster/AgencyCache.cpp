@@ -222,11 +222,12 @@ void AgencyCache::run() {
                 "Fresh start: overwriting agency cache with " << rs.toJson();
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
-              invokeAllCallbacks();
             }
             triggerWaitingNoLock(commitIndex);
-            if (!toCall.empty()) {
+            if (firstIndex > 0 && !toCall.empty()) {
               invokeCallbacks(toCall);
+            } else {
+              invokeAllCallbacks();
             }
           } else {
             if (wait <= 1.9) {
@@ -318,7 +319,9 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id)
 /// Orderly shutdown
 void AgencyCache::beginShutdown() {
 
-  // trigger all waiting for an index
+  LOG_TOPIC("a63ge", TRACE, Logger::)
+
+// trigger all waiting for an index
   {
     std::lock_guard g(_storeLock);
     auto pit = _waiting.begin();

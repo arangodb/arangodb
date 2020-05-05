@@ -215,7 +215,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(3 == (begin - expectedCollections));
 }
 
-/*TEST_F(IResearchViewCoordinatorTest, test_defaults) {
+TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -5795,4 +5795,4 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     // check there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
   }
-  }*/
+}
