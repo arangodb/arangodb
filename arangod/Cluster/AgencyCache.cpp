@@ -34,7 +34,7 @@ AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,
   AgencyCallbackRegistry& callbackRegistry)
   : Thread(server, "AgencyCache"), _commitIndex(0),
-    _readDB(server, nullptr, "raadDB"), _callbackRegistry(callbackRegistry) {}
+    _readDB(server, nullptr, "readDB"), _callbackRegistry(callbackRegistry) {}
 
 
 AgencyCache::~AgencyCache() {

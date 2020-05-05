@@ -147,6 +147,13 @@ class PlanCollectionReader {
     consensus::index_t idx = 0;
     std::tie(_read, idx) = agencyCache.read(path);
 
+    if (!_read->slice().isArray()) {
+      _state = Result(
+        TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
+        "Could not retrieve " + path.front() + " from agency cache: " + _read->toJson());
+      return;
+    }
+
     _collection = _read->slice()[0];
 
     std::vector<std::string> vpath(
@@ -159,9 +166,7 @@ class PlanCollectionReader {
       return;
     }
 
-    _collection = _collection.get(
-      std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+    _collection = _collection.get(vpath);
 
     if (!_collection.isObject()) {
       _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -540,9 +545,11 @@ void ClusterInfo::loadPlan() {
 
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
-  uint64_t newPlanVersion = 0;
+  uint64_t newPlanVersion;
 
   do {
+    
+    newPlanVersion = 0;
     DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
     ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
@@ -1096,14 +1103,17 @@ void ClusterInfo::loadPlan() {
       _plannedViews.swap(_newPlannedViews);
     }
 
-    // mark plan as fully loaded only if all incoming objects were fully loaded
-    // must still swap structures to allow creation of new vocbases and removal of stale datasources
     if (planValid) {
       _planProt.doneVersion = storedVersion;
       _planProt.isValid = true;
     }
 
     std::tie(acb,idx) = agencyCache.get("Plan/Version");
+    if (!acb->slice().isNumber()) {
+      LOG_TOPIC("d2afe", WARN, Logger::CLUSTER) <<
+        "Failed to read plan version from agency cache given " << acb->toJson();
+      return;
+    }
 
   } while (acb->slice().getNumber<uint64_t>() > newPlanVersion);
 
@@ -1121,163 +1131,171 @@ void ClusterInfo::loadCurrent() {
 
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
-  uint64_t newCurrentVersion = 0;
+  uint64_t newCurrentVersion;
 
   do {
-  // We need to update ServersKnown to notice rebootId changes for all servers.
-  // To keep things simple and separate, we call loadServers here instead of
-  // trying to integrate the servers upgrade code into loadCurrent, even if that
-  // means small bits of the plan are read twice.
-  loadServers();
+    
+    newCurrentVersion = 0;
+    // We need to update ServersKnown to notice rebootId changes for all servers.
+    // To keep things simple and separate, we call loadServers here instead of
+    // trying to integrate the servers upgrade code into loadCurrent, even if that
+    // means small bits of the plan are read twice.
+    loadServers();
 
-  ++_currentProt.wantedVersion;  // Indicate that after *NOW* somebody has to
-                                 // reread from the agency!
+    ++_currentProt.wantedVersion;  // Indicate that after *NOW* somebody has to
+    // reread from the agency!
 
-  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);  // only one may work at a time
-  uint64_t storedVersion = _currentProt.wantedVersion;  // this is the version
+    MUTEX_LOCKER(mutexLocker, _currentProt.mutex);  // only one may work at a time
+    uint64_t storedVersion = _currentProt.wantedVersion;  // this is the version
 
-  // we will set at the end
-  if (_currentProt.doneVersion == storedVersion) {
-    // Somebody else did, what we intended to do, so just return
-    return;
-  }
+    // we will set at the end
+    if (_currentProt.doneVersion == storedVersion) {
+      // Somebody else did, what we intended to do, so just return
+      return;
+    }
 
-  LOG_TOPIC("54789", DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("54789", DEBUG, Logger::CLUSTER)
       << "loadCurrent: wantedVersion: " << _currentProt.wantedVersion;
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [currentBuilder, index] = agencyCache.get(prefixCurrent);
-  auto currentSlice = currentBuilder->slice();
+    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    auto [currentBuilder, index] = agencyCache.get(prefixCurrent);
+    auto currentSlice = currentBuilder->slice();
 
-  if (!currentSlice.isObject()) {
-    LOG_TOPIC("b8410", ERR, Logger::CLUSTER) << "Current is not an object!";
-    LOG_TOPIC("eed43", DEBUG, Logger::CLUSTER) << "loadCurrent done.";
-    return;
-  }
-
-  auto currentVersionSlice = currentSlice.get("Version");
-
-  if (currentVersionSlice.isNumber()) {
-    try {
-      newCurrentVersion = currentVersionSlice.getNumber<uint64_t>();
-    } catch (...) {
+    if (!currentSlice.isObject()) {
+      LOG_TOPIC("b8410", ERR, Logger::CLUSTER) << "Current is not an object!";
+      LOG_TOPIC("eed43", DEBUG, Logger::CLUSTER) << "loadCurrent done.";
+      return;
     }
-  }
 
-  if (newCurrentVersion == 0) {
-    LOG_TOPIC("e088e", WARN, Logger::CLUSTER)
+    auto currentVersionSlice = currentSlice.get("Version");
+
+    if (currentVersionSlice.isNumber()) {
+      try {
+        newCurrentVersion = currentVersionSlice.getNumber<uint64_t>();
+      } catch (...) {
+      }
+    }
+
+    if (newCurrentVersion == 0) {
+      LOG_TOPIC("e088e", WARN, Logger::CLUSTER)
         << "Attention: /arango/Current/Version in the agency is not set or not "
-           "a positive number.";
-    return;
-  }
+        "a positive number.";
+      return;
+    }
 
-  {
-    READ_LOCKER(guard, _currentProt.lock);
+    {
+      READ_LOCKER(guard, _currentProt.lock);
 
-    if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
-      LOG_TOPIC("00d58", DEBUG, Logger::CLUSTER)
+      if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
+        LOG_TOPIC("00d58", DEBUG, Logger::CLUSTER)
           << "We already know this or a later version, do not update. "
           << "newCurrentVersion=" << newCurrentVersion
           << " _currentVersion=" << _currentVersion;
 
-      return;
-    }
-  }
-
-  decltype(_currentDatabases) newDatabases;
-  decltype(_currentCollections) newCollections;
-  decltype(_shardIds) newShardIds;
-
-  bool swapDatabases = false;
-  bool swapCollections = false;
-
-  auto currentDatabasesSlice = currentSlice.get("Databases");
-
-  if (currentDatabasesSlice.isObject()) {
-    swapDatabases = true;
-
-    for (auto const& databaseSlicePair : velocypack::ObjectIterator(currentDatabasesSlice)) {
-      auto const database = databaseSlicePair.key.copyString();
-
-      if (!databaseSlicePair.value.isObject()) {
-        continue;
+        return;
       }
-
-      std::unordered_map<ServerID, velocypack::Slice> serverList;
-
-      for (auto const& serverSlicePair :
-           velocypack::ObjectIterator(databaseSlicePair.value)) {
-        serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
-      }
-
-      newDatabases.try_emplace(database, serverList);
     }
-  }
 
-  auto currentCollectionsSlice = currentSlice.get("Collections");
+    decltype(_currentDatabases) newDatabases;
+    decltype(_currentCollections) newCollections;
+    decltype(_shardIds) newShardIds;
 
-  if (currentCollectionsSlice.isObject()) {
-    swapCollections = true;
+    bool swapDatabases = false;
+    bool swapCollections = false;
 
-    for (auto const& databaseSlice : velocypack::ObjectIterator(currentCollectionsSlice)) {
-      auto const databaseName = databaseSlice.key.copyString();
-      DatabaseCollectionsCurrent databaseCollections;
+    auto currentDatabasesSlice = currentSlice.get("Databases");
 
-      for (auto const& collectionSlice :
-           velocypack::ObjectIterator(databaseSlice.value)) {
-        auto const collectionName = collectionSlice.key.copyString();
+    if (currentDatabasesSlice.isObject()) {
+      swapDatabases = true;
 
-        auto collectionDataCurrent =
-            std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
+      for (auto const& databaseSlicePair : velocypack::ObjectIterator(currentDatabasesSlice)) {
+        auto const database = databaseSlicePair.key.copyString();
 
-        for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
-          auto const shardID = shardSlice.key.copyString();
-
-          collectionDataCurrent->add(shardID, shardSlice.value);
-
-          // Note that we have only inserted the CollectionInfoCurrent under
-          // the collection ID and not under the name! It is not possible
-          // to query the current collection info by name. This is because
-          // the correct place to hold the current name is in the plan.
-          // Thus: Look there and get the collection ID from there. Then
-          // ask about the current collection info.
-
-          // Now take note of this shard and its responsible server:
-          auto servers = std::make_shared<std::vector<ServerID>>(
-              collectionDataCurrent->servers(shardID)  // args
-          );
-
-          newShardIds.try_emplace(shardID, servers);
+        if (!databaseSlicePair.value.isObject()) {
+          continue;
         }
 
-        databaseCollections.try_emplace(collectionName, collectionDataCurrent);
+        std::unordered_map<ServerID, velocypack::Slice> serverList;
+
+        for (auto const& serverSlicePair :
+               velocypack::ObjectIterator(databaseSlicePair.value)) {
+          serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
+        }
+
+        newDatabases.try_emplace(database, serverList);
       }
-
-      newCollections.try_emplace(databaseName, databaseCollections);
     }
-  }
 
-  // Now set the new value:
-  WRITE_LOCKER(writeLocker, _currentProt.lock);
+    auto currentCollectionsSlice = currentSlice.get("Collections");
 
-  _current = currentBuilder;
-  _currentVersion = newCurrentVersion;
+    if (currentCollectionsSlice.isObject()) {
+      swapCollections = true;
 
-  if (swapDatabases) {
-    _currentDatabases.swap(newDatabases);
-  }
+      for (auto const& databaseSlice : velocypack::ObjectIterator(currentCollectionsSlice)) {
+        auto const databaseName = databaseSlice.key.copyString();
+        DatabaseCollectionsCurrent databaseCollections;
 
-  if (swapCollections) {
-    LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
+        for (auto const& collectionSlice :
+               velocypack::ObjectIterator(databaseSlice.value)) {
+          auto const collectionName = collectionSlice.key.copyString();
+
+          auto collectionDataCurrent =
+            std::make_shared<CollectionInfoCurrent>(newCurrentVersion);
+
+          for (auto const& shardSlice : velocypack::ObjectIterator(collectionSlice.value)) {
+            auto const shardID = shardSlice.key.copyString();
+
+            collectionDataCurrent->add(shardID, shardSlice.value);
+
+            // Note that we have only inserted the CollectionInfoCurrent under
+            // the collection ID and not under the name! It is not possible
+            // to query the current collection info by name. This is because
+            // the correct place to hold the current name is in the plan.
+            // Thus: Look there and get the collection ID from there. Then
+            // ask about the current collection info.
+
+            // Now take note of this shard and its responsible server:
+            auto servers = std::make_shared<std::vector<ServerID>>(
+              collectionDataCurrent->servers(shardID)  // args
+              );
+
+            newShardIds.try_emplace(shardID, servers);
+          }
+
+          databaseCollections.try_emplace(collectionName, collectionDataCurrent);
+        }
+
+        newCollections.try_emplace(databaseName, databaseCollections);
+      }
+    }
+
+    // Now set the new value:
+    WRITE_LOCKER(writeLocker, _currentProt.lock);
+
+    _current = currentBuilder;
+    _currentVersion = newCurrentVersion;
+
+    if (swapDatabases) {
+      _currentDatabases.swap(newDatabases);
+    }
+
+    if (swapCollections) {
+      LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
         << "Have loaded new collections current cache!";
-    _currentCollections.swap(newCollections);
-    _shardIds.swap(newShardIds);
-  }
+      _currentCollections.swap(newCollections);
+      _shardIds.swap(newShardIds);
+    }
 
-  _currentProt.doneVersion = storedVersion;
-  _currentProt.isValid = true;
+    _currentProt.doneVersion = storedVersion;
+    _currentProt.isValid = true;
 
-  std::tie(acb,idx) = agencyCache.get("Current/Version");
+    std::tie(acb,idx) = agencyCache.get("Current/Version");
+    if (!acb->slice().isNumber()) {
+      LOG_TOPIC("d2efa", WARN, Logger::CLUSTER) <<
+        "Failed to read current version from agency cache given " << acb->toJson();
+      return;
+    }
+    
 
   } while (acb->slice().getNumber<uint64_t>() > newCurrentVersion);
 
@@ -1541,7 +1559,7 @@ void ClusterInfo::buildFinalSlice(CreateDatabaseInfo const& database,
 }
 
 // This waits for the database described in `database` to turn up in `Current`
-// and no DBSserver is allowed to report an error.
+// and no DBServer is allowed to report an error.
 Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database) {
   AgencyComm ac(_server);
   AgencyCommResult res;
@@ -2249,11 +2267,13 @@ Result ClusterInfo::createCollectionsCoordinator(
       // If the collections were removed (res.ok()), we may abort. If we run
       // into precondition failed, the collections were successfully created, so
       // we're fine too.
-      if (res.successful() || res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+      if (res.successful()) {
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
         if (res.slice().get("results").length()) {
           cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
         }
+        return;
+      } else if (res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
         return;
       }
 
@@ -2630,6 +2650,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
+        ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
+        
         loadCurrent();
 
         events::DropCollection(dbName, collectionID, *dbServerResult);
@@ -3361,10 +3383,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           LOG_TOPIC("d9420", INFO, Logger::CLUSTER)
               << "Could not remove isBuilding flag in new index "
               << indexId.id() << ", this will be repaired automatically.";
-        }
-        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-        if (result.slice().get("results").length()) {
-          cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+        } else {
+          auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+          if (result.slice().get("results").length()) {
+            cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+          }
         }
 
         loadPlan();
@@ -3618,10 +3641,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyPrecondition prec(planCollKey, AgencyPrecondition::Type::VALUE, collection);
   AgencyWriteTransaction trx({planErase, incrementVersion}, prec);
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-  if (result.slice().get("results").length()) {
-    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
-  }
 
   if (!result.successful()) {
     events::DropIndex(databaseName, collectionID, idString,
@@ -3631,6 +3650,10 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
         TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,  // code
         std::string(" Failed to execute ") + trx.toJson() +
             " ResultCode: " + std::to_string(result.errorCode()));
+  }
+  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  if (result.slice().get("results").length()) {
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
 
   // load our own cache:
@@ -3695,6 +3718,11 @@ void ClusterInfo::loadServers() {
                               AgencyCommManager::path(mapUniqueToShortId),
                               AgencyCommManager::path(prefixServersKnown)}));
   auto result = acb->slice();
+  if(!result.isArray()) {
+    LOG_TOPIC("be98b", DEBUG, Logger::CLUSTER)
+      << "Failed to load server lists from the agency cache given " << acb->toJson();
+    return;
+  }
 
   VPackSlice serversRegistered, serversAliases, serversKnownSlice;
 
@@ -4522,7 +4550,16 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, index] = agencyCache.read(std::vector<std::string>{"Plan"});
-  body->add(acb->slice());
+  auto result = acb->slice();
+  
+  if (result.isArray()) {
+    body->add(acb->slice());
+  } else {
+    LOG_TOPIC("36adg", DEBUG, Logger::CLUSTER) <<
+      "Failed to acquire the Plan section from the agency cache: " << acb->toJson();
+    VPackObjectBuilder g(body.get());
+  }
+  
   return Result();
 }
 
