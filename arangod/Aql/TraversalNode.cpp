@@ -528,6 +528,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                         vertexRegIdx, edgeRegIdx, pathRegIdx, pruneExpression());
   }
 
+#warning TODO: remove me!
+  LOG_DEVEL << "TRAVERSAL PARALLELISM IS SET TO: " << opts->parallelism;
+
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     waitForSatelliteIfRequired(&engine);
