@@ -153,7 +153,6 @@ set(ARANGODB_TESTS_SOURCES
   HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
-  IResearch/AgencyCommManagerMock.cpp
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp

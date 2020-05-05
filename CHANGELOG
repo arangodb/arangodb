@@ -13,6 +13,14 @@ devel
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
 
+* `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
+
+* Removed old AgencyComm.
+
+* Improve continuation behavior of AQL queries. We post the continuation handler
+  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
+  of LOW.
+
 * Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
   is not another one hiding somewhere.
 
@@ -47,6 +55,7 @@ devel
   parameter.
 
 * Added collection property changes into auditing.
+
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
   and no replication factor was specified for a graph. In this case, the new
@@ -95,10 +104,10 @@ devel
 
 * Added compression property to ArangoSearch View storedValues.
 
-* Added overwrite mode "ignore" for document inserts. This mode allows 
+* Added overwrite mode "ignore" for document inserts. This mode allows
   ignoring primary key conflicts on insert when the target document already
   exists.
-  
+
   The following overwrite modes now exist:
 
   * "ignore": if a document with the specified `_key` value exists already,
@@ -124,7 +133,7 @@ devel
       INSERT { _key: ..., .... } INTO collection OPTIONS { overwriteMode: "ignore" }
 
   Again, when the overwrite mode "ignore" is used from AQL, it does not
-  support returning the old document version. Using "RETURN OLD" in 
+  support returning the old document version. Using "RETURN OLD" in
   an INSERT operation that uses the "ignore" overwrite mode will trigger
   a parse error, as there will be no old version to return. "RETURN NEW"
   will only return the document in case it was inserted. In case the
