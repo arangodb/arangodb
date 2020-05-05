@@ -317,7 +317,7 @@ bool AgencyCache::unregisterCallback(std::string const& key, uint64_t const& id)
 /// Orderly shutdown
 void AgencyCache::beginShutdown() {
 
-  LOG_TOPIC("a63ge", TRACE, Logger::CLUSTER) << "Clearing books in agency cache";
+  LOG_TOPIC("a63ae", TRACE, Logger::CLUSTER) << "Clearing books in agency cache";
 
 // trigger all waiting for an index
   {

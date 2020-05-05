@@ -4555,7 +4555,7 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   if (result.isArray()) {
     body->add(acb->slice());
   } else {
-    LOG_TOPIC("36adg", DEBUG, Logger::CLUSTER) <<
+    LOG_TOPIC("36ada", DEBUG, Logger::CLUSTER) <<
       "Failed to acquire the Plan section from the agency cache: " << acb->toJson();
     VPackObjectBuilder g(body.get());
   }
