@@ -1781,7 +1781,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     // after here load analyzers from a specific database
     // .........................................................................
 
-    auto currentTimestamp = std::chrono::system_clock::now();
     auto databaseKey = // database key used in '_lastLoad'
       irs::make_hashed_ref(database, std::hash<irs::string_ref>());
     auto* engine = EngineSelectorFeature::ENGINE;
@@ -2156,7 +2155,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getLatestRevision(const irs::string_ref& vocbaseName) const {
   TRI_vocbase_t* vocbase{ nullptr };
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  vocbase = dbFeature.useDatabase(vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase : vocbaseName);
+  vocbase = dbFeature.useDatabase(vocbaseName.empty() ? irs::string_ref(arangodb::StaticStrings::SystemDatabase) : vocbaseName);
   if (vocbase) {
     return getLatestRevision(*vocbase);
   }
