@@ -280,6 +280,7 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
   return handleQueryResult();
 }
 
+// non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||

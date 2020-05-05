@@ -28,6 +28,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
+#include "Aql/AsyncExecutor.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -350,8 +351,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
-//    case ASYNC:
-//      return new AsyncNode(plan, slice);
+    case ASYNC:
+      return new AsyncNode(plan, slice);
     case PARALLEL_START:
       return new ParallelStartNode(plan, slice);
     case PARALLEL_END:
@@ -2332,6 +2333,71 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
   return allEqual;
 }
 
+/// @brief toVelocyPack, for AsyncNode
+void AsyncNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+
+  // And close it
+  nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> AsyncNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+//  ExecutionNode const* previousNode = getFirstDependency();
+//  TRI_ASSERT(previousNode != nullptr);
+//
+//  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+//
+//  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+//  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+//
+//  // Everything that is cleared here could and should have been cleared before
+//  TRI_ASSERT(regsToClear.empty());
+
+  return std::make_unique<ExecutionBlockImpl<AsyncExecutor>>(&engine, this);
+}
+
+/// @brief estimateCost
+CostEstimate AsyncNode::estimateCost() const {
+  if (_dependencies.empty()) {
+    // we should always have dependency as we need input here...
+    TRI_ASSERT(false);
+    return aql::CostEstimate::empty();
+  }
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
+  return estimate;
+}
+
+AsyncNode::AsyncNode(ExecutionPlan* plan, ExecutionNodeId id)
+    : ExecutionNode(plan, id) {}
+
+AsyncNode::AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {}
+
+ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
+
+ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                    bool withProperties) const {
+  return cloneHelper(std::make_unique<AsyncNode>(plan, _id),
+                     withDependencies, withProperties);
+}
+
+void AsyncNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLater());
+  setVarsValid(dependency->getVarsValid());
+  setVarUsageValid();
+}
+
+auto AsyncNode::getOutputVariables() const -> VariableIdSet { return {}; }
+
+
 ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id)
     : ExecutionNode(plan, id) {}
 
@@ -2377,13 +2443,8 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
 
   // Everything that is cleared here could and should have been cleared before
   TRI_ASSERT(regsToClear.empty());
-  
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "Parallel Start is not implemented");
 
-//  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-//                      std::move(regsToKeep));
-//
-//  return std::make_unique<ExecutionBlockImpl<ParallelStartExecutor>>(&engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<ParallelStartExecutor>>(&engine, this);
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0

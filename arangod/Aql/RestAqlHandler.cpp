@@ -380,6 +380,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
 bool RestAqlHandler::killQuery(std::string const& idString) {
   _qId = arangodb::basics::StringUtils::uint64(idString);
+#warning TODO this is not quite right, we need to mark queries as killed, even if they are in use
   return _queryRegistry->destroyEngine(_qId, TRI_ERROR_QUERY_KILLED);
 }
 
@@ -863,6 +864,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     _engine->sharedState()->resetWakeupHandler();
 
     // return the engine to the registry
+    _engine = nullptr;
     _queryRegistry->closeEngine(_qId);
 
     // delete the engine from the registry

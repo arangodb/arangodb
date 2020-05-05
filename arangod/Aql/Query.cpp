@@ -217,6 +217,8 @@ void Query::prepareQuery(SerializationFormat format) {
   
   _isAsyncQuery |= plan->contains(ExecutionNode::ASYNC);
   TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
+  
+#warning technically ASYNC nodes are not possible here yet
 
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
@@ -259,6 +261,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
   
+#warning ASYNC not possible yet
   _isAsyncQuery = _ast->containsParallelNode();
     
   TRI_ASSERT(_trx == nullptr);
@@ -1004,7 +1007,6 @@ void Query::enterV8Context() {
 
 /// @brief return a V8 context
 void Query::exitV8Context() {
-  TRI_ASSERT(!_isAsyncQuery);
   if (!_contextOwnedByExterior) {
     if (_v8Context != nullptr) {
       // unregister transaction in context

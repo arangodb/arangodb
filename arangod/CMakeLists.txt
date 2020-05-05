@@ -238,6 +238,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AstHelper.cpp
   Aql/AstNode.cpp
   Aql/AstResources.cpp
+  Aql/AsyncExecutor.cpp
   Aql/AttributeAccessor.cpp
   Aql/BindParameters.cpp
   Aql/BlocksWithClients.cpp

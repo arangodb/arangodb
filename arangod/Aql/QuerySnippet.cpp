@@ -194,7 +194,7 @@ void QuerySnippet::serializeIntoBuilder(
     internalGather->setRegsToClear({});
     auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
     nodeAliases.try_emplace(internalGather->id(), reservedId);
-
+    
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {  // RemoteBlock talking to coordinator snippet
       TRI_ASSERT(_globalScatter != nullptr);

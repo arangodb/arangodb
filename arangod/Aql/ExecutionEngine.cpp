@@ -102,7 +102,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 
     if (nodeType == ExecutionNode::REMOTE) {
       remoteNode = ExecutionNode::castTo<RemoteNode*>(en);
-      continue;
+      continue; // handled on GatherNode
     }
 
     // for all node types but REMOTEs, we create blocks
@@ -157,6 +157,9 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       for (auto const& serverToSnippet : serversForRemote->second) {
         std::string const& serverID = serverToSnippet.first;
         for (std::string const& snippetId : serverToSnippet.second) {
+          
+          LOG_DEVEL << "remoteNodeId: " << serversForRemote->first << " serverID: " << serverID << " snippetId: " << snippetId;
+          
           remoteNode->queryId(snippetId);
           remoteNode->server(serverID);
           remoteNode->setDistributeId({""});
@@ -164,7 +167,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
           TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->ownName() == "");  // NOLINT(readability-container-size-empty)
+          TRI_ASSERT(remoteBlock->distributeId() == "");  // NOLINT(readability-container-size-empty)
           TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
@@ -503,18 +506,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 };
 
 void ExecutionEngine::kill() {
-  // kill coordinator parts
-  // TODO: this doesn't seem to be necessary and sometimes even show adverse
-  // effects so leaving this deactivated for now
-  /*
-  auto queryRegistry = QueryRegistryFeature::registry();
-  if (queryRegistry != nullptr) {
-    for (auto const& id : _coordinatorQueryIds) {
-      queryRegistry->kill(&(_query.vocbase()), id);
-    }
-  }
-  */
-
+  
   // kill DB server parts
   // RemoteNodeId -> DBServerId -> [snippetId]
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -522,6 +514,8 @@ void ExecutionEngine::kill() {
   if (pool == nullptr) {
     return;
   }
+  
+#warning TODO: maybe kill global DBServers ?
 
   VPackBuffer<uint8_t> body;
   std::vector<network::FutureRes> futures;
@@ -716,6 +710,93 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   return {state, res};
 }
 
+namespace {
+
+void parallelizeQuery(Query& q, ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+
+  const size_t numParallel = q.queryOptions().parallelism;
+
+  plan.findNodesOfType(nodes, ExecutionNode::NodeType::PARALLEL_END, true);
+  for (ExecutionNode* endNode : nodes) {
+    TRI_ASSERT(endNode->getParents().size() == 1);
+
+    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a2;
+    ::arangodb::containers::SmallVector<ExecutionNode*> toCopy{a2};
+
+    ExecutionNode* tmp = endNode->getFirstDependency();
+    while(tmp->getType() != ExecutionNode::NodeType::PARALLEL_START &&
+          tmp->getType() != ExecutionNode::NodeType::SINGLETON) {
+      TRI_ASSERT(tmp->getDependencies().size() == 1);
+      toCopy.push_back(tmp);
+//      if (tmp->getType() == ExecutionNode::NodeType::CALCULATION &&
+//          static_cast<CalculationNode*>(parent)->expression()->willUseV8()) {
+//        return;
+//      }
+      tmp = tmp->getFirstDependency();
+    }
+
+    if (tmp->getType() != ExecutionNode::NodeType::PARALLEL_START) {
+      TRI_ASSERT(false);
+      continue; // skip
+    }
+    ExecutionNode* startNode = tmp;
+
+    auto* endNodeParent = endNode->getFirstParent();
+    auto* dep = endNode->getFirstDependency();
+    TRI_ASSERT(endNode->getParents().size() == 1);
+    TRI_ASSERT(endNode->getDependencies().size() == 1);
+
+    endNode->removeDependency(dep);
+    endNodeParent->removeDependency(endNode);
+
+    auto async = std::make_unique<AsyncNode>(&plan, plan.nextId());
+    async->addDependency(dep);
+    async->setIsInSplicedSubquery(dep->isInSplicedSubquery());
+    async->cloneRegisterPlan(dep);
+    toCopy.insert(toCopy.begin(), async.get());
+
+    auto gather = std::make_unique<GatherNode>(&plan, plan.nextId(), GatherNode::SortMode::Default);
+    gather->setIsInSplicedSubquery(dep->isInSplicedSubquery());
+    gather->setParallelism(GatherNode::Parallelism::Parallel);
+
+    gather->addDependency(async.get());
+#warning FIXME
+//    gather->cloneRegisterPlan(async.get());
+
+    plan.registerNode(async.release());
+
+    for (size_t i = 1; i < numParallel; i++) {
+
+      ExecutionNode* previous = startNode;
+      for (auto enIt = toCopy.rbegin(), end = toCopy.rend(); enIt != end; ++enIt) {
+        ExecutionNode* current = *enIt;
+
+        ExecutionNode* clone = current->clone(&plan, false, false);
+        if (previous != nullptr) {
+          clone->addDependency(previous);
+        }
+        TRI_ASSERT(clone->id() != current->id());
+#warning fix up node aliases
+//        nodeAliases.try_emplace(clone->id(), current->id());
+        previous = clone;
+      }
+      TRI_ASSERT(previous != nullptr);
+      TRI_ASSERT(previous->getType() == ExecutionNode::ASYNC);
+      gather->addDependency(previous);
+    }
+
+    TRI_ASSERT(endNodeParent->getDependencies().size() == 0);
+
+    endNodeParent->addDependency(gather.get());
+    plan.registerNode(gather.release());
+
+    q.setIsAsyncQuery();
+  }
+}
+}
+
 // @brief create an execution engine from a plan
 Result ExecutionEngine::instantiateFromPlan(Query& query,
                                             ExecutionPlan& plan,
@@ -760,6 +841,8 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
     }
     
   } else {
+    
+    parallelizeQuery(query, plan);
     
     // instantiate the engine on a local server
     auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());

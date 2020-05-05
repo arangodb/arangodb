@@ -61,6 +61,7 @@ struct QueryOptions {
   void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; };
 
+  size_t parallelism;
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
