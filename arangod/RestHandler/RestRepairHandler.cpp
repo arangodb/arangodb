@@ -430,10 +430,10 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
 
   std::vector<std::string> paths;
 
-  // apply AgencyCommManager::path on every element and copy to vector
+  // apply AgencyCommHelper::path on every element and copy to vector
   std::transform(agencyKeyArray.begin(), agencyKeyArray.end(),
                  std::back_inserter(paths), [](std::string const& key) {
-                   return AgencyCommManager::path(key);
+                   return AgencyCommHelper::path(key);
                  });
 
   AgencyCommResult result =
@@ -454,7 +454,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     }
 
     std::vector<std::string> agencyPath =
-        basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+        basics::StringUtils::split(AgencyCommHelper::path(agencyKey), '/');
 
     agencyPath.erase(std::remove(agencyPath.begin(), agencyPath.end(), ""),
                      agencyPath.end());
