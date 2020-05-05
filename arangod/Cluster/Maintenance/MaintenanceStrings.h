@@ -60,6 +60,7 @@ constexpr char const* PHASE_ONE = "phaseOne";
 constexpr char const* PHASE_TWO = "phaseTwo";
 constexpr char const* PRIMARY = "primary";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
+constexpr char const* ROLLBACK_UPGRADE_COLLECTION = "RollbackUpgradeCollection";
 constexpr char const* SCHEMA = "schema";
 constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
 constexpr char const* SERVERS = "servers";

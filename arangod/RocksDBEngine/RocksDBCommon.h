@@ -38,6 +38,7 @@
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
+#include <rocksdb/slice.h>
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 

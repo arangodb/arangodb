@@ -81,18 +81,53 @@ std::size_t getTimeout(arangodb::application_features::ApplicationServer& server
       arangodb::AgencyCommManager::path(), "Target", "Pending"
     }));
     for (ObjectIteratorPair it : ObjectIterator(list)) {
+      Slice typeSlice = it.value.get("type");
       Slice dbSlice = it.value.get(arangodb::maintenance::DATABASE);
       Slice cSlice = it.value.get(arangodb::maintenance::COLLECTION);
-      Slice tSlice = it.value.get(arangodb::maintenance::TIMEOUT);
-      if (dbSlice.isString() && dbSlice.isEqualString(database) &&
-          cSlice.isString() && cSlice.isEqualString(collection) &&
-          tSlice.isInteger()) {
-        timeout = std::max(timeout, tSlice.getNumber<std::size_t>());
+      Slice timeSlice = it.value.get(arangodb::maintenance::TIMEOUT);
+      if (typeSlice.isString() &&
+          typeSlice.isEqualString(arangodb::maintenance::UPGRADE_COLLECTION) &&
+          dbSlice.isString() && dbSlice.isEqualString(database) && cSlice.isString() &&
+          cSlice.isEqualString(collection) && timeSlice.isInteger()) {
+        timeout = std::max(timeout, timeSlice.getNumber<std::size_t>());
       }
     }
   }
 
   return timeout;
+}
+
+bool getSmartChild(arangodb::application_features::ApplicationServer& server,
+                   std::string const& database, std::string const& collection) {
+  using namespace arangodb::velocypack;
+
+  bool isSmartChild = false;
+
+  arangodb::AgencyReadTransaction trx(
+      arangodb::AgencyCommManager::path("Target/Pending"));
+
+  arangodb::AgencyComm agency(server);
+  arangodb::AgencyCommResult result = agency.sendTransactionWithFailover(trx, 60.0);
+  if (!result.successful()) {
+    return isSmartChild;
+  } else {
+    Slice list = result.slice()[0].get(std::vector<std::string>(
+        {arangodb::AgencyCommManager::path(), "Target", "Pending"}));
+    for (ObjectIteratorPair it : ObjectIterator(list)) {
+      Slice typeSlice = it.value.get("type");
+      Slice dbSlice = it.value.get(arangodb::maintenance::DATABASE);
+      Slice cSlice = it.value.get(arangodb::maintenance::COLLECTION);
+      Slice smartSlice = it.value.get(arangodb::StaticStrings::IsSmartChild);
+      if (typeSlice.isString() &&
+          typeSlice.isEqualString(arangodb::maintenance::UPGRADE_COLLECTION) &&
+          dbSlice.isString() && dbSlice.isEqualString(database) && cSlice.isString() &&
+          cSlice.isEqualString(collection) && smartSlice.isBoolean()) {
+        isSmartChild = smartSlice.getBoolean();
+      }
+    }
+  }
+
+  return isSmartChild;
 }
 
 std::pair<arangodb::Result, bool> updateStatusFromCurrent(arangodb::ClusterInfo& ci,
@@ -204,7 +239,7 @@ std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
 namespace arangodb::maintenance {
 
 UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc), _timeout(600) {
+    : ActionBase(feature, desc), _timeout(600), _isSmartChild(false) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -254,6 +289,7 @@ bool UpgradeCollection::first() {
           << "Upgrading local collection " + shard;
 
       _timeout = ::getTimeout(config.vocbase.server(), database, collection);
+      _isSmartChild = ::getSmartChild(config.vocbase.server(), database, collection);
 
       bool ok = refreshPlanStatus();
       if (!ok) {
@@ -419,6 +455,7 @@ futures::Future<Result> UpgradeCollection::sendRequest(LogicalCollection& collec
     velocypack::ObjectBuilder object(&reqBuilder);
     reqBuilder.add(maintenance::UPGRADE_STATUS,
                    LogicalCollection::UpgradeStatus::stateToValue(phase));
+    reqBuilder.add(StaticStrings::IsSmartChild, velocypack::Value(_isSmartChild));
   }
 
   auto* pool = collection.vocbase().server().getFeature<NetworkFeature>().pool();

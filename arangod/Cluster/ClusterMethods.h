@@ -84,7 +84,7 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> upgradeOnCoordinator(TRI
 ////////////////////////////////////////////////////////////////////////////////
 
 Result upgradeOnDBServer(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
-                         LogicalCollection::UpgradeStatus::State phase);
+                         LogicalCollection::UpgradeStatus::State phase, bool isSmartChild);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection

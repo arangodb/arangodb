@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AGENCY_JOB_UPGRADE_COLLECTION_H
@@ -49,6 +49,8 @@ struct UpgradeCollection : public Job {
   velocypack::Slice job() const;
   bool writeTransaction(velocypack::Builder const&, std::string const&);
   bool registerError(std::string const&);
+  void triggerRollback();
+  std::string prepareRollbackJob(velocypack::Builder&);
 
   std::string _database;
   std::string _collection;

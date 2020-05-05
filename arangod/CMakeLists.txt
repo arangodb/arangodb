@@ -501,6 +501,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/Jobs/MoveShard.cpp
   Agency/Jobs/RemoveFollower.cpp
   Agency/Jobs/ResignLeadership.cpp
+  Agency/Jobs/RollbackUpgradeCollection.cpp
   Agency/Jobs/UpgradeCollection.cpp
   Agency/Jobs/UpgradeVirtualCollection.cpp
   Agency/AgencyComm.cpp

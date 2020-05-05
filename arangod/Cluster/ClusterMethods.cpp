@@ -965,7 +965,7 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> upgradeOnCoordinator(TRI
 }
 
 Result upgradeOnDBServer(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
-                         LogicalCollection::UpgradeStatus::State phase) {
+                         LogicalCollection::UpgradeStatus::State phase, bool isSmartChild) {
   Result res{TRI_ERROR_BAD_PARAMETER, "expecting valid upgrade phase"};  // default for fallthrough
   PhysicalCollection* physical = collection.getPhysical();
   if (!physical) {
@@ -976,15 +976,15 @@ Result upgradeOnDBServer(TRI_vocbase_t& vocbase, LogicalCollection const& collec
   using UpgradeState = LogicalCollection::UpgradeStatus::State;
   switch (phase) {
     case UpgradeState::Prepare: {
-      res = physical->prepareUpgrade();
+      res = physical->prepareUpgrade(isSmartChild);
       break;
     }
     case UpgradeState::Finalize: {
-      res = physical->finalizeUpgrade();
+      res = physical->finalizeUpgrade(isSmartChild);
       break;
     }
     case UpgradeState::Rollback: {
-      res = physical->rollbackUpgrade();
+      res = physical->rollbackUpgrade(isSmartChild);
       break;
     }
     case UpgradeState::Cleanup: {

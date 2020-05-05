@@ -624,8 +624,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     velocypack::Slice timeoutSlice = body.get(maintenance::TIMEOUT);
     constexpr std::size_t defaultTimeout = 600;
     std::size_t timeout = timeoutSlice.isInteger() ? std::max(timeoutSlice.getNumber<std::size_t>(), defaultTimeout) : defaultTimeout;
-    
-    auto [res, builder] = methods::Collections::upgrade(_vocbase, *coll, phase, timeout);
+    velocypack::Slice smartChildSlice = body.get(StaticStrings::IsSmartChild);
+    std::size_t smartChild =
+        smartChildSlice.isBoolean() ? smartChildSlice.getBoolean() : false;
+
+    auto [res, builder] =
+        methods::Collections::upgrade(_vocbase, *coll, phase, timeout, smartChild);
     if (res.fail()) {
       generateTransactionError(coll->name(), res, "");
       return RestStatus::DONE;

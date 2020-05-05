@@ -901,8 +901,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 
 std::pair<Result, std::shared_ptr<velocypack::Builder>> Collections::upgrade(
     TRI_vocbase_t& vocbase, LogicalCollection const& coll,
-    LogicalCollection::UpgradeStatus::State phase,
-    std::size_t timeout) {
+    LogicalCollection::UpgradeStatus::State phase, std::size_t timeout, bool isSmartChild) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
     return std::make_pair(Result(TRI_ERROR_FORBIDDEN), nullptr);
@@ -913,14 +912,10 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> Collections::upgrade(
   }
 
   if (ServerState::instance()->isDBServer()) {
-    return std::make_pair(upgradeOnDBServer(vocbase, coll, phase), nullptr);
+    return std::make_pair(upgradeOnDBServer(vocbase, coll, phase, isSmartChild), nullptr);
   }
 
-  if (!ServerState::instance()->isSingleServer()) {
-    return std::make_pair(
-        Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "collection upgrade in cluster not supported yet"), nullptr);
-  }
+  TRI_ASSERT(ServerState::instance()->isSingleServer() && !isSmartChild);
 
   Result res;
   PhysicalCollection* physical = coll.getPhysical();
@@ -942,12 +937,12 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> Collections::upgrade(
     [[maybe_unused]] Result res = physical->cleanupUpgrade();
   });
 
-  res = physical->prepareUpgrade();
+  res = physical->prepareUpgrade(false);
   if (res.fail()) {
     return std::make_pair(res, nullptr);
   }
 
-  res = physical->finalizeUpgrade();
+  res = physical->finalizeUpgrade(false);
   if (res.fail()) {
     return std::make_pair(res, nullptr);
   }

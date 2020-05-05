@@ -100,33 +100,36 @@ void reverseIdxOps(arangodb::PhysicalCollection::IndexContainerType const& index
 }
 
 using ObjectIdTransformer =
-    std::function<std::pair<std::uint64_t, std::uint64_t>(std::uint64_t, std::uint64_t)>;
+    std::function<std::tuple<std::uint64_t, std::uint64_t, std::uint64_t>(std::uint64_t, std::uint64_t, std::uint64_t)>;
 
 using IndicesMap =
     std::unordered_map<std::shared_ptr<arangodb::Index>, std::pair<std::uint64_t, std::uint64_t>>;
 
-std::pair<std::uint64_t, std::uint64_t> injectNewTemporaryObjectId(std::uint64_t objectId,
-                                                                   std::uint64_t tempObjectId) {
-  return {objectId, TRI_NewTickServer()};
+std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> injectNewTemporaryObjectId(
+    std::uint64_t objectId, std::uint64_t tempObjectId, std::uint64_t mapObjectId) {
+  return {objectId, TRI_NewTickServer(), mapObjectId};
 }
 
-std::pair<std::uint64_t, std::uint64_t> swapObjectIds(std::uint64_t objectId,
-                                                      std::uint64_t tempObjectId) {
-  return {tempObjectId, objectId};
+std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> injectNewTemporaryAndMapObjectIds(
+    std::uint64_t objectId, std::uint64_t tempObjectId, std::uint64_t mapObjectid) {
+  return {objectId, TRI_NewTickServer(), TRI_NewTickServer()};
 }
 
-std::pair<std::uint64_t, std::uint64_t> clearTemporaryObjectId(std::uint64_t objectId,
-                                                               std::uint64_t tempObjectId) {
-  return {objectId, 0};
+std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> swapObjectIds(
+    std::uint64_t objectId, std::uint64_t tempObjectId, std::uint64_t mapObjectId) {
+  return {tempObjectId, objectId, mapObjectId};
 }
 
-void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collection,
-                                            arangodb::velocypack::Builder& builder,
-                                            ::ObjectIdTransformer idFunc,
-                                            bool toggleUpgradedProperties,
-                                            bool isRollback, ::IndicesMap& indicesMap,
-                                            arangodb::velocypack::Slice key,
-                                            arangodb::velocypack::Slice value) {
+std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> clearTemporaryObjectIds(
+    std::uint64_t objectId, std::uint64_t tempObjectId, std::uint64_t mapObjectId) {
+  return {objectId, 0, 0};
+}
+
+void handlePropertiesEntryForObjectIdUpdate(
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Builder& builder,
+    ::ObjectIdTransformer idFunc, bool toggleUpgradedProperties,
+    bool isSmartChild, bool isRollback, ::IndicesMap& indicesMap,
+    arangodb::velocypack::Slice key, arangodb::velocypack::Slice value) {
   using arangodb::StaticStrings;
   using arangodb::basics::VelocyPackHelper;
 
@@ -143,7 +146,7 @@ void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collect
           VelocyPackHelper::stringUInt64(idxSlice, StaticStrings::ObjectId);
       std::uint64_t tempObjectIdIdx =
           VelocyPackHelper::stringUInt64(idxSlice, StaticStrings::TempObjectId);
-      auto outputPairIdx = idFunc(objectIdIdx, tempObjectIdIdx);
+      auto outputTupleIdx = idFunc(objectIdIdx, tempObjectIdIdx, 0);
       for (auto idxPair : arangodb::velocypack::ObjectIterator(idxSlice)) {
         if (idxPair.key.isEqualString(StaticStrings::ObjectId) ||
             idxPair.key.isEqualString(StaticStrings::TempObjectId)) {
@@ -153,16 +156,18 @@ void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collect
         builder.add(idxPair.value);
       }
       builder.add(StaticStrings::ObjectId,
-                  arangodb::velocypack::Value(std::to_string(outputPairIdx.first)));
+                  arangodb::velocypack::Value(std::to_string(std::get<0>(outputTupleIdx))));
       builder.add(StaticStrings::TempObjectId,
-                  arangodb::velocypack::Value(std::to_string(outputPairIdx.second)));
-      indicesMap.emplace(idx, outputPairIdx);
+                  arangodb::velocypack::Value(std::to_string(std::get<1>(outputTupleIdx))));
+      indicesMap.emplace(idx, std::make_pair(std::get<0>(outputTupleIdx),
+                                             std::get<1>(outputTupleIdx)));
     }
     return;
   }
 
   if (key.isEqualString(StaticStrings::ObjectId) ||
-      key.isEqualString(StaticStrings::TempObjectId)) {
+      key.isEqualString(StaticStrings::TempObjectId) ||
+      key.isEqualString(StaticStrings::MapObjectId)) {
     return;
   }
 
@@ -178,20 +183,25 @@ void handlePropertiesEntryForObjectIdUpdate(arangodb::LogicalCollection& collect
              key.isEqualString(StaticStrings::UsesRevisionsAsDocumentIds)) {
     builder.add(StaticStrings::UsesRevisionsAsDocumentIds,
                 arangodb::velocypack::Value(!isRollback));
+  } else if (toggleUpgradedProperties && isSmartChild &&
+             key.isEqualString(StaticStrings::IsSmartChild)) {
+    builder.add(StaticStrings::IsSmartChild, arangodb::velocypack::Value(!isRollback));
   } else {
     builder.add(key);
     builder.add(value);
   }
 }
 
-arangodb::Result setObjectIdsForCollection(arangodb::LogicalCollection& collection,
-                                           std::pair<std::uint64_t, std::uint64_t> const& outputPair,
-                                           ::IndicesMap const& indicesMap) {
+arangodb::Result setObjectIdsForCollection(
+    arangodb::LogicalCollection& collection,
+    std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> const& outputTuple,
+    ::IndicesMap const& indicesMap) {
   arangodb::Result res;
 
   auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
   TRI_ASSERT(rcoll);
-  res = rcoll->setObjectIds(outputPair.first, outputPair.second);
+  res = rcoll->setObjectIds(std::get<0>(outputTuple), std::get<1>(outputTuple),
+                            std::get<2>(outputTuple));
   if (res.fail()) {
     return res;
   }
@@ -219,7 +229,8 @@ void toggleUpgradedPropertiesForCollection(arangodb::LogicalCollection& collecti
 arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
                                               arangodb::LogicalCollection& collection,
                                               ::ObjectIdTransformer idFunc,
-                                              bool toggleUpgradedProperties, bool isRollback) {
+                                              bool toggleUpgradedProperties,
+                                              bool isSmartChild, bool isRollback) {
   using arangodb::StaticStrings;
   using arangodb::basics::VelocyPackHelper;
 
@@ -241,7 +252,7 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
   arangodb::velocypack::Slice oldProps = arangodb::RocksDBValue::data(ps);
 
   arangodb::velocypack::Builder builder;
-  std::pair<std::uint64_t, std::uint64_t> outputPair;
+  std::tuple<std::uint64_t, std::uint64_t, std::uint64_t> outputTuple;
   ::IndicesMap indicesMap;
   {
     arangodb::velocypack::ObjectBuilder collectionObjectGuard(&builder);
@@ -249,16 +260,20 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
         VelocyPackHelper::stringUInt64(oldProps, StaticStrings::ObjectId);
     std::uint64_t tempObjectId =
         VelocyPackHelper::stringUInt64(oldProps, StaticStrings::TempObjectId);
-    outputPair = idFunc(objectId, tempObjectId);
+    std::uint64_t mapObjectId =
+        VelocyPackHelper::stringUInt64(oldProps, StaticStrings::MapObjectId);
+    outputTuple = idFunc(objectId, tempObjectId, mapObjectId);
     for (auto pair : arangodb::velocypack::ObjectIterator(oldProps)) {
-      ::handlePropertiesEntryForObjectIdUpdate(collection, builder, idFunc,
-                                               toggleUpgradedProperties, isRollback,
+      ::handlePropertiesEntryForObjectIdUpdate(collection, builder, idFunc, toggleUpgradedProperties,
+                                               isSmartChild, isRollback,
                                                indicesMap, pair.key, pair.value);
     }
     builder.add(StaticStrings::ObjectId,
-                arangodb::velocypack::Value(std::to_string(outputPair.first)));
+                arangodb::velocypack::Value(std::to_string(std::get<0>(outputTuple))));
     builder.add(StaticStrings::TempObjectId,
-                arangodb::velocypack::Value(std::to_string(outputPair.second)));
+                arangodb::velocypack::Value(std::to_string(std::get<1>(outputTuple))));
+    builder.add(StaticStrings::MapObjectId,
+                arangodb::velocypack::Value(std::to_string(std::get<2>(outputTuple))));
   }
   auto value = arangodb::RocksDBValue::Collection(builder.slice());
   batch.Put(arangodb::RocksDBColumnFamily::definitions(), key.string(), value.string());
@@ -274,7 +289,7 @@ arangodb::Result updateObjectIdsForCollection(rocksdb::DB& db,
     db.Write(wo, &batch);
   });
 
-  res = ::setObjectIdsForCollection(collection, outputPair, indicesMap);
+  res = ::setObjectIdsForCollection(collection, outputTuple, indicesMap);
   if (res.fail()) {
     return res;
   }
@@ -297,21 +312,55 @@ arangodb::Result commitBatch(rocksdb::WriteOptions& wo,
   return res;
 }
 
-void rewriteDocument(rocksdb::WriteBatch& batch, arangodb::RocksDBKey& key,
-                     arangodb::RocksDBKeyBounds& bounds,
-                     rocksdb::Slice oldValue, std::uint64_t tempObjectId) {
-  arangodb::velocypack::Slice document = arangodb::RocksDBValue::data(oldValue);
-  arangodb::velocypack::Builder builder;
-  arangodb::velocypack::Slice revSlice = document.get(arangodb::StaticStrings::RevString);
+void rewriteDocument(arangodb::RocksDBMetaCollection& rcoll, rocksdb::WriteBatch& batch,
+                     arangodb::RocksDBKey& key, arangodb::RocksDBKeyBounds& bounds,
+                     rocksdb::Slice oldKey, rocksdb::Slice oldValue) {
+  using namespace arangodb::velocypack;
+
+  Slice document = arangodb::RocksDBValue::data(oldValue);
+  Slice revSlice = document.get(arangodb::StaticStrings::RevString);
   TRI_ASSERT(revSlice.isString());
-  arangodb::velocypack::ValueLength l;
+  ValueLength l;
   char const* p = revSlice.getString(l);
   TRI_voc_rid_t revision = TRI_StringToRid(p, l, false);
 
-  arangodb::LocalDocumentId newDocumentId{revision};
+  if (rcoll.mapObjectId() == 0) {
+    arangodb::LocalDocumentId newDocumentId{revision};
+    key.constructDocument(rcoll.tempObjectId(), newDocumentId);
 
-  key.constructDocument(tempObjectId, newDocumentId);
-  batch.Put(bounds.columnFamily(), key.string(), oldValue);
+    batch.Put(bounds.columnFamily(), key.string(), oldValue);
+  } else {
+    TRI_voc_rid_t newRevision = rcoll.newRevisionId();
+
+    {
+      // mapping from old document id to new revision
+      arangodb::LocalDocumentId oldDocumentId = arangodb::RocksDBKey::documentId(oldKey);
+      key.constructDocument(rcoll.mapObjectId(), oldDocumentId);
+      std::string mapValue;
+      arangodb::rocksutils::uint64ToPersistent(mapValue, newRevision);
+      batch.Put(bounds.columnFamily(), key.string(), mapValue);
+    }
+
+    arangodb::LocalDocumentId newDocumentId{newRevision};
+    key.constructDocument(rcoll.tempObjectId(), newDocumentId);
+
+    Builder builder;
+    {
+      ObjectBuilder guard(&builder);
+      for (ObjectIteratorPair pair : ObjectIterator(document)) {
+        if (pair.key.isEqualString(arangodb::StaticStrings::RevString)) {
+          builder.add(arangodb::StaticStrings::RevString, Value(newRevision));
+        } else {
+          builder.add(pair.key);
+          builder.add(pair.value);
+        }
+      }
+    }
+
+    rocksdb::Slice newValue(reinterpret_cast<char const*>(builder.data()),
+                            builder.size());
+    batch.Put(bounds.columnFamily(), key.string(), newValue);
+  }
 }
 
 arangodb::Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
@@ -321,11 +370,11 @@ arangodb::Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
 
   auto rcoll = static_cast<arangodb::RocksDBMetaCollection*>(collection.getPhysical());
   TRI_ASSERT(rcoll);
-  std::uint64_t objectId = rcoll->objectId();
-  std::uint64_t tempObjectId = rcoll->tempObjectId();
+  std::uint64_t const objectId = rcoll->objectId();
 
   rocksdb::ReadOptions ro;
   auto bounds = arangodb::RocksDBKeyBounds::CollectionDocuments(objectId);
+  ro.fill_cache = false;
   ro.prefix_same_as_start = true;
   auto iterateBound = bounds.end();
   ro.iterate_upper_bound = &iterateBound;
@@ -341,7 +390,7 @@ arangodb::Result copyCollectionToNewObjectIdSpace(rocksdb::DB& db,
   rocksdb::WriteBatch batch;
   for (iter->Seek(bounds.start());
        iter->Valid() && cmp->Compare(iter->key(), bounds.end()) <= 0; iter->Next()) {
-    ::rewriteDocument(batch, key, bounds, iter->value(), tempObjectId);
+    ::rewriteDocument(*rcoll, batch, key, bounds, iter->key(), iter->value());
 
     if (batch.Count() >= 5000) {
       res = commitBatch(wo, batch, db);
@@ -364,7 +413,7 @@ arangodb::LocalDocumentId extractDocumentIdFromIndexEntry(arangodb::RocksDBIndex
       id = arangodb::RocksDBValue::documentId(value);
       break;
     case arangodb::RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX:
-      id = arangodb::RocksDBKey::edgeDocumentId(value);
+      id = arangodb::RocksDBKey::edgeDocumentId(key);
       break;
     case arangodb::RocksDBIndex::TRI_IDX_TYPE_HASH_INDEX:
     case arangodb::RocksDBIndex::TRI_IDX_TYPE_SKIPLIST_INDEX:
@@ -395,7 +444,23 @@ TRI_voc_rid_t getRevisionFromOldDocumentId(rocksdb::DB& db,
                                            arangodb::RocksDBMetaCollection& rcoll,
                                            arangodb::LocalDocumentId oldId) {
   arangodb::RocksDBKey key;
-  key.constructDocument(rcoll.objectId(), oldId);
+  if (rcoll.mapObjectId() == 0) {
+    // directly answer from old space
+    key.constructDocument(rcoll.objectId(), oldId);
+    rocksdb::PinnableSlice ps;
+    rocksdb::Status s =
+        db.Get(rocksdb::ReadOptions(),
+               arangodb::RocksDBColumnFamily::documents(), key.string(), &ps);
+    if (!s.ok()) {
+      return TRI_voc_rid_t{0};
+    }
+
+    arangodb::velocypack::Slice doc = arangodb::RocksDBValue::data(ps);
+    return arangodb::transaction::helpers::extractRevFromDocument(doc);
+  }
+
+  // smart child use the mapping indirection
+  key.constructDocument(rcoll.mapObjectId(), oldId);
   rocksdb::PinnableSlice ps;
   rocksdb::Status s =
       db.Get(rocksdb::ReadOptions(), arangodb::RocksDBColumnFamily::documents(),
@@ -404,8 +469,7 @@ TRI_voc_rid_t getRevisionFromOldDocumentId(rocksdb::DB& db,
     return TRI_voc_rid_t{0};
   }
 
-  arangodb::velocypack::Slice doc = arangodb::RocksDBValue::data(ps);
-  return arangodb::transaction::helpers::extractRevFromDocument(doc);
+  return arangodb::rocksutils::uint64FromPersistent(ps.data());
 }
 
 void rewritePrimaryIndexEntry(arangodb::RocksDBIndex& ridx, arangodb::RocksDBKey& key,
@@ -462,7 +526,8 @@ arangodb::Result rewriteIndexEntry(rocksdb::DB& db, rocksdb::WriteBatch& batch,
   if (!newId.isSet()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "could not get revision for document " +
-                                std::to_string(oldId.id()));
+                                std::to_string(oldId.id()) +
+                                " while working on index " + ridx.name());
   }
 
   arangodb::Result res;
@@ -515,7 +580,9 @@ arangodb::Result copyIndexToNewObjectIdSpace(rocksdb::DB& db,
 
   rocksdb::ReadOptions ro;
   auto bounds = ridx.getBounds();
+  ro.fill_cache = false;
   ro.prefix_same_as_start = index.type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX;
+  ro.total_order_seek = index.type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX;
   auto iterateBound = bounds.end();
   ro.iterate_upper_bound = &iterateBound;
 
@@ -551,6 +618,14 @@ arangodb::Result cleanupOldIdSpaces(rocksdb::DB& db, arangodb::RocksDBMetaCollec
 
   if (rcoll.tempObjectId() != 0) {
     auto bounds = arangodb::RocksDBKeyBounds::CollectionDocuments(rcoll.tempObjectId());
+    res = arangodb::rocksutils::removeLargeRange(&db, bounds, true, true);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  if (rcoll.mapObjectId() != 0) {
+    auto bounds = arangodb::RocksDBKeyBounds::CollectionDocuments(rcoll.mapObjectId());
     res = arangodb::rocksutils::removeLargeRange(&db, bounds, true, true);
     if (res.fail()) {
       return res;
@@ -643,6 +718,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add(StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
   result.add(StaticStrings::TempObjectId, VPackValue(std::to_string(tempObjectId())));
+  result.add(StaticStrings::MapObjectId, VPackValue(std::to_string(mapObjectId())));
   result.add(StaticStrings::CacheEnabled, VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
@@ -1733,11 +1809,18 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
   meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);
 }
 
-Result RocksDBCollection::prepareUpgrade() {
+Result RocksDBCollection::prepareUpgrade(bool isSmartChild) {
   Result res{};
   if (_logicalCollection.version() >= LogicalCollection::Version::v37 ||
       _logicalCollection.syncByRevision() ||
-      _logicalCollection.usesRevisionsAsDocumentIds() || tempObjectId() != 0) {
+      _logicalCollection.usesRevisionsAsDocumentIds()) {
+    return res;
+  }
+
+  if (tempObjectId() != 0 || mapObjectId() != 0) {
+    res.reset(TRI_ERROR_BAD_PARAMETER,
+              "collection already partially upgraded, wait for job to finish "
+              "or clean up after old job");
     return res;
   }
 
@@ -1745,8 +1828,15 @@ Result RocksDBCollection::prepareUpgrade() {
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
-  res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                       ::injectNewTemporaryObjectId, false, false);
+  if (isSmartChild) {
+    res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                         ::injectNewTemporaryAndMapObjectIds,
+                                         false, isSmartChild, false);
+  } else {
+    res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
+                                         ::injectNewTemporaryObjectId, false,
+                                         isSmartChild, false);
+  }
   if (res.fail()) {
     LOG_TOPIC("ad41c", WARN, Logger::ENGINES)
         << "failed to allocate temporary id for writing while upgrading '"
@@ -1762,6 +1852,20 @@ Result RocksDBCollection::prepareUpgrade() {
           << _logicalCollection.name() << "': " << res.errorMessage();
       return res;
     }
+    {
+      // unload and reload to clear any caches
+      if (useCache()) {
+        destroyCache();
+        TRI_ASSERT(_cache.get() == nullptr);
+        createCache();
+        if (_cache) {
+          uint64_t numDocs = _meta.numberDocuments();
+          if (numDocs > 0) {
+            _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+          }
+        }
+      }
+    }
 
     std::vector<std::shared_ptr<Index>> indices = getIndexes();
     for (auto const& index : indices) {
@@ -1772,13 +1876,16 @@ Result RocksDBCollection::prepareUpgrade() {
             << _logicalCollection.name() << "': " << res.errorMessage();
         return res;
       }
+      // unload and reload to clear any caches
+      index->unload();
+      index->load();
     }
   }
 
   return res;
 }
 
-Result RocksDBCollection::finalizeUpgrade() {
+Result RocksDBCollection::finalizeUpgrade(bool isSmartChild) {
   Result res{};
   if (_logicalCollection.version() >= LogicalCollection::Version::v37 ||
       _logicalCollection.syncByRevision() ||
@@ -1791,7 +1898,7 @@ Result RocksDBCollection::finalizeUpgrade() {
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                       ::swapObjectIds, true, false);
+                                       ::swapObjectIds, true, isSmartChild, false);
   if (res.fail()) {
     return res;
   }
@@ -1806,7 +1913,7 @@ Result RocksDBCollection::finalizeUpgrade() {
   return res;
 }
 
-Result RocksDBCollection::rollbackUpgrade() {
+Result RocksDBCollection::rollbackUpgrade(bool isSmartChild) {
   Result res{};
   if (_logicalCollection.version() < LogicalCollection::Version::v37 &&
       !_logicalCollection.syncByRevision() &&
@@ -1814,14 +1921,12 @@ Result RocksDBCollection::rollbackUpgrade() {
     return res;
   }
 
-  // TODO handle any missed updates in old ID-space?
-
   auto& server = _logicalCollection.vocbase().server();
   auto& selector = server.getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                       ::swapObjectIds, true, true);
+                                       ::swapObjectIds, true, isSmartChild, true);
   if (res.fail()) {
     return res;
   }
@@ -1841,12 +1946,12 @@ Result RocksDBCollection::cleanupUpgrade() {
     return res;
   }
 
-  return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
-                                        ::clearTemporaryObjectId, false, false);
+  return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection, ::clearTemporaryObjectIds,
+                                        false, mapObjectId() != 0, false);
 }
 
 bool RocksDBCollection::didPartialUpgrade() {
-  if (tempObjectId() != 0) {
+  if (tempObjectId() != 0 || mapObjectId() != 0) {
     return true;
   }
 

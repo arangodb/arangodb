@@ -234,6 +234,7 @@ std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::IndexBuckets("indexBuckets");
 std::string const StaticStrings::JournalSize("journalSize");
+std::string const StaticStrings::MapObjectId("mapObjectId");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");

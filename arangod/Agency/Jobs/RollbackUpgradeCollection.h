@@ -21,8 +21,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AGENCY_JOB_UPGRADE_VIRTUAL_COLLECTION_H
-#define ARANGOD_AGENCY_JOB_UPGRADE_VIRTUAL_COLLECTION_H 1
+#ifndef ARANGOD_AGENCY_JOB_ROLLBACK_UPGRADE_COLLECTION_H
+#define ARANGOD_AGENCY_JOB_ROLLBACK_UPGRADE_COLLECTION_H 1
 
 #include <velocypack/Builder.h>
 
@@ -32,12 +32,12 @@
 namespace arangodb {
 namespace consensus {
 
-struct UpgradeVirtualCollection : public Job {
-  UpgradeVirtualCollection(Supervision& supervision, Node const& snapshot,
-                           AgentInterface* agent, JOB_STATUS status,
-                           std::string const& jobId);
+struct RollbackUpgradeCollection : public Job {
+  RollbackUpgradeCollection(Supervision& supervision, Node const& snapshot,
+                            AgentInterface* agent, JOB_STATUS status,
+                            std::string const& jobId);
 
-  virtual ~UpgradeVirtualCollection();
+  virtual ~RollbackUpgradeCollection();
 
   virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
   virtual void run(bool&) override final;
@@ -50,14 +50,13 @@ struct UpgradeVirtualCollection : public Job {
   velocypack::Slice job() const;
   bool writeTransaction(velocypack::Builder const&, std::string const&);
   bool registerError(std::string const&);
-  void prepareChildJob(velocypack::Builder&, std::string const&, std::string const&);
 
   std::string _database;
   std::string _collection;
+  std::string _failedId;
   std::chrono::system_clock::time_point _created;
   std::string _error;
-  std::vector<std::string> _children;
-  std::size_t _timeout;
+  bool _smartChild;
 };
 }  // namespace consensus
 }  // namespace arangodb

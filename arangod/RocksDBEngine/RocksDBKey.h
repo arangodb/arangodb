@@ -298,6 +298,7 @@ class RocksDBKey {
 
     const auto type = static_cast<RocksDBEntryType>(data[0]);
     switch (type) {
+      case RocksDBEntryType::Document:
       case RocksDBEntryType::Database:
       case RocksDBEntryType::Collection:
       case RocksDBEntryType::CounterValue:
@@ -334,7 +335,10 @@ class RocksDBKey {
 };
 
 std::ostream& operator<<(std::ostream&, RocksDBKey const&);
-
 }  // namespace arangodb
+
+namespace rocksdb {
+std::ostream& operator<<(std::ostream&, rocksdb::Slice const&);
+}
 
 #endif

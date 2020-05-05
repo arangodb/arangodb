@@ -63,6 +63,7 @@ class UpgradeCollection : public ActionBase,
  private:
   velocypack::Builder _planStatus;
   std::size_t _timeout;
+  bool _isSmartChild;
   std::unique_ptr<transaction::Methods> _trx;
   std::unordered_map<std::string, std::pair<LogicalCollection::UpgradeStatus::State, futures::Future<Result>>> _futures;
   mutable std::size_t _iteration = 0;

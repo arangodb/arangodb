@@ -32,6 +32,7 @@
 #include "Agency/Jobs/MoveShard.h"
 #include "Agency/Jobs/RemoveFollower.h"
 #include "Agency/Jobs/ResignLeadership.h"
+#include "Agency/Jobs/RollbackUpgradeCollection.h"
 #include "Agency/Jobs/UpgradeCollection.h"
 #include "Agency/Jobs/UpgradeVirtualCollection.h"
 #include "Cluster/Maintenance/MaintenanceStrings.h"
@@ -72,6 +73,9 @@ JobContext::JobContext(Supervision& supervision, JOB_STATUS status,
   } else if (type == maintenance::UPGRADE_VIRTUAL_COLLECTION) {
     _job = std::make_unique<UpgradeVirtualCollection>(supervision, snapshot,
                                                       agent, status, id);
+  } else if (type == maintenance::ROLLBACK_UPGRADE_COLLECTION) {
+    _job = std::make_unique<RollbackUpgradeCollection>(supervision, snapshot,
+                                                       agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;

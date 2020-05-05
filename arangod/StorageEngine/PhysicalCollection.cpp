@@ -184,17 +184,17 @@ TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
   return TRI_HybridLogicalClock();
 }
 
-Result PhysicalCollection::prepareUpgrade() {
+Result PhysicalCollection::prepareUpgrade(bool) {
   return Result{TRI_ERROR_NOT_IMPLEMENTED,
                 "collection upgrade not supported on this type of collection"};
 }
 
-Result PhysicalCollection::finalizeUpgrade() {
+Result PhysicalCollection::finalizeUpgrade(bool) {
   return Result{TRI_ERROR_NOT_IMPLEMENTED,
                 "collection upgrade not supported on this type of collection"};
 }
 
-Result PhysicalCollection::rollbackUpgrade() {
+Result PhysicalCollection::rollbackUpgrade(bool) {
   return Result{TRI_ERROR_NOT_IMPLEMENTED,
                 "collection upgrade not supported on this type of collection"};
 }

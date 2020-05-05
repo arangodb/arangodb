@@ -21,7 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agency/Jobs/UpgradeCollection.h"
+#include "Agency/Jobs/RollbackUpgradeCollection.h"
 
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
@@ -50,24 +50,28 @@ bool preparePendingJob(arangodb::velocypack::Builder& job, std::string const& jo
   return true;
 }
 
-void prepareStartTransaction(arangodb::velocypack::Builder& trx, std::string const& database,
-                             std::string const& collection, std::string const& jobId,
+void prepareStartTransaction(arangodb::velocypack::Builder& trx,
+                             arangodb::consensus::Node const& snapshot,
+                             std::string const& database, std::string const& collection,
+                             std::string const& jobId, std::string const& failedId,
                              arangodb::velocypack::Slice toDoJob) {
   using namespace arangodb::velocypack;
 
   std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
   std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
+
+  auto [holder, found] = snapshot.hasAsString(collectionLock);
+  bool mustLock = !found || (holder != jobId && holder != failedId);
+  bool stealLock = holder == failedId;
+
   {
     ArrayBuilder listofTransactions(&trx);
     {
       ObjectBuilder mutations(&trx);
 
-      // lock collection
-      trx.add(Value(collectionLock));
-      {
-        ObjectBuilder lock(&trx);
-        trx.add("op", Value(arangodb::consensus::OP_WRITE_LOCK));
-        trx.add("by", Value(jobId));
+      if (mustLock) {
+        // lock collection
+        trx.add(collectionLock, Value(jobId));
       }
 
       // and add the upgrade flag
@@ -91,11 +95,19 @@ void prepareStartTransaction(arangodb::velocypack::Builder& trx, std::string con
         trx.add("oldEmpty", Value(false));
       }
 
-      // and we can write lock it
       trx.add(Value(collectionLock));
       {
         ObjectBuilder lock(&trx);
-        trx.add(arangodb::consensus::PREC_CAN_WRITE_LOCK, Value(true));
+        if (mustLock && stealLock) {
+          // failed job had it locked, we should steal it
+          trx.add(arangodb::consensus::PREC_IS_WRITE_LOCKED, Value(failedId));
+        } else if (mustLock) {
+          // and we can write lock it
+          trx.add(arangodb::consensus::PREC_CAN_WRITE_LOCK, Value(true));
+        } else {
+          // we already have it locked
+          trx.add(arangodb::consensus::PREC_IS_WRITE_LOCKED, Value(jobId));
+        }
       }
     }
   }
@@ -242,9 +254,9 @@ std::pair<bool, bool> haveFinalizedInShard(arangodb::consensus::Node const& snap
   return std::make_pair(haveFinalized, haveError);
 }
 
-[[maybe_unused]] std::pair<bool, bool> haveAnyFinalized(arangodb::consensus::Node const& snapshot,
-                                                        std::string const& database,
-                                                        std::string const& collection) {
+std::pair<bool, bool> haveAnyFinalized(arangodb::consensus::Node const& snapshot,
+                                       std::string const& database,
+                                       std::string const& collection) {
   using namespace arangodb::velocypack;
 
   bool haveFinalized = false;
@@ -303,50 +315,6 @@ void prepareSetTargetPhaseTransaction(arangodb::velocypack::Builder& trx,
       // and add the upgrade flag
       trx.add(collectionStatus,
               arangodb::LogicalCollection::UpgradeStatus::stateToValue(targetPhase));
-
-      // make sure we don't try to rewrite history
-      arangodb::consensus::Job::addIncreasePlanVersion(trx);
-    }
-    {
-      ObjectBuilder preconditions(&trx);
-
-      // collection exists
-      trx.add(Value(collectionPath));
-      {
-        ObjectBuilder collection(&trx);
-        trx.add("oldEmpty", Value(false));
-      }
-
-      // and we have it write locked
-      trx.add(Value(collectionLock));
-      {
-        ObjectBuilder lock(&trx);
-        trx.add(arangodb::consensus::PREC_IS_WRITE_LOCKED, Value(jobId));
-      }
-    }
-  }
-}
-
-void prepareSetUpgradedPropertiesTransaction(arangodb::velocypack::Builder& trx,
-                                             std::string const& database,
-                                             std::string const& collection,
-                                             std::string const& jobId) {
-  using namespace arangodb::velocypack;
-
-  std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
-  std::string collectionSyncByRevision =
-      collectionPath + "/" + arangodb::StaticStrings::SyncByRevision;
-  std::string collectionUsesRevisionsAsDocumentIds =
-      collectionPath + "/" + arangodb::StaticStrings::UsesRevisionsAsDocumentIds;
-  std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
-  {
-    ArrayBuilder listofTransactions(&trx);
-    {
-      ObjectBuilder mutations(&trx);
-
-      // and add the upgrade flag
-      trx.add(collectionSyncByRevision, Value(true));
-      trx.add(collectionUsesRevisionsAsDocumentIds, Value(true));
 
       // make sure we don't try to rewrite history
       arangodb::consensus::Job::addIncreasePlanVersion(trx);
@@ -483,64 +451,21 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
     }
   }
 }
-
-void prepareRollbackTransaction(bool haveLock, arangodb::velocypack::Builder& trx,
-                                arangodb::velocypack::Builder const& rollback,
-                                std::string const& database, std::string const& collection,
-                                std::string const& jobId, std::string const& rollbackId) {
-  using namespace arangodb::velocypack;
-
-  std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
-  std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
-  {
-    ArrayBuilder listofTransactions(&trx);
-    {
-      ObjectBuilder mutations(&trx);
-
-      arangodb::consensus::Job::addPutJobIntoSomewhere(trx, "ToDo", rollback.slice());
-
-      if (haveLock) {
-        // transfer the lock
-        trx.add(collectionLock, Value(rollbackId));
-      }
-
-      // make sure we don't try to rewrite history
-      arangodb::consensus::Job::addIncreasePlanVersion(trx);
-    }
-    {
-      ObjectBuilder preconditions(&trx);
-
-      // collection exists
-      trx.add(Value(collectionPath));
-      {
-        ObjectBuilder collection(&trx);
-        trx.add("oldEmpty", Value(false));
-      }
-
-      if (haveLock) {
-        // and we have it write locked
-        trx.add(Value(collectionLock));
-        {
-          ObjectBuilder lock(&trx);
-          trx.add(arangodb::consensus::PREC_IS_WRITE_LOCKED, Value(jobId));
-        }
-      }
-    }
-  }
-}
-}
+}  // namespace
 
 namespace arangodb::consensus {
 
-UpgradeCollection::UpgradeCollection(Supervision& supervision,
-                                     Node const& snapshot, AgentInterface* agent,
-                                     JOB_STATUS status, std::string const& jobId)
+RollbackUpgradeCollection::RollbackUpgradeCollection(Supervision& supervision,
+                                                     Node const& snapshot,
+                                                     AgentInterface* agent, JOB_STATUS status,
+                                                     std::string const& jobId)
     : Job(supervision, status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto [tmpDatabase, foundDatabase] = _snapshot.hasAsString(path + "database");
   auto [tmpCollection, foundCollection] =
       _snapshot.hasAsString(path + "collection");
+  auto [tmpFailed, foundFailed] = _snapshot.hasAsString(path + "failedId");
 
   auto [tmpCreator, foundCreator] = _snapshot.hasAsString(path + "creator");
   auto [tmpCreated, foundCreated] = _snapshot.hasAsString(path + "timeCreated");
@@ -548,9 +473,10 @@ UpgradeCollection::UpgradeCollection(Supervision& supervision,
   auto [tmpError, errorFound] = _snapshot.hasAsString(path + "error");
   auto [tmpChild, childFound] = _snapshot.hasAsBool(path + StaticStrings::IsSmartChild);
 
-  if (foundDatabase && foundCollection && foundCreator && foundCreated) {
+  if (foundDatabase && foundCollection && foundFailed && foundCreator && foundCreated) {
     _database = tmpDatabase;
     _collection = tmpCollection;
+    _failedId = tmpFailed;
     _creator = tmpCreator;
     _created = stringToTimepoint(tmpCreated);
   } else {
@@ -568,18 +494,18 @@ UpgradeCollection::UpgradeCollection(Supervision& supervision,
   _smartChild = childFound && tmpChild;
 }
 
-UpgradeCollection::~UpgradeCollection() = default;
+RollbackUpgradeCollection::~RollbackUpgradeCollection() = default;
 
-void UpgradeCollection::run(bool& aborts) { runHelper("", "", aborts); }
+void RollbackUpgradeCollection::run(bool& aborts) { runHelper("", "", aborts); }
 
-bool UpgradeCollection::create(std::shared_ptr<VPackBuilder> envelope) {
+bool RollbackUpgradeCollection::create(std::shared_ptr<VPackBuilder> envelope) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "create not implemented for UpgradeCollection");
+      "create not implemented for RollbackUpgradeCollection");
   return false;
 }
 
-bool UpgradeCollection::start(bool& aborts) {
+bool RollbackUpgradeCollection::start(bool& aborts) {
   using namespace cluster::paths::aliases;
 
   if (!_error.empty()) {
@@ -594,22 +520,32 @@ bool UpgradeCollection::start(bool& aborts) {
   }
 
   velocypack::Builder trx;
-  ::prepareStartTransaction(trx, _database, _collection, _jobId, pending.slice());
+  ::prepareStartTransaction(trx, _snapshot, _database, _collection, _jobId,
+                            _failedId, pending.slice());
 
   std::string messageIfError =
-      "could not begin upgrade of collection '" + _collection + "'";
+      "could not begin to rollback upgrade of collection '" + _collection + "'";
   bool ok = writeTransaction(trx, messageIfError);
   if (ok) {
     _status = PENDING;
     LOG_TOPIC("45121", DEBUG, Logger::SUPERVISION)
-        << "Pending: Upgrade collection '" + _collection + "'";
+        << "Pending: Rollback upgrade of collection '" + _collection + "'";
     return true;
   }
+
+  auto [mustRollback, haveShardError] =
+      ::haveAnyFinalized(_snapshot, _database, _collection);
+  if (haveShardError) {
+    abort("have a shard error, could not process rollback");
+  }
+  ::UpgradeState targetPhase =
+      mustRollback ? ::UpgradeState::Rollback : ::UpgradeState::Cleanup;
+  ::prepareSetTargetPhaseTransaction(trx, _database, _collection, _jobId, targetPhase);
 
   return false;
 }
 
-JOB_STATUS UpgradeCollection::status() {
+JOB_STATUS RollbackUpgradeCollection::status() {
   if (_status != PENDING) {
     // either not started yet, or already failed/finished
     return _status;
@@ -627,25 +563,12 @@ JOB_STATUS UpgradeCollection::status() {
     registerError("failed with shard error");
   } else if (allMatch) {
     // move to next phase, or report finished if done
-    if (targetPhase == ::UpgradeState::Prepare) {
+    if (targetPhase == ::UpgradeState::Rollback) {
       velocypack::Builder trx;
       ::prepareSetTargetPhaseTransaction(trx, _database, _collection, _jobId,
-                                         ::UpgradeState::Finalize);
-      std::string messageIfError = "could not set target phase 'Finalize'";
+                                         ::UpgradeState::Cleanup);
+      std::string messageIfError = "could not set target phase 'Cleanup'";
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
-    } else if (targetPhase == ::UpgradeState::Finalize) {
-      velocypack::Builder trx;
-      ::prepareSetUpgradedPropertiesTransaction(trx, _database, _collection, _jobId);
-      std::string messageIfError =
-          "could not set upgraded properties on collection";
-      bool ok = writeTransaction(trx, messageIfError);
-      if (ok) {
-        trx.clear();
-        ::prepareSetTargetPhaseTransaction(trx, _database, _collection, _jobId,
-                                           ::UpgradeState::Cleanup);
-        messageIfError = "could not set target phase 'Cleanup'";
-        ok = writeTransaction(trx, messageIfError);
-      }
     } else if (targetPhase == ::UpgradeState::Cleanup) {
       velocypack::Builder trx;
       ::prepareReleaseTransaction(trx, _snapshot, _database, _collection, _jobId);
@@ -658,11 +581,12 @@ JOB_STATUS UpgradeCollection::status() {
   return _status;
 }
 
-arangodb::Result UpgradeCollection::abort(std::string const& reason) {
+arangodb::Result RollbackUpgradeCollection::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
-    return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-                  "Failed aborting UpgradeCollection job beyond pending stage");
+    return Result(
+        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+        "Failed aborting RollbackUpgradeCollection job beyond pending stage");
   }
 
   if (_status == TODO) {
@@ -670,17 +594,15 @@ arangodb::Result UpgradeCollection::abort(std::string const& reason) {
     return Result{};
   }
 
-  triggerRollback();
-
   finish("", "", false, "job aborted: " + reason);
   return Result{};
 }
 
-std::string UpgradeCollection::jobPrefix() const {
+std::string RollbackUpgradeCollection::jobPrefix() const {
   return _status == TODO ? toDoPrefix : pendingPrefix;
 }
 
-velocypack::Slice UpgradeCollection::job() const {
+velocypack::Slice RollbackUpgradeCollection::job() const {
   if (_jb == nullptr) {
     return velocypack::Slice::noneSlice();
   } else {
@@ -688,8 +610,8 @@ velocypack::Slice UpgradeCollection::job() const {
   }
 }
 
-bool UpgradeCollection::writeTransaction(velocypack::Builder const& trx,
-                                         std::string const& errorMessage) {
+bool RollbackUpgradeCollection::writeTransaction(velocypack::Builder const& trx,
+                                                 std::string const& errorMessage) {
   write_ret_t res = singleWriteTransaction(_agent, trx, true);
   if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
     bool registered = registerError(errorMessage);
@@ -701,7 +623,7 @@ bool UpgradeCollection::writeTransaction(velocypack::Builder const& trx,
   return true;
 }
 
-bool UpgradeCollection::registerError(std::string const& errorMessage) {
+bool RollbackUpgradeCollection::registerError(std::string const& errorMessage) {
   _error = errorMessage;
   velocypack::Builder trx;
   velocypack::Slice jobData = job();
@@ -716,31 +638,4 @@ bool UpgradeCollection::registerError(std::string const& errorMessage) {
   return true;
 }
 
-void UpgradeCollection::triggerRollback() {
-  velocypack::Builder job;
-  std::string rollbackId = prepareRollbackJob(job);
-
-  bool const haveLock = _status == PENDING;
-  velocypack::Builder trx;
-  ::prepareRollbackTransaction(haveLock, trx, job, _database, _collection, _jobId, rollbackId);
-
-  [[maybe_unused]] bool written =
-      writeTransaction(trx, "failed to trigger rollback");
-}
-
-std::string UpgradeCollection::prepareRollbackJob(arangodb::velocypack::Builder& job) {
-  using namespace arangodb::velocypack;
-  std::string const newJobId = std::to_string(_supervision.nextJobId());
-  ObjectBuilder guard(&job);
-  job.add("creator", velocypack::Value(_creator));
-  job.add("type", velocypack::Value(maintenance::ROLLBACK_UPGRADE_COLLECTION));
-  job.add(maintenance::DATABASE, velocypack::Value(_database));
-  job.add(maintenance::COLLECTION, velocypack::Value(_collection));
-  job.add("jobId", velocypack::Value(newJobId));
-  job.add("failedId", velocypack::Value(_jobId));
-  job.add("timeCreated",
-          velocypack::Value(timepointToString(std::chrono::system_clock::now())));
-  job.add(StaticStrings::IsSmartChild, velocypack::Value(_smartChild));
-  return newJobId;
-}
-}
+}  // namespace arangodb::consensus

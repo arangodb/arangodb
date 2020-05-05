@@ -126,8 +126,7 @@ struct Collections {
 
   static std::pair<Result, std::shared_ptr<velocypack::Builder>> upgrade(
       TRI_vocbase_t& vocbase, LogicalCollection const& coll,
-      LogicalCollection::UpgradeStatus::State phase,
-      std::size_t timeout);
+      LogicalCollection::UpgradeStatus::State phase, std::size_t timeout, bool isSmartChild);
 
   static futures::Future<OperationResult> revisionId(Context& ctxt);
 

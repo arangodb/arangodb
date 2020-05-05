@@ -218,9 +218,9 @@ class PhysicalCollection {
 
   TRI_voc_rid_t newRevisionId() const;
 
-  virtual Result prepareUpgrade();
-  virtual Result finalizeUpgrade();
-  virtual Result rollbackUpgrade();
+  virtual Result prepareUpgrade(bool);
+  virtual Result finalizeUpgrade(bool);
+  virtual Result rollbackUpgrade(bool);
   virtual Result cleanupUpgrade();
   virtual bool didPartialUpgrade();
 

@@ -54,6 +54,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
     : PhysicalCollection(collection, info),
       _objectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId)),
       _tempObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::TempObjectId)),
+      _mapObjectId(basics::VelocyPackHelper::stringUInt64(info, StaticStrings::MapObjectId)),
       _revisionTreeApplied(0),
       _revisionTreeSerializedSeq(0),
       _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
@@ -80,6 +81,8 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId.load()),
       _tempObjectId(
           static_cast<RocksDBMetaCollection const*>(physical)->_tempObjectId.load()),
+      _mapObjectId(
+          static_cast<RocksDBMetaCollection const*>(physical)->_mapObjectId.load()),
       _revisionTreeApplied(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(
@@ -666,7 +669,8 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
 }
 
 Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
-                                           std::uint64_t plannedTempObjectId) {
+                                           std::uint64_t plannedTempObjectId,
+                                           std::uint64_t plannedMapObjectId) {
   Result res;
   auto& server = _logicalCollection.vocbase().server();
   auto& selector = server.getFeature<EngineSelectorFeature>();
@@ -674,12 +678,7 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
 
   if (plannedObjectId == _objectId.load() && plannedTempObjectId != _tempObjectId) {
     // just temp id has changed
-    std::uint64_t oldId = (plannedTempObjectId == 0) ? _tempObjectId.load() : 0;
     _tempObjectId.store(plannedTempObjectId);
-    if (oldId != 0) {  // need to clean up the old range
-      RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(oldId);
-      res = rocksutils::removeLargeRange(engine.db(), bounds, true, true);
-    }
   } else if (plannedTempObjectId != _tempObjectId) {
     TRI_ASSERT(plannedObjectId != _objectId.load());
     TRI_ASSERT(plannedObjectId != 0);
@@ -689,6 +688,10 @@ Result RocksDBMetaCollection::setObjectIds(std::uint64_t plannedObjectId,
     _objectId.store(plannedObjectId);
     engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                                 _logicalCollection.id());
+  }
+
+  if (plannedMapObjectId != _mapObjectId.load()) {
+    _mapObjectId.store(plannedMapObjectId);
   }
 
   return res;

@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agency/Jobs/UpgradeVirtualCollection.h"
@@ -56,35 +56,19 @@ std::unordered_map<std::string, std::string> prepareChildMap(
 }
 
 bool preparePendingJob(arangodb::velocypack::Builder& job,
-                       std::shared_ptr<arangodb::velocypack::Builder> const& jb,
                        std::string const& jobId, arangodb::consensus::Node const& snapshot,
                        std::unordered_map<std::string, std::string> const& childMap) {
   using arangodb::consensus::toDoPrefix;
   using namespace arangodb::velocypack;
 
-  // When create() was done with the current snapshot, then the job object
-  // will not be in the snapshot under ToDo, but in this case we find it
-  // in jb:
   Builder old;
-  if (jb == nullptr) {
-    auto [garbage, found] = snapshot.hasAsBuilder(toDoPrefix + jobId, old);
-    if (!found) {
-      // Just in case, this is never going to happen, since we will only
-      // call the start() method if the job is already in ToDo.
-      LOG_TOPIC("2482b", INFO, arangodb::Logger::SUPERVISION)
-          << "Failed to get key " + toDoPrefix + jobId + " from agency snapshot";
-      return false;
-    }
-  } else {
-    try {
-      old.add(jb->slice()[0].get(toDoPrefix + jobId));
-    } catch (std::exception const& e) {
-      // Just in case, this is never going to happen, since when _jb is
-      // set, then the current job is stored under ToDo.
-      LOG_TOPIC("34af1", WARN, arangodb::Logger::SUPERVISION)
-          << e.what() << ": " << __FILE__ << ":" << __LINE__;
-      return false;
-    }
+  auto [garbage, found] = snapshot.hasAsBuilder(toDoPrefix + jobId, old);
+  if (!found) {
+    // Just in case, this is never going to happen, since we will only
+    // call the start() method if the job is already in ToDo.
+    LOG_TOPIC("2482b", INFO, arangodb::Logger::SUPERVISION)
+        << "Failed to get key " + toDoPrefix + jobId + " from agency snapshot";
+    return false;
   }
 
   {
@@ -160,6 +144,56 @@ void prepareStartTransaction(arangodb::velocypack::Builder& trx, std::string con
   }
 }
 
+void prepareSetUpgradedPropertiesTransaction(arangodb::velocypack::Builder& trx,
+                                             std::string const& database,
+                                             std::string const& collection,
+                                             std::string const& jobId) {
+  using namespace arangodb::velocypack;
+
+  std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
+  std::string collectionSyncByRevision =
+      collectionPath + "/" + arangodb::StaticStrings::SyncByRevision;
+  std::string collectionUsesRevisionsAsDocumentIds =
+      collectionPath + "/" + arangodb::StaticStrings::UsesRevisionsAsDocumentIds;
+  std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
+  {
+    ArrayBuilder listofTransactions(&trx);
+    {
+      ObjectBuilder mutations(&trx);
+
+      // and add the upgrade flag
+      trx.add(collectionSyncByRevision, Value(true));
+      trx.add(collectionUsesRevisionsAsDocumentIds, Value(true));
+
+      trx.add(Value(collectionLock));
+      {
+        ObjectBuilder lock(&trx);
+        trx.add("op", Value("delete"));
+      }
+
+      // make sure we don't try to rewrite history
+      arangodb::consensus::Job::addIncreasePlanVersion(trx);
+    }
+    {
+      ObjectBuilder preconditions(&trx);
+
+      // collection exists
+      trx.add(Value(collectionPath));
+      {
+        ObjectBuilder collection(&trx);
+        trx.add("oldEmpty", Value(false));
+      }
+
+      // and we have it write locked
+      trx.add(Value(collectionLock));
+      {
+        ObjectBuilder lock(&trx);
+        trx.add(arangodb::consensus::PREC_IS_WRITE_LOCKED, Value(jobId));
+      }
+    }
+  }
+}
+
 void prepareErrorTransaction(arangodb::velocypack::Builder& trx, std::string const& jobId,
                              std::string const& prefix, std::string const& errorMessage,
                              arangodb::velocypack::Slice const& oldJob) {
@@ -199,6 +233,54 @@ void prepareErrorTransaction(arangodb::velocypack::Builder& trx, std::string con
       }
     }
   }
+}
+
+std::vector<std::string> getChildren(arangodb::consensus::Node const& snapshot,
+                                     std::string const& jobId) {
+  using namespace arangodb::velocypack;
+
+  std::vector<std::string> children;
+
+  std::string const key = "/Target/Pending/" + jobId + "/children";
+  auto [childrenSlice, found] = snapshot.hasAsArray(key);
+  if (found && childrenSlice.isArray()) {
+    for (Slice child : ArrayIterator(childrenSlice)) {
+      if (child.isString()) {
+        children.emplace_back(child.copyString());
+      }
+    }
+  }
+
+  return children;
+}
+
+arangodb::consensus::JOB_STATUS childStatus(arangodb::consensus::Node const& snapshot,
+                                            std::string const& childId) {
+  std::string const keyToDo = "/Target/ToDo/" + childId + "/jobId";
+  auto [idToDo, foundToDo] = snapshot.hasAsString(keyToDo);
+  if (foundToDo && idToDo == childId) {
+    return arangodb::consensus::JOB_STATUS::TODO;
+  }
+
+  std::string const keyPending = "/Target/Pending/" + childId + "/jobId";
+  auto [idPending, foundPending] = snapshot.hasAsString(keyPending);
+  if (foundPending && idPending == childId) {
+    return arangodb::consensus::JOB_STATUS::PENDING;
+  }
+
+  std::string const keyFinished = "/Target/Finished/" + childId + "/jobId";
+  auto [idFinished, foundFinished] = snapshot.hasAsString(keyFinished);
+  if (foundFinished && idFinished == childId) {
+    return arangodb::consensus::JOB_STATUS::FINISHED;
+  }
+
+  std::string const keyFailed = "/Target/Failed/" + childId + "/jobId";
+  auto [idFailed, foundFailed] = snapshot.hasAsString(keyFailed);
+  if (foundFailed && idFailed == childId) {
+    return arangodb::consensus::JOB_STATUS::FAILED;
+  }
+
+  return arangodb::consensus::JOB_STATUS::NOTFOUND;
 }
 }  // namespace
 
@@ -254,57 +336,23 @@ UpgradeVirtualCollection::UpgradeVirtualCollection(Supervision& supervision,
 
 UpgradeVirtualCollection::~UpgradeVirtualCollection() = default;
 
-void UpgradeVirtualCollection::run(bool& aborts) { runHelper("", "", aborts); }
-
 bool UpgradeVirtualCollection::create(std::shared_ptr<VPackBuilder> envelope) {
-  using namespace std::chrono;
-  LOG_TOPIC("b0b34", INFO, Logger::SUPERVISION)
-      << "Create upgradeCollection for " + _collection;
-
-  _created = system_clock::now();
-
-  if (envelope == nullptr) {
-    _jb = std::make_shared<Builder>();
-    _jb->openArray();
-    _jb->openObject();
-  } else {
-    _jb = envelope;
-  }
-
-  // Todo entry
-  _jb->add(velocypack::Value(toDoPrefix + _jobId));
-  {
-    velocypack::ObjectBuilder todo(_jb.get());
-    _jb->add("creator", velocypack::Value(_creator));
-    _jb->add("type", velocypack::Value(maintenance::UPGRADE_VIRTUAL_COLLECTION));
-    _jb->add("database", velocypack::Value(_database));
-    _jb->add("collection", velocypack::Value(_collection));
-    _jb->add("jobId", velocypack::Value(_jobId));
-    _jb->add("timeCreated", velocypack::Value(timepointToString(_created)));
-  }
-
-  if (envelope == nullptr) {
-    _jb->close();  // object
-    _jb->close();  // array
-    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
-    return (res.accepted && res.indices.size() == 1 && res.indices[0]);
-  }
-
-  return true;
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "create not implemented for UpgradeVirtualCollection");
+  return false;
 }
+
+void UpgradeVirtualCollection::run(bool& aborts) { runHelper("", "", aborts); }
 
 bool UpgradeVirtualCollection::start(bool& aborts) {
   using namespace cluster::paths::aliases;
-
-  if (!_error.empty()) {
-    // TODO trigger rollback/cleanup
-  }
 
   std::unordered_map<std::string, std::string> childMap =
       ::prepareChildMap(_supervision, _snapshot, _database, _collection);
 
   velocypack::Builder pending;
-  bool success = ::preparePendingJob(pending, _jb, _jobId, _snapshot, childMap);
+  bool success = ::preparePendingJob(pending, _jobId, _snapshot, childMap);
   if (!success) {
     return success;
   }
@@ -337,7 +385,39 @@ JOB_STATUS UpgradeVirtualCollection::status() {
   }
 
   if (!_error.empty()) {
-    // TODO generate new job to roll back/clean up
+    abort(_error);
+  }
+
+  std::vector<std::string> children = ::getChildren(_snapshot, _jobId);
+  if (children.empty()) {
+    abort("could not retrieve child job IDs");
+  }
+
+  bool haveFailure = false;
+  bool stillWaiting = false;
+  for (std::string const& child : children) {
+    JOB_STATUS status = ::childStatus(_snapshot, child);
+    if (status == FAILED || status == NOTFOUND) {
+      haveFailure = true;
+    } else if (status == TODO || status == PENDING) {
+      stillWaiting = true;
+    }
+    // okay, this one is finished
+  }
+
+  if (haveFailure) {
+    abort("one or more child jobs failed");
+  }
+
+  if (!stillWaiting) {
+    // children all done! write updated properties
+    velocypack::Builder trx;
+    ::prepareSetUpgradedPropertiesTransaction(trx, _database, _collection, _jobId);
+    std::string messageIfError =
+        "could not set upgraded properties on collection";
+    bool ok = writeTransaction(trx, messageIfError);
+
+    finish("", "", ok);
   }
 
   return _status;
@@ -346,16 +426,15 @@ JOB_STATUS UpgradeVirtualCollection::status() {
 arangodb::Result UpgradeVirtualCollection::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
-    return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-                  "Failed aborting failedFollower job beyond pending stage");
+    return Result(
+        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+        "Failed aborting UpgradeVirtualCollection job beyond pending stage");
   }
 
   if (_status == TODO) {
     finish("", "", false, "job aborted: " + reason);
     return Result{};
   }
-
-  // TODO generate new job to roll back/clean up
 
   finish("", "", false, "job aborted: " + reason);
   return Result{};
@@ -408,13 +487,13 @@ void UpgradeVirtualCollection::prepareChildJob(arangodb::velocypack::Builder& jo
   ObjectBuilder guard(&job);
   job.add("creator", velocypack::Value(_creator));
   job.add("type", velocypack::Value(maintenance::UPGRADE_COLLECTION));
-  job.add("database", velocypack::Value(_database));
-  job.add("collection", velocypack::Value(collection));
+  job.add(maintenance::DATABASE, velocypack::Value(_database));
+  job.add(maintenance::COLLECTION, velocypack::Value(collection));
   job.add("jobId", velocypack::Value(jobId));
   job.add("timeCreated",
           velocypack::Value(timepointToString(std::chrono::system_clock::now())));
-  job.add("timeout", velocypack::Value(_timeout));
-  job.add("isSmartChild", velocypack::Value(true));
+  job.add(maintenance::TIMEOUT, velocypack::Value(_timeout));
+  job.add(StaticStrings::IsSmartChild, velocypack::Value(true));
 }
 
 }  // namespace arangodb::consensus

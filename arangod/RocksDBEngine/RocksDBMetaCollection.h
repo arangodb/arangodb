@@ -50,6 +50,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   size_t memory() const override final { return 0; }
   uint64_t objectId() const { return _objectId.load(); }
   uint64_t tempObjectId() const { return _tempObjectId.load(); }
+  uint64_t mapObjectId() const { return _mapObjectId.load(); }
 
   RocksDBMetadata& meta() { return _meta; }
   
@@ -103,7 +104,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
-  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
+  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId,
+                      std::uint64_t plannedMapObjectId);
 
  public:
   /// return bounds for all documents
@@ -127,6 +129,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
  private:
   std::atomic<uint64_t> _objectId;  /// rocksdb-specific object id for collection
   std::atomic<uint64_t> _tempObjectId;  /// rocksdb-specific object id for collection
+  std::atomic<uint64_t> _mapObjectId;  /// rocksdb-specific object id for collection
 
   /// @revision tree management for replication
   std::unique_ptr<containers::RevisionTree> _revisionTree;
