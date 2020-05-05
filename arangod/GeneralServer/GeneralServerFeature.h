@@ -24,8 +24,6 @@
 #define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Aql/QueryRegistry.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -117,7 +115,6 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   std::vector<std::string> _accessControlAllowOrigins;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
 };

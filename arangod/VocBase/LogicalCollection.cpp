@@ -444,21 +444,6 @@ void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> cons
   callback();
 }
 
-void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
-  READ_LOCKER(locker, _statusLock);
-  callback();
-}
-
-bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
-  TRY_READ_LOCKER(readLocker, _statusLock);
-  if (!readLocker.isLocked()) {
-    return false;
-  }
-
-  callback();
-  return true;
-}
-
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
   TRY_READ_LOCKER(locker, _statusLock);
   if (locker.isLocked()) {

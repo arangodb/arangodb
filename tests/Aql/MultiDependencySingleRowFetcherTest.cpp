@@ -72,7 +72,7 @@ class MultiDependencySingleRowFetcherTest
         doesWait() ? WaitingExecutionBlockMock::WaitingBehaviour::ONCE
                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER;
     for (auto blockDeque : inputData) {
-      auto dep = std::make_unique<WaitingExecutionBlockMock>(fakedQuery->engine(),
+      auto dep = std::make_unique<WaitingExecutionBlockMock>(fakedQuery->rootEngine(),
                                                              generateNodeDummy(),
                                                              std::move(blockDeque),
                                                              waiting, subqueryDepth);

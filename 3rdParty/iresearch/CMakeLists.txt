@@ -1,4 +1,11 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
+
+################################################################################
+### set required standard version
+################################################################################
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ################################################################################
 ### interprocedural optimization (link time optimization)
@@ -341,7 +348,11 @@ if (USE_TESTS)
         coverage
         "--ires_output"
       )
-      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
+      setup_target_for_collecting_coverage_cobertura(
+        ${IResearch_TARGET_NAME}-coverage-cobertura-collect
+        coverage
+      )
+      add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura-collect
         ${IResearchTests_TARGET_NAME}-static
       )
     endif()

@@ -331,14 +331,32 @@ void normalized_string_json_field_factory(
   }
 }
 
-std::string to_string(
-    const testing::TestParamInfo<index_test_context>& info
-) {
+std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
   dir_factory_f factory;
-  const char* codec_name;
-  std::tie(factory, codec_name) = info.param;
+  format_info codec;
+  std::tie(factory, codec) = info.param;
 
-  return (*factory)(nullptr).second + "___" + codec_name;
+  std::string str = (*factory)(nullptr).second;
+  if (codec.codec) {
+    str += "___";
+    str += codec.codec;
+  }
+
+  return str;
+}
+
+std::shared_ptr<irs::directory> index_test_base::get_directory(const test_base& ctx) const {
+  dir_factory_f factory;
+  std::tie(factory, std::ignore) = GetParam();
+
+  return (*factory)(&ctx).first;
+}
+
+irs::format::ptr index_test_base::get_codec() const {
+  tests::format_info info;
+  std::tie(std::ignore, info) = GetParam();
+
+  return irs::formats::get(info.codec, info.module);
 }
 
 NS_END // tests
@@ -13223,7 +13241,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-    ::testing::Values("1_1")
+    ::testing::Values(tests::format_info{"1_1", "1_0"})
   ),
   tests::to_string
 );
@@ -13231,9 +13249,10 @@ INSTANTIATE_TEST_CASE_P(
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_12_values = ::testing::Values("1_2", "1_2simd");
+const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"},
+                                                         tests::format_info{"1_2simd", "1_0"});
 #else
-const auto index_test_case_12_values = ::testing::Values("1_2");
+const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"});
 #endif
 NS_END
 
@@ -13254,9 +13273,10 @@ INSTANTIATE_TEST_CASE_P(
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_13_values = ::testing::Values("1_3", "1_3simd");
+const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"},
+                                                         tests::format_info{"1_3simd", "1_0"});
 #else
-const auto index_test_case_13_values = ::testing::Values("1_3");
+const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"});
 #endif
 NS_END
 
@@ -14004,9 +14024,12 @@ TEST_P(index_test_case_11, commit_payload) {
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #ifdef IRESEARCH_SSE2
-const auto index_test_case_11_values = ::testing::Values("1_1", "1_2", "1_2simd");
+const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
+                                                         tests::format_info{"1_2", "1_0"},
+                                                         tests::format_info{"1_2simd", "1_0"});
 #else
-const auto index_test_case_11_values = ::testing::Values("1_1", "1_2");
+const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
+                                                         tests::format_info{"1_2", "1_0"});
 #endif
 NS_END
 
@@ -14023,7 +14046,3 @@ INSTANTIATE_TEST_CASE_P(
   ),
   tests::to_string
 );
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

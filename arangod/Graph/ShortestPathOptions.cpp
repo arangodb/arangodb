@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-ShortestPathOptions::ShortestPathOptions(aql::Query* query)
+ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
     : BaseOptions(query),
       direction("outbound"),
       weightAttribute(""),
@@ -48,7 +48,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query)
       bidirectional(true),
       multiThreaded(true) {}
 
-ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice const& info)
+ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query, VPackSlice const& info)
     : ShortestPathOptions(query) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -62,7 +62,8 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice const& in
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
 }
 
-ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info, VPackSlice collections)
+ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
+                                         VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
       direction("outbound"),
       weightAttribute(""),
@@ -209,13 +210,13 @@ void ShortestPathOptions::fetchVerticesCoordinator(
     }
   }
   if (!fetch.empty()) {
-    fetchVerticesFromEngines(*_trx, ch->engines(), fetch, cache, ch->datalake(),
+    fetchVerticesFromEngines(_trx, ch->engines(), fetch, cache, ch->datalake(),
                              /*forShortestPath*/ true);
   }
 }
 
 void ShortestPathOptions::isQueryKilledCallback() const {
-  if (query()->killed()) {
+  if (query().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }

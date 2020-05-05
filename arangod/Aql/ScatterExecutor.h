@@ -61,7 +61,7 @@ class ScatterExecutor {
 
    private:
     std::deque<std::tuple<SharedAqlItemBlockPtr, SkipResult>> _queue;
-    // This is unique_ptr to get away with everything beeing forward declared...
+    // This is unique_ptr to get away with everything being forward declared...
     std::unique_ptr<ExecutionBlock> _executor;
     bool _executorHasMore;
   };

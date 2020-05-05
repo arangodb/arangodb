@@ -47,7 +47,6 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -82,9 +81,9 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
                  std::string const& refName = "d") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
-                             std::make_shared<arangodb::velocypack::Builder>(),
-                             arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase),
+                             arangodb::aql::QueryString(queryString), bindVars,
+                             std::make_shared<arangodb::velocypack::Builder>());
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -125,7 +124,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
 
   // optimization time check
   {
-    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
@@ -144,8 +143,13 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
 
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
 
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
@@ -193,8 +197,8 @@ void assertOrderParseFail(arangodb::application_features::ApplicationServer& ser
                           std::string const& queryString, int parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             nullptr, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+                             nullptr, nullptr);
 
   auto const parseResult = query.parse();
   ASSERT_EQ(parseCode, parseResult.result.errorNumber());
@@ -224,7 +228,6 @@ class IResearchOrderTest
     features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for IResearchFeature
     features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
@@ -339,10 +342,6 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
 
   // reference as an argument
   {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("withNorms",
-                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
-
     std::string query =
         "LET withNorms=true FOR d IN collection FILTER '1' SORT tfidf(d, "
         "withNorms) DESC RETURN d";
@@ -350,15 +349,16 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     irs::order expected;
 
     expected.add(true, scorer);
+    
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("withNorms",
+                     arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
 
     assertOrderSuccess(server, query, expected, &ctx);
   }
 
   // deterministic expression as an argument
   {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
-
     std::string query =
         "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, 1+x > 3) DESC "
         "RETURN d";
@@ -366,6 +366,10 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     irs::order expected;
 
     expected.add(true, scorer);
+    
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{5}));
+
 
     assertOrderSuccess(server, query, expected, &ctx);
   }

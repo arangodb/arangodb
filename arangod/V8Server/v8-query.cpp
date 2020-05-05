@@ -27,11 +27,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -60,14 +58,12 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
-  
-  arangodb::aql::QueryRegistry* queryRegistry = QueryRegistryFeature::registry();
-  TRI_ASSERT(queryRegistry != nullptr);
 
-  arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::V8Context::Create(col->vocbase(), true),
+                             arangodb::aql::QueryString(aql),
+                             bindVars, nullptr);
 
-  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         queryResult.result.is(TRI_ERROR_QUERY_KILLED)) {
@@ -211,17 +207,17 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor(trx.indexScan(collectionName, transaction::Methods::CursorType::ALL));
-
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
+  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler();
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
+  
+  // We directly read the entire cursor. so batchsize == limit
+  auto iterator = trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
-  opCursor.allDocuments(
+  iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
@@ -303,7 +299,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler().get();
+  resultOptions.customTypeHandler = transactionContext->orderCustomTypeHandler();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }

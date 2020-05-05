@@ -110,7 +110,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "uptime"),
-              v8::Number::New(isolate, (double)info._uptime)).FromMaybe(false);
+              v8::Number::New(isolate, (double)info.uptime())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
               v8::Number::New(isolate, (double)PhysicalMemory::getValue())).FromMaybe(false);
 

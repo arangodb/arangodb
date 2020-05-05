@@ -47,7 +47,6 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/AqlFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
