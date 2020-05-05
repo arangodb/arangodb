@@ -7,7 +7,8 @@ using namespace arangodb::aql;
 
 // TODO Subqueries have their own SubqueryVarUsageFinder, which is called in
 //      getVariablesUsedHere(), and do a recursive walk to get the variables.
-//      Then, we need to make another recursive walk in enterSubquery().
+//      Then, we need to make another recursive walk of VarUsageFinder in
+//      enterSubquery().
 //      For nested subqueries, this is very inefficient. Plus we have some
 //      duplicate logic which is harder to understand and maintain. We should
 //      implement a (non-WalkerWorker-based) walk that fits the need here.
