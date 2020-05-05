@@ -846,13 +846,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   ASSERT_FALSE(!logicalCollection);
   EXPECT_TRUE(
       (ci.createViewCoordinator(vocbase->name(), viewId, viewJson->slice()).ok()));
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto logicalView0 = ci.getView(vocbase->name(), viewId);
   ASSERT_FALSE(!logicalView0);
 
 
   arangodb::velocypack::Builder tmp;
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto [t,i] = server.getFeature<arangodb::ClusterFeature>().
     agencyCache().read(std::vector<std::string>{"/"});
   LOG_DEVEL << t->toJson();
@@ -861,7 +859,6 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                    .ok()));
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection);
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView0);
   ASSERT_FALSE(!link0);
 
@@ -890,14 +887,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
       
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection2);
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto logicalView1 = ci.getView(vocbase->name(), viewId);
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
   EXPECT_FALSE(!link1);  // ensure link present after upgrade
   EXPECT_EQ(link0->id(), link1->id());  // ensure new link
