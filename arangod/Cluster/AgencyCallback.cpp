@@ -76,8 +76,12 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 
   VPackSlice result;
   std::shared_ptr<VPackBuilder> builder;
-  AgencyCommResult tmp;
   consensus::index_t idx = 0;
+  AgencyCommResult tmp;
+  
+  LOG_TOPIC("a6344", TRACE, Logger::CLUSTER) <<
+    "Refetching and update for " << AgencyCommManager::path(key);
+  
   if (_local) {
     auto& _cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
     std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommManager::path(key)});

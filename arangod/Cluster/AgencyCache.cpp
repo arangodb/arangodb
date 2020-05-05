@@ -121,7 +121,7 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
         });
       if (pos != keys.end()) {
         if(toCall.emplace(cb.second).second) {
-          LOG_TOPIC("27182", TRACE, Logger::CLUSTER)
+          LOG_TOPIC("27182", DEBUG, Logger::CLUSTER)
             << "Calling callback " << cb.second << " for " << cb.first;
         }
         pos++;
@@ -145,9 +145,9 @@ void AgencyCache::run() {
       index_t commitIndex = 0;
       {
         std::lock_guard g(_storeLock);
-        commitIndex = _commitIndex+1;
+        commitIndex = _commitIndex;
       }
-      return AsyncAgencyComm().poll(60s, commitIndex);
+      return AsyncAgencyComm().poll(60s, commitIndex+1);
     };
 
   // while not stopping
@@ -174,6 +174,7 @@ void AgencyCache::run() {
     auto ret = sendTransaction()
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
+
           if (rb.ok() && rb.statusCode() == arangodb::fuerte::StatusOK) {
             index_t curIndex = 0;
             {
@@ -192,34 +193,41 @@ void AgencyCache::run() {
             index_t firstIndex = rs.get("firstIndex").getNumber<uint64_t>();
 
             if (firstIndex > 0) {
-              if (firstIndex != curIndex) {
+              // Do incoming logs match our cache's index?
+              if (firstIndex != curIndex+1) { 
                 LOG_TOPIC("a9a09", WARN, Logger::CLUSTER) <<
                   "Logs from poll start with index " << firstIndex <<
                   " we requested logs from and including " << curIndex << " retrying.";
+                LOG_TOPIC("457e9", TRACE, Logger::CLUSTER) << "Incoming: " << rs.toJson();
                 if (wait <= 1.9) {
                   wait += 0.1;
                 }
-              }
-              std::lock_guard g(_storeLock);
-              TRI_ASSERT(rs.hasKey("log"));
-              TRI_ASSERT(rs.get("log").isArray());
-              for (auto const& i : VPackArrayIterator(rs.get("log"))) {
-                _readDB.applyTransaction(i); // apply logs
-                std::lock_guard g(_callbacksLock);
-                handleCallbacksNoLock(i.get("query"), toCall);
-              }
-              _commitIndex = commitIndex;
-              if (!toCall.empty()) {
-                invokeCallbacks(toCall);
+              } else {
+                std::lock_guard g(_storeLock);
+                TRI_ASSERT(rs.hasKey("log"));
+                TRI_ASSERT(rs.get("log").isArray());
+                LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
+                  "Applying to cache " << rs.get("log").toJson();
+                for (auto const& i : VPackArrayIterator(rs.get("log"))) {
+                  _readDB.applyTransaction(i); // apply logs
+                  std::lock_guard g(_callbacksLock);
+                  handleCallbacksNoLock(i.get("query"), toCall);
+                }
+                _commitIndex = commitIndex;
               }
             } else {
               TRI_ASSERT(rs.hasKey("readDB"));
               std::lock_guard g(_storeLock);
+              LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
+                "Fresh start: overwriting agency cache with " << rs.toJson();
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
               invokeAllCallbacks();
             }
             triggerWaitingNoLock(commitIndex);
+            if (!toCall.empty()) {
+              invokeCallbacks(toCall);
+            }
           } else {
             if (wait <= 1.9) {
               wait += 0.1;
