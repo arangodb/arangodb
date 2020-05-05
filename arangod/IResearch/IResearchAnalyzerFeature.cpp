@@ -95,7 +95,6 @@ static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary val
 static size_t const DEFAULT_POOL_SIZE = 8;  // arbitrary value
 static std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
-static auto const RELOAD_INTERVAL = std::chrono::seconds(60); // arbitrary value
 
 bool normalize(std::string& out,
                irs::string_ref const& type,
@@ -1788,21 +1787,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     auto* engine = EngineSelectorFeature::ENGINE;
     auto itr = _lastLoad.find(databaseKey); // find last update timestamp
 
-    if (!engine || engine->inRecovery()) {
-      // always load if inRecovery since collection contents might have changed
-      // unless on db-server which does not store analyzer definitions in collections
-      if (ServerState::instance()->isDBServer()) {
-        return {}; // db-server should not access cluster during inRecovery
-      }
-    } else if (ServerState::instance()->isSingleServer()) { // single server
-      if (itr != _lastLoad.end()) {
-        return {}; // do not reload on single-server
-      }
-    } else if (itr != _lastLoad.end() // had a previous load
-               && itr->second + RELOAD_INTERVAL > currentTimestamp) { // timeout not reached
-      return {}; // reload interval not reached
-    }
-
     auto* vocbase = dbFeature.lookupDatabase(database);
 
     if (!vocbase) {
@@ -1820,8 +1804,25 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       };
     }
 
+    AnalyzersRevision::Revision loadingRevision{getLatestRevision(*vocbase)->getRevision()};
+
+    if (!engine || engine->inRecovery()) {
+      // always load if inRecovery since collection contents might have changed
+      // unless on db-server which does not store analyzer definitions in collections
+      if (ServerState::instance()->isDBServer()) {
+        return {}; // db-server should not access cluster during inRecovery
+      }
+    } else if (ServerState::instance()->isSingleServer()) { // single server
+      if (itr != _lastLoad.end()) {
+        return {}; // do not reload on single-server
+      }
+    } else if (itr != _lastLoad.end() // had a previous load
+               && itr->second <= loadingRevision) { // nothing changed
+      return {}; // reload interval not reached
+    }
+
     Analyzers analyzers;
-    auto visitor = [this, &analyzers, &vocbase](velocypack::Slice const& slice)-> Result {
+    auto visitor = [this, &analyzers, &vocbase, &loadingRevision](velocypack::Slice const& slice)-> Result {
       if (!slice.isObject()) {
         LOG_TOPIC("5c7a5", ERR, iresearch::TOPIC)
           << "failed to find an object value for analyzer definition while loading analyzer form collection '"
@@ -1893,6 +1894,15 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
       }
 
+      AnalyzersRevision::Revision revision{ AnalyzersRevision::MIN };
+      if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
+        revision = slice.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<AnalyzersRevision::Revision>();
+      }
+      if (revision > loadingRevision) {
+        return {}; // this analyzers is still not exists for our revision
+      }
+      // TODO: check here deleted revision
+
       if (slice.hasKey("features")) {
         auto subSlice = slice.get("features");
 
@@ -1939,11 +1949,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
       }
 
-      AnalyzersRevision::Revision revision{AnalyzersRevision::MIN};
-      if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
-        revision = slice.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<AnalyzersRevision::Revision>();
-      }
-
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
@@ -1967,11 +1972,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         if (itr != _lastLoad.end()) {
           cleanupAnalyzers(database);
         }
-        _lastLoad[databaseKey] = currentTimestamp; // update timestamp
-
+        _lastLoad[databaseKey] = loadingRevision;
         return {}; // no collection means nothing to load
       }
-
       return res;
     }
 
@@ -1986,28 +1989,34 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       // different database
       if (split.first != vocbase->name()) {
         auto result = analyzers.emplace(entry.first, entry.second);
-
-        if (!result.second) { // existing entry
-          if (result.first->second // valid new entry
-              && !equalAnalyzer(*(entry.second),
-                                result.first->second->type(),
-                                result.first->second->properties(),
-                                result.first->second->features())) {
-            return {
-              TRI_ERROR_BAD_PARAMETER,
-              "name collision detected while re-registering a duplicate arangosearch analizer name '" +
-              std::string(result.first->second->name()) +
-              "' type '" + std::string(result.first->second->type()) +
-              "' properties '" + result.first->second->properties().toString() +
-              "', previous registration type '" + std::string(entry.second->type()) +
-              "' properties '" + entry.second->properties().toString() + "'"
-            };
+        if (!result.second) { // existing entry !!!! Ho this is possible????
+          bool reusePool = true;
+          if (result.first->second 
+            && !equalAnalyzer(*(entry.second),
+                              result.first->second->type(),
+                              result.first->second->properties(),
+                              result.first->second->features())) {
+            if (result.first->second->revision() == entry.second->revision()) {
+              return {
+                TRI_ERROR_BAD_PARAMETER,
+                "name collision detected while re-registering a duplicate arangosearch analizer name '" +
+                std::string(result.first->second->name()) +
+                "' type '" + std::string(result.first->second->type()) +
+                "' properties '" + result.first->second->properties().toString() +
+                "', revision " + std::to_string(result.first->second->revision()) +
+                ", previous registration type '" + std::string(entry.second->type()) +
+                "' properties '" + entry.second->properties().toString() + "'" +
+                ", revision " + std::to_string(entry.second->revision())
+              };
+            } else {
+              reusePool = false;
+            }
           }
-
-          result.first->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-          const_cast<Analyzers::key_type&>(result.first->first) = entry.first; // point key at old pool
+          if (reusePool) {
+            result.first->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
+            const_cast<Analyzers::key_type&>(result.first->first) = entry.first; // point key at old pool
+          }
         }
-
         continue; // done with this analyzer
       }
 
@@ -2016,28 +2025,35 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       if (itr == analyzers.end()) {
         continue; // removed analyzer
       }
-
+      bool reusePool = true;
       if (itr->second // valid new entry
           && !equalAnalyzer(*(entry.second),
                             itr->second->type(),
                             itr->second->properties(),
                             itr->second->features())) {
-        return {
-          TRI_ERROR_BAD_PARAMETER,
-          "name collision detected while registering a duplicate arangosearch analizer name '" +
-          std::string(itr->second->name()) +
-          "' type '" + std::string(itr->second->type()) +
-          "' properties '" + itr->second->properties().toString() +
-          "', previous registration type '" + std::string(entry.second->type()) +
-          "' properties '" + entry.second->properties().toString() + "'"
-        };
+        if (itr->second->revision() == entry.second->revision()) {
+          return {
+            TRI_ERROR_BAD_PARAMETER,
+            "name collision detected while registering a duplicate arangosearch analizer name '" +
+            std::string(itr->second->name()) +
+            "' type '" + std::string(itr->second->type()) +
+            "' properties '" + itr->second->properties().toString() +
+            "', revision " + std::to_string(itr->second->revision()) +
+            ", previous registration type '" + std::string(entry.second->type()) +
+            "' properties '" + entry.second->properties().toString() + "'" +
+            ", revision " + std::to_string(entry.second->revision())
+          };
+        } else {
+          reusePool = false;
+        }
       }
-
-      itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-      const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
+      if (reusePool) {
+        itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
+        const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
+      }
     }
 
-    _lastLoad[databaseKey] = currentTimestamp; // update timestamp
+    _lastLoad[databaseKey] = loadingRevision;
     _analyzers = std::move(analyzers); // update mappings
   } catch (basics::Exception const& e) {
     return { e.code(),

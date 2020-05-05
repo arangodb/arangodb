@@ -318,7 +318,7 @@ class IResearchAnalyzerFeature final
 
   Analyzers _analyzers; // all analyzers known to this feature (including static)
                         // (names are stored with expanded vocbase prefixes)
-  std::unordered_map<std::string, std::chrono::system_clock::time_point> _lastLoad; // last time a database was loaded
+  std::unordered_map<std::string, AnalyzersRevision::Revision> _lastLoad; // last revision for database was loaded
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_analyzers', '_lastLoad'
 
   static Analyzers const& getStaticAnalyzers();
@@ -362,6 +362,7 @@ class IResearchAnalyzerFeature final
   /// @note on success will modify the '_key' of the pool
   //////////////////////////////////////////////////////////////////////////////
   Result storeAnalyzer(AnalyzerPool& pool);
+
 };
 
 }  // namespace iresearch
