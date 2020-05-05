@@ -637,18 +637,6 @@ void ClusterFeature::unprepare() {
   AgencyComm comm(server());
   comm.sendServerState();
 
-  if (_heartbeatThread != nullptr) {
-    int counter = 0;
-    while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      // emit warning after 5 seconds
-      if (++counter == 10 * 5) {
-        LOG_TOPIC("26835", WARN, arangodb::Logger::CLUSTER)
-            << "waiting for heartbeat thread to finish";
-      }
-    }
-  }
-
   if (_unregisterOnShutdown) {
     ServerState::instance()->unregister();
   }
@@ -703,6 +691,7 @@ void ClusterFeature::unprepare() {
   }
 
   TRI_ASSERT(tries <= maxTries);
+
   shutdownHeartbeatThread();
   shutdownAgencyCache();
 
