@@ -483,6 +483,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::
         }
 
         if (myExp.size() > 0) {
+          localGraphNode->addCollectionToShard(aqlCollection->name(), *myExp.begin());
           myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
         }
       }
