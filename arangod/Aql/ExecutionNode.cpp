@@ -1094,10 +1094,8 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
   if (getType() == ExecutionNode::RETURN) {
     // Special case for RETURN, which usually writes only 1 register.
     // TODO We should be able to remove this when the new register planning is ready!
-    bool const isRoot = plan()->root() == this;
-    bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
-    bool const returnInheritedResults = isRoot && !isDBServer;
-    if (!returnInheritedResults) {
+    auto returnNode = castTo<ReturnNode const*>(this);
+    if (!returnNode->returnInheritedResults()) {
       return 1;
     }
   }
@@ -1260,6 +1258,14 @@ std::shared_ptr<RegisterPlan> ExecutionNode::getRegisterPlan() const {
 int ExecutionNode::getDepth() const { return _depth; }
 
 std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
+  if (getType() == RETURN) {
+    auto* returnNode = castTo<ReturnNode const*>(this);
+    if (!returnNode->returnInheritedResults()) {
+      static const decltype(_regsToClear) emptyRegsToClear;
+      return emptyRegsToClear;
+    }
+  }
+
   return _regsToClear;
 }
 
@@ -1311,44 +1317,45 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
   //      It is used in the register planning to discern whether we may reuse
   //      an input register immediately as an output register at this very block.
   switch (type) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::ENUMERATE_LIST:
-    case ExecutionNode::FILTER:
-    case ExecutionNode::SORT:
-    case ExecutionNode::COLLECT:
-    case ExecutionNode::INSERT:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::NORESULTS:
-    case ExecutionNode::DISTRIBUTE:
-    case ExecutionNode::UPSERT:
-    case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::INDEX:
-    case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
-    case ExecutionNode::REMOTESINGLE:
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::SUBQUERY_START:
-    case ExecutionNode::SUBQUERY_END:
+    case ENUMERATE_COLLECTION:
+    case ENUMERATE_LIST:
+    case FILTER:
+    case SORT:
+    case COLLECT:
+    case INSERT:
+    case REMOVE:
+    case REPLACE:
+    case UPDATE:
+    case NORESULTS:
+    case DISTRIBUTE:
+    case UPSERT:
+    case TRAVERSAL:
+    case INDEX:
+    case SHORTEST_PATH:
+    case K_SHORTEST_PATHS:
+    case REMOTESINGLE:
+    case ENUMERATE_IRESEARCH_VIEW:
+    case DISTRIBUTE_CONSUMER:
+    case SUBQUERY_START:
+    case SUBQUERY_END:
+    case MATERIALIZE:
+    case RETURN:
       return true;
-    case ExecutionNode::CALCULATION:
-    case ExecutionNode::SUBQUERY:
-    case ExecutionNode::MATERIALIZE:
-    case ExecutionNode::SINGLETON:
-    case ExecutionNode::LIMIT:
-    case ExecutionNode::RETURN:
+    case CALCULATION:
+    case SUBQUERY:
+    case SINGLETON:
+    case LIMIT:
       return false;
-    // It's safe to return false for these, but is it necessary?
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::SCATTER:
-    case ExecutionNode::GATHER:
-    case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
+    // It should be safe to return false for these, but is it necessary?
+    // Returning true can lead to more efficient register usage.
+    case REMOTE:
+    case SCATTER:
+    case GATHER:
+    case ASYNC:
+    case PARALLEL_START:
+    case PARALLEL_END:
       return false;
-    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+    case MAX_NODE_TYPE_VALUE:
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
   }
@@ -2290,24 +2297,18 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  bool const isRoot = plan()->root() == this;
-
-  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
-
-  bool const returnInheritedResults = isRoot && !isDBServer;
-
   // This is an important performance improvement:
   // If we have inherited results, we do move the block through
   // and do not modify it in any way.
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
-  if (returnInheritedResults) {
+  if (returnInheritedResults()) {
     auto executorInfos = IdExecutorInfos(_count, inputRegister);
     auto registerInfos = createRegisterInfos({}, {});
     return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
-    TRI_ASSERT(!returnInheritedResults);
+    TRI_ASSERT(!returnInheritedResults());
     // TODO We should be able to remove this special case when the new
     //      register planning is ready.
     // The Return Executor only writes to register 0.
@@ -2322,6 +2323,14 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
                                                                 std::move(registerInfos),
                                                                 std::move(executorInfos));
   }
+}
+
+bool ReturnNode::returnInheritedResults() const {
+  bool const isRoot = plan()->root() == this;
+
+  bool const isDBServer = ServerState::instance()->isDBServer();
+
+  return isRoot && !isDBServer;
 }
 
 /// @brief clone ExecutionNode recursively

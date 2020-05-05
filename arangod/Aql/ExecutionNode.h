@@ -957,8 +957,9 @@ class ReturnNode : public ExecutionNode {
 
   void inVariable(Variable const* v);
 
-
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+
+  bool returnInheritedResults() const;
 
  private:
   /// @brief the variable produced by Return

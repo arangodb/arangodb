@@ -5,6 +5,17 @@
 
 using namespace arangodb::aql;
 
+// TODO Subqueries have their own SubqueryVarUsageFinder, which is called in
+//      getVariablesUsedHere(), and do a recursive walk to get the variables.
+//      Then, we need to make another recursive walk of VarUsageFinder in
+//      enterSubquery().
+//      For nested subqueries, this is very inefficient. Plus we have some
+//      duplicate logic which is harder to understand and maintain. We should
+//      implement a (non-WalkerWorker-based) walk that fits the need here.
+//      That is, walk upwards first, and also immediately recursively for
+//      subqueries. After that walk downwards, and process subqueries downwards
+//      when hitting them.
+
 template <class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
@@ -40,7 +51,8 @@ template <class T>
 void VarUsageFinderT<T>::after(T* en) {
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
-      _varsValidStack.emplace_back(_varsValidStack.back());
+      auto top = _varsValidStack.back();
+      _varsValidStack.emplace_back(std::move(top));
       break;
     }
 
@@ -61,6 +73,17 @@ void VarUsageFinderT<T>::after(T* en) {
 
   en->setVarsValid(_varsValidStack);
   en->setVarUsageValid();
+}
+
+template <class T>
+bool VarUsageFinderT<T>::enterSubquery(T*, T* subqueryRootNode) {
+  VarUsageFinderT subfinder(_varSetBy);
+  // The subquery needs only the topmost varsValid entry, it must not see
+  // the entries of outer (sub)queries.
+  subfinder._varsValidStack = VarSetStack{_varsValidStack.back()};
+  subqueryRootNode->walk(subfinder);
+
+  return false;
 }
 
 template struct arangodb::aql::VarUsageFinderT<ExecutionNode>;

@@ -75,13 +75,18 @@ OutputAqlItemRow::OutputAqlItemRow(
     }
     // the block must have enough columns for the registers of both data rows,
     // and all the different shadow row depths
-    for (auto const& stackEntry : _registersToKeep) {
-      for (auto const& reg : stackEntry) {
+    if (_doNotCopyInputRow) {
+      // pass-through case, we won't use _registersToKeep
+      for (auto const& reg : _registersToClear) {
         TRI_ASSERT(reg < _block->getNrRegs());
       }
-    }
-    for (auto const& reg : _registersToClear) {
-      TRI_ASSERT(reg < _block->getNrRegs());
+    } else {
+      // copying (non-pass-through) case, we won't use _registersToClear
+      for (auto const& stackEntry : _registersToKeep) {
+        for (auto const& reg : stackEntry) {
+          TRI_ASSERT(reg < _block->getNrRegs());
+        }
+      }
     }
   }
 #endif
@@ -413,12 +418,13 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   // The exceptions are SubqueryStart and SubqueryEnd nodes, where the depth
   // of all rows increases or decreases, respectively. In these cases, we have
   // to adapt the depth by plus one or minus one, respectively.
-  auto const rowDepth = std::invoke([&]() -> size_t {
-    bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
-    auto const baseRowDepth = std::invoke([&]() -> size_t {
+  auto const rowDepth = std::invoke([&sourceRow]() -> size_t {
+    static bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
+    auto const baseRowDepth = std::invoke([&sourceRow]() -> size_t {
       if constexpr (isShadowRow) {
         return sourceRow.getDepth() + 1;
       } else {
+        (void)sourceRow;
         return 0;
       }
     });
@@ -426,7 +432,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
     static_assert(isShadowRow || delta >= 0);
     return baseRowDepth + delta;
   });
-  auto const& regsToKeep = std::invoke([&] {
+  auto const& regsToKeep = std::invoke([this, rowDepth] {
     auto const roffset = rowDepth + 1;
 
     TRI_ASSERT(roffset <= registersToKeep().size());
