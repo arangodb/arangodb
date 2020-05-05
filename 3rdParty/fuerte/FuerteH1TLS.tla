@@ -239,7 +239,7 @@ process(fuerte = "fuertethread") {
       or handleIdleAlarm:  \* VERIFIED
         if (Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm") {
           iocontext := Tail(iocontext);
-          if (state = "Connected") {
+          if (~ active /\ state = "Connected") {
             state := "Failed";
             alarm := "off";
             call terminateActivity();
@@ -627,7 +627,7 @@ handleReadAlarm == /\ pc["fuertethread"] = "handleReadAlarm"
 handleIdleAlarm == /\ pc["fuertethread"] = "handleIdleAlarm"
                    /\ IF Len(iocontext) >= 1 /\ Head(iocontext) = "idleAlarm"
                          THEN /\ iocontext' = Tail(iocontext)
-                              /\ IF state = "Connected"
+                              /\ IF ~ active /\ state = "Connected"
                                     THEN /\ state' = "Failed"
                                          /\ alarm' = "off"
                                          /\ stack' = [stack EXCEPT !["fuertethread"] = << [ procedure |->  "terminateActivity",
@@ -740,5 +740,5 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Apr 30 17:33:02 CEST 2020 by neunhoef
+\* Last modified Tue May 05 08:45:25 CEST 2020 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
