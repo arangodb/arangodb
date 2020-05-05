@@ -173,7 +173,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
   // been set, and copyRow should only be called once.
   TRI_ASSERT(!_inputRowCopied);
   // We either have a shadowRow, or we need to have all values written
-  TRI_ASSERT((std::is_same<ItemRowType, ShadowAqlItemRow>::value) || allValuesWritten());
+  TRI_ASSERT((std::is_same_v<ItemRowType, ShadowAqlItemRow>) || allValuesWritten());
   if (_inputRowCopied) {
     _lastBaseIndex = _baseIndex;
     return;
