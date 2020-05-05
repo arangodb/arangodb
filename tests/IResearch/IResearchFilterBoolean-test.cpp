@@ -217,11 +217,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // simple attribute, string
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("a"))
-        .term("1");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER not (d.a == '1') RETURN d", expected);
@@ -236,11 +234,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // simple offset, string
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("[1]"))
-        .term("1");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("[1]");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER not (d[1] == '1') RETURN d", expected);
@@ -251,11 +247,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, string
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c"))
-        .term("1");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a.b.c");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER not (d.a.b.c == '1') RETURN d", expected);
@@ -272,11 +266,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, string
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("a.b[42].c"))
-        .term("1");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -297,10 +289,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>();
     root.boost(2.5);
-    root.filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("a.b[42].c"))
-        .term("1");
+    auto& filter = root.filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -328,7 +319,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b[42].c")).term("1").boost(2.5);
+    auto& filter = root.add<irs::by_term>();
+    filter.boost(2.5);
+    *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -342,10 +336,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>();
     root.boost(2.5);
-    root.filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleString("a.b[42].c", "test_analyzer"))
-        .term("1");
+    auto& filter = root.filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleString("a.b[42].c", "test_analyzer");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -379,11 +372,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("a.b[23].c"))
-        .term("42");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
 
     assertFilterSuccess(
         vocbase(),
@@ -427,11 +418,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleString("a.b[23].c", "test_analyzer"))
-        .term("42");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
 
     assertFilterSuccess(
         vocbase(),
@@ -478,11 +467,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ExpressionContextMock ctx;
     ctx.vars.emplace(var.name, value);
     irs::Or expected;
-    expected.add<irs::Not>()
-      .filter<irs::And>()
-      .add<irs::by_term>()
-      .field(mangleStringIdentity("a.b[23].c"))
-      .term("42");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+
     assertFilterSuccess(
         vocbase(),
         "LET c=41 FOR d IN collection FILTER not (ANALYZER(TO_STRING(c+1), "
@@ -501,11 +489,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+    filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
 
     assertFilterSuccess(
         vocbase(),
@@ -581,11 +567,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, true
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleBool("a.b.c"))
-        .term(irs::boolean_token_stream::value_true());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleBool("a.b.c");
+    filter.mutable_options()->term = irs::boolean_token_stream::value_true();
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER not (d.a.b.c == true) RETURN d", expected);
@@ -617,11 +601,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, false
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleBool("a.b.c.bool"))
-        .term(irs::boolean_token_stream::value_false());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleBool("a.b.c.bool");
+    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
 
     assertFilterSuccess(
         vocbase(),
@@ -640,11 +622,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, false
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleBool("a[1].b.c.bool"))
-        .term(irs::boolean_token_stream::value_false());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleBool("a[1].b.c.bool");
+    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
 
     assertFilterSuccess(
         vocbase(),
@@ -672,11 +652,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleBool("a.b[23].c"))
-        .term(irs::boolean_token_stream::value_false());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleBool("a.b[23].c");
+    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
 
     assertFilterSuccess(
         vocbase(),
@@ -726,11 +704,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"))
-        .term(irs::boolean_token_stream::value_true());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
+    filter.mutable_options()->term = irs::boolean_token_stream::value_true();
 
     assertFilterSuccess(
         vocbase(),
@@ -806,11 +782,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, null
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNull("a.b.c.bool"))
-        .term(irs::null_token_stream::value_null());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNull("a.b.c.bool");
+    filter.mutable_options()->term = irs::null_token_stream::value_null();
 
     assertFilterSuccess(
         vocbase(),
@@ -831,11 +805,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, null
   {
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNull("a.b.c.bool[42]"))
-        .term(irs::null_token_stream::value_null());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNull("a.b.c.bool[42]");
+    filter.mutable_options()->term = irs::null_token_stream::value_null();
 
     assertFilterSuccess(
         vocbase(),
@@ -865,11 +837,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNull("a.b[23].c"))
-        .term(irs::null_token_stream::value_null());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNull("a.b[23].c");
+    filter.mutable_options()->term = irs::null_token_stream::value_null();
 
     assertFilterSuccess(
         vocbase(),
@@ -918,11 +888,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                                       arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"))
-        .term(irs::null_token_stream::value_null());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
+    filter.mutable_options()->term = irs::null_token_stream::value_null();
 
     assertFilterSuccess(
         vocbase(),
@@ -1003,11 +971,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNumeric("a.b.c.numeric"))
-        .term(term->value());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNumeric("a.b.c.numeric");
+    filter.mutable_options()->term = term->value();
 
     assertFilterSuccess(
         vocbase(),
@@ -1041,7 +1007,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // according to ArangoDB rules, expression : not '1' == false
   {
     irs::Or expected;
-    expected.add<irs::by_term>().field(mangleBool("a")).term(irs::boolean_token_stream::value_false());
+    auto& filter = expected.add<irs::by_term>();
+    *filter.mutable_field() = mangleBool("a");
+    filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER d.a == not '1' RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
@@ -1058,11 +1027,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNumeric("a.b.c.numeric[42]"))
-        .term(term->value());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNumeric("a.b.c.numeric[42]");
+    filter.mutable_options()->term = term->value();
 
     assertFilterSuccess(
         vocbase(),
@@ -1103,11 +1070,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNumeric("a.b[23].c"))
-        .term(term->value());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNumeric("a.b[23].c");
+    filter.mutable_options()->term = term->value();
 
     assertFilterSuccess(
         vocbase(),
@@ -1156,11 +1121,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    expected.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
-        .term(term->value());
+    auto& filter = expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
+    filter.mutable_options()->term = term->value();
 
     assertFilterSuccess(
         vocbase(),
@@ -1293,7 +1256,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1317,7 +1280,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx, &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1374,7 +1337,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1398,7 +1361,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1452,7 +1416,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1476,7 +1440,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1531,7 +1496,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode))
                       .ok());
     }
@@ -1556,7 +1521,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1612,7 +1578,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1636,7 +1602,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1691,7 +1658,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1716,7 +1683,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1771,7 +1739,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -1795,7 +1763,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -1822,8 +1791,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("b")).term("2");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("b");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1852,11 +1829,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1891,13 +1875,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>()
-        .field(mangleString("c.b.a", "test_analyzer"))
-        .term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1934,13 +1923,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>()
-        .field(mangleString("c.b.a", "test_analyzer"))
-        .term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1959,12 +1953,19 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1")
-        .boost(2.5);
-    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(2.5);
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1983,12 +1984,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     auto& subRoot = root.add<irs::Or>();
-    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("b"))
-        .term("3");
+    {
+      auto& filter = subRoot.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = subRoot.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("b");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
+
 
     assertFilterSuccess(
         vocbase(),
@@ -2013,16 +2024,23 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
     auto& subRoot = root.add<irs::Or>();
-    subRoot.add<irs::by_term>()
-        .field(mangleString("a", "test_analyzer"))
-        .term("1")
-        .boost(0.5);
-    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleString("b", "test_analyzer"))
-        .term("3")
-        .boost(1.5);
+    {
+      auto& filter = subRoot.add<irs::by_term>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleString("a", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = subRoot.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleString("b", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2043,12 +2061,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     auto& subRoot = root.add<irs::Or>();
-    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("b"))
-        .term("3");
+    {
+      auto& filter = subRoot.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = subRoot.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("b");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2067,11 +2094,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_range>()
-        .field(mangleBool("b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2107,11 +2141,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_range>()
-        .field(mangleBool("b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2124,15 +2165,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_range>()
-        .field(mangleBool("b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false())
-        .boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleNull("a.b.c"))
-        .term(irs::null_token_stream::value_null())
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleBool("b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleNull("a.b.c");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2150,14 +2196,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2217,14 +2269,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2247,16 +2305,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm)
-        .boost(1.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm)
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2279,14 +2343,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2343,14 +2413,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2410,14 +2486,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2478,8 +2560,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2503,10 +2593,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2526,8 +2622,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::boolean_token_stream::value_false();
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2587,7 +2691,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -2605,17 +2709,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a.b.c > _NONDETERM_(15)
       );
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("a.b.c"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("40");  // d.a.b.c < 40
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("a.b.c");
+        auto* opts = filter.mutable_options();
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
+        opts->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
       
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2671,7 +2779,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -2690,17 +2798,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(0)  // d.a.b.c > _NONDETERM_(15)
       );
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("a.b.c"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("40");  // d.a.b.c < 40
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("a.b.c");
+        auto* opts = filter.mutable_options();
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
+        opts->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
 
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
       
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -2714,8 +2826,16 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("b")).term("2");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("b");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2741,11 +2861,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2786,11 +2913,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2803,12 +2937,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1")
-        .boost(0.5);
-    root.add<irs::by_term>().field(mangleStringIdentity("c.b.a")).term("2").boost(0.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2821,15 +2963,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleStringIdentity("c.b.a"))
-        .term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("c.b.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2878,15 +3023,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleString("c.b.a", "test_analyzer"))
-        .term("2");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2899,16 +3047,19 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("1");
-    root.add<irs::Not>()
-        .filter<irs::And>()
-        .add<irs::by_term>()
-        .field(mangleString("c.b.a", "test_analyzer"))
-        .term("2")
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleString("c.b.a", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2966,7 +3117,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -2980,10 +3131,14 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("a.b.c"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("1");
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("a.b.c");
+        auto* opts = filter.mutable_options();
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+        opts->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
+
       root.add<arangodb::iresearch::ByExpression>().init(
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(1)  // not d.c.b.a == '2'
@@ -2994,7 +3149,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3005,11 +3161,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3050,11 +3213,18 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_range>()
-        .field(mangleBool("b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNull("a.b.c")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3067,15 +3237,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false())
-        .boost(0.5);
-    root.add<irs::by_term>()
-        .field(mangleNull("a.b.c"))
-        .term(irs::null_token_stream::value_null())
-        .boost(1.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleBool("b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNull("a.b.c");
+      filter.mutable_options()->term = irs::null_token_stream::value_null();
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3093,14 +3268,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3171,14 +3352,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3196,16 +3383,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm)
-        .boost(1.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm)
-        .boost(1.5);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3223,16 +3416,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm)
-        .boost(0.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm)
-        .boost(1.5);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3250,14 +3449,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3314,7 +3519,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3342,7 +3547,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3398,7 +3604,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3429,7 +3635,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3446,14 +3653,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b[42].c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b[42].c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b[42].c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b[42].c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3539,14 +3752,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3606,14 +3825,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3727,7 +3952,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3755,7 +3980,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3771,14 +3997,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -3890,7 +4122,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -3918,7 +4150,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);
@@ -3942,14 +4175,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4036,14 +4275,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4083,14 +4328,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4139,14 +4390,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4164,14 +4421,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4214,16 +4477,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15")
-        .boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40")
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4236,16 +4505,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15")
-        .boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40")
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4259,14 +4534,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4280,14 +4561,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4338,14 +4625,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4372,14 +4665,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(2.f);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4412,14 +4711,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4453,14 +4758,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e.f[5].g[3].g.a"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f[5].g[3].g.a");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4548,14 +4859,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4629,14 +4946,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_range>()
-        .field(mangleString("a.b.c", "test_analyzer"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleString("a.b.c", "test_analyzer");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4660,14 +4983,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4695,14 +5024,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4777,14 +5112,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4852,14 +5193,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4936,14 +5283,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4959,16 +5312,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false())
-        .boost(1.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm)
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleBool("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -4984,14 +5343,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleNull("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5042,15 +5407,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::null_token_stream::value_null())
-        .boost(1.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNull("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5066,14 +5437,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15");
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5152,16 +5529,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(0.5);
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("15")
-        .boost(0.5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm)
-        .boost(1.5);
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("15"));
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(1.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5179,14 +5562,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40");
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5262,16 +5651,22 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(5);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .insert<irs::Bound::MIN>(minTerm)
-        .boost(2.5);
-    root.add<irs::by_range>()
-        .field(mangleStringIdentity("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("40")
-        .boost(0.5);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      filter.boost(2.5);
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      filter.boost(0.5);
+      *filter.mutable_field() = mangleStringIdentity("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40"));
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5288,14 +5683,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_false();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5366,14 +5767,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleNull("a.b.c");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min_type = irs::BoundType::EXCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5424,14 +5831,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_true();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::boolean_token_stream::value_true();
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5458,14 +5871,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_true();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::boolean_token_stream::value_true();
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5494,14 +5913,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleBool("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(true)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::boolean_token_stream::value_true();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5527,14 +5952,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::null_token_stream::value_null();
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5561,14 +5992,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>(irs::null_token_stream::value_null());
-    root.add<irs::by_range>()
-        .field(mangleNull("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.min = irs::null_token_stream::value_null();
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_range>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      opts->range.max = irs::null_token_stream::value_null();
+      opts->range.max_type = irs::BoundType::INCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5599,14 +6036,20 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c.e.f"))
-        .include<irs::Bound::MIN>(true)
-        .insert<irs::Bound::MIN>(minTerm);
-    root.add<irs::by_granular_range>()
-        .field(mangleNumeric("a.b.c.e.f"))
-        .include<irs::Bound::MAX>(false)
-        .insert<irs::Bound::MAX>(maxTerm);
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.min, minTerm);
+      opts->range.min_type = irs::BoundType::INCLUSIVE;
+    }
+    {
+      auto& filter = root.add<irs::by_granular_range>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      auto* opts = filter.mutable_options();
+      irs::set_granular_term(opts->range.max, maxTerm);
+      opts->range.max_type = irs::BoundType::EXCLUSIVE;
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -5674,7 +6117,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
 
     // supportsFilterCondition
     {
-      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+      arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, nullptr, ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
@@ -5692,17 +6135,21 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
           *dummyPlan, *ast,
           *filterNode->getMember(0)->getMember(0)  // d.a.b.c > _NONDETERM_(15)
       );
-      root.add<irs::by_range>()
-          .field(mangleStringIdentity("a.b.c"))
-          .include<irs::Bound::MAX>(false)
-          .term<irs::Bound::MAX>("40");  // d.a.b.c < 40
+      {
+        auto& filter = root.add<irs::by_range>();
+        *filter.mutable_field() = mangleStringIdentity("a.b.c");
+        auto* opts = filter.mutable_options();
+        opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("40")); // d.a.b.c < 40
+        opts->range.max_type = irs::BoundType::EXCLUSIVE;
+      }
       
       ExpressionContextMock exprCtx;
       exprCtx.setTrx(&trx);
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                  &exprCtx, ref};
+                                                  &exprCtx,
+                                                  &irs::sub_reader::empty(), ref};
       EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_EQ(expected, actual);

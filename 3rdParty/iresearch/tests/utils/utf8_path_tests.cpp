@@ -1729,7 +1729,3 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.file_size(tmpUint));
   ASSERT_FALSE(path.visit_directory(visitor));
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
