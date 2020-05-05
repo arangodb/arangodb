@@ -49,9 +49,9 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MutexExecutor.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
-#include "Aql/ParallelStartExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
@@ -122,7 +122,7 @@ std::unordered_map<int, std::string const> const typeNames{
      "DistributeConsumer"},
     {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
-    {static_cast<int>(ExecutionNode::PARALLEL_START), "ParallelStartNode"},
+    {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
 };
 }  // namespace
 
@@ -352,8 +352,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return createMaterializeNode(plan, slice);
     case ASYNC:
       return new AsyncNode(plan, slice);
-    case PARALLEL_START:
-      return new ParallelStartNode(plan, slice);
+    case MUTEX:
+      return new MutexNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -2394,22 +2394,21 @@ void AsyncNode::cloneRegisterPlan(ExecutionNode* dependency) {
 
 auto AsyncNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
-
-ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id)
+MutexNode::MutexNode(ExecutionPlan* plan, ExecutionNodeId id)
     : ExecutionNode(plan, id) {}
 
-ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+MutexNode::MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {}
 
-ExecutionNode::NodeType ParallelStartNode::getType() const { return PARALLEL_START; }
+ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
 
-ExecutionNode* ParallelStartNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
-  return cloneHelper(std::make_unique<ParallelStartNode>(plan, _id),
+ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                bool withProperties) const {
+  return cloneHelper(std::make_unique<MutexNode>(plan, _id),
                      withDependencies, withProperties);
 }
 
-void ParallelStartNode::cloneRegisterPlan(ExecutionNode* dependency) {
+void MutexNode::cloneRegisterPlan(ExecutionNode* dependency) {
   TRI_ASSERT(hasDependency());
   TRI_ASSERT(getFirstDependency() == dependency);
   _registerPlan = dependency->getRegisterPlan();
@@ -2419,9 +2418,9 @@ void ParallelStartNode::cloneRegisterPlan(ExecutionNode* dependency) {
   setVarUsageValid();
 }
 
-/// @brief toVelocyPack, for ParallelStartNode
-void ParallelStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                           std::unordered_set<ExecutionNode const*>& seen) const {
+/// @brief toVelocyPack, for MutexNode
+void MutexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
@@ -2430,7 +2429,7 @@ void ParallelStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 }
 
 /// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
+std::unique_ptr<ExecutionBlock> MutexNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -2441,11 +2440,11 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
   // Everything that is cleared here could and should have been cleared before
   TRI_ASSERT(regsToClear.empty());
 
-  return std::make_unique<ExecutionBlockImpl<ParallelStartExecutor>>(&engine, this);
+  return std::make_unique<ExecutionBlockImpl<MutexExecutor>>(&engine, this);
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
-CostEstimate ParallelStartNode::estimateCost() const {
+CostEstimate MutexNode::estimateCost() const {
   if (_dependencies.empty()) {
     return aql::CostEstimate::empty();
   }
@@ -2453,7 +2452,7 @@ CostEstimate ParallelStartNode::estimateCost() const {
   return estimate;
 }
 
-auto ParallelStartNode::getOutputVariables() const -> VariableIdSet { return {}; }
+auto MutexNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";

@@ -167,7 +167,7 @@ class ExecutionNode {
     SUBQUERY_END = 30,
     MATERIALIZE = 31,
     ASYNC = 32,
-    PARALLEL_START = 33,
+    MUTEX = 33,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -996,15 +996,15 @@ class NoResultsNode : public ExecutionNode {
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
-/// @brief class ParallelStartNode
-class ParallelStartNode : public ExecutionNode {
+/// @brief class MutexNode
+class MutexNode : public ExecutionNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
  public:
-  ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id);
+  MutexNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;

@@ -4687,7 +4687,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
         case EN::ASYNC: // should be added much later
-        case EN::PARALLEL_START:
+        case EN::MUTEX:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
           TRI_ASSERT(false);
@@ -7012,7 +7012,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
       return false;
-    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7564,7 +7564,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::COLLECT:
       // These nodes are fine
       return false;
-    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }

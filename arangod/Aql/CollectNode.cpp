@@ -459,7 +459,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
       return false;
-    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -502,7 +502,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
       return false;
-    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -545,7 +545,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
       return false;
-    case ExecutionNode::PARALLEL_START:
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }

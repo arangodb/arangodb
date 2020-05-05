@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ParallelStartExecutor.h"
+#include "MutexExecutor.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
@@ -41,18 +41,18 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionBlockImpl<ParallelStartExecutor>::ExecutionBlockImpl(
-    ExecutionEngine* engine, ParallelStartNode const* node)
+ExecutionBlockImpl<MutexExecutor>::ExecutionBlockImpl(
+    ExecutionEngine* engine, MutexNode const* node)
     : ExecutionBlock(engine, node), _isShutdown(false) {}
 
-//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::getSome(size_t atMost) {
+//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::getSome(size_t atMost) {
 //  traceGetSomeBegin(atMost);
 //  auto result = getSomeWithoutTrace(atMost);
 //  traceGetSomeEnd(result.first, result.second);
 //  return result;
 //}
 //
-//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::getSomeWithoutTrace(size_t atMost) {
+//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::getSomeWithoutTrace(size_t atMost) {
 //    
 //  
 //  std::unique_lock<std::mutex> guard(_mutex);
@@ -64,14 +64,14 @@ ExecutionBlockImpl<ParallelStartExecutor>::ExecutionBlockImpl(
 //  return ret;
 //}
 //
-//std::pair<ExecutionState, size_t> ExecutionBlockImpl<ParallelStartExecutor>::skipSome(size_t atMost) {
+//std::pair<ExecutionState, size_t> ExecutionBlockImpl<MutexExecutor>::skipSome(size_t atMost) {
 //  traceSkipSomeBegin(atMost);
 //  auto result = skipSomeWithoutTrace(atMost);
 //  traceSkipSomeEnd(result.first, result.second);
 //  return result;
 //}
 //
-//std::pair<ExecutionState, size_t> ExecutionBlockImpl<ParallelStartExecutor>::skipSomeWithoutTrace(size_t atMost) {
+//std::pair<ExecutionState, size_t> ExecutionBlockImpl<MutexExecutor>::skipSomeWithoutTrace(size_t atMost) {
 //  std::lock_guard<std::mutex> guard(_mutex);
 //
 //  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -79,17 +79,17 @@ ExecutionBlockImpl<ParallelStartExecutor>::ExecutionBlockImpl(
 //  return {ExecutionState::DONE, 0};
 //}
 
-std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<ParallelStartExecutor>::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::execute(AqlCallStack stack) {
   TRI_ASSERT(false);
   return {ExecutionState::DONE, SkipResult(), nullptr};
 }
 
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ParallelStartExecutor>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<MutexExecutor>::initializeCursor(
     InputAqlItemRow const& input) {
   
   TRI_ASSERT(_dependencies.size() == 1);
   
-  LOG_DEVEL << "ParallelStartExecutor::initializeCursor";
+  LOG_DEVEL << "MutexExecutor::initializeCursor";
   
   std::lock_guard<std::mutex> guard(_mutex);
   auto ret = ExecutionBlock::initializeCursor(input);
@@ -97,7 +97,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ParallelStartExecutor>::ini
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ParallelStartExecutor>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<MutexExecutor>::shutdown(int errorCode) {
   std::lock_guard<std::mutex> guard(_mutex);
   if (_isShutdown) {
     return {ExecutionState::DONE, Result()};

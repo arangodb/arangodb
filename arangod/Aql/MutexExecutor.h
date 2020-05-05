@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PARALLEL_START_EXECUTOR_H
-#define ARANGOD_AQL_PARALLEL_START_EXECUTOR_H
+#ifndef ARANGOD_AQL_MUTEX_EXECUTOR_H
+#define ARANGOD_AQL_MUTEX_EXECUTOR_H
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
@@ -35,23 +35,23 @@
 namespace arangodb {
 namespace aql {
 
-class ParallelStartNode;
+class MutexNode;
 class NoStats;
 class OutputAqlItemRow;
 class SharedQueryState;
 
 
-// ParallelStartExecutor is actually implemented by specializing ExecutionBlockImpl,
+// MutexExecutor is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
-class ParallelStartExecutor final {};
+class MutexExecutor final {};
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ParallelStartExecutor> : public ExecutionBlock {
+class ExecutionBlockImpl<MutexExecutor> : public ExecutionBlock {
  public:
-  ExecutionBlockImpl(ExecutionEngine* engine, ParallelStartNode const* node);
+  ExecutionBlockImpl(ExecutionEngine* engine, MutexNode const* node);
 
   ~ExecutionBlockImpl() override = default;
   
