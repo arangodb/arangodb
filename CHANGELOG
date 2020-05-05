@@ -1,6 +1,10 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Added option `--rocksdb.cache-edges` to toggle in-memory caching for 
+  edges. The option is turned on by default. This normally helps with
+  performance in read-only and read-mostly workloads.
+
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
 
