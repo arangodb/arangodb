@@ -51,19 +51,6 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
   _contentTypeResponse = ContentType::JSON;
 }
 
-// HACK HACK HACK
-// This should only be called by createFakeRequest in ClusterComm
-// as the Request is not fully constructed. This 2nd constructor
-// avoids the need of a additional FakeRequest class.
-HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-                         std::unordered_map<std::string, std::string> const& headers)
-    : GeneralRequest(ConnectionInfo(), 1) {
-  _contentType = contentType;
-  _contentTypeResponse = contentType;
-  _payload.append(body, contentLength);
-  GeneralRequest::_headers = headers;
-}
-
 void HttpRequest::parseHeader(char* start, size_t length) {
   char* end = start + length;
 
@@ -897,10 +884,4 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
   }
   return VPackSlice::noneSlice();
-}
-
-HttpRequest* HttpRequest::createHttpRequest(
-    ContentType contentType, char const* body, int64_t contentLength,
-    std::unordered_map<std::string, std::string> const& headers) {
-  return new HttpRequest(contentType, body, contentLength, headers);
 }
