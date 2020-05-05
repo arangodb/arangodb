@@ -42,7 +42,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   RocksDBGeoIndex(IndexId iid, arangodb::LogicalCollection& collection,
                   arangodb::velocypack::Slice const& info, std::string const& typeName);
 
-  ~RocksDBGeoIndex() override {}
+  ~RocksDBGeoIndex() = default;
 
   IndexType type() const override {
     if ("geo1" == _typeName) {
