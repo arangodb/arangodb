@@ -5,6 +5,16 @@
 
 using namespace arangodb::aql;
 
+// TODO Subqueries have their own SubqueryVarUsageFinder, which is called in
+//      getVariablesUsedHere(), and do a recursive walk to get the variables.
+//      Then, we need to make another recursive walk in enterSubquery().
+//      For nested subqueries, this is very inefficient. Plus we have some
+//      duplicate logic which is harder to understand and maintain. We should
+//      implement a (non-WalkerWorker-based) walk that fits the need here.
+//      That is, walk upwards first, and also immediately recursively for
+//      subqueries. After that walk downwards, and process subqueries downwards
+//      when hitting them.
+
 template <class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
@@ -65,21 +75,14 @@ void VarUsageFinderT<T>::after(T* en) {
 }
 
 template <class T>
-bool VarUsageFinderT<T>::enterSubquery(T*, T*) {
-  auto top = _varsValidStack.back();
-  _varsValidStack.emplace_back(std::move(top));
-  _usedLaterStack.emplace_back(std::unordered_set<Variable const*>{});
-  return true;
-}
+bool VarUsageFinderT<T>::enterSubquery(T*, T* subqueryRootNode) {
+  VarUsageFinderT subfinder(_varSetBy);
+  // The subquery needs only the topmost varsValid entry, it must not see
+  // the entries of outer (sub)queries.
+  subfinder._varsValidStack = VarSetStack{_varsValidStack.back()};
+  subqueryRootNode->walk(subfinder);
 
-template <class T>
-void VarUsageFinderT<T>::leaveSubquery(T*, T*) {
-  _varsValidStack.pop_back();
-  TRI_ASSERT(!_varsValidStack.empty());
-  auto top = std::move(_usedLaterStack.back());
-  _usedLaterStack.pop_back();
-  TRI_ASSERT(!_usedLaterStack.empty());
-  _usedLaterStack.back().merge(top);
+  return false;
 }
 
 template struct arangodb::aql::VarUsageFinderT<ExecutionNode>;

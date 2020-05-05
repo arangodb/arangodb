@@ -88,8 +88,6 @@ struct VarUsageFinderT final : public WalkerWorker<T> {
   void after(T* en) override final;
 
   bool enterSubquery(T*, T*) final;
-
-  void leaveSubquery(T*, T*) final;
 };
 
 }  // namespace arangodb::aql

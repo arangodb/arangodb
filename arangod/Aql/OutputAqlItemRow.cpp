@@ -75,13 +75,18 @@ OutputAqlItemRow::OutputAqlItemRow(
     }
     // the block must have enough columns for the registers of both data rows,
     // and all the different shadow row depths
-    for (auto const& stackEntry : _registersToKeep) {
-      for (auto const& reg : stackEntry) {
+    if (_doNotCopyInputRow) {
+      // pass-through case, we won't use _registersToKeep
+      for (auto const& reg : *_registersToClear) {
         TRI_ASSERT(reg < _block->getNrRegs());
       }
-    }
-    for (auto const& reg : *_registersToClear) {
-      TRI_ASSERT(reg < _block->getNrRegs());
+    } else {
+      // copying (non-pass-through) case, we won't use _registersToClear
+      for (auto const& stackEntry : _registersToKeep) {
+        for (auto const& reg : stackEntry) {
+          TRI_ASSERT(reg < _block->getNrRegs());
+        }
+      }
     }
   }
 #endif
