@@ -510,7 +510,6 @@ void ClusterFeature::prepare() {
 // Adding code to this section.
 void ClusterFeature::start() {
 
-  auto role = ServerState::instance()->getRole();
   // return if cluster is disabled
   if (!_enableCluster) {
     startHeartbeatThread(nullptr, 5000, 5, std::string());
@@ -523,6 +522,7 @@ void ClusterFeature::start() {
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such a
   // outcome. But there is also no point continuing with a first agency poll. 
+  auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache->start();
     LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
@@ -622,11 +622,9 @@ void ClusterFeature::start() {
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() {
-  shutdownHeartbeatThread();
-}
+void ClusterFeature::beginShutdown() {}
 
-void ClusterFeature::stop() {  }
+void ClusterFeature::stop() {}
 
 void ClusterFeature::unprepare() {
   if (!_enableCluster) {
@@ -705,7 +703,7 @@ void ClusterFeature::unprepare() {
   }
 
   TRI_ASSERT(tries <= maxTries);
-
+  shutdownHeartbeatThread();
   shutdownAgencyCache();
 
   _pool.reset();
