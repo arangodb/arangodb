@@ -994,7 +994,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   while (numRedirects < maxRedirects) {
 
     auto [endpoint, relative, error] = getEndpoint(isolate, endpoints, url, lastEndpoint);
-    if(!error.empty()) {
+    if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }
 
