@@ -1480,7 +1480,6 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
               arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-      EXPECT_EQ(expected_analyzer->attributes().features(), field.features());
     }
 
     ++it;
@@ -1527,7 +1526,6 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
             arangodb::iresearch::ref<char>(VPackSlice::emptyObjectSlice()));
       auto& analyzer = dynamic_cast<EmptyAnalyzer&>(field.get_tokens());
       EXPECT_EQ(expected_analyzer->type(), analyzer.type());
-      EXPECT_EQ(expected_analyzer->attributes().features(), field.features());
     }
 
     ++it;

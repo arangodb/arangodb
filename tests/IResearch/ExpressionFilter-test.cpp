@@ -134,14 +134,14 @@ struct custom_sort : public irs::sort {
     struct scorer : public irs::score_ctx {
       scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
              const irs::term_reader& term_reader, const irs::byte_type* stats,
-             const irs::attribute_view& document_attrs)
+             const irs::attribute_provider& document_attrs)
           : document_attrs_(document_attrs),
             stats_(stats),
             segment_reader_(segment_reader),
             sort_(sort),
             term_reader_(term_reader) {}
 
-      const irs::attribute_view& document_attrs_;
+      const irs::attribute_provider& document_attrs_;
       const irs::byte_type* stats_;
       const irs::sub_reader& segment_reader_;
       const custom_sort& sort_;
@@ -190,7 +190,7 @@ struct custom_sort : public irs::sort {
                 EXPECT_TRUE(score_buf);
                 auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
-                doc_id = ctxImpl.document_attrs_.get<irs::document>()->value;
+                doc_id = irs::get<irs::document>(ctxImpl.document_attrs_)->value;
 
                 if (ctxImpl.sort_.scorer_score) {
                   ctxImpl.sort_.scorer_score(doc_id);

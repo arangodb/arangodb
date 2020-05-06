@@ -137,5 +137,17 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
              : irs::type<typeDefault>::get();
 }
 
+// ----------------------------------------------------------------------------
+// --SECTION--                         PrimaryKeyFilterContainer implementation
+// ----------------------------------------------------------------------------
+
+irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
+    irs::index_reader const& rdr,
+    irs::order::prepared const& ord,
+    irs::boost_t boost,
+    irs::attribute_provider const* ctx) const {
+  return irs::empty().prepare(rdr, ord, boost, ctx);
+}
+
 }  // namespace iresearch
 }  // namespace arangodb

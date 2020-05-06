@@ -123,16 +123,20 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   IdentityAnalyzer()
     : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
       _empty(true) {
-    _attrs.emplace(_term);
-    _attrs.emplace(_inc);
   }
 
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return _attrs.get(type, {}).get();
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+
+    return type == irs::type<irs::term_attribute>::id()
+        ? &_term
+        : nullptr;
   }
 
   virtual bool next() noexcept override {
-    auto empty = _empty;
+    auto const empty = _empty;
 
     _empty = true;
 
@@ -147,14 +151,12 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   }
 
  private:
-  irs::attribute_view _attrs;
   irs::term_attribute _term;
   irs::increment _inc;
   bool _empty;
 }; // IdentityAnalyzer
 
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
-
 
 // Delimiter analyzer vpack routines ////////////////////////////
 namespace delimiter_vpack {

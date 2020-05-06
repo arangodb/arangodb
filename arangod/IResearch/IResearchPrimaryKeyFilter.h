@@ -141,10 +141,10 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   void clear() noexcept { _filters.clear(); }
 
   virtual filter::prepared::ptr prepare(
-    const irs::index_reader& rdr,
-    const irs::order::prepared& ord,
+    irs::index_reader const& rdr,
+    irs::order::prepared const& ord,
     irs::boost_t boost,
-    const irs::attribute_provider* ctx) const override;
+    irs::attribute_provider const* ctx) const override;
 
  private:
   std::deque<PrimaryKeyFilter> _filters;  // pointers remain valid

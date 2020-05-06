@@ -97,9 +97,12 @@
 namespace {
 
 struct DocIdScorer: public irs::sort {
-  DECLARE_SORT_TYPE() { static irs::sort::type_id type("test_doc_id"); return type; }
+  static constexpr irs::string_ref type_name() noexcept {
+    return "test_doc_id";
+  }
+
   static ptr make(const irs::string_ref&) { PTR_NAMED(DocIdScorer, ptr); return ptr; }
-  DocIdScorer(): irs::sort(DocIdScorer::type()) { }
+  DocIdScorer(): irs::sort(irs::type<DocIdScorer>::get()) { }
   virtual sort::prepared::ptr prepare() const override { PTR_NAMED(Prepared, ptr); return ptr; }
 
   struct Prepared: public irs::prepared_sort_base<uint64_t, void> {
@@ -113,49 +116,55 @@ struct DocIdScorer: public irs::sort {
       irs::sub_reader const& segment,
       irs::term_reader const& field,
       irs::byte_type const*,
-      irs::attribute_view const& doc_attrs,
+      irs::attribute_provider const& doc_attrs,
       irs::boost_t
     ) const override {
       return {
-        std::make_unique<ScoreCtx>(doc_attrs.get<irs::document>()),
+        std::make_unique<ScoreCtx>(irs::get<irs::document>(doc_attrs)),
         [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
-          reinterpret_cast<uint64_t&>(*score_buf) = reinterpret_cast<const ScoreCtx*>(ctx)->_doc.get()->value;
+          auto* doc = reinterpret_cast<const ScoreCtx*>(ctx)->_doc;
+          ASSERT_TRUE(doc);
+          reinterpret_cast<uint64_t&>(*score_buf) = doc->value;
         }
       };
     }
   };
 
   struct ScoreCtx: public irs::score_ctx {
-    ScoreCtx(irs::attribute_view::ref<irs::document>::type const& doc): _doc(doc) { }
-    irs::attribute_view::ref<irs::document>::type const& _doc;
+    ScoreCtx(irs::document const* doc): _doc(doc) { }
+    irs::document const* _doc;
   };
 };
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
 struct TestAttribute : public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestAttribute";
+  }
 };
 
-DEFINE_ATTRIBUTE_TYPE(TestAttribute);
 REGISTER_ATTRIBUTE(TestAttribute);  // required to open reader on segments with analized fields
-
-struct TestTermAttribute : public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) { value_ = value; }
-};
 
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
-
-  TestAnalyzer() : irs::analysis::analyzer(TestAnalyzer::type()) {
-    _attrs.emplace(_term);
-    _attrs.emplace(_attr);
-    _attrs.emplace(_increment);  // required by field_data::invert(...)
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestAnalyzer";
   }
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+
+  TestAnalyzer() : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) { }
+
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<TestAttribute>::id()) {
+      return &_attr;
+    }
+    if (type == irs::type<irs::increment>::id()) {
+      return &_increment;
+    }
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &_term;
+    }
+    return nullptr;
   }
 
   static ptr make(irs::string_ref const& args) {
@@ -194,7 +203,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
   virtual bool next() override {
     if (_data.empty()) return false;
 
-    _term.value(irs::bytes_ref(_data.c_str(), 1));
+    _term.value = irs::bytes_ref(_data.c_str(), 1);
     _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
     return true;
   }
@@ -205,14 +214,12 @@ class TestAnalyzer : public irs::analysis::analyzer {
   }
 
  private:
-  irs::attribute_view _attrs;
   irs::bytes_ref _data;
   irs::increment _increment;
-  TestTermAttribute _term;
+  irs::term_attribute _term;
   TestAttribute _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
 REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 }
