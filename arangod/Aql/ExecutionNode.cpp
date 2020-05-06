@@ -2237,9 +2237,9 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   auto registerInfos = createRegisterInfos({}, {});
-  auto executorInfos = registerInfos;
-  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
+                                                                 std::move(registerInfos),
+                                                                 EmptyExecutorInfos{});
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0

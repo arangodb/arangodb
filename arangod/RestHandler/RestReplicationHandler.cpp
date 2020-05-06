@@ -53,7 +53,6 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -892,21 +891,12 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreCollection() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-
-  try {
-    parsedRequest = _request->toVelocyPackBuilderPtr();
-  } catch (arangodb::velocypack::Exception const& e) {
-    std::string errorMsg = "invalid JSON: ";
-    errorMsg += e.what();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, errorMsg);
-    return;
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return;
   }
-  auto pair = rocksutils::stripObjectIds(parsedRequest->slice());
+  auto pair = rocksutils::stripObjectIds(body);
   VPackSlice const slice = pair.first;
 
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
@@ -950,24 +940,19 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreIndexes() {
-  std::shared_ptr<VPackBuilder> parsedRequest;
-
-  try {
-    parsedRequest = _request->toVelocyPackBuilderPtr();
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid JSON");
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
     return;
   }
-  VPackSlice const slice = parsedRequest->slice();
 
   bool force = _request->parsedValue("force", false);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreIndexesCoordinator(slice, force);
+    res = processRestoreIndexesCoordinator(body, force);
   } else {
-    res = processRestoreIndexes(slice, force);
+    res = processRestoreIndexes(body, force);
   }
 
   if (res.fail()) {
@@ -1459,7 +1444,7 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
 Result RestReplicationHandler::parseBatch(std::string const& collectionName,
                                           std::unordered_map<std::string, VPackValueLength>& latest,
                                           VPackBuilder& allMarkers) {
-  VPackBuilder builder(&basics::VelocyPackHelper::requestValidationOptions);
+  VPackBuilder builder(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
   allMarkers.clear();
 

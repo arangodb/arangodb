@@ -37,7 +37,7 @@ class QueryExpressionContext : public ExpressionContext {
                                   QueryContext& query,
                                   RegexCache& cache)
       : ExpressionContext(),
-        _trx(trx), _query(query), _regexCache(cache){}
+        _trx(trx), _query(query), _regexCache(cache) {}
 
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
