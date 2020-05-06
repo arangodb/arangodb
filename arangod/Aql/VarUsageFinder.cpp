@@ -1,9 +1,12 @@
 #include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+
+#include <Containers/HashSet.h>
 #include <Logger/LogMacros.h>
 
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 // TODO Subqueries have their own SubqueryVarUsageFinder, which is called in
 //      getVariablesUsedHere(), and do a recursive walk to get the variables.
@@ -15,6 +18,18 @@ using namespace arangodb::aql;
 //      That is, walk upwards first, and also immediately recursively for
 //      subqueries. After that walk downwards, and process subqueries downwards
 //      when hitting them.
+
+namespace {
+
+/// @brief Merge everything from source into target. (emilib::HashSet does not
+///        have a merge() method, nor extract()).
+auto mergeHashSets(VarSet& target, VarSet&& source) {
+  for (auto varPtr : source) {
+    target.emplace(varPtr);
+  }
+  source.clear();
+}
+}
 
 template <class T>
 bool VarUsageFinderT<T>::before(T* en) {
@@ -33,7 +48,7 @@ bool VarUsageFinderT<T>::before(T* en) {
       auto top = std::move(_usedLaterStack.back());
       _usedLaterStack.pop_back();
       TRI_ASSERT(!_usedLaterStack.empty());
-      _usedLaterStack.back().merge(top);
+      mergeHashSets(_usedLaterStack.back(), std::move(top));
       break;
     }
 
