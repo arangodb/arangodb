@@ -430,7 +430,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
 
       TRI_ASSERT(q >= start);
-      _databaseName = std::string(start, q - start);
+      _databaseName.assign(start, q - start);
       _fullUrl.assign(q, end - q);
 
       start = q;
