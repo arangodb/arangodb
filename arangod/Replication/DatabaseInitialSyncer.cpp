@@ -593,7 +593,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
-    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
+    VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
     try {
       while (p < end) {
@@ -627,7 +627,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
 
     VPackBuilder builder;
-    VPackParser parser(builder, &basics::VelocyPackHelper::requestValidationOptions);
+    VPackParser parser(builder, &basics::VelocyPackHelper::strictRequestValidationOptions);
 
     while (p < end) {
       char const* q = strchr(p, '\n');
