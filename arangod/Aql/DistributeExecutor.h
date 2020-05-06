@@ -154,6 +154,8 @@ class DistributeExecutor {
    */
   auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
 
+  auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
+
  private:
   DistributeExecutorInfos const& _infos;
 
