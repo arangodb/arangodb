@@ -364,7 +364,3 @@ TEST_F(text_token_normalizing_stream_tests, test_invalid_locale) {
       "norm", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\"}");
   ASSERT_EQ(nullptr, stream);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

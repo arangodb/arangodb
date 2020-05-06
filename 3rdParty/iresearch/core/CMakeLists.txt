@@ -18,12 +18,6 @@ if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
 endif()
 
-# set required standard version
-if ("${CMAKE_CXX_STANDARD}" STREQUAL "") 
-  set(CMAKE_CXX_STANDARD 11)
-endif()
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # calculate version
 math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)" )
 set(IResearch_version "${IResearch_version_major}.${IResearch_version_minor}.${IResearch_version_revision}.${IResearch_version_patch}")
@@ -106,14 +100,17 @@ set(IResearch_core_sources
   ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
+  ./search/boost_sort.cpp
   ./search/granular_range_filter.cpp
   ./search/scorers.cpp
   ./search/sort.cpp
   ./search/cost.cpp
+  ./search/collectors.cpp
   ./search/score.cpp
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
+  ./search/terms_filter.cpp
   ./search/prefix_filter.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
@@ -195,6 +192,7 @@ set(IResearch_core_headers
   ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
+  ./search/boost_sort.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
   ./search/sort.hpp
@@ -524,7 +522,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${ICU_LIBS}
+  ${ICU_SHAREDLIBS}
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -546,7 +544,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
-  ${ICU_LIBS}
+  ${ICU_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
@@ -568,7 +566,7 @@ if(MSVC)
     ${BFD_SHARED_LIBS}
     ${Boost_SHARED_sharedRT_LIBRARIES}
     ${Lz4_SHARED_LIB}
-    ${ICU_LIBS}
+    ${ICU_SHARED_LIBS}
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -588,7 +586,7 @@ if(MSVC)
     ${GCOV_LIBRARY}
     ${BFD_STATIC_LIBS}
     ${Lz4_STATIC_LIB}
-    ${ICU_LIBS}
+    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
@@ -601,7 +599,7 @@ unset(IResearch_STATIC_LIBRARIES)
 set(IRESEARCH_STATIC_DEPENDENCIES
   ${BFD_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
-  ${ICU_LIBS}
+  ${ICU_STATIC_LIBS}
   "$<TARGET_FILE:lz4_static>"
   "$<TARGET_FILE:stemmer-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"

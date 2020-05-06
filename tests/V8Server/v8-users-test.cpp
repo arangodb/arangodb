@@ -21,13 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "Mocks/Servers.h"  // this must be first because windows
+
 #include "gtest/gtest.h"
 
 #include "velocypack/Builder.h"
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"

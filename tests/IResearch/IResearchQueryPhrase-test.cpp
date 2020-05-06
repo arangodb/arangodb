@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
+#include "common.h"
 
 #include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
@@ -1430,6 +1431,86 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input for levenshtein_match (wrong object 4)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, {t: 42}]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong object 4) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, {t: 42}]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong array 4)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, [42]]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong array 4) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, [42]]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong string 4)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, '42']}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong string 4) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, '42']}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong bool 4)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, true]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong bool 4) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, true]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong null 4)
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, null]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input for levenshtein_match (wrong null 3) via []
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, null]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input for levenshtein_match (wrong number of arguments 1)
   {
     auto result = arangodb::tests::executeQuery(
@@ -1446,19 +1527,19 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for levenshtein_match (wrong number of arguments 4)
+  // test invalid input for levenshtein_match (wrong number of arguments 5)
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, 4]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+      "FOR d IN testView SEARCH PHRASE(d['value'], {levenshtein_match: ['1', 2, true, 4, false]}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
-  // test invalid input for levenshtein_match (wrong number of arguments 4) via []
+  // test invalid input for levenshtein_match (wrong number of arguments 5) via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, 4]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+      "FOR d IN testView SEARCH PHRASE(d['value'], [{levenshtein_match: ['1', 2, true, 4, 42]}]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
@@ -1614,6 +1695,80 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     EXPECT_EQ(i, expected.size());
   }
 
+  // test custom analyzer with LEVenshtein_match via [] + limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(), insertedDocs[37].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', {LEVenshtein_match: ['y', 1, false, 1]}], "
+      "'test_analyzer') SORT BM25(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with LEVenshtein_match via [] + default limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(), insertedDocs[37].slice(),
+      insertedDocs[6].slice(), insertedDocs[9].slice(),
+      insertedDocs[31].slice(),
+
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', {LEVenshtein_match: ['y', 1, false]}], "
+      "'test_analyzer') SORT BM25(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test custom analyzer with LEVenshtein_match via [] + no limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(), insertedDocs[37].slice(),
+      insertedDocs[6].slice(), insertedDocs[9].slice(),
+      insertedDocs[31].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['a', 'b', 'c', {LEVenshtein_match: ['y', 1, false, 0]}], "
+      "'test_analyzer') SORT BM25(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    ASSERT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr, ++i) {
+      auto const resolved = itr.value().resolveExternals();
+      ASSERT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test custom analyzer with levenshtein_match (not Damerau-Levenshtein)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1633,8 +1788,7 @@ void testLevenshteinMatch(TRI_vocbase_t& vocbase, const std::vector<arangodb::ve
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       ASSERT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
