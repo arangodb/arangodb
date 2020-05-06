@@ -293,7 +293,7 @@ bool UpgradeCollection::first() {
 
       bool ok = refreshPlanStatus();
       if (!ok) {
-        // TODO trigger rollback/cleanup
+        // no upgrade status in Plan, clean status out of Current
         {
           WRITE_LOCKER(lock, config.collection->statusLock());
           LogicalCollection::UpgradeStatus& status = config.collection->upgradeStatus();
@@ -309,7 +309,11 @@ bool UpgradeCollection::first() {
       _trx = std::make_unique<SingleCollectionTransaction>(context, *config.collection,
                                                            AccessMode::Type::EXCLUSIVE);
       _result = _trx->begin();
+      TRI_IF_FAILURE("UpgradeCollectionDBServer::StartTransaction") {
+        _result.reset(TRI_ERROR_INTERNAL, "could not start transaction");
+      }
       if (_result.fail()) {
+        setError(*config.collection, _result.errorMessage());
         return false;
       }
 
@@ -365,7 +369,12 @@ bool UpgradeCollection::next() {
       auto& ci = feature.clusterInfo();
       std::tie(_result, localChanges) =
           ::updateStatusFromCurrent(ci, *config.collection, shard);
+      TRI_IF_FAILURE("UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
+        _result.reset(TRI_ERROR_INTERNAL,
+                      "could not update status from current");
+      }
       if (_result.fail()) {
+        setError(*config.collection, _result.errorMessage());
         return true;
       }
       if (localChanges && targetPhase != ::UpgradeState::Cleanup) {
@@ -483,14 +492,16 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
                        server + "', got " + std::to_string(res.statusCode()) +
                        " instead, '" + res.slice().toJson() + "'");
     }
-    if (result.fail()) {
-      return result;
-    }
 
-    // okay, we executed this operation successfully, let everyone know
     try {
       ::Config config(_description);
       if (config.collection) {
+        if (result.fail()) {
+          setError(*config.collection, result.errorMessage());
+          return result;
+        }
+
+        // okay, we executed this operation successfully, let everyone know
         {
           WRITE_LOCKER(lock, config.collection->upgradeStatusLock());
           arangodb::LogicalCollection::UpgradeStatus& status =
@@ -594,6 +605,15 @@ bool UpgradeCollection::refreshPlanStatus() {
   _planStatus.add(status);
 
   return true;
+}
+
+void UpgradeCollection::setError(LogicalCollection& collection, std::string const& message) {
+  {
+    WRITE_LOCKER(lock, collection.statusLock());
+    LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
+    status.setError(message);
+  }
+  ::writeStatusToCurrent(collection, _description);
 }
 
 }  // namespace arangodb::maintenance

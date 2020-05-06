@@ -1842,6 +1842,10 @@ Result RocksDBCollection::prepareUpgrade(bool isSmartChild) {
                                          ::injectNewTemporaryObjectId, false,
                                          isSmartChild, false);
   }
+  TRI_IF_FAILURE("RocksDBCollection::PrepareUpgradeSetTempIds") {
+    res.reset(TRI_ERROR_INTERNAL,
+              "prepareUpgrade could not assign temporary ids");
+  }
   if (res.fail()) {
     LOG_TOPIC("ad41c", WARN, Logger::ENGINES)
         << "failed to allocate temporary id for writing while upgrading '"
@@ -1851,6 +1855,10 @@ Result RocksDBCollection::prepareUpgrade(bool isSmartChild) {
 
   {
     res = ::copyCollectionToNewObjectIdSpace(*engine.db(), _logicalCollection);
+    TRI_IF_FAILURE("RocksDBCollection::PrepareUpgradeCopyCollection") {
+      res.reset(TRI_ERROR_INTERNAL,
+                "prepareUpgrade could not copy collection to new id space");
+    }
     if (res.fail()) {
       LOG_TOPIC("af51c", WARN, Logger::ENGINES)
           << "failed to upgrade collection data while upgrading '"
@@ -1875,6 +1883,10 @@ Result RocksDBCollection::prepareUpgrade(bool isSmartChild) {
     std::vector<std::shared_ptr<Index>> indices = getIndexes();
     for (auto const& index : indices) {
       res = ::copyIndexToNewObjectIdSpace(*engine.db(), _logicalCollection, *index);
+      TRI_IF_FAILURE("RocksDBCollection::PrepareUpgradeCopyIndices") {
+        res.reset(TRI_ERROR_INTERNAL,
+                  "prepareUpgrade could not copy indices to new id space");
+      }
       if (res.fail()) {
         LOG_TOPIC("af61c", WARN, Logger::ENGINES)
             << "failed to upgrade index data while upgrading '"
@@ -1904,11 +1916,18 @@ Result RocksDBCollection::finalizeUpgrade(bool isSmartChild) {
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
                                        ::swapObjectIds, true, isSmartChild, false);
+  TRI_IF_FAILURE("RocksDBCollection::FinalizeUpgradeSwapIds") {
+    res.reset(TRI_ERROR_INTERNAL, "finalizeUpgrade could not swap ids");
+  }
   if (res.fail()) {
     return res;
   }
 
   res = rebuildRevisionTree();
+  TRI_IF_FAILURE("RocksDBCollection::FinalizeUpgradeBuildTree") {
+    res.reset(TRI_ERROR_INTERNAL,
+              "finalizeUpgrade could not build revision tree");
+  }
   if (res.fail()) {
     LOG_TOPIC("af82c", WARN, Logger::ENGINES)
         << "failed to rebuild revision tree while upgrading '"
@@ -1932,6 +1951,9 @@ Result RocksDBCollection::rollbackUpgrade(bool isSmartChild) {
 
   res = ::updateObjectIdsForCollection(*engine.db(), _logicalCollection,
                                        ::swapObjectIds, true, isSmartChild, true);
+  TRI_IF_FAILURE("RocksDBCollection::RollbackUpgradeSwapIds") {
+    res.reset(TRI_ERROR_INTERNAL, "rollbackUpgrade could not swap ids");
+  }
   if (res.fail()) {
     return res;
   }
@@ -1947,8 +1969,17 @@ Result RocksDBCollection::cleanupUpgrade() {
   auto& rcoll =
       static_cast<arangodb::RocksDBMetaCollection&>(*_logicalCollection.getPhysical());
   Result res = ::cleanupOldIdSpaces(*engine.db(), rcoll);
+  TRI_IF_FAILURE("RocksDBCollection::CleanupUpgradeCleanupSpaces") {
+    res.reset(TRI_ERROR_INTERNAL,
+              "cleanupUpgrade could not clean old id spaces");
+  }
   if (res.fail()) {
     return res;
+  }
+
+  TRI_IF_FAILURE("RocksDBCollection::CleanupUpgradeClearIds") {
+    return Result(TRI_ERROR_INTERNAL,
+                  "cleanupUpgrade could not clear temporary ids");
   }
 
   return ::updateObjectIdsForCollection(*engine.db(), _logicalCollection, ::clearTemporaryObjectIds,

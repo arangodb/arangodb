@@ -60,6 +60,8 @@ class UpgradeCollection : public ActionBase,
 
   bool refreshPlanStatus();
 
+  void setError(LogicalCollection&, std::string const&);
+
  private:
   velocypack::Builder _planStatus;
   std::size_t _timeout;

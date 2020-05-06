@@ -130,7 +130,7 @@ std::pair<bool, bool> checkShard(arangodb::consensus::Node const& snapshot,
                                  std::string const& database,
                                  std::string const& collection, std::string const& shard,
                                  std::unordered_set<std::string> const& plannedServers,
-                                 ::UpgradeState targetPhase) {
+                                 ::UpgradeState targetPhase, std::string& errorMessage) {
   using namespace arangodb::velocypack;
   using UpgradeStatus = arangodb::LogicalCollection::UpgradeStatus;
 
@@ -150,17 +150,22 @@ std::pair<bool, bool> checkShard(arangodb::consensus::Node const& snapshot,
     UpgradeStatus status;
     std::tie(status, haveError) = UpgradeStatus::fromSlice(builder.slice());
     if (!haveError) {
-      UpgradeStatus::Map const& map = status.map();
-      Builder b;
-      {
-        ObjectBuilder g(&b);
-        status.toVelocyPack(b, false);
-      }
-      for (std::string const& server : plannedServers) {
-        UpgradeStatus::Map::const_iterator it = map.find(server);
-        if (it == map.end() || it->second != targetPhase) {
-          allMatch = false;
-          break;
+      if (!status.errorMessage().empty()) {
+        haveError = true;
+        errorMessage = status.errorMessage();
+      } else {
+        UpgradeStatus::Map const& map = status.map();
+        Builder b;
+        {
+          ObjectBuilder g(&b);
+          status.toVelocyPack(b, false);
+        }
+        for (std::string const& server : plannedServers) {
+          UpgradeStatus::Map::const_iterator it = map.find(server);
+          if (it == map.end() || it->second != targetPhase) {
+            allMatch = false;
+            break;
+          }
         }
       }
     }
@@ -171,7 +176,7 @@ std::pair<bool, bool> checkShard(arangodb::consensus::Node const& snapshot,
 
 std::pair<bool, bool> checkAllShards(arangodb::consensus::Node const& snapshot,
                                      std::string const& database, std::string const& collection,
-                                     ::UpgradeState targetPhase) {
+                                     ::UpgradeState targetPhase, std::string& errorMessage) {
   using namespace arangodb::velocypack;
 
   bool allMatch = true;
@@ -203,11 +208,16 @@ std::pair<bool, bool> checkAllShards(arangodb::consensus::Node const& snapshot,
         break;
       }
       std::tie(allMatch, haveError) =
-          ::checkShard(snapshot, database, collection, shard, plannedServers, targetPhase);
+          ::checkShard(snapshot, database, collection, shard, plannedServers,
+                       targetPhase, errorMessage);
       if (haveError || !allMatch) {
         break;
       }
     }
+  }
+
+  TRI_IF_FAILURE("RollbackUpgradeCollection::HaveShardError") {
+    haveError = true;
   }
 
   return std::make_pair(allMatch, haveError);
@@ -516,7 +526,8 @@ bool RollbackUpgradeCollection::start(bool& aborts) {
   velocypack::Builder pending;
   bool success = ::preparePendingJob(pending, _jobId, _snapshot);
   if (!success) {
-    return success;
+    abort("could not retrieve job info");
+    return false;
   }
 
   velocypack::Builder trx;
@@ -525,22 +536,46 @@ bool RollbackUpgradeCollection::start(bool& aborts) {
 
   std::string messageIfError =
       "could not begin to rollback upgrade of collection '" + _collection + "'";
+
+  TRI_IF_FAILURE("RollbackUpgradeCollection::StartJobTransaction") {
+    registerError(messageIfError);
+    return false;
+  }
+
   bool ok = writeTransaction(trx, messageIfError);
   if (ok) {
     _status = PENDING;
     LOG_TOPIC("45121", DEBUG, Logger::SUPERVISION)
         << "Pending: Rollback upgrade of collection '" + _collection + "'";
-    return true;
-  }
 
-  auto [mustRollback, haveShardError] =
-      ::haveAnyFinalized(_snapshot, _database, _collection);
-  if (haveShardError) {
-    abort("have a shard error, could not process rollback");
+    auto [someFinalized, haveShardError] =
+        ::haveAnyFinalized(_snapshot, _database, _collection);
+    if (haveShardError) {
+      abort("have a shard error, could not process rollback");
+    }
+
+    trx.clear();
+    ::UpgradeState attemptedPhase = ::getTargetPhase(_snapshot, _database, _collection);
+    ::UpgradeState targetPhase = (someFinalized && attemptedPhase != ::UpgradeState::Cleanup)
+                                     ? ::UpgradeState::Rollback
+                                     : ::UpgradeState::Cleanup;
+    ::prepareSetTargetPhaseTransaction(trx, _database, _collection, _jobId, targetPhase);
+
+    messageIfError =
+        "could not set target phase correctly to rollback upgrade of "
+        "collection '" +
+        _collection + "'";
+
+    TRI_IF_FAILURE("RollbackUpgradeCollection::SetInitialPhaseTransaction") {
+      registerError(messageIfError);
+      return false;
+    }
+
+    ok = writeTransaction(trx, messageIfError);
+    if (ok) {
+      return true;
+    }
   }
-  ::UpgradeState targetPhase =
-      mustRollback ? ::UpgradeState::Rollback : ::UpgradeState::Cleanup;
-  ::prepareSetTargetPhaseTransaction(trx, _database, _collection, _jobId, targetPhase);
 
   return false;
 }
@@ -557,10 +592,11 @@ JOB_STATUS RollbackUpgradeCollection::status() {
   }
 
   ::UpgradeState targetPhase = ::getTargetPhase(_snapshot, _database, _collection);
+  std::string errorMessage;
   auto [allMatch, haveShardError] =
-      ::checkAllShards(_snapshot, _database, _collection, targetPhase);
+      ::checkAllShards(_snapshot, _database, _collection, targetPhase, errorMessage);
   if (haveShardError) {
-    registerError("failed with shard error");
+    registerError(errorMessage);
   } else if (allMatch) {
     // move to next phase, or report finished if done
     if (targetPhase == ::UpgradeState::Rollback) {
@@ -568,11 +604,19 @@ JOB_STATUS RollbackUpgradeCollection::status() {
       ::prepareSetTargetPhaseTransaction(trx, _database, _collection, _jobId,
                                          ::UpgradeState::Cleanup);
       std::string messageIfError = "could not set target phase 'Cleanup'";
+      TRI_IF_FAILURE("RollbackUpgradeCollection::SetCleanupTransaction") {
+        registerError(messageIfError);
+        return _status;
+      }
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
     } else if (targetPhase == ::UpgradeState::Cleanup) {
       velocypack::Builder trx;
       ::prepareReleaseTransaction(trx, _snapshot, _database, _collection, _jobId);
       std::string messageIfError = "could not clean up old data after upgrade";
+      TRI_IF_FAILURE("RollbackUpgradeCollection::ReleaseTransaction") {
+        registerError(messageIfError);
+        return _status;
+      }
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
       finish("", "", _error.empty(), _error);
     }
@@ -587,11 +631,6 @@ arangodb::Result RollbackUpgradeCollection::abort(std::string const& reason) {
     return Result(
         TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
         "Failed aborting RollbackUpgradeCollection job beyond pending stage");
-  }
-
-  if (_status == TODO) {
-    finish("", "", false, "job aborted: " + reason);
-    return Result{};
   }
 
   finish("", "", false, "job aborted: " + reason);

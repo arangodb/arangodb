@@ -325,18 +325,30 @@ void LogicalCollection::UpgradeStatus::remove(Map::key_type const& key) {
 
 void LogicalCollection::UpgradeStatus::clear() { _map.clear(); }
 
+void LogicalCollection::UpgradeStatus::setError(std::string const& message) {
+  _error = message;
+}
+
+std::string const& LogicalCollection::UpgradeStatus::errorMessage() const {
+  return _error;
+}
+
 void LogicalCollection::UpgradeStatus::toVelocyPack(velocypack::Builder& builder,
                                                     bool openSubObject) const {
   TRI_ASSERT(builder.isOpenObject());
+
+  auto fill = [this, &builder]() -> void {
+    for (auto const& pair : _map) {
+      builder.add(pair.first, UpgradeStatus::stateToValue(pair.second));
+    }
+    builder.add("error", velocypack::Value(_error));
+  };
+
   if (openSubObject) {
     velocypack::ObjectBuilder status(&builder, maintenance::UPGRADE_STATUS);
-    for (auto const& pair : _map) {
-      builder.add(pair.first, UpgradeStatus::stateToValue(pair.second));
-    }
+    fill();
   } else {
-    for (auto const& pair : _map) {
-      builder.add(pair.first, UpgradeStatus::stateToValue(pair.second));
-    }
+    fill();
   }
 }
 
@@ -357,9 +369,13 @@ std::pair<LogicalCollection::UpgradeStatus, bool> LogicalCollection::UpgradeStat
         error = true;
         continue;
       }
-      std::string server = pair.key.copyString();
-      State state = stateFromSlice(pair.value);
-      status.set(server, state);
+      if (pair.key.isEqualString("error")) {
+        status.setError(pair.value.copyString());
+      } else {
+        std::string server = pair.key.copyString();
+        State state = stateFromSlice(pair.value);
+        status.set(server, state);
+      }
     }
   }
 

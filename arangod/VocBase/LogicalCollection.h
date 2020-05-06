@@ -106,6 +106,9 @@ class LogicalCollection : public LogicalDataSource {
      void remove(Map::key_type const&);
      void clear();
 
+     void setError(std::string const&);
+     std::string const& errorMessage() const;
+
      void toVelocyPack(velocypack::Builder&, bool) const;
 
     public:
@@ -116,6 +119,7 @@ class LogicalCollection : public LogicalDataSource {
 
     private:
      Map _map;
+     std::string _error;
   };
 
   //////////////////////////////////////////////////////////////////////////////

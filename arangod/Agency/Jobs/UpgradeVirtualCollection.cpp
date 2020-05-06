@@ -354,7 +354,8 @@ bool UpgradeVirtualCollection::start(bool& aborts) {
   velocypack::Builder pending;
   bool success = ::preparePendingJob(pending, _jobId, _snapshot, childMap);
   if (!success) {
-    return success;
+    abort("could not retrieve job info");
+    return false;
   }
 
   std::vector<velocypack::Builder> children;
@@ -367,6 +368,12 @@ bool UpgradeVirtualCollection::start(bool& aborts) {
 
   std::string messageIfError =
       "could not begin upgrade of collection '" + _collection + "'";
+
+  TRI_IF_FAILURE("UpgradeVirtualCollection::StartJobTransaction") {
+    registerError(messageIfError);
+    return false;
+  }
+
   bool ok = writeTransaction(trx, messageIfError);
   if (ok) {
     _status = PENDING;
