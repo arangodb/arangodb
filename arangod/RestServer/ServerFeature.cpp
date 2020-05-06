@@ -207,7 +207,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ServerFeature::prepare() {
   // adjust global settings for UTF-8 string validation
-  basics::VelocyPackHelper::requestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
+  basics::VelocyPackHelper::strictRequestValidationOptions.validateUtf8Strings = _validateUtf8Strings;
 }
 
 void ServerFeature::start() {
