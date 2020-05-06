@@ -1985,35 +1985,37 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       auto split = splitAnalyzerName(entry.first);
 
+      auto processPool = [&entry](Analyzers::iterator& itr) -> Result {
+        if (!itr->second || equalAnalyzer(*(entry.second),
+                                          itr->second->type(),
+                                          itr->second->properties(),
+                                          itr->second->features())) {
+          itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
+          const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
+        } else if (itr->second->revision() == entry.second->revision()) {
+          return {
+            TRI_ERROR_BAD_PARAMETER,
+            "name collision detected while re-registering a duplicate arangosearch analizer name '" +
+            std::string(itr->second->name()) +
+            "' type '" + std::string(itr->second->type()) +
+            "' properties '" + itr->second->properties().toString() +
+            "', revision " + std::to_string(itr->second->revision()) +
+            ", previous registration type '" + std::string(entry.second->type()) +
+            "' properties '" + entry.second->properties().toString() + "'" +
+            ", revision " + std::to_string(entry.second->revision())
+          };
+        }
+        return {};
+      };
+
+
       // different database
       if (split.first != vocbase->name()) {
         auto result = analyzers.emplace(entry.first, entry.second);
-        if (!result.second) { // existing entry !!!! Ho this is possible????
-          bool reusePool = true;
-          if (result.first->second 
-            && !equalAnalyzer(*(entry.second),
-                              result.first->second->type(),
-                              result.first->second->properties(),
-                              result.first->second->features())) {
-            if (result.first->second->revision() == entry.second->revision()) {
-              return {
-                TRI_ERROR_BAD_PARAMETER,
-                "name collision detected while re-registering a duplicate arangosearch analizer name '" +
-                std::string(result.first->second->name()) +
-                "' type '" + std::string(result.first->second->type()) +
-                "' properties '" + result.first->second->properties().toString() +
-                "', revision " + std::to_string(result.first->second->revision()) +
-                ", previous registration type '" + std::string(entry.second->type()) +
-                "' properties '" + entry.second->properties().toString() + "'" +
-                ", revision " + std::to_string(entry.second->revision())
-              };
-            } else {
-              reusePool = false;
-            }
-          }
-          if (reusePool) {
-            result.first->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-            const_cast<Analyzers::key_type&>(result.first->first) = entry.first; // point key at old pool
+        if (!result.second) { // existing entry
+          auto processRes = processPool(result.first);
+          if (processRes.fail()) {
+            return processRes;
           }
         }
         continue; // done with this analyzer
@@ -2024,31 +2026,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       if (itr == analyzers.end()) {
         continue; // removed analyzer
       }
-      bool reusePool = true;
-      if (itr->second // valid new entry
-          && !equalAnalyzer(*(entry.second),
-                            itr->second->type(),
-                            itr->second->properties(),
-                            itr->second->features())) {
-        if (itr->second->revision() == entry.second->revision()) {
-          return {
-            TRI_ERROR_BAD_PARAMETER,
-            "name collision detected while registering a duplicate arangosearch analizer name '" +
-            std::string(itr->second->name()) +
-            "' type '" + std::string(itr->second->type()) +
-            "' properties '" + itr->second->properties().toString() +
-            "', revision " + std::to_string(itr->second->revision()) +
-            ", previous registration type '" + std::string(entry.second->type()) +
-            "' properties '" + entry.second->properties().toString() + "'" +
-            ", revision " + std::to_string(entry.second->revision())
-          };
-        } else {
-          reusePool = false;
-        }
-      }
-      if (reusePool) {
-        itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-        const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
+      auto processRes = processPool(itr);
+      if (processRes.fail()) {
+        return processRes;
       }
     }
 
