@@ -126,6 +126,12 @@ class EnumerateCollectionExecutor {
    * @return bool done in case we do not have any input and upstreamState is done
    */
   void initializeNewRow(AqlItemBlockInputRange& inputRange);
+  
+  /**
+   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
   /**
    * @brief produce the next Rows of Aql Values.

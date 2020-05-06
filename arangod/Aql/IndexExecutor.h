@@ -90,7 +90,7 @@ class IndexExecutorInfos {
   RegisterId getOutputRegisterId() const noexcept;
   std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() const noexcept;
   bool hasMultipleExpansions() const noexcept;
-  bool count() const noexcept;
+  bool getCount() const noexcept;
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const;
@@ -226,6 +226,12 @@ class IndexExecutor {
   IndexExecutor(IndexExecutor const&) = delete;
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
+  
+  /**
+   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
   auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;

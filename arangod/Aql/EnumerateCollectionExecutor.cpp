@@ -223,6 +223,16 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
   _cursorHasMore = _cursor->hasMore();
 }
 
+[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (_infos.getCount()) {
+    // when we are counting, we will always return a single row
+    return 1;
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
+}
+
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {

@@ -313,7 +313,7 @@ bool IndexExecutorInfos::hasMultipleExpansions() const noexcept {
   return _hasMultipleExpansions;
 }
 
-bool IndexExecutorInfos::count() const noexcept { return _count; }
+bool IndexExecutorInfos::getCount() const noexcept { return _count; }
 
 IndexIteratorOptions IndexExecutorInfos::getOptions() const { return _options; }
 
@@ -352,7 +352,7 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       _cursor(_trx.indexScanForCondition(
           index, condition, infos.getOutVariable(), infos.getOptions())),
       _context(context),
-      _type(infos.count() ? Type::Count :
+      _type(infos.getCount() ? Type::Count :
                 infos.isLateMaterialized()
                     ? Type::LateMaterialized
                     : !infos.getProduceResult()
@@ -686,6 +686,16 @@ IndexExecutor::CursorReader& IndexExecutor::getCursor() {
 
 bool IndexExecutor::needsUniquenessCheck() const noexcept {
   return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
+}
+
+[[nodiscard]] auto IndexExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (_infos.getCount()) {
+    // when we are counting, we will always return a single row
+    return 1;
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
 }
 
 auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
