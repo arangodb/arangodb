@@ -1020,7 +1020,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
                                                   TRI_voc_tick_t maxTick) {
   if (coll->syncByRevision() &&
       (_config.master.majorVersion > 3 ||
-       (_config.master.majorVersion = 3 && _config.master.minorVersion >= 6))) {
+       (_config.master.majorVersion == 3 && _config.master.minorVersion >= 7))) {
     // local collection should support revisions, and master is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if master collection
