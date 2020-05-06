@@ -105,7 +105,7 @@ class GeneralRequest {
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
 
   /// Database used for this request, _system by default
-  TEST_VIRTUAL std::string const& databaseName() const { return _databaseName; }
+  std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;
   }
@@ -117,11 +117,11 @@ class GeneralRequest {
   void setAuthenticated(bool a) { _authenticated = a; }
 
   // @brief User sending this request
-  TEST_VIRTUAL std::string const& user() const { return _user; }
+  std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
 
   /// @brief the request context depends on the application
-  TEST_VIRTUAL RequestContext* requestContext() const {
+  RequestContext* requestContext() const {
     return _requestContext;
   }
 
@@ -129,7 +129,7 @@ class GeneralRequest {
   ///        to delete it
   void setRequestContext(RequestContext*, bool);
 
-  TEST_VIRTUAL RequestType requestType() const { return _type; }
+  RequestType requestType() const { return _type; }
 
   void setRequestType(RequestType type) { _type = type; }
 
@@ -146,7 +146,7 @@ class GeneralRequest {
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
 
   // Returns the request path suffixes in non-URL-decoded form
-  TEST_VIRTUAL std::vector<std::string> const& suffixes() const {
+  std::vector<std::string> const& suffixes() const {
     return _suffixes;
   }
 
@@ -176,12 +176,6 @@ class GeneralRequest {
   void removeHeader(std::string key) {
     _headers.erase(key);
   }
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  void addHeader(std::string key, std::string value) {
-    _headers.try_emplace(std::move(key), std::move(value));
-  }
-#endif
 
   // the value functions give access to to query string parameters
   std::string const& value(std::string const& key) const;
