@@ -370,7 +370,6 @@ auto QuerySnippet::prepareFirstBranch(
     ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     ShardLocking& shardLocking) -> ResultT<MapNodeToColNameToShards> {
-  size_t numberOfShardsToPermutate = 0;
   MapNodeToColNameToShards localExpansions;
   std::unordered_map<ShardID, ServerID> const& shardMapping =
       shardLocking.getShardMapping();
@@ -579,6 +578,7 @@ auto QuerySnippet::prepareFirstBranch(
       TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      size_t numberOfShardsToPermutate = 0;
       // set the max loop index (note this will essentially be done only once)
       // we can set first found map to overall size as they all must be the same (asserted above)
       if (myExpFinal.size() > 0) {
