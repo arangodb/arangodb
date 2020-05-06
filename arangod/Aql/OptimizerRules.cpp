@@ -3924,6 +3924,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto alternativeVariable = static_cast<Variable const *>(nullptr);
 
   auto createKeys = bool{false};
+  auto allowKeyConversionToObject = bool{false};
   auto allowSpecifiedKeys = bool{false};
 
   auto fixupGraphInput = bool{false};
@@ -3939,7 +3940,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       inputVariable = insertNode->inVariable();
       alternativeVariable = inputVariable;
       createKeys = true;
-      allowSpecifiedKeys = true;
+      allowKeyConversionToObject = true;
     } break;
     case ExecutionNode::REMOVE: {
       auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
@@ -3947,7 +3948,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       inputVariable = removeNode->inVariable();
       alternativeVariable = inputVariable;
       createKeys = false;
-      allowSpecifiedKeys = true;
+      allowKeyConversionToObject = true;
     } break;
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE: {
@@ -3958,11 +3959,11 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
         inputVariable = updateReplaceNode->inKeyVariable();
         // This is the _inKeyVariable! This works, since we use default
         // sharding!
-        allowSpecifiedKeys = true;
+        allowKeyConversionToObject = true;
 
       } else {
         inputVariable = updateReplaceNode->inDocVariable();
-        allowSpecifiedKeys = false;
+        allowKeyConversionToObject = false;
       }
       alternativeVariable = inputVariable;
       createKeys = false;
@@ -3973,8 +3974,9 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       collection = upsertNode->collection();
       inputVariable = upsertNode->inDocVariable();
       alternativeVariable = upsertNode->insertVariable();
-      allowSpecifiedKeys = true;
+      allowKeyConversionToObject = true;
       createKeys = true;
+      allowSpecifiedKeys = true;
     } break;
     case ExecutionNode::TRAVERSAL: {
       auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
@@ -3983,7 +3985,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       inputVariable = traversalNode->inVariable();
       TRI_ASSERT(inputVariable);
       alternativeVariable = inputVariable;
-      allowSpecifiedKeys = true;
+      allowKeyConversionToObject = true;
       createKeys = false;
       fixupGraphInput = true;
     } break;
@@ -3994,7 +3996,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       // Subtle: KShortestPathsNode uses a reference when returning startInVariable
       inputVariable = &kShortestPathsNode->startInVariable();
       alternativeVariable = inputVariable;
-      allowSpecifiedKeys = true;
+      allowKeyConversionToObject = true;
       createKeys = false;
       fixupGraphInput = true;
     } break;
@@ -4005,7 +4007,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       inputVariable = shortestPathNode->startInVariable();
       TRI_ASSERT(inputVariable);
       alternativeVariable = inputVariable;
-      allowSpecifiedKeys = true;
+      allowKeyConversionToObject = true;
       createKeys = false;
       fixupGraphInput = true;
     } break;
@@ -4020,7 +4022,8 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto distNode =
       plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
                                       collection, inputVariable, alternativeVariable,
-                                      createKeys, allowSpecifiedKeys, fixupGraphInput);
+                                      createKeys, allowKeyConversionToObject, fixupGraphInput);
+  distNode->setAllowSpecifiedKeys(allowSpecifiedKeys);
   TRI_ASSERT(distNode != nullptr);
   return distNode;
 }

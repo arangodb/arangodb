@@ -263,6 +263,12 @@ class ProtoGraph {
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx);
 
+      // All tests are based on fully connected graphs.
+      // So just place all vertices on the same shard, no matter what.
+      for (const pair of vertexSharding) {
+        pair[1] = numberOfShards - 1;
+      }
+
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
       const gn = this.protoGraphName + '_Graph' + suffix;
