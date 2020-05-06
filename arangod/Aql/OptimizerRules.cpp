@@ -3926,6 +3926,8 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto createKeys = bool{false};
   auto allowSpecifiedKeys = bool{false};
 
+  auto fixupGraphInput = bool{false};
+
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes are
   //       currently assumed to be disjoint, and hence smart, so all collections
@@ -3983,6 +3985,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = inputVariable;
       allowSpecifiedKeys = true;
       createKeys = false;
+      fixupGraphInput = true;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
@@ -3993,6 +3996,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = inputVariable;
       allowSpecifiedKeys = true;
       createKeys = false;
+      fixupGraphInput = true;
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
@@ -4003,6 +4007,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = inputVariable;
       allowSpecifiedKeys = true;
       createKeys = false;
+      fixupGraphInput = true;
     } break;
     default: {
       TRI_ASSERT(false);
@@ -4015,7 +4020,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto distNode =
       plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
                                       collection, inputVariable, alternativeVariable,
-                                      createKeys, allowSpecifiedKeys);
+                                      createKeys, allowSpecifiedKeys, fixupGraphInput);
   TRI_ASSERT(distNode != nullptr);
   return distNode;
 }

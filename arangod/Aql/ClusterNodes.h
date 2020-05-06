@@ -225,14 +225,16 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
                  Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject)
+                 bool createKeys, bool allowKeyConversionToObject,
+                 bool fixupGraphInput)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
         _alternativeVariable(alternativeVariable),
         _createKeys(createKeys),
         _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false) {}
+        _allowSpecifiedKeys(false),
+        _fixupGraphInput(fixupGraphInput) {}
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -254,7 +256,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
     auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
                                               collection(), _variable,
                                               _alternativeVariable, _createKeys,
-                                              _allowKeyConversionToObject);
+                                              _allowKeyConversionToObject,
+                                              _fixupGraphInput);
     c->copyClients(clients());
     CollectionAccessingNode::cloneInto(*c);
 
@@ -300,6 +303,9 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief allow specified keys in input even in the non-default sharding case
   bool _allowSpecifiedKeys;
+
+  /// @brief required to fixup graph input
+  bool _fixupGraphInput;
 };
 
 /// @brief class GatherNode

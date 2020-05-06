@@ -44,7 +44,8 @@ using namespace arangodb::aql;
 DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
-    bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
+    bool allowKeyConversionToObject, bool createKeys, bool fixupGraphInput,
+     ScatterNode::ScatterType type)
     : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
@@ -52,6 +53,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
       _createKeys(createKeys),
       _usesDefaultSharding(collection->usesDefaultSharding()),
       _allowSpecifiedKeys(allowSpecifiedKeys),
+      _fixupGraphInput(fixupGraphInput),
       _collection(collection),
       _logCol(collection->getCollection()),
       _type(type) {}
