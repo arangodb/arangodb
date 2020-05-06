@@ -947,7 +947,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
                     .successful());
 
     VPackBuilder b;
-    { VPackObjectBuilder o(&b);
+    { VPackArrayBuilder oo(&b);
+      VPackObjectBuilder o(&b);
       b.add(path, value->slice()); }
     server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b.slice());
       
