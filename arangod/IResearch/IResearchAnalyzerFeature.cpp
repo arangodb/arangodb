@@ -1947,7 +1947,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
           features.add(*feature);
         }
       }
-
       auto normalizedName = normalizedAnalyzerName(vocbase->name(), name);
       EmplaceAnalyzerResult result;
       auto res = emplaceAnalyzer(result, analyzers, normalizedName, type, properties, features, revision);
@@ -1959,12 +1958,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       if (result.second && result.first->second) {
         result.first->second->setKey(key); // update key
       }
-
       return {};
     };
-
     auto const res = visitAnalyzers(*vocbase, visitor);
-
     if (!res.ok()) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
         // collection not found, cleanup any analyzers for 'database'
@@ -2007,8 +2003,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
         return {};
       };
-
-
       // different database
       if (split.first != vocbase->name()) {
         auto result = analyzers.emplace(entry.first, entry.second);
@@ -2020,9 +2014,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
         continue; // done with this analyzer
       }
-
       auto itr = analyzers.find(entry.first);
-
       if (itr == analyzers.end()) {
         continue; // removed analyzer
       }
@@ -2031,7 +2023,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return processRes;
       }
     }
-
     _lastLoad[databaseKey] = loadingRevision;
     _analyzers = std::move(analyzers); // update mappings
   } catch (basics::Exception const& e) {
@@ -2146,8 +2137,10 @@ AnalyzersRevision::Ptr IResearchAnalyzerFeature::getLatestRevision(const TRI_voc
   if (ServerState::instance()->isRunningInCluster()) {
     auto const& server = vocbase.server();
     if (server.hasFeature<arangodb::ClusterFeature>()) {
-      return server.getFeature<arangodb::ClusterFeature>()
+      auto ptr = server.getFeature<arangodb::ClusterFeature>()
         .clusterInfo().getAnalyzersRevision(vocbase.name());
+      // could be null if plan is still not loaded 
+      return ptr? ptr : AnalyzersRevision::getEmptyRevision();
     }
   }
   return AnalyzersRevision::getEmptyRevision();

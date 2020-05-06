@@ -258,7 +258,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
       ], \
       \"analyzers\": [\"testAnalyzer0\" ], \
       \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
@@ -349,7 +349,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
       ], \
       \"analyzers\": [\"testAnalyzer1\" ], \
       \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
@@ -416,7 +416,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
       ], \
       \"analyzers\": [\"testAnalyzer1\" ], \
       \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
