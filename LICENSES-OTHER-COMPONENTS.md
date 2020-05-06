@@ -11,28 +11,33 @@
 
 ## C/C++ Libraries
 
-### Boost 1.71
+### Boost
 
 * Name: Boost
-* Version: 1.71
+* Version: 1.71.0
+* Date: 2019-08-19 15:31:00Z
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0
 * License Id: BSL-1.0
 
-### CreditCardGenerator 2016
+### CreditCardGenerator
+
+_Enterprise Edition only_
 
 * Name: CreditCardGenerator
-* Version: 1.8.1
+* Version: (none)
+* Date: 2016-06-21 21:40:21Z
 * Project Home: https://github.com/stormdark/CreditCardGenerator
 * License: https://raw.githubusercontent.com/stormdark/CreditCardGenerator/master/LICENSE
 * License Name: MIT License
 * License Id: MIT
 
-### date 2.4
+### date
 
 * Name: date
-* Version: 2.4
+* Version: 2.4.0
+* Date: 2017-12-29 20:21:36Z
 * Project Home: https://github.com/HowardHinnant/date
 * License: https://raw.githubusercontent.com/HowardHinnant/date/master/LICENSE.txt
 * License Name: MIT License
@@ -41,16 +46,18 @@
 ### fasthash
 
 * Name: fasthash
-* Version: 2012
+* Version: 1.0
+* Date: 2012-11-02
 * Project Home: https://code.google.com/p/fast-hash/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/lib/Basics/fasthash.cpp
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/lib/Basics/fasthash.cpp
 * License Name: MIT License
 * License Id: MIT
 
 ### fakeit
 
 * Name: fakeit
-* Version: 2017-02-28 13:49:37.806594
+* Version: 2.0.3
+* Date: 2017-02-28 13:11:35Z
 * Project Home: https://github.com/eranpeer/FakeIt
 * License: https://raw.githubusercontent.com/eranpeer/FakeIt/master/LICENSE
 * License Name: MIT License
@@ -59,7 +66,8 @@
 ### fpconv_dtoa
 
 * Name: fpconv
-* Version: 2013
+* Version: (none)
+* Date: 2013-10-15 03:33:30Z
 * Project Home: https://github.com/night-shift/fpconv/
 * License: https://raw.githubusercontent.com/night-shift/fpconv/master/license
 * License Name: MIT License
@@ -68,107 +76,248 @@
 ### function2
 
 * Name: function2
-* Version: v4.0.0
+* Version: 4.0.0
+* Date: 2019-01-04 11:55:29Z
 * Project Home: https://github.com/Naios/function2
 * License: https://raw.githubusercontent.com/Naios/function2/master/LICENSE.txt
 * License Name: Boost Software License 1.0
 * License Id: BSL-1.0
 
-### Google V8 7.1.302.28
+### Google V8
 
 * Name: V8
 * Version: 7.9.317
+* Date: 2019-10-16 09:56:02Z
 * Project Home: https://github.com/v8/v8
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.v8
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-* Name: strongtalk
-* Version: V8 7.1.302.28 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.strongtalk
+#### Strongtalk
+
+* Name: Strongtalk
+* Version: (bundled with V8)
+* Date: (bundled with V8)
+* Project Home: https://github.com/talksmall/Strongtalk
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.strongtalk
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-* Name: valgrind
-* Version: V8 7.1.302.28 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.valgrind
+#### Valgrind
+
+* Name: Valgrind
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.valgrind
 * License Name: BSD 4-clause "Original" or "Old" License
 * License Id: BSD-4-Clause
 
-* Name: fdlibm
-* Version: V8 7.1.302.28 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.fdlibm 
-* License Comment: free as-is license
+#### FDLIBM
 
-* Name: PCRE
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/test/mjsunit/third_party/regexp-pcre/LICENSE
-* License Comment: PCRE LICENCE
+* Name: FDLIBM
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.fdlibm
+* License Comment: free as-is license (like ISC without liability clauses)
 
-* Name: object-keys
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v5.7.492.77/test/mjsunit/third_party/object-keys/LICENSE
+#### colorama
+
+* Name: colorama
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/colorama/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+#### PCRE
+
+* Name: PCRE
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/mjsunit/third_party/regexp-pcre/LICENSE
+* License Name: PCRE LICENCE
+* License Id: PCRE
+
+#### Object-keys
+
+* Name: Object-keys
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/mjsunit/third_party/object-keys/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
+#### vtune
+
 * Name: vtune
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/src/third_party/vtune/LICENSE
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/src/third_party/vtune/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 * License Comment: dual license
 
-* Name: gtest
-* Version: V8 5.7.492.77 bundled
+#### gtest
+
+* Name: Google Test (gtest)
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
 * License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/testing/gtest/include/gtest/gtest_prod.h
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-* Name: gyp
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/tools/gyp/LICENSE
+#### ICU
+
+* Name: ICU (International Components for Unicode)
+* Version: 64.2
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/icu/LICENSE
+* License Name: ICU license
+* License Comment: BSD-3-Clause + third-party license
+
+#### Inspector Protocol
+
+* Name: Chromium inspector (devtools) protocol
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/inspector_protocol/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-### Googletest
+#### Jinja2
 
-* Name: google test
+* Name: Jinja2 Python Template Engine
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/jinja2/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
+#### markupsafe
+
+* Name: MarkupSafe Python Safe String Class
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/markupsafe/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
+#### V8 builtins
+
+* Name: V8 builtins
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/v8/builtins/LICENSE
+* License Name: Python Software Foundation License Version 2
+* License Id: Python-2.0
+
+#### wasm-c-api
+
+* Name: Wasm C/C++ API
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/wasm-api/LICENSE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
+#### utf8-decoder
+
+* Name: DFA UTF-8 Decoder
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/src/third_party/utf8-decoder/LICENSE
+* License Name: MIT license
+* License Id: MIT
+
+#### SipHash
+
+* Name: SipHash
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/src/third_party/siphash/LICENSE
+* License Name: Creative Commons CC0 1.0 Universal
+* License: CC0
+
+#### gyp
+
+* Name: gyp
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/gyp/LICENSE
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
+#### SixSpeed
+
+* Name: SixSpeed
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/js-perf-test/SixSpeed/LICENSE.sixspeed
+* License Name: MIT license
+* License Id: MIT
+
+#### testharness.js
+
+* Name: testharness.js
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/wasm-js/LICENSE.testharness
+* License Name: BSD 3-clause "New" or "Revised" License
+* License Id: BSD-3-Clause
+
+### Google Test
+
+* Name: Google Test (gtest)
 * Version: 1.8.1
+* Date: 2018-08-31 15:53:24Z
 * Project Home: https://github.com/google/googletest
 * License: https://raw.githubusercontent.com/abseil/googletest/master/googletest/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-### ICU
-
-* Name: ICU
-* Version: V8 7.9.317 bundled
-* Project Home: http://site.icu-project.org/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/icu/LICENSE
-* License Comment: ICU License
-
 ### jemalloc
 
 * Name: jemalloc
 * Version: 5.2.1
+* Date: 2019-08-05 20:41:17Z
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
 
-The generated files config.guess and config.sub have the explicit
-exception from the GPL license:
+  The generated files config.guess and config.sub have the explicit
+  exception from the GPL license:
 
-    As a special exception to the GNU General Public License, if you
-    distribute this file as part of a program that contains a
-    configuration script generated by Autoconf, you may include it under
-    the same distribution terms that you use for the rest of that
-    program.  This Exception is an additional permission under section 7
-    of the GNU General Public License, version 3 ("GPLv3").
+      As a special exception to the GNU General Public License, if you
+      distribute this file as part of a program that contains a
+      configuration script generated by Autoconf, you may include it under
+      the same distribution terms that you use for the rest of that
+      program.  This Exception is an additional permission under section 7
+      of the GNU General Public License, version 3 ("GPLv3").
 
 ### linenoise-ng
 
 * Name: linenoise-ng
-* Version: 1.0.0
+* Version: 1.0.1
+* Date: 2017-03-06 16:01:33Z
 * GitHub: https://github.com/arangodb/linenoise-ng
 * License: https://raw.githubusercontent.com/antirez/linenoise/master/LICENSE
 * License Name: BSD 2-clause "Simplified" License
@@ -177,7 +326,8 @@ exception from the GPL license:
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.8
+* Version: 6.8.0
+* Date: 2020-03-11 23:20:13Z
 * GitHub: https://github.com/facebook/rocksdb
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.8/README.md
 * License Name: Apache License 2.0
@@ -186,7 +336,8 @@ exception from the GPL license:
 ### short_alloc
 
 * Name: short_alloc
-* Version: 2015
+* Version: (none)
+* Date: 2016-02-04 22:56:08Z
 * Project Home: https://howardhinnant.github.io/stack_alloc.html
 * License: https://howardhinnant.github.io/short_alloc.h
 * License Name: MIT License
@@ -195,16 +346,18 @@ exception from the GPL license:
 ### snappy
 
 * Name: snappy
-* Version 1.1.7
-* Project Home: http://google.github.io/snappy/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/snappy/snappy-1.1.7/COPYING
+* Version: 1.1.7
+* Date: 2017-08-25T00:37:10Z
+* Project Home: https://github.com/google/snappy
+* License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
 ### xxHash
 
 * Name: xxHash
-* Version: 2016
+* Version: 0.7.3 (unreleased)
+* Date: 2019-10-28 12:52:58Z
 * GitHub: https://github.com/Cyan4973/xxHash/
 * License: https://raw.githubusercontent.com/Cyan4973/xxHash/master/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -214,7 +367,8 @@ exception from the GPL license:
 
 * Name: zlib
 * Version: 1.2.11
-* Project Home: http://www.zlib.net/
+* Date: 2017-01-15 17:57:23Z
+* Project Home: https://github.com/madler/zlib/
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
 
@@ -222,6 +376,7 @@ exception from the GPL license:
 
 * Name: llhttp
 * Version: 1.1.1
+* Date: 2019-01-28 00:32:31Z
 * Project Home: https://github.com/nodejs/llhttp
 * License: https://raw.githubusercontent.com/nodejs/llhttp/master/LICENSE-MIT
 * License Name: MIT License
@@ -231,15 +386,17 @@ exception from the GPL license:
 
 * Name: GeographicLib
 * Version: 1.49
+* Date: 2017-10-05 01:36:00Z
 * Project Home: https://geographiclib.sourceforge.io/
 * License: https://geographiclib.sourceforge.io/html/LICENSE.txt
 * License Name: MIT License
 * License Id: MIT
 
-###  nghttp2 
+### nghttp2
 
-* Name:  nghttp2 
+* Name: nghttp2
 * Version: 1.40.0
+* Date: 2019-11-15 14:34:03Z
 * GitHub: https://github.com/nghttp2/nghttp2
 * License: https://github.com/nghttp2/nghttp2/blob/master/COPYING
 * License Name: MIT License
@@ -256,28 +413,41 @@ exception from the GPL license:
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
-### Bison 3.0
+### Bison
 
 * Name: bison
-* Version: 3.0
+* Version: 3.4.1
+* Date: 2019-05-22 05:28:15Z
 * Project Home: https://www.gnu.org/software/bison/
-* only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/arangod/Aql/grammar.cpp
-* License Comment: special license
-* License Line: As a special exception, you may create a larger work that contains part or all of the Bison parser skeleton and distribute that work under terms of your choice, so long as that work isn't itself a parser generator using the skeleton or a modified version thereof as a parser skeleton.  Alternatively, if you modify or redistribute the parser skeleton itself, you may (at your option) remove this special exception, which will cause the skeleton and the resulting Bison output files to be licensed under the GNU General Public License without this special exception.
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/arangod/Aql/grammar.cpp
+* License Comment: only used to generate code, not part of the distribution;
+  for details about using Bison in this way see
+  http://www.gnu.org/software/bison/manual/bison.html#Conditions
 
-### Flex 2.5
+  As a special exception, you may create a larger work that contains part or
+  all of the Bison parser skeleton and distribute that work under terms of your
+  choice, so long as that work isn't itself a parser generator using the
+  skeleton or a modified version thereof as a parser skeleton. Alternatively,
+  if you modify or redistribute the parser skeleton itself, you may (at your
+  option) remove this special exception, which will cause the skeleton and the
+  resulting Bison output files to be licensed under the
+  GNU General Public License without this special exception.
+
+### Flex
 
 * Name: flex
-* Version: 2.5
-* Project Home: http://flex.sourceforge.net/
-* only used to generate code, not part of the distribution
-* License: https://raw.githubusercontent.com/westes/flex/flex-2.5.39/COPYING
-* License Comment: free as-is license
+* Version: 2.5.35
+* Date: 2008-02-26 00:00:00Z
+* Project Home: https://github.com/westes/flex
+* License: https://raw.githubusercontent.com/westes/flex/master/COPYING
+* License Comment: free as-is license (BSD-2-Clause variant),
+  only used to generate code, not part of the distribution
 
-## Javascript
+## JavaScript
 
 ### Node core modules
+
+#### node
 
 * Name: node
 * Version: 2017
@@ -285,6 +455,8 @@ exception from the GPL license:
 * GitHub: https://github.com/nodejs/node
 * License: https://raw.githubusercontent.com/nodejs/node/master/LICENSE
 * License Comment: for all files except punycode.js
+
+#### punycode
 
 * Name: punycode
 * Version: 2017
