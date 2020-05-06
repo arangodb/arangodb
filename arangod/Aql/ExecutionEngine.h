@@ -148,6 +148,10 @@ class ExecutionEngine {
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
+#ifdef USE_ENTERPRISE
+  static void parallelizeTraversals(aql::Query& query, ExecutionPlan& plan);
+#endif
+  
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   std::vector<ExecutionBlock*> const& blocksForTesting() const {
     return _blocks;

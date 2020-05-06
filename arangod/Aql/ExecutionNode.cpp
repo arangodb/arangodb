@@ -534,6 +534,17 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClo
   }
 }
 
+// clone register plan of dependency, needed when inserting nodes after planning
+void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLater());
+  setVarsValid(dependency->getVarsValid());
+  setVarUsageValid();
+}
+
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
   std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =
       [](ExecutionNode* const l, ExecutionNode* const r) {
@@ -2382,16 +2393,6 @@ ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
-void AsyncNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
-  setVarUsageValid();
-}
-
 auto AsyncNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 MutexNode::MutexNode(ExecutionPlan* plan, ExecutionNodeId id)
@@ -2408,15 +2409,6 @@ ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
-void MutexNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
-  setVarUsageValid();
-}
 
 /// @brief toVelocyPack, for MutexNode
 void MutexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,

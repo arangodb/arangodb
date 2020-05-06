@@ -89,6 +89,10 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   }
 
   bool done(ExecutionNode* en) override final {
+    if (en->getType() == ExecutionNode::MUTEX &&
+        seen.find(en) != seen.end()) {
+      return true;
+    }
     if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
          en->getType() != ExecutionNode::DISTRIBUTE)) {
@@ -222,7 +226,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
           if (value->isIntValue()) {
             int64_t p = value->getIntValue();
             if (p > 0) {
-              options->parallelism = static_cast<size_t>(p);
+              options->setParallelism(static_cast<size_t>(p));
             } else {
               invalidValue = true;
             }

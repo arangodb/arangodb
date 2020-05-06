@@ -36,8 +36,7 @@
 using namespace arangodb::aql;
 
 QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
-    : parallelism(2),
-      memoryLimit(0),
+    : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
       maxRuntime(0),
@@ -84,13 +83,6 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   VPackSlice value;
   
   // numeric options
-  value = slice.get("parallelism");
-  if (value.isNumber()) {
-    size_t v = value.getNumber<size_t>();
-    if (v <= 4) {
-      parallelism = v;
-    }
-  }
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
@@ -230,7 +222,6 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
 void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRules) const {
   builder.openObject();
 
-  builder.add("parallelism", VPackValue(parallelism));
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));

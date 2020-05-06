@@ -336,6 +336,9 @@ class ExecutionNode {
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;
+  
+  // clone register plan of dependency, needed when inserting nodes after planning
+  void cloneRegisterPlan(ExecutionNode* dependency);
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
@@ -1025,8 +1028,6 @@ class MutexNode : public ExecutionNode {
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
   
-  void cloneRegisterPlan(ExecutionNode* dependency);
-  
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
@@ -1058,8 +1059,6 @@ class AsyncNode : public ExecutionNode {
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
-
-  void cloneRegisterPlan(ExecutionNode* dependency);
 
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };

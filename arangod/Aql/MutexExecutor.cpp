@@ -45,43 +45,14 @@ ExecutionBlockImpl<MutexExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, MutexNode const* node)
     : ExecutionBlock(engine, node), _isShutdown(false) {}
 
-//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::getSome(size_t atMost) {
-//  traceGetSomeBegin(atMost);
-//  auto result = getSomeWithoutTrace(atMost);
-//  traceGetSomeEnd(result.first, result.second);
-//  return result;
-//}
-//
-//std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::getSomeWithoutTrace(size_t atMost) {
-//    
-//  
-//  std::unique_lock<std::mutex> guard(_mutex);
-//  
-//  TRI_ASSERT(_dependencies.size() == 1);
-//
-//  auto ret = _dependencies[0]->getSome(atMost);
-//  
-//  return ret;
-//}
-//
-//std::pair<ExecutionState, size_t> ExecutionBlockImpl<MutexExecutor>::skipSome(size_t atMost) {
-//  traceSkipSomeBegin(atMost);
-//  auto result = skipSomeWithoutTrace(atMost);
-//  traceSkipSomeEnd(result.first, result.second);
-//  return result;
-//}
-//
-//std::pair<ExecutionState, size_t> ExecutionBlockImpl<MutexExecutor>::skipSomeWithoutTrace(size_t atMost) {
-//  std::lock_guard<std::mutex> guard(_mutex);
-//
-//  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-//                                 "skipping is not supported in parallel blocks");
-//  return {ExecutionState::DONE, 0};
-//}
-
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::execute(AqlCallStack stack) {
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, SkipResult(), nullptr};
+
+  std::unique_lock<std::mutex> guard(_mutex);
+  TRI_ASSERT(_dependencies.size() == 1);
+  auto ret = _dependencies[0]->execute(stack);
+  guard.unlock();
+  
+  return ret;
 }
 
 std::pair<ExecutionState, Result> ExecutionBlockImpl<MutexExecutor>::initializeCursor(

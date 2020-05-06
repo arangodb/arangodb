@@ -495,7 +495,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
                                       it->second.registerId);
   }
-  auto opts = static_cast<TraverserOptions*>(options());
+  TraverserOptions* opts = this->options();
   std::unique_ptr<Traverser> traverser;
 
   if (pruneExpression() != nullptr) {
@@ -693,7 +693,7 @@ void TraversalNode::prepareOptions() {
     }
   }
 
-  auto opts = static_cast<TraverserOptions*>(options());
+  TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;

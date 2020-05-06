@@ -84,9 +84,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
-  /// @brief a value of 1 (which is the default) means "no parallelism"
-  size_t parallelism;
-
   bool useBreadthFirst;
 
   bool useNeighbors;
@@ -117,10 +114,6 @@ struct TraverserOptions : public graph::BaseOptions {
   TraverserOptions& operator=(TraverserOptions const&) = delete;
 
   virtual ~TraverserOptions();
-
-  /// @brief returns the effective parallelism to use for the traversal
-  /// this may be lower than the requested parallelism value
-  size_t effectiveParallelism() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const override;

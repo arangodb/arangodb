@@ -161,6 +161,14 @@ struct BaseOptions {
   aql::RegexCache& regexCache() { return _regexCache; }
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
+  
+  /// @brief returns the effective parallelism to use for the traversal
+  /// this may be lower than the requested parallelism value
+  size_t effectiveParallelism() const;
+  
+  void setParallelism(size_t p) {
+    _parallelism = p;
+  }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -198,6 +206,9 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
+  
+  /// @brief a value of 1 (which is the default) means "no parallelism"
+  size_t _parallelism;
   
   /// @brief whether or not the traversal will produce vertices
   bool _produceVertices;
