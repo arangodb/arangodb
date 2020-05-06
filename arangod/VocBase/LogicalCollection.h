@@ -324,8 +324,14 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
+  /// @brief returns the value of _syncByRevision
   bool syncByRevision() const;
+  /// @brief sets the value of _syncByRevision
   void setSyncByRevision(bool);
+  
+  /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
+  /// returns false for all collections with no data backing.
+  bool useSyncByRevision() const;
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,

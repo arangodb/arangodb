@@ -33,9 +33,7 @@
 namespace arangodb {
 class RestBatchHandler;
 
-enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
-
-class HttpResponse : public GeneralResponse {
+class HttpResponse final : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
