@@ -28,6 +28,7 @@
 #include "Basics/application-exit.h"
 #include "RestServer/ServerFeature.h"
 
+#include <memory>
 #include <thread>
 #ifdef DEBUG_SYNC_REPLICATION
 #include <atomic>
@@ -37,6 +38,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <set>
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -88,10 +90,10 @@ AgencyPrecondition::AgencyPrecondition()
     : type(AgencyPrecondition::Type::NONE), empty(true) {}
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
-    : key(AgencyCommManager::path(key)), type(t), empty(e) {}
+    : key(AgencyCommHelper::path(key)), type(t), empty(e) {}
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, VPackSlice const& s)
-    : key(AgencyCommManager::path(key)), type(t), empty(false), value(s) {}
+    : key(AgencyCommHelper::path(key)), type(t), empty(false), value(s) {}
 
 void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
   if (type != AgencyPrecondition::Type::NONE) {
@@ -157,26 +159,26 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
 // -----------------------------------------------------------------------------
 
 AgencyOperation::AgencyOperation(std::string const& key)
-    : _key(AgencyCommManager::path(key)), _opType() {
+    : _key(AgencyCommHelper::path(key)), _opType() {
   _opType.type = AgencyOperationType::Type::READ;
 }
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationType opType)
-    : _key(AgencyCommManager::path(key)), _opType() {
+    : _key(AgencyCommHelper::path(key)), _opType() {
   _opType.type = AgencyOperationType::Type::SIMPLE;
   _opType.simple = opType;
 }
 
 AgencyOperation::AgencyOperation(std::string const& key,
                                  AgencyValueOperationType opType, VPackSlice value)
-    : _key(AgencyCommManager::path(key)), _opType(), _value(value) {
+    : _key(AgencyCommHelper::path(key)), _opType(), _value(value) {
   _opType.type = AgencyOperationType::Type::VALUE;
   _opType.value = opType;
 }
 
 AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
                                  VPackSlice newValue, VPackSlice oldValue)
-    : _key(AgencyCommManager::path(key)), _opType(), _value(newValue), _value2(oldValue) {
+    : _key(AgencyCommHelper::path(key)), _opType(), _value(newValue), _value2(oldValue) {
   _opType.type = AgencyOperationType::Type::VALUE;
   _opType.value = opType;
 }
@@ -548,55 +550,39 @@ ostream& operator<<(ostream& out, AgencyCommResult const& a) {
 }  // namespace std
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 AgencyCommManager
+// --SECTION--                                                 AgencyCommHelper
 // -----------------------------------------------------------------------------
 
-std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
+AgencyConnectionOptions AgencyCommHelper::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
+std::string AgencyCommHelper::PREFIX;
 
-AgencyConnectionOptions AgencyCommManager::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
-
-void AgencyCommManager::initialize(application_features::ApplicationServer& server,
-                                   std::string const& prefix) {
-  MANAGER.reset(new AgencyCommManager(server, prefix));
+void AgencyCommHelper::initialize(std::string const& prefix) {
+  PREFIX = prefix;
 }
 
-void AgencyCommManager::shutdown() { MANAGER.reset(); }
+void AgencyCommHelper::shutdown() {}
 
-std::string AgencyCommManager::path() {
-  if (MANAGER == nullptr) {
-    return "";
-  }
+std::string AgencyCommHelper::path() { return PREFIX; }
 
-  return MANAGER->_prefix;
+std::string AgencyCommHelper::path(std::string const& p1) {
+  return PREFIX + "/" + basics::StringUtils::trim(p1, "/");
 }
 
-std::string AgencyCommManager::path(std::string const& p1) {
-  if (MANAGER == nullptr) {
-    return "";
-  }
-
-  return MANAGER->_prefix + "/" + basics::StringUtils::trim(p1, "/");
-}
-
-std::string AgencyCommManager::path(std::string const& p1, std::string const& p2) {
-  if (MANAGER == nullptr) {
-    return "";
-  }
-
-  return MANAGER->_prefix + "/" + basics::StringUtils::trim(p1, "/") + "/" +
+std::string AgencyCommHelper::path(std::string const& p1, std::string const& p2) {
+  return PREFIX + "/" + basics::StringUtils::trim(p1, "/") + "/" +
          basics::StringUtils::trim(p2, "/");
 }
 
-std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
+std::vector<std::string> AgencyCommHelper::slicePath(std::string const& p1) {
   std::string const p2 = basics::StringUtils::trim(p1, "/");
   std::vector<std::string> split = basics::StringUtils::split(p2, '/');
-  if (split.size() > 0 && split[0] != AgencyCommManager::path()) {
-    split.insert(split.begin(), AgencyCommManager::path());
+  if (split.size() > 0 && split[0] != AgencyCommHelper::path()) {
+    split.insert(split.begin(), AgencyCommHelper::path());
   }
   return split;
 }
 
-std::string AgencyCommManager::generateStamp() {
+std::string AgencyCommHelper::generateStamp() {
   time_t tt = time(nullptr);
   struct tm tb;
   char buffer[21];
@@ -606,263 +592,6 @@ std::string AgencyCommManager::generateStamp() {
   size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
 
   return std::string(buffer, len);
-}
-
-bool AgencyCommManager::start() {
-  AgencyComm comm(_server);
-  bool ok = comm.ensureStructureInitialized();
-
-  LOG_TOPIC("d8ce6", DEBUG, Logger::AGENCYCOMM)
-      << "structures " << (ok ? "are" : "failed to") << " initialize";
-
-  return ok;
-}
-
-void AgencyCommManager::stop() {
-  MUTEX_LOCKER(locker, _lock);
-
-  for (auto& i : _unusedConnections) {
-    i.second.clear();
-  }
-  _unusedConnections.clear();
-}
-
-std::unique_ptr<GeneralClientConnection> AgencyCommManager::acquire(std::string& endpoint) {
-  std::unique_ptr<GeneralClientConnection> connection;
-
-  MUTEX_LOCKER(locker, _lock);
-
-  if (_endpoints.empty()) {
-    return nullptr;
-  } else {
-    if (endpoint.empty()) {
-      endpoint = _endpoints.front();
-      LOG_TOPIC("8ca12", DEBUG, Logger::AGENCYCOMM)
-          << "Using endpoint " << endpoint << " for agency communication, full selection:";
-    }
-    if (!_unusedConnections[endpoint].empty()) {
-      connection.reset(_unusedConnections[endpoint].back().release());
-      _unusedConnections[endpoint].pop_back();
-    } else {
-      connection = createNewConnection();
-    }
-  }
-
-  LOG_TOPIC("64bc2", TRACE, Logger::AGENCYCOMM)
-      << "acquiring agency connection '" << connection.get()
-      << "' for endpoint '" << endpoint << "'";
-
-  return connection;
-}
-
-void AgencyCommManager::release(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                                std::string const& endpoint) {
-  MUTEX_LOCKER(locker, _lock);
-  releaseNonLocking(std::move(connection), endpoint);
-}
-
-void AgencyCommManager::releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                                          std::string const& endpoint) {
-  if (_endpoints.front() == endpoint) {
-    LOG_TOPIC("ff659", TRACE, Logger::AGENCYCOMM)
-        << "releasing agency connection '" << connection.get()
-        << "', active endpoint '" << endpoint << "'";
-
-  } else {
-    LOG_TOPIC("8549f", TRACE, Logger::AGENCYCOMM)
-        << "releasing agency connection '" << connection.get()
-        << "', inactive endpoint '" << endpoint << "'";
-  }
-
-  _unusedConnections[endpoint].emplace_back(std::move(connection));
-}
-
-void AgencyCommManager::failed(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                               std::string const& endpoint) {
-  MUTEX_LOCKER(locker, _lock);
-  failedNonLocking(std::move(connection), endpoint);
-}
-
-void AgencyCommManager::failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                                         std::string const& endpoint) {
-  if (_endpoints.front() == endpoint) {
-    LOG_TOPIC("1a7b9", TRACE, Logger::AGENCYCOMM)
-        << "failed agency connection '" << connection.get()
-        << "', active endpoint " << endpoint << "'";
-
-  } else {
-    LOG_TOPIC("90592", TRACE, Logger::AGENCYCOMM)
-        << "failed agency connection '" << connection.get()
-        << "', inactive endpoint " << endpoint << "'";
-  }
-
-  switchCurrentEndpoint();
-  // Note that we intentionally let the connection go out of scope, because
-  // it failed, so we would have to reopen it anyway. We keep the other
-  // unused connections to the same endpoint which might be in the cache.
-}
-
-std::string AgencyCommManager::redirect(std::unique_ptr<httpclient::GeneralClientConnection> connection,
-                                        std::string const& endpoint,
-                                        std::string const& location, std::string& url) {
-  MUTEX_LOCKER(locker, _lock);
-
-  std::string specification;
-  size_t delim = std::string::npos;
-
-  if (location.substr(0, 7) == "http://") {
-    specification = "http+tcp://" + location.substr(7);
-    delim = specification.find_first_of('/', 12);
-  } else if (location.substr(0, 8) == "https://") {
-    specification = "http+ssl://" + location.substr(8);
-    delim = specification.find_first_of('/', 13);
-  }
-
-  // invalid location header
-  if (delim == std::string::npos) {
-    failedNonLocking(std::move(connection), endpoint);
-    return "";
-  }
-
-  std::string rest = specification.substr(delim);
-  specification = Endpoint::unifiedForm(specification.substr(0, delim));
-
-  LOG_TOPIC("1ef82", TRACE, Logger::AGENCYCOMM)
-      << "redirect: location = " << location
-      << ", specification = " << specification << ", url = " << rest;
-
-  if (endpoint == specification) {
-    LOG_TOPIC("14be3", DEBUG, Logger::AGENCYCOMM)
-        << "got an agency redirect back to the old agency '" << endpoint << "'";
-    failedNonLocking(std::move(connection), endpoint);
-    return "";
-  }
-
-  // The following is useful if another thread learned about a redirect first.
-  // In this case we simply release the connection and let the client acquire
-  // another one for the (new) active endpoint.
-  if (endpoint != _endpoints.front()) {
-    LOG_TOPIC("88d87", DEBUG, Logger::AGENCYCOMM)
-        << "ignoring an agency redirect to '" << specification
-        << "' from inactive endpoint '" << endpoint << "'";
-    releaseNonLocking(std::move(connection), endpoint);
-    return "";
-  }
-
-  url = rest;
-
-  // Move redirected endpoint to the front to make it active:
-  _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), specification),
-                   _endpoints.end());
-
-  LOG_TOPIC("e6514", DEBUG, Logger::AGENCYCOMM)
-      << "Got an agency redirect from '" << endpoint << "' to '" << specification << "'";
-
-  _endpoints.push_front(specification);
-
-  return specification;
-}
-
-void AgencyCommManager::addEndpoint(std::string const& endpoint) {
-  MUTEX_LOCKER(locker, _lock);
-
-  std::string normalized = Endpoint::unifiedForm(endpoint);
-  auto iter = _endpoints.begin();
-
-  for (; iter != _endpoints.end(); ++iter) {
-    if (*iter == normalized) {
-      break;
-    }
-  }
-
-  if (iter == _endpoints.end()) {
-    LOG_TOPIC("b3062", DEBUG, Logger::AGENCYCOMM)
-        << "using agency endpoint '" << normalized << "'";
-    _endpoints.emplace_back(normalized);
-  }
-}
-
-void AgencyCommManager::updateEndpoints(std::vector<std::string> const& newEndpoints) {
-  std::set<std::string> updatedSet;
-  for (std::string const& endp : newEndpoints) {
-    updatedSet.emplace(Endpoint::unifiedForm(endp));
-  }
-
-  MUTEX_LOCKER(locker, _lock);
-
-  std::set<std::string> currentSet;
-  currentSet.insert(_endpoints.begin(), _endpoints.end());
-
-  std::set<std::string> toRemove;
-  std::set_difference(currentSet.begin(), currentSet.end(), updatedSet.begin(),
-                      updatedSet.end(), std::inserter(toRemove, toRemove.begin()));
-
-  std::set<std::string> toAdd;
-  std::set_difference(updatedSet.begin(), updatedSet.end(), currentSet.begin(),
-                      currentSet.end(), std::inserter(toAdd, toAdd.begin()));
-
-  for (std::string const& rem : toRemove) {
-    LOG_TOPIC("7fc66", INFO, Logger::AGENCYCOMM)
-        << "Removing endpoint " << rem << " from agent pool";
-    _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), rem),
-                     _endpoints.end());
-  }
-
-  for (std::string const& add : toAdd) {
-    LOG_TOPIC("acda0", INFO, Logger::AGENCYCOMM) << "Adding endpoint " << add << " to agent pool";
-    _endpoints.emplace_back(add);
-  }
-}
-
-std::string AgencyCommManager::endpointsString() const {
-  return basics::StringUtils::join(endpoints(), ", ");
-}
-
-std::vector<std::string> AgencyCommManager::endpoints() const {
-  std::vector<std::string> result;
-
-  MUTEX_LOCKER(locker, _lock);
-  result.insert(result.begin(), _endpoints.begin(), _endpoints.end());
-
-  return result;
-}
-
-std::unique_ptr<GeneralClientConnection> AgencyCommManager::createNewConnection() {
-  if (_endpoints.empty()) {
-    LOG_TOPIC("3398c", TRACE, Logger::AGENCYCOMM)
-        << "no agency endpoint is know, cannot create connection";
-
-    return nullptr;
-  }
-
-  std::string const& spec = _endpoints.front();
-  std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(spec));
-  if (endpoint.get() == nullptr) {
-    LOG_TOPIC("82087", ERR, arangodb::Logger::AGENCYCOMM)
-        << "invalid value for "
-        << "--server.endpoint ('" << spec << "')";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-
-  return std::unique_ptr<GeneralClientConnection>(
-      GeneralClientConnection::factory(_server, endpoint, CONNECTION_OPTIONS._requestTimeout,
-                                       CONNECTION_OPTIONS._connectTimeout,
-                                       CONNECTION_OPTIONS._connectRetries, 0));
-}
-
-void AgencyCommManager::switchCurrentEndpoint() {
-  _lock.assertLockedByCurrentThread();
-  if (_endpoints.empty()) {
-    return;
-  }
-
-  std::string current = _endpoints.front();
-  _endpoints.pop_front();
-  _endpoints.push_back(current);
-
-  LOG_TOPIC("479c8", TRACE, Logger::AGENCYCOMM)
-      << "switching active agency endpoint from '" << current << "' to '"
-      << _endpoints.front() << "'";
 }
 
 // -----------------------------------------------------------------------------
@@ -885,7 +614,7 @@ AgencyCommResult AgencyComm::sendServerState() {
     std::string const status =
         ServerState::stateToString(ServerState::instance()->getState());
     builder.add("status", VPackValue(status));
-    std::string const stamp = AgencyCommManager::generateStamp();
+    std::string const stamp = AgencyCommHelper::generateStamp();
     builder.add("time", VPackValue(stamp));
     builder.close();
   } catch (...) {
@@ -902,7 +631,7 @@ AgencyCommResult AgencyComm::sendServerState() {
 std::string AgencyComm::version() {
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,
-                       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+                       AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                        "/_api/version", VPackSlice::noneSlice());
 
   if (result.successful()) {
@@ -963,7 +692,7 @@ bool AgencyComm::exists(std::string const& key) {
   auto parts = arangodb::basics::StringUtils::split(key, '/');
   std::vector<std::string> allParts;
   allParts.reserve(parts.size() + 1);
-  allParts.push_back(AgencyCommManager::path());
+  allParts.push_back(AgencyCommHelper::path());
   allParts.insert(allParts.end(), parts.begin(), parts.end());
   VPackSlice slice = result.slice()[0].get(allParts);
   return !slice.isNone();
@@ -977,13 +706,13 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     VPackArrayBuilder root(&builder);
     {
       VPackArrayBuilder keys(&builder);
-      builder.add(VPackValue(AgencyCommManager::path(key)));
+      builder.add(VPackValue(AgencyCommHelper::path(key)));
     }
   }
 
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::POST,
-                       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+                       AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                        url, builder.slice());
 
   if (!result.successful()) {
@@ -1025,7 +754,7 @@ AgencyCommResult AgencyComm::dump() {
 
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::GET,
-                       AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+                       AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                        url, VPackSlice::noneSlice());
 
   if (!result.successful()) {
@@ -1124,7 +853,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     }
 
     VPackSlice oldSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Sync", "LatestID"}));
+        {AgencyCommHelper::path(), "Sync", "LatestID"}));
 
     if (!(oldSlice.isSmallInt() || oldSlice.isUInt())) {
       LOG_TOPIC("b30d9", WARN, Logger::AGENCYCOMM)
@@ -1250,12 +979,12 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
     transaction.toVelocyPack(builder);
   }
 
-  LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM)
+  LOG_TOPIC("4e477", TRACE, Logger::AGENCYCOMM)
       << "sending " << builder.toJson() << "'" << url << "'";
 
   AgencyCommResult result =
       sendWithFailover(arangodb::rest::RequestType::POST,
-                       (timeout == 0.0) ? AgencyCommManager::CONNECTION_OPTIONS._requestTimeout
+                       (timeout == 0.0) ? AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout
                                         : timeout,
                        url, builder.slice());
 
@@ -1329,11 +1058,11 @@ bool AgencyComm::ensureStructureInitialized() {
 bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
                       VPackSlice const& slice) {
   if (ttl == 0.0) {
-    ttl = AgencyCommManager::CONNECTION_OPTIONS._lockTimeout;
+    ttl = AgencyCommHelper::CONNECTION_OPTIONS._lockTimeout;
   }
 
   if (timeout == 0.0) {
-    timeout = AgencyCommManager::CONNECTION_OPTIONS._lockTimeout;
+    timeout = AgencyCommHelper::CONNECTION_OPTIONS._lockTimeout;
   }
   unsigned long sleepTime = INITIAL_SLEEP_TIME;
   double const end = TRI_microtime() + timeout;
@@ -1376,7 +1105,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
 
 bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice, double timeout) {
   if (timeout == 0.0) {
-    timeout = AgencyCommManager::CONNECTION_OPTIONS._lockTimeout;
+    timeout = AgencyCommHelper::CONNECTION_OPTIONS._lockTimeout;
   }
 
   unsigned long sleepTime = INITIAL_SLEEP_TIME;
@@ -1413,22 +1142,54 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice, double 
   return false;
 }
 
+namespace {
+
+AgencyCommResult toAgencyCommResult(AsyncAgencyCommResult const& result) {
+  AgencyCommResult oldResult;
+  if (result.ok()) {
+    oldResult._connected = true;
+    oldResult._sent = true;
+
+    if (result.statusCode() == fuerte::StatusTemporaryRedirect) {
+      bool found = false;
+      oldResult._location =
+          result.response->header.metaByKey(StaticStrings::Location, found);
+
+      if (!found) {
+        oldResult._message = "invalid agency response (header missing)";
+        return oldResult;
+      }
+    }
+
+    oldResult._message = "no error";
+    oldResult._statusCode = result.statusCode();
+    if (result.response->isContentTypeJSON()) {
+      oldResult._body = result.response->payloadAsString();
+    } else if (result.response->isContentTypeVPack()) {
+      oldResult._body = result.slice().toJson();  // old result expects this to be a json string
+    }
+  } else {
+    oldResult._connected = false;
+    oldResult._sent = false;
+    oldResult._message = "sending request to agency failed";
+  }
+  return oldResult;
+}
+
+}  // namespace
+
 AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method,
                                               double const timeout,
                                               std::string const& initialUrl,
                                               VPackSlice inBody) {
-  AgencyCommResult result;
-  if (!AgencyCommManager::isEnabled()) {
-    LOG_TOPIC("42fae", ERR, Logger::AGENCYCOMM)
-        << "No AgencyCommManager. Inappropriate agent usage?";
-    result.set(static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE),
-               "No AgencyCommManager. Inappropriate agent usage?");
-    return result;
-  }  // if
+  AsyncAgencyComm comm;
+  AsyncAgencyCommResult result;
 
-  std::string endpoint;
-  std::unique_ptr<GeneralClientConnection> connection =
-      AgencyCommManager::MANAGER->acquire(endpoint);
+  VPackBuffer<uint8_t> buffer;
+  {
+    VPackBuilder builder(buffer);
+    builder.add(inBody);
+  }
 
   std::vector<std::string> clientIds;
   VPackSlice body = inBody.resolveExternals();
@@ -1443,12 +1204,9 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
     }
   }
-  std::string url;
 
-  std::chrono::duration<double> waitInterval(.0);  // seconds
+  std::string url;
   auto started = std::chrono::steady_clock::now();
-  auto timeOut = started + std::chrono::duration<double>(timeout);
-  double conTimeout = 1.0;
 
   TRI_DEFER({
     auto end = std::chrono::steady_clock::now();
@@ -1456,329 +1214,44 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     _agency_comm_request_time_ms.count(std::chrono::duration_cast<std::chrono::milliseconds>(end - started).count());
   });
 
-  int tries = 0;
-
-  auto waitSomeTime = [&waitInterval, &result, &server = _server]() -> bool {
-    // Returning true means timeout because of shutdown:
-    if (server.isStopping()) {
-      LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
-          << "Unsuccessful AgencyComm: Timeout because of shutdown "
-          << "errorCode: " << result.errorCode()
-          << " errorMessage: " << result.errorMessage()
-          << " errorDetails: " << result.errorDetails();
-      return true;
-    }
-
-    // Raise waits to a maximum 10 seconds
-    auto waitUntil = std::chrono::steady_clock::now() + waitInterval;
-
-    std::this_thread::sleep_until(waitUntil);
-    if (waitInterval.count() == 0.0) {
-      waitInterval = std::chrono::duration<double>(0.25);
-    } else if (waitInterval.count() < 5.0) {
-      waitInterval *= 1.0749292929292;
-    }
-
-    // Check again for shutdown, since some time has passed:
-    if (server.isStopping()) {
-      LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
-          << "Unsuccessful AgencyComm: Timeout because of shutdown "
-          << "errorCode: " << result.errorCode()
-          << " errorMessage: " << result.errorMessage()
-          << " errorDetails: " << result.errorDetails();
-      return true;
-    }
-
-    return false;
-  };
-
-  bool isInquiry = false;  // Set to true whilst we investigate a potentially
-                           // failed transaction.
   static std::string const writeURL{"/_api/agency/write"};
   bool isWriteTrans = (initialUrl == writeURL);
 
-  while (true) {  // will be left by timeout eventually
-    // If for some reason we did not find an agency endpoint, we bail out:
-    if (connection == nullptr) {
-      LOG_TOPIC("87cd7", ERR, Logger::AGENCYCOMM) << "No agency endpoints.";
-      result.set(400, "No endpoints for agency found.");
-      break;
-    }
-
-    // From second loop on delay a bit:
-    if (tries++ > 0) {
-      if (waitSomeTime()) {
-        break;  // timeout because of shutdown
-      }
-    }
-
-    // timeout exit strategy:
-    if (std::chrono::steady_clock::now() > timeOut) {
-      result.set(0, "timeout in AgencyComm operation");
-      break;
-    }
-
-    double elapsed =
-        1.e-2 * (std::round(1.e+2 * std::chrono::duration<double>(
-                                        std::chrono::steady_clock::now() - started)
-                                        .count()));
-
-    // Some reporting:
-    if (tries > 20) {
-      std::string serverState = _server.stringifyState();
-      LOG_TOPIC("2f181", INFO, Logger::AGENCYCOMM)
-          << "Flaky agency communication to " << endpoint
-          << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
-          << "s). Network checks advised."
-          << " Server " << serverState << ".";
-    }
-
-    if (1 < tries) {
-      LOG_TOPIC("20afa", DEBUG, Logger::AGENCYCOMM)
-          << "Retrying agency communication at '" << endpoint
-          << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
-          << "s). Network checks advised.";
-    }
-
-    if (!isInquiry) {
-      // try to send transaction; if we fail completely, retry
-      try {
-        std::string bodyString;
-        if (!body.isNone()) {
-          bodyString = body.toJson();
-        }
-        url = initialUrl;  // Attention: overwritten by redirect below!
-        result = send(connection.get(), method, conTimeout, url, bodyString);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        if (!clientIds.empty()) {
-          if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_0") {
-            result._statusCode = 0;
-          } else if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_503") {
-            result._statusCode = static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE);
-          }
-        }
-#endif
-      } catch (...) {
-        // Rotate to new agent endpoint:
-        AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-        endpoint.clear();
-        connection = AgencyCommManager::MANAGER->acquire(endpoint);
-        continue;
-      }
-
-      // got a result or shutdown, we are done
-      if (result.successful() || _server.isStopping()) {
-        AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
-        break;
-      }
-
-      // do not retry on client errors
-      if (result._statusCode >= 400 && result._statusCode <= 499) {
-        AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
-        break;
-      }
-
-      // Note that in case of a timeout or 503 we do not know whether the
-      // operation has been executed. In this case we should inquire about
-      // the operation. If it actually was done, we are good. If not, we
-      // can retry. If in doubt, we have to retry inquire until the global
-      // timeout is reached.
-      // Also note that we only inquire about WriteTransactions.
-      if (isWriteTrans && !clientIds.empty() && result._sent &&
-          (result._statusCode == 0 ||
-           result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE))) {
-        isInquiry = true;
-        conTimeout = 16.0;
-      }
-
-      // This leaves the redirect, timeout and 503 cases, which are handled
-      // below.
-    } else {
-      // isInquiry case, we are getting here because a previous try to send
-      // the transaction lead to isInquiry == true because we got a timeout
-      // or a 503.
-      VPackBuilder b;
-      {
-        VPackArrayBuilder ab(&b);
-        for (auto const& i : clientIds) {
-          b.add(VPackValue(i));
-        }
-      }
-
-      LOG_TOPIC("9b411", DEBUG, Logger::AGENCYCOMM)
-          << "Failed agency comm (" << result._statusCode << ")! "
-          << "Inquiring about clientIds " << clientIds << ".";
-
-      url = "/_api/agency/inquire";  // attention: overwritten by redirect!
-      result = send(connection.get(), method, conTimeout, url, b.toJson());
-
-      // Inquire returns a body like write, if the transactions are not known,
-      // the list of results is empty.
-      // _statusCode can be 200 or 404 (if nothing was found)
-      if (result.successful()) {
-        std::shared_ptr<VPackBuilder> resultBody = VPackParser::fromJson(result._body);
-        VPackSlice outer = resultBody->slice();
-
-        // If we get an answer, and it contains a "results" key,
-        // we release the connection and break out of the loop letting the
-        // inquiry result go to the client. Otherwise try again.
-        if (outer.isObject() && outer.hasKey("results")) {
-          VPackSlice results = outer.get("results");
-          if (results.length() > 0) {
-            LOG_TOPIC("507f5", DEBUG, Logger::AGENCYCOMM)
-                << "Inquired " << resultBody->toJson();
-            AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
-            break;
-          } else {
-            // Nothing known, so do a retry of the original operation:
-            LOG_TOPIC("a25ef", DEBUG, Logger::AGENCYCOMM)
-                << "Nothing known, do a retry.";
-            isInquiry = false;
-            continue;
-          }
-        } else {
-          // How odd, we are supposed to get at least {results=[...]}, let's retry...
-          isInquiry = false;
-          continue;
-        }
-      } else if (result._statusCode == 404) {
-        // clientId was not found, agency has never heard of this trx, retry:
-        isInquiry = false;
-        continue;
-      }
-      // This can still be a timeout or 503 case, both are handled below
-    }  // end of inquiry case
-
-    // Now do some stuff which is needed in both cases:
-
-    // sometimes the agency will return a 307 (temporary redirect)
-    // in this case we have to pick it up and use the new location returned
-    if (result._statusCode == (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
-      // Note that this may overwrite url, but we do not care.
-      endpoint = AgencyCommManager::MANAGER->redirect(std::move(connection), endpoint,
-                                                      result._location, url);
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-      waitInterval = std::chrono::duration<double>(0.0);
-      continue;
-    }
-
-    // In case of a timeout, we increase the patience:
-    if (result._statusCode == 0) {
-      if (conTimeout < 33.0) {  // double until we have 64s
-        conTimeout *= 2;
-      }
-    }
-
-    if (result._statusCode == 0 ||
-        result._statusCode == static_cast<int>(rest::ResponseCode::SERVICE_UNAVAILABLE)) {
-      // Rotate to new agent endpoint:
-      AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
-      endpoint.clear();
-      connection = AgencyCommManager::MANAGER->acquire(endpoint);
-    }
-  }
-
-  // Log error
-  if (!result.successful() &&
-      result.httpCode() != static_cast<int>(rest::ResponseCode::PRECONDITION_FAILED)) {
-    LOG_TOPIC("78466", DEBUG, Logger::AGENCYCOMM)
-        << "Unsuccessful AgencyComm:"
-        << " errorCode: " << result.errorCode()
-        << " errorMessage: " << result.errorMessage()
-        << " errorDetails: " << result.errorDetails();
-  }
-
-  return result;
-}
-
-AgencyCommResult AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
-                                  arangodb::rest::RequestType method, double timeout,
-                                  std::string const& url, std::string const& body) {
-  TRI_ASSERT(connection != nullptr);
-
-  if (method == arangodb::rest::RequestType::GET ||
-      method == arangodb::rest::RequestType::HEAD ||
-      method == arangodb::rest::RequestType::DELETE_REQ) {
-    TRI_ASSERT(body.empty());
-  }
-
-  TRI_ASSERT(!url.empty());
-
-  AgencyCommResult result;
-
-  LOG_TOPIC("47733", TRACE, Logger::AGENCYCOMM)
-      << "sending " << arangodb::GeneralRequest::translateMethod(method)
-      << " request to agency at endpoint '"
-      << connection->getEndpoint()->specification() << "', url '" << url
-      << "': " << body;
-
-  arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
-  params.setJwt(af->tokenCache().jwtToken());
-  params.keepConnectionOnDestruction(true);
-  arangodb::httpclient::SimpleHttpClient client(connection, params);
-
-  // set up headers
-  std::unordered_map<std::string, std::string> headers;
-
   if (method == arangodb::rest::RequestType::POST) {
-    // the agency needs this content-type for the body
-    headers["content-type"] = "application/json";
-  }
-
-  // send the actual request
-  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-      client.request(method, url, body.c_str(), body.size(), headers));
-
-  if (response == nullptr) {
-    result._message = "could not send request to agency";
-    LOG_TOPIC("4366b", TRACE, Logger::AGENCYCOMM)
-        << "could not send request to agency";
-
-    return result;
-  }
-
-  result._sent = response->haveSentRequestFully();
-
-  if (!response->isComplete()) {
-    result._message = "sending request to agency failed";
-    LOG_TOPIC("f305c", TRACE, Logger::AGENCYCOMM)
-        << "sending request to agency failed";
-
-    return result;
-  }
-
-  result._connected = true;
-
-  if (response->getHttpReturnCode() == (int)arangodb::rest::ResponseCode::TEMPORARY_REDIRECT) {
-    // temporary redirect. now save location header
-
-    bool found = false;
-    result._location = response->getHeaderField(StaticStrings::Location, found);
-
-    LOG_TOPIC("92680", TRACE, Logger::AGENCYCOMM)
-        << "redirecting to location: '" << result._location << "'";
-
-    if (!found) {
-      // a 307 without a location header does not make any sense
-      result._message = "invalid agency response (header missing)";
-
-      return result;
+    if (isWriteTrans) {
+      LOG_TOPIC("4e44e", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+          << "sending write transaction with POST " << inBody.toJson() << " '"
+          << initialUrl << "'";
+      result = comm.withSkipScheduler(true)
+                   .sendWriteTransaction(std::chrono::duration<double>(timeout),
+                                         std::move(buffer))
+                   .get();
+    } else {
+      LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+          << "sending non-write transaction with POST " << inBody.toJson()
+          << " '" << initialUrl << "'";
+      result = comm.withSkipScheduler(true)
+                   .sendWithFailover(fuerte::RestVerb::Post, initialUrl,
+                                     std::chrono::duration<double>(timeout),
+                                     AsyncAgencyComm::RequestType::READ, std::move(buffer))
+                   .get();
     }
+  } else if (method == arangodb::rest::RequestType::GET) {
+    LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM) << "sendWithFailover: "
+        << "sending transaction with GET " << inBody.toJson() << " '"
+        << initialUrl << "'";
+    result = comm.withSkipScheduler(true)
+                 .sendWithFailover(fuerte::RestVerb::Get, initialUrl,
+                                   std::chrono::duration<double>(timeout),
+                                   AsyncAgencyComm::RequestType::CUSTOM, std::move(buffer))
+                 .get();
+  } else {
+    return AgencyCommResult{static_cast<int>(rest::ResponseCode::METHOD_NOT_ALLOWED),
+                            "method not supported", ""};
   }
-
-  result._message = response->getHttpReturnMessage();
-  result._statusCode = response->getHttpReturnCode();
-
-  basics::StringBuffer& sb = response->getBody();
-  result._body = std::string(sb.c_str(), sb.length());
-
-  LOG_TOPIC("97dc9", TRACE, Logger::AGENCYCOMM)
-      << "request to agency returned status code " << result._statusCode
-      << ", message: '" << result._message << "', body: '" << result._body << "'";
-
-  return result;
+  LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM)
+      << "sendWithFailover done for " << inBody.toJson() << " '" << initialUrl << "'";
+  return toAgencyCommResult(result);
 }
 
 bool AgencyComm::tryInitializeStructure() {

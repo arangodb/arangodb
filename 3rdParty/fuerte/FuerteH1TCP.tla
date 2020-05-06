@@ -1,4 +1,4 @@
------------------------------- MODULE FuerteV3 ---------------------------
+------------------------------ MODULE FuerteH1TCP ---------------------------
 EXTENDS Integers, TLC, Sequences
 
 (*
@@ -672,5 +672,5 @@ NoSleepingBarber == /\ NothingForgottenOnQueue
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Apr 29 14:11:27 CEST 2020 by neunhoef
+\* Last modified Mon May 04 22:05:04 CEST 2020 by neunhoef
 \* Created Mi 22. Apr 22:46:19 CEST 2020 by neunhoef
