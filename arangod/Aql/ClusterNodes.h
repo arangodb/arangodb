@@ -225,8 +225,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
                  Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject,
-                 bool fixupGraphInput)
+                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
@@ -234,7 +233,10 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
         _createKeys(createKeys),
         _allowKeyConversionToObject(allowKeyConversionToObject),
         _allowSpecifiedKeys(false),
-        _fixupGraphInput(fixupGraphInput) {}
+        _fixupGraphInput(fixupGraphInput) {
+    // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+    TRI_ASSERT(!_fixupGraphInput || !_createKeys);
+  }
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 

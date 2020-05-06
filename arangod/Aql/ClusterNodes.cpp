@@ -307,6 +307,8 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
         base.get("alternativeVarId").getNumericValue<VariableId>());
   }
   _fixupGraphInput = VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false);
+  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
 }
 
 /// @brief creates corresponding ExecutionBlock
