@@ -81,8 +81,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
       protoRegSet.emplace(r);
     }
 
-    auto registersToKeep = RegIdSetStack{{}};
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 1, [&]{ return protoRegSet; });
+    RegIdSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
 
     auto registersToClear = RegIdSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
@@ -135,8 +135,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
       protoRegSet.emplace(r);
     }
 
-    auto registersToKeep = RegIdSetStack{{}};  // need two
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 1, [&]{ return protoRegSet; });
+    RegIdSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
 
     auto registersToClear = RegIdSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,

@@ -48,12 +48,13 @@ struct PlanMiniMock {
       : _expectedType(expectedType) {}
 
   auto increaseCounter(ExecutionNode::NodeType type) {
-    EXPECT_FALSE(_called) << "Only count every node once per run";
-    _called = true;
+    // This is no longer true for subqueries because reasons, i.e. subqueries are planned
+    // multiple times
+    // TODO: refactor subquery planing?
+    //EXPECT_FALSE(_called) << "Only count every node once per run";
     EXPECT_EQ(_expectedType, type) << "Count the correct type";
   }
 
-  bool _called{false};
   ExecutionNode::NodeType _expectedType;
 };
 
@@ -521,6 +522,11 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
   }
 }
 
+std::ostream& operator<<(std::ostream &os, Variable const *var) {
+  os << var->name << " (" << var->id << ")";
+  return os;
+}
+
 TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
   auto&& [vars, ptrs] = generateVars<6>();
   auto [mark, debra, mary, jesse, paul, tobias] = ptrs;
@@ -542,7 +548,7 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
 
   {
       // Check varsUsedLater
-      /*
+
       // SINGLETON
       EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
       // ENUMERATE_COLLECTION
@@ -564,7 +570,7 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
       EXPECT_EQ((VarSetStack{{paul}}), subquery[2].getVarsUsedLaterStack());
       // RETURN
       EXPECT_EQ((VarSetStack{{}}), subquery[3].getVarsUsedLaterStack());
-      */
+
   }
 
   {  // Check varsValid
