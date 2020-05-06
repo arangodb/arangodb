@@ -113,7 +113,9 @@ class int_field: public field_base {
  public:
   typedef int32_t value_t;
 
-  int_field() = default;
+  int_field()
+    : stream_(std::make_shared<irs::numeric_token_stream>()) {
+  }
   int_field(int_field&& other) noexcept
     : field_base(std::move(other)),
       stream_(std::move(other.stream_)),
@@ -126,7 +128,7 @@ class int_field: public field_base {
   bool write(irs::data_output& out) const override;
 
  private:
-  mutable irs::numeric_token_stream stream_;
+  mutable std::shared_ptr<irs::numeric_token_stream> stream_;
   int32_t value_{};
 }; // int_field 
 

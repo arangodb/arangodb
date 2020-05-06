@@ -257,8 +257,8 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/tests/tests_config.hpp"
 )
 
-add_subdirectory(core)
 add_subdirectory(external)
+add_subdirectory(core)
 add_subdirectory(utils)
 
 if (USE_PYRESEARCH)

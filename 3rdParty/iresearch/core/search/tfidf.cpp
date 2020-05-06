@@ -210,8 +210,8 @@ struct term_collector final: public irs::sort::term_collector {
 
   virtual void collect(const irs::sub_reader& /*segment*/,
                        const irs::term_reader& /*field*/,
-                       const irs::attribute_view& term_attrs) override {
-    auto& meta = term_attrs.get<irs::term_meta>();
+                       const irs::attribute_provider& term_attrs) override {
+    auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
       docs_with_term += meta->docs_count;
@@ -306,8 +306,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       byte_type* stats_buf,
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
-      const irs::sort::term_collector* term
-  ) const override {
+      const irs::sort::term_collector* term) const override {
     auto& idf = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
@@ -331,8 +330,8 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
   virtual const flags& features() const override {
     static const irs::flags FEATURES[] = {
-      irs::flags({ irs::frequency::type() }), // without normalization
-      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+      irs::flags({ type<frequency>::get() }), // without normalization
+      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
     };
 
     return FEATURES[normalize_];
@@ -346,23 +345,33 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats_buf,
-      const attribute_view& doc_attrs,
-      boost_t boost
-  ) const override {
-    auto& freq = doc_attrs.get<frequency>();
+      const attribute_provider& doc_attrs,
+      boost_t boost) const override {
+    auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<tfidf::const_score_ctx>(boost),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+          auto& state = *static_cast<const tfidf::const_score_ctx*>(ctx);
+          irs::sort::score_cast<tfidf::score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(stats_buf);
-    auto& filter_boost = doc_attrs.get<irs::filter_boost>();
+    auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
     // add norm attribute if requested
     if (normalize_) {
       irs::norm norm;
 
-      auto& doc = doc_attrs.get<document>();
+      auto* doc = irs::get<document>(doc_attrs);
 
       if (!doc) {
         // we need 'document' attribute to be exposed
@@ -373,7 +382,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
         
         if (filter_boost) {
           return {
-            memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq.get(), filter_boost.get()),
+            memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq, filter_boost),
             [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
               auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
               assert(state.filter_boost_);
@@ -384,7 +393,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
           };
         } else {
           return {
-            memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq.get()),
+            memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq),
             [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
             irs::sort::score_cast<tfidf::score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_) * state.norm_.read();
@@ -396,7 +405,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
     if (filter_boost) {
       return {
-        memory::make_unique<tfidf::score_ctx>(boost, stats, freq.get(), filter_boost.get()),
+        memory::make_unique<tfidf::score_ctx>(boost, stats, freq, filter_boost),
         [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
         assert(state.filter_boost_);
@@ -406,7 +415,7 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
       };
     } else {
       return {
-        memory::make_unique<tfidf::score_ctx>(boost, stats, freq.get()),
+        memory::make_unique<tfidf::score_ctx>(boost, stats, freq),
         [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
           auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
           irs::sort::score_cast<score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_);
@@ -425,11 +434,10 @@ class sort final: public irs::prepared_sort_basic<tfidf::score_t, tfidf::idf> {
 
 NS_END // tfidf 
 
-DEFINE_SORT_TYPE_NAMED(irs::tfidf_sort, "tfidf")
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort)
 
 tfidf_sort::tfidf_sort(bool normalize) noexcept
-  : sort(tfidf_sort::type()),
+  : sort(irs::type<tfidf_sort>::get()),
     normalize_(normalize) {
 }
 

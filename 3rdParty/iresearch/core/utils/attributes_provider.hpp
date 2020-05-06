@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,69 +15,63 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ATTRIBUTES_PROVIDER_H
 #define IRESEARCH_ATTRIBUTES_PROVIDER_H
 
-#include "shared.hpp"
+#include "type_id.hpp"
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 
-class attribute_store;
-class attribute_view;
+struct attribute;
 
-NS_BEGIN(util)
+////////////////////////////////////////////////////////////////////////////////
+/// @class attribute_provider
+/// @brief base class for all objects with externally visible attributes
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API attribute_provider {
+  virtual ~attribute_provider() = default;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class const_attribute_store_provider
-/// @brief base class for all objects with externally visible attribute_store
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API const_attribute_store_provider {
- public:
-  virtual ~const_attribute_store_provider() = default;
-  virtual const irs::attribute_store& attributes() const noexcept = 0;
-};
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return pointer to attribute of a specified type
+  /// @note external users should prefer using const version
+  /// @note external users should avoid modifying attributes treat that as UB
+  //////////////////////////////////////////////////////////////////////////////
+  virtual attribute* get_mutable(type_info::type_id type) = 0;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class attribute_store_provider
-/// @brief base class for all objects with externally visible attribute-store
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_store_provider: public const_attribute_store_provider {
- public:
-  virtual irs::attribute_store& attributes() noexcept = 0;
-  virtual const irs::attribute_store& attributes() const noexcept override final {
-    return const_cast<attribute_store_provider*>(this)->attributes();
-  };
-};
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return const pointer to attribute of a specified type
+  //////////////////////////////////////////////////////////////////////////////
+  const attribute* get(type_info::type_id type) const {
+    return const_cast<attribute_provider*>(this)->get_mutable(type);
+  }
+}; // attribute_provider
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class const_attribute_view_provider
-/// @brief base class for all objects with externally visible attribute_view
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API const_attribute_view_provider {
- public:
-  virtual ~const_attribute_view_provider() = default;
-  virtual const irs::attribute_view& attributes() const noexcept = 0;
-};
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for getting immutable attribute of a specific type
+////////////////////////////////////////////////////////////////////////////////
+template<typename T,
+         typename Provider,
+         typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
+inline const T* get(const Provider& attrs) {
+  return static_cast<const T*>(attrs.get(type<T>::id()));
+}
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class attributes_provider
-/// @brief base class for all objects with externally visible attribute_view
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_view_provider: public const_attribute_view_provider {
- public:
-  virtual irs::attribute_view& attributes() noexcept = 0;
-  virtual const irs::attribute_view& attributes() const noexcept override final {
-    return const_cast<attribute_view_provider*>(this)->attributes();
-  };
-};
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for getting mutable attribute of a specific type
+////////////////////////////////////////////////////////////////////////////////
+template<typename T,
+         typename Provider,
+         typename = std::enable_if_t<std::is_base_of_v<attribute, T>>>
+inline T* get_mutable(Provider* attrs) {
+  return static_cast<T*>(attrs->get_mutable(type<T>::id()));
+}
 
-NS_END
 NS_END
 
 #endif

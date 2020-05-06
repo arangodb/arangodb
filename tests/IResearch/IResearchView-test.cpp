@@ -3737,7 +3737,7 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
       EXPECT_TRUE(false == field[1].shouldExpand);
       EXPECT_TRUE(false == meta._primarySort.direction(1));
     }
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._primarySortCompression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._primarySortCompression);
   }
 
   auto newProperties = arangodb::velocypack::Parser::fromJson(
@@ -3788,7 +3788,7 @@ TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
       EXPECT_TRUE(false == field[1].shouldExpand);
       EXPECT_TRUE(false == meta._primarySort.direction(1));
     }
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._primarySortCompression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._primarySortCompression);
   }
 }
 
@@ -7389,18 +7389,18 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(4, meta._storedValues.columns().size());
     EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[0].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[0].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.a"), meta._storedValues.columns()[0].name);
     EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[1].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[1].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.b.b1"), meta._storedValues.columns()[1].name);
     EXPECT_EQ(2, meta._storedValues.columns()[2].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[2].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[2].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.c") +
               arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
               meta._storedValues.columns()[2].name);
     EXPECT_EQ(3, meta._storedValues.columns()[3].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[3].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[3].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.e") +
               arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.f.f1" +
               arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.g", meta._storedValues.columns()[3].name);
@@ -7433,19 +7433,19 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(5, meta._storedValues.columns().size());
     EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[0].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[0].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.a"), meta._storedValues.columns()[0].name);
     EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[1].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[1].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.b"), meta._storedValues.columns()[1].name);
     EXPECT_EQ(1, meta._storedValues.columns()[2].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[2].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[2].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.c"), meta._storedValues.columns()[2].name);
     EXPECT_EQ(1, meta._storedValues.columns()[3].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[3].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[3].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.d"), meta._storedValues.columns()[3].name);
     EXPECT_EQ(2, meta._storedValues.columns()[4].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[4].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[4].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.c") +
               arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
               meta._storedValues.columns()[4].name);
@@ -7477,9 +7477,9 @@ TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(2, meta._storedValues.columns().size());
     EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
-    EXPECT_EQ(&irs::compression::none::type(), meta._storedValues.columns()[0].compression);
+    EXPECT_EQ(irs::type<irs::compression::none>::id(), meta._storedValues.columns()[0].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.a"), meta._storedValues.columns()[0].name);
     EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
-    EXPECT_EQ(&irs::compression::lz4::type(), meta._storedValues.columns()[1].compression);
+    EXPECT_EQ(irs::type<irs::compression::lz4>::id(), meta._storedValues.columns()[1].compression);
     EXPECT_EQ(arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("obj.b.b1"), meta._storedValues.columns()[1].name);
 }

@@ -58,7 +58,10 @@ struct IRESEARCH_API by_column_existence_options {
 class IRESEARCH_API by_column_existence final
     : public filter_base<by_column_existence_options> {
  public:
-  DECLARE_FILTER_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_column_existence";
+  }
+
   DECLARE_FACTORY();
 
   using filter::prepare;
@@ -67,7 +70,7 @@ class IRESEARCH_API by_column_existence final
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const override;
+    const attribute_provider* ctx) const override;
 }; // by_column_existence
 
 NS_END // ROOT

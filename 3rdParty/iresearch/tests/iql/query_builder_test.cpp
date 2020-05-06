@@ -41,7 +41,9 @@
 namespace tests {
   class test_sort: public iresearch::sort {
    public:
-    DECLARE_SORT_TYPE();
+    static constexpr irs::string_ref type_name() noexcept {
+      return __FILE__ ":" STRINGIFY(__LINE__);
+    }
     DECLARE_FACTORY();
 
     class prepared : sort::prepared {
@@ -63,9 +65,8 @@ namespace tests {
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
           const irs::byte_type* query_attrs,
-          const irs::attribute_view& doc_attrs,
-          irs::boost_t
-      ) const override {
+          const irs::attribute_provider& doc_attrs,
+          irs::boost_t) const override {
         return { nullptr, nullptr };
       }
       virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -85,11 +86,10 @@ namespace tests {
       }
     };
 
-    test_sort():sort(test_sort::type()) {}
+    test_sort():sort(irs::type<test_sort>::get()) {}
     virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
   };
 
-  DEFINE_SORT_TYPE(test_sort)
   DEFINE_FACTORY_DEFAULT(test_sort)
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
@@ -110,7 +110,7 @@ namespace tests {
         auto locale = irs::locale_utils::locale("en");
         const std::string tmp_str;
 
-        irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
+        irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en"); // stream needed only to load stopwords
 
         if (czOldStopwordPath) {
           iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
@@ -127,7 +127,7 @@ namespace tests {
    public:
     analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
       : templates::string_field(name, value),
-        token_stream_(irs::analysis::analyzers::get("text", irs::text_format::text, "en")) {
+        token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
       if (!token_stream_) {
         throw std::runtime_error("Failed to get 'text' analyzer for args: en");
       }
@@ -197,17 +197,17 @@ namespace tests {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(irs::null_token_stream::value_null());
+        field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(irs::boolean_token_stream::value_true());
+        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(irs::boolean_token_stream::value_true());
+        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_number()) {
         const double dValue = data.as_number<double_t>();
 
@@ -263,10 +263,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     double dValue = strtod(iresearch::ref_cast<char>(value).c_str(), nullptr);
     iresearch::numeric_token_stream stream;
     stream.reset((double_t)dValue);
-    auto& term = stream.attributes().get<iresearch::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     while (stream.next()) {
-      buf.append(term->value());
+      buf.append(term->value);
     }
 
     return true;

@@ -151,7 +151,6 @@ set(IResearch_core_sources
   ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
-  ./utils/text_format.cpp
   ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
   ./utils/utf8_path.cpp
@@ -198,7 +197,6 @@ set(IResearch_core_headers
   ./search/sort.hpp
   ./search/cost.hpp
   ./search/filter.hpp
-  ./search/score_doc_iterators.hpp
   ./search/term_filter.hpp
   ./search/phrase_filter.hpp
   ./search/same_position_filter.hpp
@@ -276,6 +274,7 @@ include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${BFD_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
   ${Unwind_INCLUDE_DIR}
+  ${FROZEN_INCLUDE_DIR}
 )
 
 
@@ -416,7 +415,6 @@ if(MSVC)
  )
 endif()
 
-
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
@@ -522,7 +520,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${BFD_SHARED_LIBS}
   ${Boost_SHARED_sharedRT_LIBRARIES}
   ${Lz4_SHARED_LIB}
-  ${ICU_SHAREDLIBS}
+  ${ICU_SHARED_LIBS}
   ${Unwind_SHARED_LIBS}
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}

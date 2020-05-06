@@ -91,7 +91,8 @@ struct text_token_stream::state_t {
   std::string tmp_buf; // used by processTerm(...)
   std::shared_ptr<icu::Transliterator> transliterator;
   ngram_state_t ngram;
-  bytes_term term;
+  bstring term_buf;
+  bytes_ref term;
   uint32_t start{};
   uint32_t end{};
   state_t(const options_t& opts, const stopwords_t& stopw) :
@@ -427,7 +428,8 @@ bool process_term(
 
     if (value) {
       static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
-      state.term.value(irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value), sb_stemmer_length(state.stemmer.get())));
+      state.term = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value),
+                                  sb_stemmer_length(state.stemmer.get()));
 
       return true;
     }
@@ -437,7 +439,8 @@ bool process_term(
   // use the value of the unstemmed token
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  state.term.value(irs::bstring(irs::ref_cast<irs::byte_type>(word_utf8).c_str(), word_utf8.size()));
+  state.term_buf.assign(reinterpret_cast<const irs::byte_type*>(word_utf8.c_str()), word_utf8.size());
+  state.term = state.term_buf;
 
   return true;
 }
@@ -891,8 +894,6 @@ bool normalize_text_config(const irs::string_ref& args,
   return false;
 }
 
-
-
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
@@ -903,8 +904,6 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
@@ -912,22 +911,16 @@ NS_BEGIN(analysis)
 char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOPWORD_PATH";
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  static functions
-// -----------------------------------------------------------------------------
-
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text")
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : analyzer(text_token_stream::type()),
-    attrs_(3), // offset + bytes_term + increment
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offs_         },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_stream>::get()},
     state_(memory::make_unique<state_t>(options, stopwords)) {
-  attrs_.emplace(offs_);
-  attrs_.emplace(term_);
-  attrs_.emplace(inc_);
 }
 
 // -----------------------------------------------------------------------------
@@ -941,9 +934,7 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
                          normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(
-    const irs::string_ref& locale
-) {
+/*static*/ analyzer::ptr text_token_stream::make(const irs::string_ref& locale) {
   return make_text(locale);
 }
 
@@ -954,7 +945,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // reset term attribute
-  term_.value(bytes_ref::NIL);
+  term_.value = bytes_ref::NIL;
 
   // reset offset attribute
   offs_.start = integer_traits<uint32_t>::const_max;
@@ -1051,11 +1042,11 @@ bool text_token_stream::reset(const string_ref& data) {
   state_->break_iterator->setText(state_->data);
 
   // reset term state for ngrams
-  state_->term.value(bytes_ref::NIL);
+  state_->term = bytes_ref::NIL;
   state_->start = integer_traits<uint32_t>::const_max;
   state_->end = integer_traits<uint32_t>::const_max;
   state_->set_ngram_finished();
-  inc_.clear();
+  inc_.value = 1;
 
   return true;
 }
@@ -1073,7 +1064,7 @@ bool text_token_stream::next() {
       }
     }
   } else if (next_word()) {
-    term_.value(state_->term.value());
+    term_.value = state_->term;
     offs_.start = state_->start;
     offs_.end = state_->end;
 
@@ -1108,14 +1099,14 @@ bool text_token_stream::next_word() {
 }
 
 bool text_token_stream::next_ngram() {
-  auto begin = state_->term.value().begin();
-  auto end = state_->term.value().end();
+  auto begin = state_->term.begin();
+  auto end = state_->term.end();
   assert(begin != end);
 
   // if there are no ngrams yet then a new word started
   if (state_->is_ngram_finished()) {
     state_->ngram.it = begin;
-    inc_.clear();
+    inc_.value = 1;
     // find the first ngram > min
     do {
       state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
@@ -1160,7 +1151,8 @@ bool text_token_stream::next_ngram() {
     static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
 
     auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
-    term_.value(irs::bstring(state_->term.value().c_str(), size));
+    term_buf_.assign(state_->term.c_str(), size);
+    term_.value = term_buf_;
     offs_.start = state_->start;
     offs_.end = state_->start + size;
 

@@ -34,19 +34,14 @@ NS_ROOT
 // --SECTION--                                                      filter_boost
 // -----------------------------------------------------------------------------
 
-filter_boost::filter_boost() noexcept
-  : basic_attribute<boost_t>(no_boost()) {
-}
-
 REGISTER_ATTRIBUTE(filter_boost);
-DEFINE_ATTRIBUTE_TYPE(filter_boost);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
 
-sort::sort(const type_id& type) noexcept
-  : type_(&type) {
+sort::sort(const type_info& type) noexcept
+  : type_(type.id()) {
 }
 
 // ----------------------------------------------------------------------------
@@ -58,7 +53,7 @@ const order& order::unordered() {
   return ord;
 }
 
-void order::remove(const type_id& type) {
+void order::remove(type_info::type_id type) {
   order_.erase(
     std::remove_if(
       order_.begin(), order_.end(),
@@ -181,7 +176,7 @@ order::prepared::scorers::scorers(
     const sub_reader& segment,
     const term_reader& field,
     const byte_type* stats_buf,
-    const attribute_view& doc,
+    const attribute_provider& doc,
     boost_t boost) {
   scorers_.reserve(buckets.size());
 

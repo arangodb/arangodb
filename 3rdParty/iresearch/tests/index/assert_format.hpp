@@ -65,7 +65,7 @@ class posting {
     return *this;
   }
 
-  void add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs);
+  void add(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs);
 
   bool operator<(const posting& rhs) const {
     return id_ < rhs.id_;
@@ -251,7 +251,9 @@ class term_reader : public irs::term_reader {
   virtual uint64_t docs_count() const override { return data_.docs.size(); }
   virtual const irs::bytes_ref& (min)() const override { return min_; }
   virtual const irs::bytes_ref& (max)() const override { return max_; }
-  virtual const irs::attribute_view& attributes() const noexcept override { return attrs_; }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return attrs_.get(type, {}).get();
+  }
 
  private:
   const tests::field& data_;
@@ -359,7 +361,10 @@ class field_writer : public irs::field_writer {
 
 class format : public irs::format {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "iresearch_format_tests";
+  }
+
   DECLARE_FACTORY();
   format();
   format(const index_segment& data);

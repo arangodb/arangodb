@@ -448,7 +448,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ASSERT_TRUE(analyzers
                     .emplace(result, name, "v8-analyzer-empty",
                              VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
-                             irs::flags{irs::frequency::type()})
+                             irs::flags{irs::type<irs::frequency>::id()})
                     .ok());
   }
 

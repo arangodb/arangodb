@@ -204,7 +204,7 @@ struct field_collector final: public irs::sort::field_collector {
       const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
 
-    auto& freq = field.attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(field);
 
     if (freq) {
       total_term_freq += freq->value;
@@ -239,11 +239,10 @@ struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
 
   virtual void collect(
-    const irs::sub_reader& /*segment*/,
-    const irs::term_reader& /*field*/,
-    const irs::attribute_view& term_attrs
-  ) override {
-    auto& meta = term_attrs.get<irs::term_meta>();
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& /*field*/,
+      const irs::attribute_provider& term_attrs) override {
+    auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
       docs_with_term += meta->docs_count;
@@ -408,9 +407,12 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
   }
 
   virtual const flags& features() const override {
+
+
     static const irs::flags FEATURES[] = {
-      irs::flags({ irs::frequency::type() }), // without normalization
-      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+
+      irs::flags({ type<frequency>::get() }), // without normalization
+      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
     };
 
     return FEATURES[b_ != 0.f];
@@ -424,22 +426,32 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
-      const attribute_view& doc_attrs,
-      boost_t boost
-  ) const override {
-    auto& freq = doc_attrs.get<frequency>();
+      const attribute_provider& doc_attrs,
+      boost_t boost) const override {
+    auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<bm25::const_score_ctx>(boost),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+          auto& state = *static_cast<const bm25::const_score_ctx*>(ctx);
+          irs::sort::score_cast<score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(query_stats);
-    auto& filter_boost = doc_attrs.get<irs::filter_boost>();
+    auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
     if (b_ != 0.f) {
       irs::norm norm;
 
-      auto& doc = doc_attrs.get<document>();
+      auto* doc = irs::get<document>(doc_attrs);
 
       if (!doc) {
         // we need 'document' attribute to be exposed
@@ -449,7 +461,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       if (norm.reset(segment, field.meta().norm, *doc)) {
         if (filter_boost) {
           return {
-            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm), filter_boost.get()),
+            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq, std::move(norm), filter_boost),
             [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
             assert(state.filter_boost_);
@@ -462,7 +474,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
           };
         } else {
           return {
-            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
+            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq, std::move(norm)),
             [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
               auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
 
@@ -477,7 +489,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     // BM15
     if (filter_boost) {
       return {
-        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get(), filter_boost.get()),
+        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq, filter_boost),
         [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
         assert(state.filter_boost_);
@@ -487,7 +499,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       };
     } else {
       return {
-        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
+        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq),
         [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
           auto& state = *static_cast<const bm25::score_ctx*>(ctx);
 
@@ -509,14 +521,13 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
 NS_END // bm25
 
-DEFINE_SORT_TYPE_NAMED(irs::bm25_sort, "bm25")
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/
 ) noexcept
-  : sort(bm25_sort::type()),
+  : sort(irs::type<bm25_sort>::get()),
     k_(k),
     b_(b) {
 }

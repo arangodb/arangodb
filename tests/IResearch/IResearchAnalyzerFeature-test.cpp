@@ -271,67 +271,67 @@ struct Analyzer {
 std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
       {"identity",
-       {"identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()}}},
+       {"identity", irs::string_ref::NIL, {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id()}}},
       {"text_de",
        {"text",
         "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_en",
        {"text",
         "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_es",
        {"text",
         "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_fi",
        {"text",
         "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_fr",
        {"text",
         "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_it",
        {"text",
         "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_nl",
        {"text",
         "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_no",
        {"text",
         "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_pt",
        {"text",
         "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_ru",
        {"text",
         "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_sv",
        {"text",
         "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
       {"text_zh",
        {"text",
         "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
         "}",
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+        {irs::type<irs::frequency>::id(), irs::type<irs::norm>::id(), irs::type<irs::position>::id()}}},
   };
 
   return analyzers;
@@ -552,19 +552,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_valid) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                                VPackParser::fromJson("\"abcd\"")->slice(),
-                               irs::flags{irs::frequency::type()});
+                               irs::flags{irs::type<irs::frequency>::id()});
     EXPECT_TRUE(res.ok());
     EXPECT_NE(result.first, nullptr);
   }
   auto pool = feature.get(analyzerName());
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::frequency::type()}), pool->features());
+  EXPECT_EQ(irs::flags({irs::type<irs::frequency>::id()}), pool->features());
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_TRUE(feature
                     .emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abcd\"")->slice(),
-                             irs::flags{irs::frequency::type()})
+                             irs::flags{irs::type<irs::frequency>::id()})
                     .ok());
     EXPECT_NE(result.first, nullptr);
   }
@@ -622,7 +622,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_features) {
     EXPECT_FALSE(feature
                      .emplace(result, analyzerName(), "TestAnalyzer",
                               VPackParser::fromJson("\"abc\"")->slice(),
-                              irs::flags{irs::frequency::type()})
+                              irs::flags{irs::type<irs::frequency>::id()})
                      .ok());
     EXPECT_EQ(result.first, nullptr);
   }
@@ -652,7 +652,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_type) {
     EXPECT_FALSE(feature
                      .emplace(result, analyzerName(), "invalid",
                               VPackParser::fromJson("\"abc\"")->slice(),
-                              irs::flags{irs::frequency::type()})
+                              irs::flags{irs::type<irs::frequency>::id()})
                      .ok());
     EXPECT_EQ(result.first, nullptr);
   }
@@ -730,7 +730,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_position_without_freq
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::position::type()});
+                             {irs::type<irs::position>::id()});
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -742,7 +742,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_properties_too_large)
   std::string properties(1024 * 1024 + 1, 'x');  // +1 char longer then limit
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::position::type()});
+                             {irs::type<irs::position>::id()});
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -764,12 +764,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   feature.prepare();  // add static analyzers
   auto res = feature.emplace(result, "identity", "identity", VPackSlice::noneSlice(),
-                             irs::flags{irs::frequency::type(), irs::norm::type()});
+                             irs::flags{irs::type<irs::frequency>::id(), irs::type<irs::norm>::id()});
   EXPECT_TRUE(res.ok());
   EXPECT_NE(result.first, nullptr);
   auto pool = feature.get("identity");
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
+  EXPECT_EQ(irs::flags({irs::type<irs::norm>::id(), irs::type<irs::frequency>::id()}), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
   feature.unprepare();
@@ -995,7 +995,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_invalid_type_adding_voc
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer) {
   auto pool = feature().get("identity");
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
+  EXPECT_EQ(irs::flags({irs::type<irs::norm>::id(), irs::type<irs::frequency>::id()}), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1005,7 +1005,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases
   ASSERT_NE(sysVocbase, nullptr);
   auto pool = feature().get("identity", *sysVocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
-  EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
+  EXPECT_EQ(irs::flags({irs::type<irs::norm>::id(), irs::type<irs::frequency>::id()}), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
 }
@@ -1179,7 +1179,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
 TEST_F(IResearchAnalyzerFeatureTest, test_identity_static) {
   auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
   ASSERT_NE(nullptr, pool);
-  EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
+  EXPECT_EQ(irs::flags({irs::type<irs::norm>::id(), irs::type<irs::frequency>::id()}), pool->features());
   EXPECT_EQ("identity", pool->name());
   auto analyzer = pool->get();
   ASSERT_NE(nullptr, analyzer);
@@ -1201,7 +1201,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
   EXPECT_FALSE(!feature.get("identity"));
   auto pool = feature.get("identity");
   ASSERT_NE(nullptr, pool);
-  EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
+  EXPECT_EQ(irs::flags({irs::type<irs::norm>::id(), irs::type<irs::frequency>::id()}), pool->features());
   EXPECT_EQ("identity", pool->name());
   auto analyzer = pool->get();
   ASSERT_NE(nullptr, analyzer);
@@ -1435,7 +1435,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_static_analyzer_features) {
     EXPECT_EQ(analyzerEntry.first, pool->name());
     auto analyzer = pool->get();
     EXPECT_FALSE(!analyzer);
-    auto& term = analyzer->attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(*analyzer);
     EXPECT_FALSE(!term);
   }
   feature.unprepare();
@@ -1740,7 +1740,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
         std::string expectedProperties;
 
         EXPECT_TRUE(irs::analysis::analyzers::normalize(
-            expectedProperties, analyzer->type(), irs::text_format::vpack,
+            expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
             arangodb::iresearch::ref<char>(
                 VPackParser::fromJson(itr->second.second)->slice()),
             false));
@@ -1798,7 +1798,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerA",
                              "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::frequency::type()})
+                             {irs::type<irs::frequency>::id()})
                     .ok());
     EXPECT_TRUE(result.first);
     EXPECT_TRUE(feature.get(arangodb::StaticStrings::SystemDatabase +
@@ -1882,7 +1882,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
     ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
                     rhs, "test", "TestAnalyzer",
                     VPackParser::fromJson("\"abcd\"")->slice(),
-                    irs::flags{irs::frequency::type()})
+                    irs::flags{irs::type<irs::frequency>::id()})
                     .ok());
     ASSERT_NE(nullptr, rhs);
     ASSERT_NE(lhs, rhs);
@@ -2175,7 +2175,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 
     std::string expectedProperties;
     EXPECT_TRUE(irs::analysis::analyzers::normalize(
-        expectedProperties, analyzer->type(), irs::text_format::vpack,
+        expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(itr->second.properties), false));
 
     EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
@@ -2227,7 +2227,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       std::string expectedProperties;
       EXPECT_TRUE(irs::analysis::analyzers::normalize(
-          expectedProperties, analyzer->type(), irs::text_format::vpack,
+          expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
@@ -2287,7 +2287,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       std::string expectedProperties;
       EXPECT_TRUE(irs::analysis::analyzers::normalize(
-          expectedProperties, analyzer->type(), irs::text_format::vpack,
+          expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
@@ -2329,7 +2329,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       std::string expectedProperties;
       EXPECT_TRUE(irs::analysis::analyzers::normalize(
-          expectedProperties, analyzer->type(), irs::text_format::vpack,
+          expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
@@ -2386,7 +2386,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       std::string expectedproperties;
       EXPECT_TRUE(irs::analysis::analyzers::normalize(
-          expectedproperties, analyzer->type(), irs::text_format::vpack,
+          expectedproperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
       EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedproperties),
@@ -3238,7 +3238,7 @@ std::set<typename Container::value_type> makeVPackPropExpectedSet(const Containe
     std::string normalizedProperties;
     auto vpack = VPackParser::fromJson(expectedEntry._properties);
     EXPECT_TRUE(irs::analysis::analyzers::normalize(
-        normalizedProperties, expectedEntry._type, irs::text_format::vpack,
+        normalizedProperties, expectedEntry._type, irs::type<irs::text_format::vpack>::get(),
         arangodb::iresearch::ref<char>(vpack->slice()), false));
     expectedSet.emplace(expectedEntry._name, normalizedProperties,
                         expectedEntry._features, expectedEntry._type);
@@ -3487,67 +3487,67 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     std::vector<ExpectedType> expected = {
         {"identity",
          "{}",
-         {irs::frequency::type(), irs::norm::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()},
          "identity"},
         {"text_de",
          "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_en",
          "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_es",
          "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_fi",
          "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_fr",
          "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_it",
          "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_nl",
          "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_no",
          "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_pt",
          "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_ru",
          "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_sv",
          "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
         {"text_zh",
          "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] "
          "}",
-         {irs::frequency::type(), irs::norm::type(), irs::position::type()},
+         {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()},
          "text"},
     };
 

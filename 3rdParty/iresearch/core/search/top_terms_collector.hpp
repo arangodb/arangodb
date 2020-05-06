@@ -174,7 +174,7 @@ template<typename State,
     state_.term = &terms.value();
 
     // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
+    auto* meta = irs::get<term_meta>(terms);
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 

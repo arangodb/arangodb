@@ -161,7 +161,7 @@ class RestAnalyzerHandlerTest
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "rest-analyzer-empty"s,
                            VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
-                           irs::flags{irs::frequency::type()}));
+                           irs::flags{irs::type<irs::frequency>::id()}));
   };
 
   // Creates a new database

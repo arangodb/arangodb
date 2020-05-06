@@ -992,7 +992,7 @@ Result IResearchLink::init(
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::compression::type_id const& primarySortCompression) {
+    irs::type_info::type_id primarySortCompression) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1113,7 +1113,7 @@ Result IResearchLink::initDataStore(
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
   // as values provided may be temporary
-  std::map<std::string, irs::compression::type_id const&> compressionMap;
+  std::map<std::string, irs::type_info::type_id const&> compressionMap;
   for (auto c : storedColumns) {
     if (ADB_LIKELY(c.compression != nullptr)) {
       compressionMap.emplace(c.name, *c.compression);
@@ -1125,16 +1125,17 @@ Result IResearchLink::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
   options.column_info =
-    [encrypt, comprMap = std::move(compressionMap), &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+    [encrypt, comprMap = std::move(compressionMap), &primarySortCompression](
+        const irs::string_ref& name) -> irs::column_info {
       if (name.null()) {
-        return { primarySortCompression, {}, encrypt };
+        return { primarySortCompression(), {}, encrypt };
       }
       auto compress = comprMap.find(name);
       if (compress != comprMap.end()) {
         // do not waste resources to encrypt primary key column
-        return { compress->second, {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+        return { compress->second(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       } else {
-        return { getDefaultCompression(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+        return { getDefaultCompression()(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       }
     };
 

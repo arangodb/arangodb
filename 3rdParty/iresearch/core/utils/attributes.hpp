@@ -25,7 +25,9 @@
 #define IRESEARCH_ATTRIBUTES_H
 
 #include <map>
+#include <set>
 
+#include "attributes_provider.hpp"
 #include "map_utils.hpp"
 #include "noncopyable.hpp"
 #include "memory.hpp"
@@ -36,44 +38,36 @@
 #include "noncopyable.hpp"
 #include "string.hpp"
 
-#include <set>
-
 NS_ROOT
 
+struct IRESEARCH_API attributes {
+  static bool exists(
+    const string_ref& name,
+    bool load_library = true);
+
+  static type_info get(
+    const string_ref& name,
+    bool load_library = true) noexcept;
+
+  attributes() = delete;
+};
+
 //////////////////////////////////////////////////////////////////////////////
-/// @class attribute 
+/// @class attribute
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
 ///        all derived classes must implement the following function:
-///        static const attribute::type_id& type() noexcept
+///        static const attribute::type_id type() noexcept
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API attribute {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id 
-  //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    static bool exists(const string_ref& name, bool load_library = true);
-    static const type_id* get(
-      const string_ref& name,
-      bool load_library = true
-    ) noexcept;
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  }; // type_id
-};
+struct IRESEARCH_API attribute { };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief base class for all attributes that can be deallocated via a ptr of
 ///        this struct type using a virtual destructor
 ///        an empty struct tag type with a virtual destructor
 ///        all derived classes must implement the following functions:
-///        static const attribute::type_id& type() noexcept
+///        static const attribute::type_id type() noexcept
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 ///        static ptr make(Args&&... args)
 ///          via DECLARE_FACTORY()/DECLARE_FACTORY()
@@ -84,98 +78,42 @@ struct IRESEARCH_API stored_attribute : attribute {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              Attribute definition
-// -----------------------------------------------------------------------------
-
-#define DECLARE_ATTRIBUTE_TYPE() DECLARE_TYPE_ID(::iresearch::attribute::type_id)
-#define DEFINE_ATTRIBUTE_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, ::iresearch::attribute::type_id) { \
-  static ::iresearch::attribute::type_id type(class_name); \
-  return type; \
-}
-#define DEFINE_ATTRIBUTE_TYPE(class_type) DEFINE_ATTRIBUTE_TYPE_NAMED(class_type, #class_type)
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                            Attribute registration
 // -----------------------------------------------------------------------------
 
 class IRESEARCH_API attribute_registrar {
  public:
-  attribute_registrar(
-    const attribute::type_id& type,
-    const char* source = nullptr
-  );
+  explicit attribute_registrar(
+    const type_info& type,
+    const char* source = nullptr);
   operator bool() const noexcept;
+
  private:
   bool registered_;
 };
 
-#define REGISTER_ATTRIBUTE__(attribute_name, line, source) static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type(), source)
+#define REGISTER_ATTRIBUTE__(attribute_name, line, source) \
+  static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(::iresearch::type<attribute_name>::get(), source)
 #define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
 #define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class basic_attribute
-/// @brief represents simple attribute holds a single value 
-//////////////////////////////////////////////////////////////////////////////
-template<typename T>
-struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
-  typedef T value_t;
-
-  explicit basic_attribute(const T& value = T())
-    : value(value) {
-  }
-
-  bool operator==(const basic_attribute& rhs) const {
-    return value == rhs.value;
-  }
-
-  bool operator==(const T& rhs) const {
-    return value == rhs;
-  }
-
-  T value;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class basic_stored_attribute
-/// @brief represents simple attribute holds a single value
-//////////////////////////////////////////////////////////////////////////////
-template<typename T>
-struct IRESEARCH_API_TEMPLATE basic_stored_attribute : stored_attribute {
-  typedef T value_t;
-
-  explicit basic_stored_attribute(const T& value = T())
-    : value(value) {
-  }
-
-  bool operator==(const basic_stored_attribute& rhs) const {
-    return value == rhs.value;
-  }
-
-  bool operator==(const T& rhs) const {
-    return value == rhs;
-  }
-
-  T value;
-};
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class flags
-/// @brief represents a set of features enabled for the particular field 
+/// @brief represents a set of features enabled for the particular field
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API flags {
- public:  
+ public:
   // std::set<...> is 25% faster than std::unordered_set<...> as per profile_bulk_index test
-  typedef std::set<const attribute::type_id*> type_map;
+  typedef std::set<type_info::type_id> type_map;
 
   static const flags& empty_instance();
 
   flags() = default;
   flags(const flags&) = default;
-  flags(flags&& rhs) noexcept;
-  flags(std::initializer_list<const attribute::type_id*> flags);
-  flags& operator=(std::initializer_list<const attribute::type_id*> flags);
-  flags& operator=(flags&& rhs) noexcept;
+  flags(flags&& rhs) = default;
+  flags(std::initializer_list<type_info> flags);
+  flags& operator=(std::initializer_list<type_info> flags);
+  flags& operator=(flags&& rhs) = default;
   flags& operator=(const flags&) = default;
 
   type_map::const_iterator begin() const noexcept { return map_.begin(); }
@@ -183,32 +121,32 @@ class IRESEARCH_API flags {
 
   template< typename T >
   flags& add() {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
-    return add(attribute_t::type());
+    return add(type<attribute_t>::id());
   }
 
-  flags& add(const attribute::type_id& type) {
-    map_.insert(&type);
+  flags& add(type_info::type_id type) {
+    map_.insert(type);
     return *this;
   }
-  
-  template< typename T >
+
+  template<typename T>
   flags& remove() {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of<attribute, T>::value, T
     >::type attribute_t;
 
-    return remove(attribute_t::type());
+    return remove(type<attribute_t>::id());
   }
 
-  flags& remove(const attribute::type_id& type) {
-    map_.erase(&type);
+  flags& remove(type_info::type_id type) {
+    map_.erase(type);
     return *this;
   }
-  
+
   bool empty() const noexcept { return map_.empty(); }
   size_t size() const noexcept { return map_.size(); }
   void clear() noexcept { map_.clear(); }
@@ -216,17 +154,17 @@ class IRESEARCH_API flags {
     // NOOP for std::set
   }
 
-  template< typename T >
+  template<typename T>
   bool check() const noexcept {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
-    return check(attribute_t::type());
+    return check(type<attribute_t>::id());
   }
 
-  bool check(const attribute::type_id& type) const noexcept {
-    return map_.end() != map_.find( &type );
+  bool check(type_info::type_id type) const noexcept {
+    return map_.end() != map_.find(type);
   }
 
   bool operator==(const flags& rhs) const {
@@ -240,9 +178,7 @@ class IRESEARCH_API flags {
   flags& operator|=(const flags& rhs) {
     std::for_each(
       rhs.map_.begin(), rhs.map_.end() ,
-      [this] ( const attribute::type_id* type ) {
-        add( *type );
-    } );
+      [this] (type_info::type_id type) { map_.insert(type); });
     return *this;
   }
 
@@ -252,14 +188,14 @@ class IRESEARCH_API flags {
     if (lhs_map->size() > rhs_map->size()) {
       std::swap(lhs_map, rhs_map);
     }
-    
+
     flags out;
     out.reserve(lhs_map->size());
 
     for (auto lhs_it = lhs_map->begin(), lhs_end = lhs_map->end(); lhs_it != lhs_end; ++lhs_it) {
       auto rhs_it = rhs_map->find(*lhs_it);
       if (rhs_map->end() != rhs_it) {
-        out.add(**rhs_it);
+        out.map_.insert(*rhs_it);
       }
     }
 
@@ -270,7 +206,7 @@ class IRESEARCH_API flags {
     flags out(*this);
     out.reserve(rhs.size());
     for (auto it = rhs.map_.begin(), end = rhs.map_.end(); it != end; ++it) {
-      out.add(**it);
+      out.map_.insert(*it);
     }
     return out;
   }
@@ -281,11 +217,17 @@ class IRESEARCH_API flags {
       if (rhs_map.end() == rhs_map.find(entry)) {
         return false;
       }
-    } 
+    }
     return true;
-  } 
+  }
 
  private:
+  template<
+    typename T,
+    template <typename, typename...> class Ref,
+    typename... Args>
+  friend class attribute_map;
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   type_map map_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
@@ -334,7 +276,7 @@ template<
     map_.clear();
   }
 
-  bool contains(const attribute::type_id& type) const noexcept {
+  bool contains(type_info::type_id type) const noexcept {
     return map_.find(type) != map_.end();
   }
 
@@ -344,16 +286,14 @@ template<
       std::is_base_of<attribute, A >::value, A
     >::type type;
 
-    return contains(type::type());
+    return contains(irs::type<type>::id());
   }
 
   flags features() const {
     flags features;
 
-    features.reserve(size());
-
     for (auto& entry: map_) {
-      features.add(*entry.first);
+      features.map_.insert(entry.first);
     }
 
     return features;
@@ -365,7 +305,7 @@ template<
       std::is_base_of<attribute, A>::value, A
     >::type type;
 
-    auto* value = get(type::type());
+    auto* value = get(irs::type<type>::id());
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<typename ref<A>::type*>(value);
@@ -378,7 +318,7 @@ template<
       std::is_base_of<attribute, A>::value, A
     >::type type;
 
-    auto& value = get(type::type(), reinterpret_cast<typename ref<T>::type&>(fallback));
+    auto& value = get(irs::type<type>::id(), reinterpret_cast<typename ref<T>::type&>(fallback));
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<typename ref<A>::type&>(value);
@@ -392,22 +332,42 @@ template<
     >::type type;
 
     auto& value = get(
-      type::type(), reinterpret_cast<const typename ref<T>::type&>(fallback)
-    );
+      irs::type<type>::id(),
+      reinterpret_cast<const typename ref<T>::type&>(fallback));
 
     // safe to reinterpret because layout/size is identical
     return reinterpret_cast<const typename ref<A>::type&>(value);
   }
 
-  bool remove(const attribute::type_id& type) {
-    return map_.erase(&type) > 0;
+  typename ref<T>::type& get(
+      type_info::type_id type,
+      typename ref<T>::type& fallback) noexcept {
+    const auto itr = map_.find(type);
+
+    return map_.end() == itr ? fallback : itr->second;
+  }
+
+  typename ref<T>::type* get(type_info::type_id type) noexcept {
+    const auto itr = map_.find(type);
+
+    return map_.end() == itr ? nullptr : &(itr->second);
+  }
+
+  const typename ref<T>::type& get(
+      type_info::type_id type,
+      const typename ref<T>::type& fallback = ref<T>::NIL) const noexcept {
+    return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
+  }
+
+  bool remove(type_info::type_id type) {
+    return map_.erase(type) > 0;
   }
 
   template<typename A>
   inline bool remove() {
     typedef typename std::enable_if<std::is_base_of<attribute, A>::value, A>::type type;
 
-    return remove(type::type());
+    return remove(irs::type<type>::id());
   }
 
   template<typename Visitor>
@@ -425,37 +385,17 @@ template<
   bool empty() const noexcept { return map_.empty(); }
 
  protected:
-  typename ref<T>::type& emplace(bool& inserted, const attribute::type_id& type) {
-    const auto res = map_.try_emplace(&type);
+  typename ref<T>::type& emplace(bool& inserted, type_info::type_id type) {
+    const auto res = map_.try_emplace(type);
 
     inserted = res.second;
 
     return res.first->second;
   }
 
-  typename ref<T>::type* get(const attribute::type_id& type) noexcept {
-    const auto itr = map_.find(&type);
-
-    return map_.end() == itr ? nullptr : &(itr->second);
-  }
-
-  typename ref<T>::type& get(
-      const attribute::type_id& type,
-      typename ref<T>::type& fallback) noexcept {
-    const auto itr = map_.find(&type);
-
-    return map_.end() == itr ? fallback : itr->second;
-  }
-
-  const typename ref<T>::type& get(
-      const attribute::type_id& type,
-      const typename ref<T>::type& fallback = ref<T>::NIL) const noexcept {
-    return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
-  }
-
  private:
   // std::map<...> is 25% faster than std::unordered_map<...> as per profile_bulk_index test
-  typedef std::map<const attribute::type_id*, typename ref<T>::type> map_t;
+  typedef std::map<type_info::type_id, typename ref<T>::type> map_t;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   map_t map_;
@@ -464,7 +404,7 @@ template<
   template<typename Attributes, typename Visitor>
   static bool visit(Attributes& attrs, const Visitor& visitor) {
     for (auto& entry : attrs.map_) {
-      if (!visitor(*entry.first, entry.second)) {
+      if (!visitor(entry.first, entry.second)) {
         return false;
       }
     }
@@ -518,7 +458,7 @@ class IRESEARCH_API attribute_store
       std::is_base_of<stored_attribute, T>::value, T
     >::type type;
 
-    auto& attr = attribute_map::emplace(inserted, type::type());
+    auto& attr = attribute_map::emplace(inserted, irs::type<type>::id());
 
     if (inserted) {
       attr = type::make(std::forward<Args>(args)...);
@@ -626,7 +566,7 @@ class IRESEARCH_API attribute_view
     >::type type;
 
     bool inserted;
-    auto& attr = attribute_map::emplace(inserted, type::type());
+    auto& attr = attribute_map::emplace(inserted, irs::type<type>::id());
 
     if (inserted) {
       // reinterpret_cast to avoid layout related problems
