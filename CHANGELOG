@@ -3,6 +3,21 @@ v3.6.4 (XXXX-XX-XX)
 
 * Fix invalid value of `isSystem` attribute for non-system databases.
 
+* Fixed issue #11303: The result data of filter operation on edge document with 
+  _from or _to field ALWAYS miss some data on version 3.6.2.
+
+  This bug could have led to some edges from a RocksDB edge index not being 
+  returned when a non-traversal edge lookup was done in an AQL query in an inner 
+  FOR loop. Whether or not edges were withheld depended on whether edges were
+  located within the same prefix domain.
+
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
+  edges. The option is turned on by default. This normally helps with
+  performance in read-only and read-mostly workloads.
+
+* Fix potential undefined behavior in some operations issued to the REST
+  handler at `/_api/collection` in cluster mode.
+
 * Updated OpenSSL to 1.1.1g.
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set

@@ -33,17 +33,17 @@ MMFilesRestCollectionHandler::MMFilesRestCollectionHandler(application_features:
                                                            GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result MMFilesRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
+Result MMFilesRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
                                                            std::string const& command,
                                                            velocypack::Builder& builder) {
   if (command == "rotate") {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(ctx, *coll, AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
     if (res.ok()) {
-      MMFilesCollection* mcoll = static_cast<MMFilesCollection*>(coll.getPhysical());
+      MMFilesCollection* mcoll = static_cast<MMFilesCollection*>(coll->getPhysical());
 
       try {
         res = mcoll->rotateActiveJournal();
