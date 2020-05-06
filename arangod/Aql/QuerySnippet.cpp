@@ -561,9 +561,15 @@ auto QuerySnippet::prepareFirstBranch(
 
       if (!exp.doExpand) {
         TRI_ASSERT(myExp.size() == 1);
-      }
-      if (myExp.size() > 0) {
-        myExpFinal.insert({col->name(), std::move(myExp)});
+      } else {
+        if (myExp.size() > 1) {
+          // Only in this case we really need to do an expansion
+          // Otherwise we get away with only using the main stream for
+          // this server
+          // NOTE: This might differ between servers.
+          // One server might require an expansion (many shards) while another does not (only one shard).
+          myExpFinal.insert({col->name(), std::move(myExp)});
+        }
       }
     }
 
@@ -572,25 +578,21 @@ auto QuerySnippet::prepareFirstBranch(
       TRI_ASSERT(collectionAccessingNode != nullptr);
       TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // set the max loop index (note this will essentially be done only once)
       // we can set first found map to overall size as they all must be the same (asserted above)
       if (myExpFinal.size() > 0) {
         numberOfShardsToPermutate = myExpFinal.begin()->second.size();
       }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // All parts need to have exact same size, they need to be permutated pairwise!
       for (auto const& myExp : myExpFinal) {
         TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.second.size() == numberOfShardsToPermutate);
       }
 #endif
 
-      if (numberOfShardsToPermutate > 1) {
-        // Only in this case we really need to do an expansion
-        // Otherwise we get away with only using the main stream for
-        // this server
-        // NOTE: This might differ between servers.
-        // One server might require an expansion (many shards) while another does not (only one shard).
+      if (myExpFinal.size() > 0) {
+        // we've found at least one entry to be expanded
         localExpansions.emplace(exp.node, std::move(myExpFinal));
       }
     }
