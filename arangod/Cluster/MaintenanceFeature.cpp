@@ -308,8 +308,8 @@ void MaintenanceFeature::beginShutdown() {
             am.getValues("Target/" + path + "/" + std::to_string(jobId));
         if (result.successful()) {
           VPackSlice value = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommManager::path(), "Target",
-                                       path, std::to_string(jobId)});
+              std::vector<std::string>{AgencyCommHelper::path(), "Target", path,
+                                       std::to_string(jobId)});
           if (value.isObject() && value.hasKey("jobId") &&
               value.get("jobId").isEqualString(std::to_string(jobId))) {
             return true;

@@ -78,7 +78,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   }
 
   std::vector<std::string> kv =
-      basics::StringUtils::split(AgencyCommManager::path(key), '/');
+      basics::StringUtils::split(AgencyCommHelper::path(key), '/');
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
 
   auto newData = std::make_shared<VPackBuilder>();
