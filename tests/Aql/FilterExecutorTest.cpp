@@ -59,14 +59,12 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
   RegIdSet outputRegisters;
-  RegIdSetStack registersToKeep;
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(),
-        registersToKeep({}),
         infos(0) {}
 
   auto getSplit() -> FilterExecutorSplitType {

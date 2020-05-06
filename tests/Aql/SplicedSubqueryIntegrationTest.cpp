@@ -75,7 +75,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{{0}};
+    auto toKeepRegisterSet = RegIdSetStack{{0},{0},{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -87,7 +87,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{{0}};
+    auto toKeepRegisterSet = RegIdSetStack{{0}, {0}, {0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -103,7 +103,7 @@ class SplicedSubqueryIntegrationTest
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
-    auto toKeepRegisterSet = RegIdSetStack{{0}};
+    auto toKeepRegisterSet = RegIdSetStack{{0}, {0}, {0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -122,7 +122,7 @@ class SplicedSubqueryIntegrationTest
   auto makeDoNothingRegisterInfos() -> RegisterInfos {
     auto numRegs = size_t{1};
 
-    auto toKeepRegisterSet = RegIdSetStack{{}};
+    auto toKeepRegisterSet = RegIdSetStack{{}, {}, {}};
     for (RegisterId r = 0; r < numRegs; ++r) {
       toKeepRegisterSet.back().emplace(r);
     }

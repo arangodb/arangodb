@@ -1839,8 +1839,11 @@ TEST_F(IResearchViewNodeTest, serialize) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString("RETURN 1"),
-                             nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+  arangodb::aql::Query query(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::aql::QueryString(
+          "let variable = 1 let variable100 = 3 let variable101 = 2 RETURN 1"),
+      nullptr, arangodb::velocypack::Parser::fromJson("{}"));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0, false);
@@ -1858,6 +1861,9 @@ TEST_F(IResearchViewNodeTest, serialize) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
+    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsValid({{}});
+    node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
@@ -1941,6 +1947,10 @@ TEST_F(IResearchViewNodeTest, serialize) {
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
 
+    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsValid({{}});
+    node.setVarUsageValid();
+
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
     node.toVelocyPack(builder, flags, false);  // object with array of objects
@@ -2008,9 +2018,13 @@ TEST_F(IResearchViewNodeTest, serialize) {
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
                                                 {});        // no sort condition
-    arangodb::aql::Variable const outNmColPtr("variable100", 100, false);
-    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+    arangodb::aql::Variable const outNmColPtr("variable100", 1, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 2, false);
     node.setLateMaterialized(outNmColPtr, outNmDocId);
+
+    node.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
+    node.setVarsValid({{}});
+    node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
@@ -2098,8 +2112,11 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   EXPECT_FALSE(viewImpl.primarySort().empty());
 
   // dummy query
-  arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString("RETURN 1"),
-                             nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+  arangodb::aql::Query query(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::aql::QueryString(
+          "let variable = 1 let variable100 = 3 let variable101 = 2 RETURN 1"),
+      nullptr, arangodb::velocypack::Parser::fromJson("{}"));
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
   arangodb::aql::Variable const outVariable("variable", 0, false);
@@ -2119,6 +2136,10 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
+
+    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsValid({{}});
+    node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
@@ -2204,6 +2225,10 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
 
+    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsValid({{}});
+    node.setVarUsageValid();
+
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
     node.toVelocyPack(builder, flags, false);  // object with array of objects
@@ -2274,10 +2299,14 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
                                                 nullptr,  // no filter condition
                                                 nullptr,  // no options
                                                 {});        // no sort condition
-    arangodb::aql::Variable const outNmColPtr("variable100", 100, false);
-    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+    arangodb::aql::Variable const outNmColPtr("variable100", 1, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 2, false);
     node.sort(&viewImpl.primarySort(), 1);
     node.setLateMaterialized(outNmColPtr, outNmDocId);
+
+    node.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
+    node.setVarsValid({{}});
+    node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
@@ -2517,8 +2546,8 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     singleton.setVarsValid({{}});
     node.setVarsUsedLater({{}});
     node.setVarsValid({{&outVariable}});
-    singleton.setVarUsageValid();
     node.setVarUsageValid();
+    singleton.setVarUsageValid();
 
     node.planRegisters(nullptr);
 

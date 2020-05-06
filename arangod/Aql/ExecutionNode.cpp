@@ -827,6 +827,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("varsUsedLaterStack"));
     {
       VPackArrayBuilder guard(&nodes);
+      TRI_ASSERT(!_varsUsedLaterStack.empty());
       for (auto const& stackEntry : _varsUsedLaterStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
@@ -838,6 +839,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("varsValidStack"));
     {
       VPackArrayBuilder guard(&nodes);
+      TRI_ASSERT(!_varsValidStack.empty());
       for (auto const& stackEntry : _varsValidStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
