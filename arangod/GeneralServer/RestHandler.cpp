@@ -67,7 +67,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _state(HandlerState::PREPARE),
       _canceled(false) {}
 
-RestHandler::~RestHandler() {}
+RestHandler::~RestHandler() = default;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

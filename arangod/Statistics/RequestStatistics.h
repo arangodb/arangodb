@@ -40,7 +40,7 @@ class RequestStatistics {
   class Item {
    public:
     Item() : _stat(nullptr) {}
-    Item(RequestStatistics* stat) : _stat(stat) {}
+    explicit Item(RequestStatistics* stat) : _stat(stat) {}
 
     Item(Item const&) = delete;
     Item& operator=(Item const&) = delete;

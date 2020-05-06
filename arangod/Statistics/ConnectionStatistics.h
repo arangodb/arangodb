@@ -37,7 +37,7 @@ class ConnectionStatistics {
   class Item {
    public:
     Item() : _stat(nullptr) {}
-    Item(ConnectionStatistics* stat) : _stat(stat) {}
+    explicit Item(ConnectionStatistics* stat) : _stat(stat) {}
 
     Item(Item const&) = delete;
     Item& operator=(Item const&) = delete;
