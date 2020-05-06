@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryExpressionContext.h"
+
 #include "Aql/AqlValue.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegexCache.h"
 #include "Transaction/Methods.h"
 
@@ -31,31 +32,37 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 void QueryExpressionContext::registerWarning(int errorCode, char const* msg) {
-  _query->registerWarning(errorCode, msg);
+  _query.warnings().registerWarning(errorCode, msg);
 }
 
 void QueryExpressionContext::registerError(int errorCode, char const* msg) {
-  _query->registerError(errorCode, msg);
+  _query.warnings().registerError(errorCode, msg);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,
                                                              bool caseInsensitive) {
-  return _query->regexCache()->buildRegexMatcher(ptr, length, caseInsensitive);
+  return _regexCache.buildRegexMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, size_t length,
                                                             bool caseInsensitive) {
-  return _query->regexCache()->buildLikeMatcher(ptr, length, caseInsensitive);
+  return _regexCache.buildLikeMatcher(ptr, length, caseInsensitive);
 }
 
 icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression,
-                                                             transaction::Methods* trx,
+                                                             velocypack::Options const* opts,
                                                              bool& isEmptyExpression) {
-  return _query->regexCache()->buildSplitMatcher(splitExpression, trx, isEmptyExpression);
+  return _regexCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
 }
 
 TRI_vocbase_t& QueryExpressionContext::vocbase() const {
-  return _query->vocbase();
+  return _trx.vocbase();
 }
 
-Query* QueryExpressionContext::query() const { return _query; }
+transaction::Methods& QueryExpressionContext::trx() const {
+  return _trx;
+}
+
+bool QueryExpressionContext::killed() const  {
+  return _query.killed();
+}

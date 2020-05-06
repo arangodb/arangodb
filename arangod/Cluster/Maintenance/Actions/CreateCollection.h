@@ -39,6 +39,9 @@ class CreateCollection : public ActionBase {
   bool first() override final;
 
   void setState(ActionState state) override final;
+
+ private:
+  bool _doNotIncrement = false;   // indicate that `setState` shall not increment the version
 };
 
 }  // namespace arangodb::maintenance

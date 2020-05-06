@@ -156,7 +156,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Cluster/ClusterTraverser.cpp
   Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
-  Cluster/TraverserEngineRegistry.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
@@ -180,7 +179,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserOptions.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
-  RestServer/TraverserEngineRegistryFeature.cpp
 )
 
 set(LIB_ARANGO_PREGEL_SOURCES
@@ -231,7 +229,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlItemMatrix.cpp
-  Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/AqlValueGroup.cpp
@@ -240,10 +237,9 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/Ast.cpp
   Aql/AstHelper.cpp
   Aql/AstNode.cpp
+  Aql/AstResources.cpp
   Aql/AttributeAccessor.cpp
-  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
-  Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
   Aql/CalculationNodeVarFinder.cpp
@@ -321,20 +317,23 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OptimizerRulesCluster.cpp
   Aql/OptimizerRulesFeature.cpp
   Aql/OptimizerRulesReplaceFunctions.cpp
+  Aql/OptimizerUtils.cpp
   Aql/OutputAqlItemRow.cpp
+  Aql/ParallelStartExecutor.cpp
   Aql/Parser.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
+  Aql/QueryContext.cpp
   Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryProfile.cpp
   Aql/QueryRegistry.cpp
-  Aql/QueryResources.cpp
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
+  Aql/QueryWarnings.cpp
   Aql/Range.cpp
   Aql/RemoveModifier.cpp
   Aql/RegexCache.cpp
@@ -416,7 +415,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
-  Utils/OperationCursor.cpp
   Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}
@@ -877,6 +875,7 @@ target_link_libraries(arango_cluster_methods arango_network)
 target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
 
+target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)

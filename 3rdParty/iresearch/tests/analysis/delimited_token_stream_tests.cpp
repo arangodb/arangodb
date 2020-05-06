@@ -491,7 +491,3 @@ TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "delimiter", irs::text_format::csv, config));
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

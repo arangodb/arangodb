@@ -1914,7 +1914,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 ///        the lake is cleared.
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             std::unordered_map<ServerID, aql::EngineId> const* engines,
                              VPackSlice const vertexId, size_t depth,
                              std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                              std::vector<VPackSlice>& result,
@@ -2011,7 +2011,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 ///        the lake is cleared.
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+                             std::unordered_map<ServerID, aql::EngineId> const* engines,
                              VPackSlice const vertexId, bool backward,
                              std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
                              std::vector<VPackSlice>& result,
@@ -2103,7 +2103,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
     std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,

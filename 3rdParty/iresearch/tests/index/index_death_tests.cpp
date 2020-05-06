@@ -2983,7 +2983,3 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_FALSE(live_docs->next());
   ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -21,14 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/utf8_path.hpp"
-
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
@@ -52,13 +52,14 @@
 #include "VocBase/KeyGenerator.h"
 #include "common.h"
 #include "gtest/gtest.h"
-#include "search/scorers.hpp"
 
+#include "index/index_reader.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/term_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/scorers.hpp"
+#include "search/term_filter.hpp"
 #include "utils/string.hpp"
-
+#include "utils/utf8_path.hpp"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -78,10 +79,10 @@ namespace iresearch {
 
   std::ostream& operator<<(std::ostream& os, by_range const& range) {
     os << "Range(" << range.field();
-    std::string termValueMin(ref_cast<char>(range.term<Bound::MIN>()));
-    std::string termValueMax(ref_cast<char>(range.term<Bound::MAX>()));
+    std::string termValueMin(ref_cast<char>(range.options().range.min));
+    std::string termValueMax(ref_cast<char>(range.options().range.max));
     if (!termValueMin.empty()) {
-      os << " " << (range.include<Bound::MIN>() ? ">=" : ">") << termValueMin;
+      os << " " << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">=" : ">") << termValueMin;
     }
     if (!termValueMax.empty()) {
       if (!termValueMin.empty()) {
@@ -89,13 +90,13 @@ namespace iresearch {
       } else {
         os << " ";
       }
-      os << (range.include<Bound::MAX>() ? "<=" : "<") << termValueMax;
+      os << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? "<=" : "<") << termValueMax;
     }
     return os << ")";
   }
 
   std::ostream& operator<<(std::ostream& os, by_term const& term) {
-    std::string termValue(ref_cast<char>(term.term()));
+    std::string termValue(ref_cast<char>(term.options().term));
     return os << "Term(" << term.field() << "=" << termValue << ")";
   }
 
@@ -408,10 +409,9 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
     arangodb::velocypack::StringRef translated = arangodb::aql::OptimizerRulesFeature::translateRule(ruleId);
     expectedRules.emplace(translated.toString());
   }
-
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
-                             arangodb::velocypack::Parser::fromJson(optionsString),
-                             arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), bindVars,
+                             arangodb::velocypack::Parser::fromJson(optionsString));
 
   auto const res = query.explain();
 
@@ -433,18 +433,17 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
                                         std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                                         std::string const& optionsString /*= "{}"*/
 ) {
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
-                             arangodb::velocypack::Parser::fromJson(optionsString),
-                             arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), bindVars,
+                             arangodb::velocypack::Parser::fromJson(optionsString));
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->resetWakeupHandler();
+  std::shared_ptr<arangodb::aql::SharedQueryState> ss;
 
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
+    auto state = query.execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncWakeup();
+      query.sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -458,9 +457,9 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
     std::string const& optionsString /*= "{}"*/
 ) {
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             nullptr, arangodb::velocypack::Parser::fromJson(optionsString),
-                             arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             nullptr, arangodb::velocypack::Parser::fromJson(optionsString));
 
   auto result = query.parse();
 
@@ -476,12 +475,12 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
     std::string const& optionsString /*= "{}"*/
 ) {
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = std::make_unique<arangodb::aql::Query>(
-      false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
-      arangodb::velocypack::Parser::fromJson(optionsString), arangodb::aql::PART_MAIN);
+    ctx, arangodb::aql::QueryString(queryString), nullptr,
+      arangodb::velocypack::Parser::fromJson(optionsString));
 
-  query->prepare(arangodb::QueryRegistryFeature::registry(),
-                 arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   return query;
 }
 
@@ -561,17 +560,17 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
       //    "{ \"tracing\" : 1 }"
       " { } ");
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
-  query.prepare(arangodb::QueryRegistryFeature::registry(),
-                arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
   EXPECT_TRUE(query.plan());
-  auto& plan = *query.plan();
+  auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query.plan());
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-  plan.findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+  plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
   EXPECT_EQ(nodes.size(), 1);
 
@@ -585,10 +584,16 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     irs::Or actualFilter;
-    arangodb::iresearch::QueryContext const ctx{&trx, &plan, plan.getAst(),
-                                                exprCtx, &viewNode->outVariable()};
+    arangodb::iresearch::QueryContext const ctx{&trx, plan, plan->getAst(),
+                                                exprCtx, &irs::sub_reader::empty(),
+                                                &viewNode->outVariable()};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx,
                                                            viewNode->filterCondition())
                     .ok());
@@ -602,9 +607,9 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
-                             std::make_shared<arangodb::velocypack::Builder>(),
-                             arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString), nullptr,
+                             std::make_shared<arangodb::velocypack::Builder>());
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -644,7 +649,7 @@ void assertExpressionFilter(
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                        {}, {}, {}, arangodb::transaction::Options());
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
     EXPECT_TRUE(
         (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
   }
@@ -659,10 +664,13 @@ void assertExpressionFilter(
     irs::Or expected;
     expected.add<arangodb::iresearch::ByExpression>().init(*dummyPlan, *ast,
                                                            *expressionExtractor(filterNode));
+    
+    ExpressionContextMock exprCtx;
+    exprCtx.setTrx(&trx);
 
     irs::Or actual;
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
-                                                &ExpressionContextMock::EMPTY, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, &exprCtx,
+                                                &irs::sub_reader::empty(), ref};
     EXPECT_TRUE(
         (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
     EXPECT_EQ(expected, actual);
@@ -712,8 +720,9 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
 ) {
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -754,7 +763,7 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
 
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok());
   }
 
@@ -762,9 +771,14 @@ void buildActualFilter(TRI_vocbase_t& vocbase,
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
     ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(dynamic_cast<irs::boolean_filter*>(&actual), ctx, *filterNode).ok());
   }
 }
@@ -778,8 +792,9 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
   SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.ok());
@@ -819,8 +834,13 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
-    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, nullptr, ref};
     EXPECT_TRUE(
         (parseOk ==
          arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
@@ -830,17 +850,20 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
   {
     arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                         {}, {}, {}, arangodb::transaction::Options());
+    
+    auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
+    if (mockCtx) {  // simon: hack to make expression context work again
+      mockCtx->setTrx(&trx);
+    }
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     irs::Or actual;
-    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
-    EXPECT_TRUE(
-        (execOk ==
-         arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
-    EXPECT_TRUE(!execOk || (expected == actual));
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, &irs::sub_reader::empty(), ref};
+    EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok());
 
     if (execOk) {
+      EXPECT_EQ(expected, actual);
       assertFilterBoost(expected, actual);
     }
   }
@@ -877,8 +900,9 @@ void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryStrin
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/
 ) {
   SCOPED_TRACE(testing::Message("assertFilterParseFail failed for query:<") << queryString << ">");
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             bindVars, nullptr);
 
   auto const parseResult = query.parse();
   ASSERT_TRUE(parseResult.result.fail());

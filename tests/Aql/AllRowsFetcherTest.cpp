@@ -49,8 +49,8 @@ class AllRowsFetcherTest : public ::testing::Test {
   AqlItemMatrix const* matrix = nullptr;
   VPackBuilder input;
   ResourceMonitor monitor;
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, 1};
 };
 
 TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_does_not_wait) {

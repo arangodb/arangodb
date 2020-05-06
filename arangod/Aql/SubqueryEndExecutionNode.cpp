@@ -25,9 +25,10 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Basics/VelocyPackHelper.h"
@@ -87,8 +88,6 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  transaction::Methods* trx = _plan->getAst()->query()->trx();
-  TRI_ASSERT(trx != nullptr);
 
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -105,9 +104,9 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
 
   auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
 
-  auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
+  auto const& vpackOptions = engine.getQuery().vpackOptions();
   auto executorInfos =
-      SubqueryEndExecutorInfos(vpackOptions, inReg, outReg, isModificationNode());
+      SubqueryEndExecutorInfos(&vpackOptions, inReg, outReg, isModificationNode());
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

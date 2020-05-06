@@ -305,7 +305,7 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
     TRI_ASSERT(state != nullptr);
 
     // check state of the top-most transaction only
-    if (!state || !state->isTopLevelTransaction()) {
+    if (!state) {
       return;  // NOOP
     }
 

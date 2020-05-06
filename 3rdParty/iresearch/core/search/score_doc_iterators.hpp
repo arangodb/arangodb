@@ -33,8 +33,10 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator_base
 ////////////////////////////////////////////////////////////////////////////////
-template<typename T>
-class IRESEARCH_API doc_iterator_base : public T {
+template<
+  typename T,
+  typename = std::enable_if<std::is_base_of<doc_iterator, T>::value, T>
+> class IRESEARCH_API doc_iterator_base : public T {
  public:
   virtual const attribute_view& attributes() const noexcept {
     return attrs_;

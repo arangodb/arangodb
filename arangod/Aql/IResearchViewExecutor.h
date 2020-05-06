@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegexCache.h"
 #include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -60,6 +61,7 @@ struct ExecutionStats;
 class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
+class QueryContext;
 
 class IResearchViewExecutorInfos {
  public:
@@ -82,7 +84,7 @@ class IResearchViewExecutorInfos {
   IResearchViewExecutorInfos(
       std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
       OutRegisters outRegister, std::vector<RegisterId> scoreRegisters,
-      Query& query, std::vector<iresearch::Scorer> const& scorers,
+      aql::QueryContext& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
       Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -92,13 +94,13 @@ class IResearchViewExecutorInfos {
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
 
-  std::vector<iresearch::Scorer> const& scorers() const noexcept;
   std::vector<RegisterId> const& getScoreRegisters() const noexcept;
 
   iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const
       noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
-  Query& getQuery() const noexcept;
+  aql::QueryContext& getQuery() noexcept;
+  std::vector<iresearch::Scorer> const& scorers() const noexcept;
   ExecutionPlan const& plan() const noexcept;
   Variable const& outVariable() const noexcept;
   aql::AstNode const& filterCondition() const noexcept;
@@ -118,7 +120,7 @@ class IResearchViewExecutorInfos {
   aql::RegisterId _collectionPointerReg;
   std::vector<RegisterId> _scoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
-  Query& _query;
+  aql::QueryContext& _query;
   std::vector<iresearch::Scorer> const& _scorers;
   std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
   iresearch::IResearchViewStoredValues const& _storedValues;
@@ -139,6 +141,10 @@ class IResearchViewStats {
   void incrScanned() noexcept;
   void incrScanned(size_t value) noexcept;
 
+  void operator+= (IResearchViewStats const& stats) {
+    _scannedIndex += stats._scannedIndex;
+  }
+  
   size_t getScanned() const noexcept;
 
  private:
@@ -224,6 +230,8 @@ class IResearchViewExecutorBase {
 
     aql::RegisterId documentOutReg;
     aql::RegisterId collectionPointerReg;
+
+   public:
     IndexIterator::DocumentCallback callback;
   };  // ReadContext
 
@@ -354,7 +362,9 @@ class IResearchViewExecutorBase {
   bool next(ReadContext& ctx);
 
  protected:
-  Infos const& _infos;
+  transaction::Methods _trx;
+  RegexCache _regexCache;
+  Infos& _infos;
   InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
   irs::bytes_ref _pk;  // temporary store for pk buffer before decoding it

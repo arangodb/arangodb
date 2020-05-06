@@ -38,7 +38,8 @@ class Methods;
 
 namespace aql {
 
-class RegexCache {
+/// cache for parsed regexes, not thread safe
+class RegexCache final {
  public:
   RegexCache(RegexCache const&) = delete;
   RegexCache& operator=(RegexCache const&) = delete;
@@ -51,7 +52,7 @@ class RegexCache {
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
-                                       arangodb::transaction::Methods* trx,
+                                       velocypack::Options const* opts,
                                        bool& isEmptyExpression);
 
   /// @brief inspect a LIKE pattern from a string, and remove all
