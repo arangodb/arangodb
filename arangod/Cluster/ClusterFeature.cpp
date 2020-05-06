@@ -613,7 +613,9 @@ void ClusterFeature::start() {
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() {}
+void ClusterFeature::beginShutdown() {
+  shutdownAgencyCache();
+}
 
 void ClusterFeature::stop() {}
 
@@ -624,6 +626,10 @@ void ClusterFeature::unprepare() {
 
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
+
+  shutdownHeartbeatThread();
+  AsyncAgencyCommManager::INSTANCE->setStopping(true);
+
 
   AgencyComm comm(server());
   comm.sendServerState();
@@ -683,13 +689,9 @@ void ClusterFeature::unprepare() {
 
   TRI_ASSERT(tries <= maxTries);
 
-  shutdownHeartbeatThread();
-  shutdownAgencyCache();
-
-  AsyncAgencyCommManager::INSTANCE->setStopping(true);
-
   _asyncAgencyCommPool.reset();
   _clusterInfo->cleanup();
+
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {

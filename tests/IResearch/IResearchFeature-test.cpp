@@ -916,22 +916,17 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   ASSERT_TRUE((arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
                                                          linkJson->slice(), true, tmp)
                .ok()));
-  LOG_DEVEL << __FILE__ << __LINE__;
   logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-  LOG_DEVEL << __FILE__ << __LINE__;
   ASSERT_FALSE(!logicalCollection);
   auto link0 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *logicalView0);
-  LOG_DEVEL << __FILE__ << __LINE__;
   ASSERT_FALSE(!link0);
 
   arangodb::velocypack::Builder builder;
-  LOG_DEVEL << __FILE__ << __LINE__;
   builder.openObject();
   EXPECT_TRUE(logicalView0
                   ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
                   .ok());
   builder.close();
-  LOG_DEVEL << __FILE__ << __LINE__;
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 before upgrade
 
   // ensure no upgrade on coordinator
@@ -953,26 +948,21 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     server.getFeature<arangodb::ClusterFeature>().agencyCache().set(b.slice());
       
   }
-  LOG_DEVEL << __FILE__ << __LINE__;
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_FALSE(!logicalCollection2);
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto logicalView1 = ci.getView(vocbase->name(), viewId);
   EXPECT_FALSE(!logicalView1);  // ensure view present after upgrade
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
-  LOG_DEVEL << __FILE__ << __LINE__;
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
   EXPECT_FALSE(!link1);                 // ensure link present after upgrade
   EXPECT_EQ(link0->id(), link1->id());  // ensure new link
-  LOG_DEVEL << __FILE__ << __LINE__;
   builder.clear();
   builder.openObject();
   EXPECT_TRUE(logicalView1
                   ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
                   .ok());
   builder.close();
-  LOG_DEVEL << builder.slice().toJson();
   EXPECT_EQ(0, builder.slice().get("version").getNumber<uint32_t>());  // ensure 'version == 0 after upgrade
 }
 

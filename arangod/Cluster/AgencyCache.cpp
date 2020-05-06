@@ -145,7 +145,7 @@ void AgencyCache::run() {
         std::lock_guard g(_storeLock);
         commitIndex = _commitIndex;
       }
-      return AsyncAgencyComm().poll(60s, commitIndex+1);
+      return AsyncAgencyComm().poll(10s, commitIndex+1);
     };
 
   // while not stopping
@@ -159,7 +159,7 @@ void AgencyCache::run() {
   //     wait ever longer until success
   std::unordered_set<uint64_t> toCall;
   while (!this->isStopping()) {
-    
+
     toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
 
@@ -192,7 +192,7 @@ void AgencyCache::run() {
 
             if (firstIndex > 0) {
               // Do incoming logs match our cache's index?
-              if (firstIndex != curIndex+1) { 
+              if (firstIndex != curIndex+1) {
                 LOG_TOPIC("a9a09", WARN, Logger::CLUSTER) <<
                   "Logs from poll start with index " << firstIndex <<
                   " we requested logs from and including " << curIndex << " retrying.";

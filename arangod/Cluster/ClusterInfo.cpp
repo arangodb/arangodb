@@ -3259,7 +3259,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   std::string collectionID = std::to_string(collection.id());
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
-  LOG_DEVEL << where;
   auto agencyCallback =
       std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
 
@@ -3332,13 +3331,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
-        LOG_DEVEL << planIndexesKey;
         auto [acb, index] = cache.get(planIndexesKey);
         auto indexes = acb->slice();
-        LOG_DEVEL << indexes.toJson();;
-        auto [t,i] = cache.get(where);
-        LOG_DEVEL << t->slice().toJson();
-        
         
         bool found = false;
         if (indexes.isArray()) {

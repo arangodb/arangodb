@@ -328,6 +328,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             case Error::Timeout:
             case Error::ConnectionClosed:
             case Error::Canceled:
+              if (man.isStopping()) {
+                return futures::makeFuture(
+                  AsyncAgencyCommResult{result.error, std::move(resp)});  // unrecoverable error
+              }
+              [[fallthrough]];
             case Error::ProtocolError:
             case Error::WriteError:
             case Error::ReadError:
@@ -354,12 +359,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               [[fallthrough]];
 
             case Error::QueueCapacityExceeded:
-              return ::agencyAsyncSend(man, std::move(meta),
-                                       std::move(body).moveBuffer());  // retry always
+                return ::agencyAsyncSend(man, std::move(meta),
+                                         std::move(body).moveBuffer());  // retry always
 
             case Error::VstUnauthorized:
-              return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // unrecoverable error
+              return futures::makeFuture(
+                AsyncAgencyCommResult{result.error,
+                                      std::move(resp)});  // unrecoverable error
           }
 
           ADB_UNREACHABLE;
