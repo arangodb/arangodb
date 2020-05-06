@@ -63,7 +63,7 @@ class HttpRequest final : public GeneralRequest {
   size_t contentLength() const override { return _payload.size(); }
   // Payload
   arangodb::velocypack::StringRef rawPayload() const override;
-  arangodb::velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  arangodb::velocypack::Slice payload(bool strictValidation) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override {
     _payload = std::move(buffer);
   }

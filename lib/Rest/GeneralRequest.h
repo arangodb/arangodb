@@ -80,6 +80,11 @@ class GeneralRequest {
  protected:
   static RequestType findRequestType(char const*, size_t const);
 
+  /// @brief get VelocyPack options for validation. effectively turns off
+  /// validation if strictValidation is false. This optimization can be used for
+  /// internal requests
+  arangodb::velocypack::Options const* validationOptions(bool strictValidation);
+
  public:
   explicit GeneralRequest(ConnectionInfo const& connectionInfo,
                           uint64_t mid)
@@ -188,6 +193,8 @@ class GeneralRequest {
   std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
     return _arrayValues;
   }
+  
+  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(bool strictValidation = true);
 
   /// @brief returns parsed value, returns valueNotFound if parameter was not
   /// found
@@ -199,15 +206,9 @@ class GeneralRequest {
   /// @brief unprocessed request payload
   virtual velocypack::StringRef rawPayload() const = 0;
   /// @brief parsed request payload
-  virtual velocypack::Slice payload(arangodb::velocypack::Options const* options =
-                                    &velocypack::Options::Defaults) = 0;
+  virtual velocypack::Slice payload(bool strictValidation = true) = 0;
   /// @brief overwrite payload
   virtual void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) = 0;
-
-  TEST_VIRTUAL std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr();
-  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtrNoUniquenessChecks() {
-    return std::make_shared<velocypack::Builder>(payload());
-  };
 
   virtual void setDefaultContentType() = 0;
   /// @brieg should reflect the Content-Type header
