@@ -40,7 +40,7 @@ bool VarUsageFinderT<T>::before(T* en) {
   en->setVarsUsedLater(_usedLaterStack);
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_END: {
-      _usedLaterStack.emplace_back(std::unordered_set<Variable const*>{});
+      _usedLaterStack.emplace_back(VarSet{});
       break;
     }
 
