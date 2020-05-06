@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/Servers.h"  // this must be first because windows
+
 #include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 // #include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
@@ -37,7 +39,6 @@
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -210,7 +211,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = &vocbase;
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-  
+
   auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate.get());
   auto fn_name = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
   auto fn_type = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
