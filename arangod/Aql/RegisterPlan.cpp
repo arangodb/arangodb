@@ -83,11 +83,11 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
+  auto const calculateRegistersToClear = [this](T* en) -> RegIdSet {
     auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
     VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
-    std::unordered_set<RegisterId> regsToClear;
+    RegIdSet regsToClear;
 
     // Now find out which registers ought to be erased after this node:
     // ReturnNodes are special, since they return a single column anyway

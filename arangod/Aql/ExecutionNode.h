@@ -399,7 +399,7 @@ class ExecutionNode {
   void setVarsValid(VarSetStack varStack);
 
   /// @brief set regs to be deleted
-  void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
+  void setRegsToClear(RegIdSet&& toClear);
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
@@ -432,7 +432,7 @@ class ExecutionNode {
   int getDepth() const;
 
   /// @brief get registers to clear
-  std::unordered_set<RegisterId> const& getRegsToClear() const;
+  RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
   bool isVarUsedLater(Variable const* variable) const;

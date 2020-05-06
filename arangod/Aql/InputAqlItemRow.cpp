@@ -31,6 +31,8 @@
 #include "Aql/Range.h"
 #include "Basics/StaticStrings.h"
 
+#include <Containers/HashSet.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -46,7 +48,7 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 #endif
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
-                                                    std::unordered_set<RegisterId> const& registers,
+                                                    RegIdSet const& registers,
                                                     size_t newNrRegs) const {
   SharedAqlItemBlockPtr block =
       manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));

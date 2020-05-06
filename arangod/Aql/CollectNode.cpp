@@ -333,8 +333,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
       RegisterId collectRegister = (*it).second.registerId;
 
-      auto registerInfos =
-          createRegisterInfos({}, RegIdSet{std::initializer_list{collectRegister}});
+      auto registerInfos = createRegisterInfos({}, RegIdSet{collectRegister});
 
       auto executorInfos = CountCollectExecutorInfos(collectRegister);
 
