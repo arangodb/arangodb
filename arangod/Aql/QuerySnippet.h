@@ -39,6 +39,7 @@ class DistributeConsumerNode;
 class ExecutionNode;
 class ExecutionPlan;
 class GatherNode;
+class RemoteNode;
 class ScatterNode;
 class ShardLocking;
 
@@ -86,13 +87,12 @@ class QuerySnippet {
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       ShardLocking& shardLocking);
 
-  DistributeConsumerNode* createConsumerNode(ExecutionPlan* plan, ScatterNode* internalScatter,
-                                             std::string const& distributeId);
-
  private:
   GatherNode const* _sinkNode; // node that merges the results for all shards
 
   ExecutionNodeId const _idOfSinkRemoteNode;
+
+  RemoteNode * _remoteNode{nullptr};
 
   bool _madeResponsibleForShutdown;
 
