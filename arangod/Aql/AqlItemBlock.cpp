@@ -419,7 +419,7 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-void AqlItemBlock::clearRegisters(RegIdSet const& toClear) {
+void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
     if (isShadowRow(i)) {
       // Do not clear shadow rows:
@@ -464,7 +464,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
       if (isShadowRow(row)) {
         AqlValue a = stealAndEraseValue(row, col);
         AqlValueGuard guard{a, true};
-        auto [it, inserted] =  cache.emplace(a);
+        auto [it, inserted] = cache.emplace(a);
         res->setValue(row, col, *it);
         // TRI_ASSERT(inserted); // I'm not 100% sure yet that this is true.
         if (inserted) {

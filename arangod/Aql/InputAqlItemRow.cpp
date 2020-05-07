@@ -48,7 +48,7 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 #endif
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
-                                                    RegIdSet const& registers,
+                                                    RegIdFlatSet const& registers,
                                                     size_t newNrRegs) const {
   SharedAqlItemBlockPtr block =
       manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));

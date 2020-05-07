@@ -65,7 +65,11 @@ class RegisterInfos {
 
   RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdSet registersToClear, RegIdSetStack registersToKeep);
+                RegIdSet const& registersToClear, RegIdSetStack const& registersToKeep);
+
+  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+                RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+                RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;
@@ -107,9 +111,9 @@ class RegisterInfos {
    */
   RegisterCount numberOfOutputRegisters() const;
 
-  RegIdSetStack const& registersToKeep() const;
+  RegIdFlatSetStack const& registersToKeep() const;
 
-  RegIdSet const& registersToClear() const;
+  RegIdFlatSet const& registersToClear() const;
 
  protected:
   RegIdSet _inRegs;
@@ -119,9 +123,9 @@ class RegisterInfos {
 
   RegisterCount _numOutRegs;
 
-  RegIdSetStack _registersToKeep;
+  RegIdFlatSetStack _registersToKeep;
 
-  RegIdSet _registersToClear;
+  RegIdFlatSet _registersToClear;
 };
 
 }  // namespace aql

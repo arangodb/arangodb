@@ -43,7 +43,7 @@ AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
 AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
-SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterCount nrRegs) {
   size_t const targetSize = nrItems * (nrRegs + 1);
 
   AqlItemBlock* block = nullptr;

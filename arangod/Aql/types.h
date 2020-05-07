@@ -24,10 +24,12 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
-#include "Basics/debugging.h"
 #include "Aql/ExecutionNodeId.h"
 
+#include <Basics/debugging.h>
 #include <Containers/HashSetFwd.h>
+// TODO: Try to forward-declare the flat_set instead:
+#include <boost/container/flat_set.hpp>
 
 #include <map>
 #include <memory>
@@ -37,6 +39,7 @@
 #include <unordered_set>
 #include <vector>
 
+
 namespace arangodb {
 namespace aql {
 struct Collection;
@@ -45,10 +48,6 @@ struct Collection;
 typedef uint32_t VariableId;
 
 /// @brief type for register numbers/ids
-/*class RegisterId : public basics::Identifier {
- public:
-  using Identifier::Identifier;
-};*/
 typedef unsigned RegisterId;
 typedef size_t RegisterCount;
 
@@ -77,17 +76,18 @@ using RegIdSet = containers::HashSet<RegisterId>;
 using RegIdSetStack = std::vector<RegIdSet>;
 using RegIdOrderedSet = std::set<RegisterId>;
 using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;
+using RegIdFlatSet = boost::container::flat_set<RegisterId>;
+using RegIdFlatSetStack = std::vector<boost::container::flat_set<RegisterId>>;
 
 }  // namespace aql
 
 namespace traverser {
 class BaseEngine;
 // list of graph engines on coordinators
-using GraphEngineList = std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
+using GraphEngineList =
+    std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
 }  // namespace traverser
 
 }  // namespace arangodb
-
-//DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::RegisterId)
 
 #endif

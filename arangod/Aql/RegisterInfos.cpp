@@ -26,16 +26,35 @@
 
 using namespace arangodb::aql;
 
+auto setStackToFlatSetStack(RegIdSetStack const& setStack) -> RegIdFlatSetStack {
+  auto flatSetStack = RegIdFlatSetStack{};
+  flatSetStack.reserve(setStack.size());
+
+  std::transform(setStack.begin(), setStack.end(),
+                 std::back_inserter(flatSetStack), [](auto const& stackEntry) {
+                   return RegIdFlatSet{stackEntry.begin(), stackEntry.end()};
+                 });
+  return flatSetStack;
+}
+
 RegisterInfos::RegisterInfos(
     // cppcheck-suppress passedByValue
     RegIdSet readableInputRegisters,
     // cppcheck-suppress passedByValue
-    RegIdSet writeableOutputRegisters,
-    RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+    RegIdSet writeableOutputRegisters, RegisterCount nrInputRegisters,
+    RegisterCount nrOutputRegisters,
     // cppcheck-suppress passedByValue
-    RegIdSet registersToClear,
+    RegIdSet const& registersToClear,
     // cppcheck-suppress passedByValue
-    RegIdSetStack registersToKeep)
+    RegIdSetStack const& registersToKeep)
+    : RegisterInfos(std::move(readableInputRegisters),
+                    std::move(writeableOutputRegisters), nrInputRegisters, nrOutputRegisters,
+                    RegIdFlatSet{registersToClear.begin(), registersToClear.end()},
+                    setStackToFlatSetStack(registersToKeep)) {}
+
+RegisterInfos::RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+                             RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+                             RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep)
     : _inRegs(std::move(readableInputRegisters)),
       _outRegs(std::move(writeableOutputRegisters)),
       _numInRegs(nrInputRegisters),
@@ -58,7 +77,8 @@ RegisterInfos::RegisterInfos(
   for (RegisterId const regToClear : _registersToClear) {
     // sic: It's possible that a current output register is immediately cleared!
     TRI_ASSERT(regToClear < nrOutputRegisters);
-    TRI_ASSERT(_registersToKeep.back().find(regToClear) == _registersToKeep.back().end());
+    TRI_ASSERT(_registersToKeep.back().find(regToClear) ==
+               _registersToKeep.back().end());
   }
   for (RegisterId const regToKeep : _registersToKeep.back()) {
     TRI_ASSERT(regToKeep < nrInputRegisters);
@@ -81,10 +101,10 @@ RegisterCount RegisterInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 
-RegIdSetStack const& RegisterInfos::registersToKeep() const {
+RegIdFlatSetStack const& RegisterInfos::registersToKeep() const {
   return _registersToKeep;
 }
 
-RegIdSet const& RegisterInfos::registersToClear() const {
+RegIdFlatSet const& RegisterInfos::registersToClear() const {
   return _registersToClear;
 }

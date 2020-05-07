@@ -188,7 +188,7 @@ class AqlItemBlock {
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
-  void clearRegisters(RegIdSet const& toClear);
+  void clearRegisters(RegIdFlatSet const& toClear);
 
   /// @brief clone all data rows, but move all shadow rows
   SharedAqlItemBlockPtr cloneDataAndMoveShadow();
