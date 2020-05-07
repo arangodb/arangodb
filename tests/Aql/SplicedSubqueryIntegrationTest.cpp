@@ -75,7 +75,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{{0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -87,7 +87,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{{0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -103,7 +103,7 @@ class SplicedSubqueryIntegrationTest
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
-    auto toKeepRegisterSet = RegIdSetStack{{0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -127,7 +127,7 @@ class SplicedSubqueryIntegrationTest
       toKeepRegisterSet.back().emplace(r);
     }
 
-    return RegisterInfos({0}, {1}, 1, 2, {}, toKeepRegisterSet);
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, toKeepRegisterSet);
   }
 
   auto makeDoNothingExecutorInfos() -> LambdaExe::Infos {
@@ -142,7 +142,7 @@ class SplicedSubqueryIntegrationTest
       toKeep.back().emplace(r);
     }
 
-    return RegisterInfos({0}, {1}, 1, 2, {}, toKeep);
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, toKeep);
   }
 
   auto makeAssertExecutorInfos() -> LambdaExe::Infos {

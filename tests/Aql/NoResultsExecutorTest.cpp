@@ -56,7 +56,7 @@ class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInput
   }
 
   auto makeInfos() -> RegisterInfos {
-    return RegisterInfos{{0}, {}, 1, 1, {}, {{}}};
+    return RegisterInfos{RegIdSet{0}, {}, 1, 1, {}, {{}}};
   }
 };
 

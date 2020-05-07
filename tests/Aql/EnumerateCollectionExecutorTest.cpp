@@ -106,8 +106,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        registerInfos({},{0},
-                      1 /*nrIn*/, 1 /*nrOut*/, {}, {{}}),
+        registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, {}, {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
                       nullptr, projections, coveringIndexAttributePositions, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
@@ -289,7 +288,7 @@ class EnumerateCollectionExecutorTestProduce
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        registerInfos({}, {1},
+        registerInfos({}, RegIdSet{1},
                       1 /*nrIn*/, 1 /*nrOut*/, {}, {{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
                       projections, coveringIndexAttributePositions, random) {}
@@ -298,7 +297,7 @@ class EnumerateCollectionExecutorTestProduce
                          RegisterId nrOutputRegister = 1, RegIdSet regToClear = {},
                          RegIdSetStack regToKeep = {{}}) -> RegisterInfos {
     RegisterInfos registerInfos{{},
-                                {outputRegister},
+                                RegIdSet{outputRegister},
                                 nrInputRegister,
                                 nrOutputRegister,
                                 std::move(regToClear),

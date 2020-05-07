@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,7 +33,15 @@ struct HashSetEqualTo;
 template <typename KeyT, typename HashT, typename EqT>
 class HashSet;
 
-}
+template <typename KeyT, typename HashT, typename EqT>
+bool operator==(HashSet<KeyT, HashT, EqT> const&, HashSet<KeyT, HashT, EqT> const&);
+
+}  // namespace emilib
+
+namespace std {
+template <class Key>
+struct hash;
+}  // namespace std
 
 // map emilib::HashSet into arangodb namespace
 namespace arangodb {
@@ -46,6 +55,5 @@ using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
 
 }  // namespace containers
 }  // namespace arangodb
-
 
 #endif  // ARANGODB_CONTAINERS_HASH_SET_FWD_H

@@ -63,8 +63,8 @@ class DistinctCollectExecutorTest
   ResourceMonitor monitor;
   // arangodb::transaction::Methods* trx;
 
-  RegIdSet readableInputRegisters = {0};
-  RegIdSet writeableOutputRegisters = {1};
+  RegIdSet readableInputRegisters = RegIdSet{0};
+  RegIdSet writeableOutputRegisters = RegIdSet{1};
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;

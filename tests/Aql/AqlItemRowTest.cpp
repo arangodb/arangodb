@@ -81,7 +81,7 @@ class AqlItemRowsTest : public ::testing::Test {
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
-  RegisterInfos executorInfos{{}, {}, 3, 3, {}, {{0, 1, 2}}};
+  RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -118,7 +118,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
-  RegisterInfos executorInfos{{}, {}, 3, 3, {}, {{0, 1, 2}}};
+  RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -164,7 +164,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 9, 3)};
-  RegisterInfos executorInfos{{}, {}, 3, 3, {}, {{0, 1, 2}}};
+  RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -209,7 +209,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows)
 
 TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target) {
   SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
-  RegisterInfos executorInfos{{}, {}, 3, 3, {1}, {{0, 2}}};
+  RegisterInfos executorInfos{{}, {}, 3, 3, RegIdSet{1}, {RegIdSet{0, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
 
@@ -250,7 +250,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
 
   auto outputRegisters = RegIdSet{3, 4};
   auto registersToClear = RegIdSet{1, 2};
-  auto registersToKeep = RegIdSetStack{{0}};
+  auto registersToKeep = RegIdSetStack{RegIdSet{0}};
   nrInputRegisters = 3;
   nrOutputRegisters = 5;
 

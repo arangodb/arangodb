@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +19,31 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CONTAINERS_HASH_SET_H
 #define ARANGODB_CONTAINERS_HASH_SET_H 1
 
-#include "Containers/details/HashSetImpl.h"
-#include "Containers/HashSetFwd.h"
+// Include implementation and forward-declarations in our namespace:
 
-// (sic): Include implementation and forward-declarations. That's it.
+#include "Containers/HashSetFwd.h"
+#include "Containers/details/HashSetImpl.h"
+
+#include <algorithm>
+
+namespace emilib {
+
+template <typename KeyT, typename HashT, typename EqT>
+bool operator==(HashSet<KeyT, HashT, EqT> const& left, HashSet<KeyT, HashT, EqT> const& right) {
+  if (left.size() != right.size()) {
+    return false;
+  }
+
+  return std::all_of(left.begin(), left.end(),
+                     [&right](auto const& it) { return right.contains(it); });
+}
+
+}  // namespace emilib
 
 #endif

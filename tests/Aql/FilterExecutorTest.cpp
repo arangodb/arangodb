@@ -75,7 +75,7 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
   }
 
   auto buildRegisterInfos() -> RegisterInfos {
-    return RegisterInfos({0}, {}, 2, 2, {}, {{0, 1}});
+    return RegisterInfos(RegIdSet{0}, {}, 2, 2, {}, {RegIdSet{0, 1}});
   }
   auto buildExecutorInfos() -> FilterExecutorInfos {
     return FilterExecutorInfos{0};
