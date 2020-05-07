@@ -323,6 +323,8 @@ class IResearchAnalyzerFeature final
 
   static Analyzers const& getStaticAnalyzers();
 
+  Result removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate analyzer parameters and emplace into map
   //////////////////////////////////////////////////////////////////////////////

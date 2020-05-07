@@ -28,7 +28,8 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 const arango = require('@arangodb').arango;
-
+const internal = require('internal');
+const isCluster = internal.isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,6 +285,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual("testAnalyzer", savedAnalyzer.name);
       assertEqual("stem", savedAnalyzer.type);
       assertTrue(undefined !== savedAnalyzer.revision);
+      if(isCluster) {
+        assertNotEqual(0, savedAnalyzer.revision); // we have added analyzer so revision should increment at least once
+      } else {
+        assertEqual(0, savedAnalyzer.revision); // for single server it is always 0
+      }
       assertEqual(analyzer.properties(), savedAnalyzer.properties);
       assertEqual(analyzer.features(), savedAnalyzer.features);
 

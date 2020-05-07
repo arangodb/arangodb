@@ -1900,7 +1900,12 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       if (revision > loadingRevision) {
         return {}; // this analyzers is still not exists for our revision
       }
-      // TODO: check here deleted revision
+      if (slice.hasKey(arangodb::StaticStrings::AnalyzersDeletedRevision)) {
+        auto  deletedRevision = slice.get(arangodb::StaticStrings::AnalyzersDeletedRevision).getNumber<AnalyzersRevision::Revision>();
+        if (deletedRevision <= loadingRevision) {
+          return {}; // this analyzers already not exists for our revision
+        }
+      }
 
       if (slice.hasKey("features")) {
         auto subSlice = slice.get("features");
@@ -2152,6 +2157,47 @@ void IResearchAnalyzerFeature::prepare() {
   _analyzers = getStaticAnalyzers();
 }
 
+Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {
+  auto& dbFeature = server().getFeature<DatabaseFeature>();
+
+  auto* voc= dbFeature.useDatabase(vocbase);
+
+  if (!voc) {
+    return {
+      TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+      "failure to find vocbase while removing arangosearch analyzer '" + std::string(name) + "'"
+    };
+  }
+
+  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*voc),
+                                  arangodb::StaticStrings::AnalyzersCollection,
+                                  AccessMode::Type::WRITE);
+  auto res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  velocypack::Builder builder;
+  OperationOptions options;
+
+  builder.openObject();
+  addStringRef(builder, arangodb::StaticStrings::KeyString, name);
+  builder.close();
+
+  auto result = trx.remove(arangodb::StaticStrings::AnalyzersCollection,
+                           builder.slice(),
+                           options);
+
+  if (!result.ok()) {
+    trx.abort();
+
+    return result.result;
+  }
+
+  return trx.commit();
+}
+
 Result IResearchAnalyzerFeature::remove(
     irs::string_ref const& name,
     bool force /*= false*/) {
@@ -2223,48 +2269,55 @@ Result IResearchAnalyzerFeature::remove(
                "' configuration while storage engine in recovery" };
     }
 
-    auto& dbFeature = server().getFeature<DatabaseFeature>();
+    if (ServerState::instance()->isSingleServer()) {
+      auto commitResult = removeFromCollection(pool->_key, split.first);
+      if (!commitResult.ok()) {
+        return commitResult;
+      }
+    } else {
+      auto& dbFeature = server().getFeature<DatabaseFeature>();
 
-    auto* vocbase = dbFeature.useDatabase(split.first);
+      auto* vocbase = dbFeature.useDatabase(split.first);
 
-    if (!vocbase) {
-      return {
-        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-        "failure to find vocbase while removing arangosearch analyzer '" + std::string(name)+ "'"
-      };
+      if (!vocbase) {
+        return {
+          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+          "failure to find vocbase while removing arangosearch analyzer '" + std::string(name) + "'"
+        };
+      }
+
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
+        arangodb::StaticStrings::AnalyzersCollection,
+        AccessMode::Type::WRITE);
+      auto res = trx.begin();
+
+      if (!res.ok()) {
+        return res;
+      }
+
+      velocypack::Builder builder;
+      OperationOptions options;
+
+      builder.openObject();
+      addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
+      builder.add(arangodb::StaticStrings::AnalyzersDeletedRevision, 
+                  VPackValue(getLatestRevision(*vocbase)->getBuildingRevision()));
+      builder.close();
+
+      auto result = trx.update(arangodb::StaticStrings::AnalyzersCollection,
+        builder.slice(),
+        options);
+
+      if (!result.ok()) {
+        trx.abort();
+
+        return result.result;
+      }
+      auto commitResult = trx.commit();
+      if (!commitResult.ok()) {
+        return commitResult;
+      }
     }
-
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(*vocbase),
-                                    arangodb::StaticStrings::AnalyzersCollection,
-                                    AccessMode::Type::WRITE);
-    auto res = trx.begin();
-
-    if (!res.ok()) {
-      return res;
-    }
-
-    velocypack::Builder builder;
-    OperationOptions options;
-
-    builder.openObject();
-    addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
-    builder.close();
-
-    auto result = trx.remove(arangodb::StaticStrings::AnalyzersCollection,
-                             builder.slice(),
-                             options);
-
-    if (!result.ok()) {
-      trx.abort();
-
-      return result.result;
-    }
-
-    auto commitResult = trx.commit();
-    if (!commitResult.ok()) {
-      return commitResult;
-    }
-
     _analyzers.erase(itr);
   } catch (basics::Exception const& e) {
     return { e.code(),

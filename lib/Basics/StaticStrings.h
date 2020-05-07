@@ -102,6 +102,7 @@ class StaticStrings {
   // analyzers names
   static std::string const AnalyzersRevision;
   static std::string const AnalyzersBuildingRevision;
+  static std::string const AnalyzersDeletedRevision;
 
   // database definition fields
   static std::string const DatabaseId;
