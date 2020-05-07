@@ -1,7 +1,7 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Fix invalid value of `isSystem` attribute for non-system databases.
+* Fixed issue 11243: `db._isSystem()` returns true for a non-system DB.
 
 * Fixed issue #11303: The result data of filter operation on edge document with 
   _from or _to field ALWAYS miss some data on version 3.6.2.
