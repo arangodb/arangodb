@@ -67,7 +67,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
   _internalState = AsyncState::InProgress;
   bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
-    LOG_DEVEL << "executing async: " << isAsync;
+    LOG_DEVEL << "executing async: " << isAsync << ", threadID: " << std::this_thread::get_id();
 
     auto [state, skip, block] = _dependencies[0]->execute(stack);
     if (isAsync) {
