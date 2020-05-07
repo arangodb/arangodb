@@ -145,6 +145,8 @@ void AgencyCache::run() {
         std::lock_guard g(_storeLock);
         commitIndex = _commitIndex;
       }
+      LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
+          << "AgencyCache: poll polls: waiting for commitIndex " << commitIndex + 1;
       return AsyncAgencyComm().poll(10s, commitIndex+1);
     };
 
@@ -201,15 +203,19 @@ void AgencyCache::run() {
                   wait += 0.1;
                 }
               } else {
-                std::lock_guard g(_storeLock);
                 TRI_ASSERT(rs.hasKey("log"));
                 TRI_ASSERT(rs.get("log").isArray());
                 LOG_TOPIC("4579e", TRACE, Logger::CLUSTER) <<
                   "Applying to cache " << rs.get("log").toJson();
                 for (auto const& i : VPackArrayIterator(rs.get("log"))) {
-                  _readDB.applyTransaction(i); // apply logs
-                  std::lock_guard g(_callbacksLock);
-                  handleCallbacksNoLock(i.get("query"), toCall);
+                  {
+                    std::lock_guard g(_storeLock);
+                    _readDB.applyTransaction(i); // apply logs
+                  }
+                  {
+                    std::lock_guard g(_callbacksLock);
+                    handleCallbacksNoLock(i.get("query"), toCall);
+                  }
                 }
                 _commitIndex = commitIndex;
               }
@@ -222,8 +228,10 @@ void AgencyCache::run() {
               _commitIndex = commitIndex;
             }
             triggerWaitingNoLock(commitIndex);
-            if (firstIndex > 0 && !toCall.empty()) {
-              invokeCallbacks(toCall);
+            if (firstIndex > 0) {
+              if (!toCall.empty()) {
+                invokeCallbacks(toCall);
+              }
             } else {
               invokeAllCallbacks();
             }
@@ -382,15 +390,18 @@ void AgencyCache::invokeCallbackNoLock(uint64_t const& id, std::string const& ke
 }
 
 void AgencyCache::invokeCallbacks(std::unordered_set<uint64_t> const& toCall) const {
-  std::lock_guard g(_callbacksLock);
   for (auto i : toCall) {
     invokeCallbackNoLock(i);
   }
 }
 
 void AgencyCache::invokeAllCallbacks() const {
-  std::lock_guard g(_callbacksLock);
-  for (auto i : _callbacks) {
-    invokeCallbackNoLock(i.second, i.first);
+  std::unordered_set<uint64_t> toCall;
+  {
+    std::lock_guard g(_callbacksLock);
+    for (auto i : _callbacks) {
+      toCall.emplace(i.second);
+    }
   }
+  invokeCallbacks(toCall);
 }
