@@ -362,12 +362,12 @@ class IResearchViewExecutorBase {
   bool next(ReadContext& ctx);
 
  protected:
-  struct FilterCtx : irs::attribute_provider {
+  struct FilterCtx final : irs::attribute_provider {
     explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
       : _execCtx(ctx) {
     }
 
-    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
       return irs::type<iresearch::ExpressionExecutionContext>::id() == type
         ? &_execCtx
         : nullptr;
