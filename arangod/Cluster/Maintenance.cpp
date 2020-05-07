@@ -431,7 +431,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
-            ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)},
+            ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                                {std::string(DATABASE), std::string(dbname)}},
                               HIGHER_PRIORITY));
       } else {
@@ -446,7 +446,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(
-          ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)},
+          ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                              {std::string(DATABASE), std::string(dbname)}},
                             HIGHER_PRIORITY));
     }
