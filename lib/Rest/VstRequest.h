@@ -57,7 +57,7 @@ class VstRequest final : public GeneralRequest {
   
   size_t contentLength() const override;
   arangodb::velocypack::StringRef rawPayload() const override;
-  velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  velocypack::Slice payload(bool strictValidation = true) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
 
   virtual void setDefaultContentType() override {
