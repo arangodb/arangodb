@@ -176,7 +176,7 @@ void QuerySnippet::serializeIntoBuilder(
     // For all collections within this map we will have the same amount of shards.
     size_t numberOfShardsToPermutate = colToShardMap.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
-    
+
     std::vector<std::string> distIds{};
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
@@ -482,19 +482,22 @@ auto QuerySnippet::prepareFirstBranch(
 
         if (myExp.size() > 0) {
           localGraphNode->addCollectionToShard(aqlCollection->name(), *myExp.begin());
-          myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
+          if (myExp.size() > 1) {
+            myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
+          }
         }
       }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       // additional verification checks for disjoint smart graphs
       if (localGraphNode->isDisjoint()) {
-        TRI_ASSERT(!myExpFinal.empty());
-        size_t numberOfShards = myExpFinal.begin()->second.size();
-        // We need one expansion for every collection in the Graph
-        TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
-        for (auto const& expDefinition : myExpFinal) {
-          TRI_ASSERT(expDefinition.second.size() == numberOfShards);
+        if (!myExpFinal.empty()) {
+          size_t numberOfShards = myExpFinal.begin()->second.size();
+          // We need one expansion for every collection in the Graph
+          TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
+          for (auto const& expDefinition : myExpFinal) {
+            TRI_ASSERT(expDefinition.second.size() == numberOfShards);
+          }
         }
       }
 #endif

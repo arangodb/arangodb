@@ -3927,6 +3927,8 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto allowKeyConversionToObject = bool{false};
   auto allowSpecifiedKeys = bool{false};
 
+  auto fixupGraphInput = bool{false};
+
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes are
   //       currently assumed to be disjoint, and hence smart, so all collections
@@ -3985,6 +3987,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = inputVariable;
       allowKeyConversionToObject = true;
       createKeys = false;
+      fixupGraphInput = true;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
@@ -3995,6 +3998,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = inputVariable;
       allowKeyConversionToObject = true;
       createKeys = false;
+      fixupGraphInput = true;
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
@@ -4005,6 +4009,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
       alternativeVariable = inputVariable;
       allowKeyConversionToObject = true;
       createKeys = false;
+      fixupGraphInput = true;
     } break;
     default: {
       TRI_ASSERT(false);
@@ -4017,7 +4022,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
   auto distNode =
       plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD,
                                       collection, inputVariable, alternativeVariable,
-                                      createKeys, allowKeyConversionToObject);
+                                      createKeys, allowKeyConversionToObject, fixupGraphInput);
   distNode->setAllowSpecifiedKeys(allowSpecifiedKeys);
   TRI_ASSERT(distNode != nullptr);
   return distNode;
