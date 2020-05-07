@@ -162,13 +162,11 @@ struct BaseOptions {
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
   
-  /// @brief returns the effective parallelism to use for the traversal
-  /// this may be lower than the requested parallelism value
-  size_t effectiveParallelism() const;
-  
   void setParallelism(size_t p) {
     _parallelism = p;
   }
+
+  size_t parallelism() const { return _parallelism; }
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;

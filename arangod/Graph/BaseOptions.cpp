@@ -32,7 +32,6 @@
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Aql/OptimizerUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Containers/HashSet.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
@@ -361,15 +360,6 @@ void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const&
 arangodb::transaction::Methods* BaseOptions::trx() const { return &_trx; }
 
 arangodb::aql::QueryContext& BaseOptions::query() const { return _query; }
-
-size_t BaseOptions::effectiveParallelism() const {
-  // parallelism should not be beyond the number of available cores
-  size_t p = std::min(_parallelism, NumberOfCores::getValue());
-  // parallelism must never get below 1
-  p = std::max(size_t(1), p);
-  // further logic can be added here if required
-  return p;
-}
 
 void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   TRI_ASSERT(result.isOpenObject());

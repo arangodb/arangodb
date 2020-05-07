@@ -42,6 +42,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/RegexCache.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -1856,6 +1857,45 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
   return traverseAndModify(node, visitor);
 }
 
+size_t Ast::validatedParallelism(AstNode const* value) {
+  TRI_ASSERT(value != nullptr);
+  TRI_ASSERT(value->isConstant());
+  if (value->isIntValue()) {
+    int64_t p = value->getIntValue();
+    if (p > 0) {
+#ifdef USE_ENTERPRISE
+      return std::min(static_cast<size_t>(p), NumberOfCores::getValue());
+#else 
+      return 1;
+#endif
+    }
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "parallelism: invalid value");
+}
+
+size_t Ast::extractParallelism(AstNode const* optionsNode) {
+  if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
+    size_t n = optionsNode->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = optionsNode->getMemberUnchecked(i);
+
+      if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
+        continue;
+      }
+      auto const name = member->getStringRef();
+      auto value = member->getMember(0);
+      TRI_ASSERT(value->isConstant());
+
+      if (name == "parallelism") {
+        return validatedParallelism(value);
+      }
+    }
+  }
+  // default value
+  return 1;
+}
+
 /// @brief optimizes the AST
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST
@@ -1887,6 +1927,11 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     if (node->type == NODE_TYPE_FILTER) {
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
+    } else if (node->type == NODE_TYPE_TRAVERSAL) {
+      size_t parallelism = extractParallelism(node->getMember(4));
+      if (parallelism > 1) {
+        setContainsParallelNode();
+      }
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);

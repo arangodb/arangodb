@@ -386,6 +386,10 @@ class Ast {
   /// becomes `a + b + 1`
   static AstNode* replaceVariableReference(AstNode*, Variable const*, AstNode const*);
 
+  static size_t validatedParallelism(AstNode const* value);
+
+  static size_t extractParallelism(AstNode const* optionsNode);
+
   /// @brief optimizes the AST
   void validateAndOptimize(transaction::Methods&);
 
