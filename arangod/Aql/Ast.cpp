@@ -188,7 +188,8 @@ Ast::Ast(QueryContext& query)
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
       _containsBindParameters(false),
-      _containsModificationNode(false) {
+      _containsModificationNode(false),
+      _containsParallelNode(false) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -3902,6 +3903,14 @@ bool Ast::containsModificationNode() const { return _containsModificationNode; }
 
 void Ast::setContainsModificationNode() {
   _containsModificationNode = true;
+}
+
+bool Ast::containsParallelNode() const {
+  return _containsParallelNode;
+}
+
+void Ast::setContainsParallelNode() {
+  _containsParallelNode = true;
 }
 
 AstNode* Ast::createNodeAttributeAccess(AstNode const* node,

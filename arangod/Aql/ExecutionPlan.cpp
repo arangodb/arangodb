@@ -1129,6 +1129,11 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
 
   auto options =
       createTraversalOptions(getAst()->query(), direction, node->getMember(4));
+  
+#warning this is shit, needs to be set before createTraversalOptions
+  if (options->effectiveParallelism() > 1) {
+    _ast->setContainsParallelNode();
+  }
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);

@@ -101,7 +101,6 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _executionPhase(ExecutionPhase::INITIALIZE),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _killed(false),
-      _isAsyncQuery(false),
       _queryHashCalculated(false) {
   
   if (!_transactionContext) {
@@ -215,13 +214,14 @@ void Query::prepareQuery(SerializationFormat format) {
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
   
-  _isAsyncQuery |= plan->contains(ExecutionNode::ASYNC);
-  TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
-  
-#warning technically ASYNC nodes are not possible here yet
-
+  TRI_ASSERT(!isModificationQuery() || !_ast->containsParallelNode());
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+  
+#warning V8Context needs to implement clone()
+  if (_transactionContext->isV8Context() && _ast->containsParallelNode()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 context does not support clone yet");
+  }
     
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
@@ -261,9 +261,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
   
-#warning ASYNC not possible yet
-  _isAsyncQuery = false; // TODO: check if we have parallel traversals in the query
-    
+  TRI_ASSERT(!isModificationQuery() || !_ast->containsParallelNode());
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
@@ -970,9 +968,18 @@ bool Query::isModificationQuery() const {
 /// @brief mark a query as modification query
 void Query::setIsModificationQuery() { return _ast->setContainsModificationNode(); }
 
+bool Query::isAsyncQuery() const {
+  TRI_ASSERT(_ast);
+  return _ast->containsParallelNode();
+}
+
+void Query::setIsAsyncQuery() {
+  TRI_ASSERT(_ast);
+  return _ast->setContainsParallelNode();
+}
+
 /// @brief enter a V8 context
 void Query::enterV8Context() {
-  TRI_ASSERT(!_isAsyncQuery);
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
       if (V8DealerFeature::DEALER == nullptr) {
@@ -1207,7 +1214,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
   
-  if (_isAsyncQuery) {
+  if (_ast->containsParallelNode()) {
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
@@ -1309,8 +1316,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
 
     plan->findVarUsage();
 
-    _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
-    TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
+    TRI_ASSERT(!isModificationQuery() || !_ast->containsParallelNode());
     
     res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                format, _snippets);

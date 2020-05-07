@@ -116,6 +116,8 @@ class Ast {
   /// @brief whether or not query contains any modification operations
   bool containsModificationNode() const;
   void setContainsModificationNode();
+  bool containsParallelNode() const;
+  void setContainsParallelNode();
   
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
@@ -585,6 +587,8 @@ class Ast {
   
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
+  
+  bool _containsParallelNode;
   
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;

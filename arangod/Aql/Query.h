@@ -148,8 +148,8 @@ class Query : public QueryContext {
   /// @brief mark a query as modification query
   void setIsModificationQuery();
   
-  bool isAsyncQuery() const { return _isAsyncQuery; }
-  void setIsAsyncQuery() { _isAsyncQuery = true; }
+  bool isAsyncQuery() const;
+  void setIsAsyncQuery();
 
   /// @brief enter a V8 context
   virtual void enterV8Context() override;
@@ -303,9 +303,6 @@ class Query : public QueryContext {
   
   bool _killed;
   
-  /// @brief does this query contain async execution nodes
-  bool _isAsyncQuery;
-
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
 };
