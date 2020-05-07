@@ -291,7 +291,7 @@ void ClusterInfo::cleanup() {
     _plannedCollections.clear();
     _shards.clear();
   }
-  
+
   {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentCollections.clear();
@@ -548,7 +548,7 @@ void ClusterInfo::loadPlan() {
   uint64_t newPlanVersion;
 
   do {
-    
+
     newPlanVersion = 0;
     DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
@@ -1134,7 +1134,7 @@ void ClusterInfo::loadCurrent() {
   uint64_t newCurrentVersion;
 
   do {
-    
+
     newCurrentVersion = 0;
     // We need to update ServersKnown to notice rebootId changes for all servers.
     // To keep things simple and separate, we call loadServers here instead of
@@ -1295,7 +1295,7 @@ void ClusterInfo::loadCurrent() {
         "Failed to read current version from agency cache given " << acb->toJson();
       return;
     }
-    
+
 
   } while (acb->slice().getNumber<uint64_t>() > newCurrentVersion);
 
@@ -2651,7 +2651,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
         ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
-        
+
         loadCurrent();
 
         events::DropCollection(dbName, collectionID, *dbServerResult);
@@ -2959,7 +2959,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
   if (res.slice().get("results").length()) {
     cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-  
+
   loadPlan();
   return {};
 }
@@ -3333,7 +3333,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
         auto [acb, index] = cache.get(planIndexesKey);
         auto indexes = acb->slice();
-        
+
         bool found = false;
         if (indexes.isArray()) {
           for (VPackSlice v : VPackArrayIterator(indexes)) {
@@ -4548,9 +4548,10 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.read(std::vector<std::string>{"Plan"});
+  auto [acb, index] = agencyCache.read(
+    std::vector<std::string>{AgencyCommHelper::path("Plan")});
   auto result = acb->slice();
-  
+
   if (result.isArray()) {
     body->add(acb->slice());
   } else {
@@ -4558,7 +4559,6 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
       "Failed to acquire the Plan section from the agency cache: " << acb->toJson();
     VPackObjectBuilder g(body.get());
   }
-  
   return Result();
 }
 
