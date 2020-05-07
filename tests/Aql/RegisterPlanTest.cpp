@@ -48,10 +48,10 @@ struct PlanMiniMock {
       : _expectedType(expectedType) {}
 
   auto increaseCounter(ExecutionNode::NodeType type) {
-    // This is no longer true for subqueries because reasons, i.e. subqueries are planned
-    // multiple times
+    // This is no longer true for subqueries because reasons, i.e. subqueries
+    // are planned multiple times
     // TODO: refactor subquery planing?
-    //EXPECT_FALSE(_called) << "Only count every node once per run";
+    // EXPECT_FALSE(_called) << "Only count every node once per run";
     EXPECT_EQ(_expectedType, type) << "Count the correct type";
   }
 
@@ -139,9 +139,13 @@ struct ExecutionNodeMock {
     if (getType() == ExecutionNode::SUBQUERY) {
       auto&& subquery = getSubquery();
       TRI_ASSERT(!subquery.empty());
-      worker.enterSubquery(this, &subquery.back());
-      subquery.back().walk(worker);
-      worker.leaveSubquery(this, &subquery.back());
+      if (worker.enterSubquery(this, &subquery.back())) {
+        bool shouldAbort = subquery.back().walk(worker);
+        worker.leaveSubquery(this, &subquery.back());
+        if (shouldAbort) {
+          return true;
+        }
+      }
     }
 
     worker.after(this);
@@ -522,11 +526,6 @@ TEST_F(RegisterPlanTest, variable_usage_with_spliced_subquery) {
   }
 }
 
-std::ostream& operator<<(std::ostream &os, Variable const *var) {
-  os << var->name << " (" << var->id << ")";
-  return os;
-}
-
 TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
   auto&& [vars, ptrs] = generateVars<6>();
   auto [mark, debra, mary, jesse, paul, tobias] = ptrs;
@@ -547,33 +546,54 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
   getVarUsage(nodes);
 
   {
-      // Check varsUsedLater
+    // Check varsUsedLater
 
-      // SINGLETON
-      EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
-      // ENUMERATE_COLLECTION
-      EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[1].getVarsUsedLaterStack());
-      // CALCULATION
-      EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[2].getVarsUsedLaterStack());
-      // SUBQUERY
-      EXPECT_EQ((VarSetStack{{jesse, mary, mark}}), nodes[3].getVarsUsedLaterStack());
-      // CALCULATION
-      EXPECT_EQ((VarSetStack{{jesse}}), nodes[4].getVarsUsedLaterStack());
-      // RETURN
-      EXPECT_EQ((VarSetStack{{}}), nodes[5].getVarsUsedLaterStack());
+    // SINGLETON
+    EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[1].getVarsUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[2].getVarsUsedLaterStack());
+    // SUBQUERY
+    EXPECT_EQ((VarSetStack{{jesse, mary, mark}}), nodes[3].getVarsUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{{jesse}}), nodes[4].getVarsUsedLaterStack());
+    // RETURN
+    EXPECT_EQ((VarSetStack{{}}), nodes[5].getVarsUsedLaterStack());
 
-      // SINGLETON
-      EXPECT_EQ((VarSetStack{{tobias, debra, paul}}), subquery[0].getVarsUsedLaterStack());
-      // ENUMERATE_COLLECTION
-      EXPECT_EQ((VarSetStack{{tobias, debra, paul}}), subquery[1].getVarsUsedLaterStack());
-      // CALCULATION
-      EXPECT_EQ((VarSetStack{{paul}}), subquery[2].getVarsUsedLaterStack());
-      // RETURN
-      EXPECT_EQ((VarSetStack{{}}), subquery[3].getVarsUsedLaterStack());
-
+    // SINGLETON
+    EXPECT_EQ((VarSetStack{{tobias, debra, paul}}), subquery[0].getVarsUsedLaterStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((VarSetStack{{tobias, debra, paul}}), subquery[1].getVarsUsedLaterStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{{paul}}), subquery[2].getVarsUsedLaterStack());
+    // RETURN
+    EXPECT_EQ((VarSetStack{{}}), subquery[3].getVarsUsedLaterStack());
   }
 
   {  // Check varsValid
+
+    // SINGLETON
+    EXPECT_EQ((VarSetStack{{}}), nodes[0].getVarsValidStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((VarSetStack{{mark}}), nodes[1].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{{mark, debra}}), nodes[2].getVarsValidStack());
+    // SUBQUERY
+    EXPECT_EQ((VarSetStack{{mark, debra, mary}}), nodes[3].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{{mark, debra, mary, jesse}}), nodes[4].getVarsValidStack());
+    // RETURN
+    EXPECT_EQ((VarSetStack{{mark, debra, mary, jesse}}), nodes[5].getVarsValidStack());
+
+    // SINGLETON
+    EXPECT_EQ((VarSetStack{{mark, debra}}), subquery[0].getVarsValidStack());
+    // ENUMERATE_COLLECTION
+    EXPECT_EQ((VarSetStack{{mark, debra, tobias}}), subquery[1].getVarsValidStack());
+    // CALCULATION
+    EXPECT_EQ((VarSetStack{{mark, debra, tobias, paul}}), subquery[2].getVarsValidStack());
+    // RETURN
+    EXPECT_EQ((VarSetStack{{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
   }
 }
 
