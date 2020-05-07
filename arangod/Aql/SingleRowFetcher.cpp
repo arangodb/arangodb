@@ -201,7 +201,7 @@ ExecutionState SingleRowFetcher<passBlocksThrough>::returnState(bool isShadowRow
 }
 
 template <BlockPassthrough blockPassthrough>
-RegisterId SingleRowFetcher<blockPassthrough>::getNrInputRegisters() const {
+RegisterCount SingleRowFetcher<blockPassthrough>::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 
