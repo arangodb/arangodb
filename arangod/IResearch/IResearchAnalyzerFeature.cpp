@@ -1981,46 +1981,40 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       auto split = splitAnalyzerName(entry.first);
 
-      auto processPool = [&entry](Analyzers::iterator& itr) -> Result {
-        if (!itr->second || equalAnalyzer(*(entry.second),
-                                          itr->second->type(),
-                                          itr->second->properties(),
-                                          itr->second->features())) {
-          itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
-          const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
-        } else if (itr->second->revision() == entry.second->revision()) {
-          return {
-            TRI_ERROR_BAD_PARAMETER,
-            "name collision detected while re-registering a duplicate arangosearch analizer name '" +
-            std::string(itr->second->name()) +
-            "' type '" + std::string(itr->second->type()) +
-            "' properties '" + itr->second->properties().toString() +
-            "', revision " + std::to_string(itr->second->revision()) +
-            ", previous registration type '" + std::string(entry.second->type()) +
-            "' properties '" + entry.second->properties().toString() + "'" +
-            ", revision " + std::to_string(entry.second->revision())
-          };
-        }
-        return {};
-      };
+
+      Analyzers::iterator itr;
       // different database
       if (split.first != vocbase->name()) {
         auto result = analyzers.emplace(entry.first, entry.second);
         if (!result.second) { // existing entry
-          auto processRes = processPool(result.first);
-          if (processRes.fail()) {
-            return processRes;
-          }
+          itr = result.first;
+        } else {
+          itr = analyzers.end();
         }
-        continue; // done with this analyzer
+      } else {
+        itr = analyzers.find(entry.first);
       }
-      auto itr = analyzers.find(entry.first);
       if (itr == analyzers.end()) {
-        continue; // removed analyzer
+        continue; // no conflict or removed analyzer
       }
-      auto processRes = processPool(itr);
-      if (processRes.fail()) {
-        return processRes;
+      if (!itr->second || equalAnalyzer(*(entry.second),
+          itr->second->type(),
+          itr->second->properties(),
+          itr->second->features())) {
+          itr->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
+          const_cast<Analyzers::key_type&>(itr->first) = entry.first; // point key at old pool
+      } else if (itr->second->revision() == entry.second->revision()) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "name collision detected while re-registering a duplicate arangosearch analyzer name '" +
+          std::string(itr->second->name()) +
+          "' type '" + std::string(itr->second->type()) +
+          "' properties '" + itr->second->properties().toString() +
+          "', revision " + std::to_string(itr->second->revision()) +
+          ", previous registration type '" + std::string(entry.second->type()) +
+          "' properties '" + entry.second->properties().toString() + "'" +
+          ", revision " + std::to_string(entry.second->revision())
+        };
       }
     }
     _lastLoad[databaseKey] = loadingRevision;

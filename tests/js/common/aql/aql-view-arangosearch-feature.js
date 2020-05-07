@@ -278,11 +278,12 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(1, db._analyzers.count());
       let savedAnalyzer = db._analyzers.toArray()[0];
       assertTrue(null !== savedAnalyzer);
-      assertEqual(7, Object.keys(savedAnalyzer).length);
+      assertEqual(8, Object.keys(savedAnalyzer).length);
       assertEqual("_analyzers/testAnalyzer", savedAnalyzer._id);
       assertEqual("testAnalyzer", savedAnalyzer._key);
       assertEqual("testAnalyzer", savedAnalyzer.name);
       assertEqual("stem", savedAnalyzer.type);
+      assertTrue(undefined !== savedAnalyzer.revision);
       assertEqual(analyzer.properties(), savedAnalyzer.properties);
       assertEqual(analyzer.features(), savedAnalyzer.features);
 
