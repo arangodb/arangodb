@@ -61,16 +61,15 @@ class all_terms_collector : util::noncopyable {
     state_.segment = &segment;
     state_.field = &field;
     state_.terms = &terms;
-    state_.attrs = &terms.attributes();
 
     // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
+    auto* meta = irs::get<term_meta>(terms);
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
   void visit(const boost_t boost) {
     assert(state_);
-    term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_, *state_.attrs);
+    term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_, *state_.terms);
 
     auto& state = *state_.state;
     state.scored_states.emplace_back(state_.terms->cookie(), stat_index_, boost);
@@ -88,7 +87,6 @@ class all_terms_collector : util::noncopyable {
     const sub_reader* segment{};
     const term_reader* field{};
     const seek_term_iterator* terms{};
-    const attribute_view* attrs{};
     const uint32_t* docs_count{};
     typename States::state_type* state{};
 

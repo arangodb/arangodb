@@ -141,7 +141,7 @@ namespace {
   auto checkLess = [](irs::boolean_filter::const_iterator& filter,
                       irs::bytes_ref const& term,
                       irs::string_ref const& field) {
-     ASSERT_EQ(irs::by_range::type(), filter->type());
+     ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
      auto& actual = dynamic_cast<irs::by_range const&>(*filter);
      irs::by_range expected;
      *expected.mutable_field() = field;
@@ -153,7 +153,7 @@ namespace {
   auto checkLessEqual = [](irs::boolean_filter::const_iterator& filter,
                       irs::bytes_ref const& term,
                       irs::string_ref const& field) {
-     ASSERT_EQ(irs::by_range::type(), filter->type());
+     ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
      auto& actual = dynamic_cast<irs::by_range const&>(*filter);
      irs::by_range expected;
      *expected.mutable_field() = field;
@@ -165,7 +165,7 @@ namespace {
   auto checkGreaterEqual = [](irs::boolean_filter::const_iterator& filter,
                       irs::bytes_ref const& term,
                       irs::string_ref const& field) {
-     ASSERT_EQ(irs::by_range::type(), filter->type());
+     ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
      auto& actual = dynamic_cast<irs::by_range const&>(*filter);
      irs::by_range expected;
      *expected.mutable_field() = field;
@@ -177,7 +177,7 @@ namespace {
   auto checkGreater = [](irs::boolean_filter::const_iterator& filter,
                       irs::bytes_ref const& term,
                       irs::string_ref const& field) {
-    ASSERT_EQ(irs::by_range::type(), filter->type());
+    ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
     auto& actual = dynamic_cast<irs::by_range const&>(*filter);
     irs::by_range expected;
     *expected.mutable_field() = field;
@@ -189,7 +189,7 @@ namespace {
   // Auxilary check lambdas. Need them to check root part of expected filter
   auto checkAny = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
-    EXPECT_EQ(irs::Or::type(), actual.begin()->type());
+    EXPECT_EQ(irs::type<irs::Or>::id(), actual.begin()->type());
     auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -197,7 +197,7 @@ namespace {
   };
   auto checkAll = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
-    EXPECT_EQ(irs::And::type(), actual.begin()->type());
+    EXPECT_EQ(irs::type<irs::And>::id(), actual.begin()->type());
     auto& root = dynamic_cast<const irs::And&>(*actual.begin());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -206,7 +206,7 @@ namespace {
   auto checkNone = [](irs::Or& actual, iresearch::boost_t boost) {
     // none for now is like All but with inverted interval check
     EXPECT_EQ(1, actual.size());
-    EXPECT_EQ(irs::And::type(), actual.begin()->type());
+    EXPECT_EQ(irs::type<irs::And>::id(), actual.begin()->type());
     auto& root = dynamic_cast<const irs::And&>(*actual.begin());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
@@ -284,11 +284,11 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                               mangleString("quick.brown.fox", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(subFiltersIterator,
-                              irs::null_token_stream::value_null(),
+                              irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()),
                               mangleNull("quick.brown.fox"));
       ++subFiltersIterator;
       operation.second.second(subFiltersIterator,
-                              irs::boolean_token_stream::value_true(),
+                              irs::ref_cast<irs::byte_type>(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true())),
                               mangleBool("quick.brown.fox"));
       ++subFiltersIterator;
     }
@@ -304,7 +304,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1.5);
       irs::numeric_token_stream stream;
       stream.reset(2.);
-      ASSERT_EQ(irs::by_granular_range::type(), subFiltersIterator->type());
+      ASSERT_EQ(irs::type<irs::by_granular_range>::id(), subFiltersIterator->type());
       {
         auto& by_range_actual = dynamic_cast<irs::by_granular_range const&>(*subFiltersIterator);
         irs::by_granular_range expected;
@@ -330,11 +330,11 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       }
       ++subFiltersIterator;
       operation.second.second(subFiltersIterator,
-                              irs::null_token_stream::value_null(),
+                              irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()),
                               mangleNull("quick.brown.fox"));
       ++subFiltersIterator;
       operation.second.second(subFiltersIterator,
-                              irs::boolean_token_stream::value_false(),
+                              irs::ref_cast<irs::byte_type>(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false())),
                               mangleBool("quick.brown.fox"));
       ++subFiltersIterator;
     }
@@ -511,7 +511,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                               irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
                               mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
-      EXPECT_EQ(arangodb::iresearch::ByExpression::type(), subFiltersIterator->type());
+      EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), subFiltersIterator->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(&*subFiltersIterator));
 
       ++subFiltersIterator;
@@ -535,7 +535,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                               irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
                               mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
-      EXPECT_EQ(arangodb::iresearch::ByExpression::type(), subFiltersIterator->type());
+      EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), subFiltersIterator->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(&*subFiltersIterator));
 
       ++subFiltersIterator;
@@ -559,11 +559,11 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                               irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
                               mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
-      EXPECT_EQ(arangodb::iresearch::ByExpression::type(), subFiltersIterator->type());
+      EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), subFiltersIterator->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(&*subFiltersIterator));
 
       ++subFiltersIterator;
-      EXPECT_EQ(arangodb::iresearch::ByExpression::type(), subFiltersIterator->type());
+      EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), subFiltersIterator->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(&*subFiltersIterator));
     }
   }
@@ -581,7 +581,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                               irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
                               mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
-      EXPECT_EQ(arangodb::iresearch::ByExpression::type(), subFiltersIterator->type());
+      EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), subFiltersIterator->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(&*subFiltersIterator));
 
       ++subFiltersIterator;
@@ -613,11 +613,11 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
                               mangleString("a.b.c.e.f", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(subFiltersIterator,
-                              irs::boolean_token_stream::value_false(),
+                              irs::ref_cast<irs::byte_type>(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false())),
                               mangleBool("a.b.c.e.f"));
       ++subFiltersIterator;
       operation.second.second(subFiltersIterator,
-                              irs::null_token_stream::value_null(),
+                              irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()),
                               mangleNull("a.b.c.e.f"));
       ++subFiltersIterator;
     }

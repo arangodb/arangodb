@@ -224,7 +224,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();
-    iresearch::timer_utils::init_stats(); // disable profile state tracking
+    irs::timer_utils::init_stats(); // disable profile state tracking
   }
 
   void write_segment(
@@ -292,14 +292,12 @@ NS_BEGIN(templates)
 /// @class token_stream_payload
 /// @brief token stream wrapper which sets payload equal to term value
 //////////////////////////////////////////////////////////////////////////////
-class token_stream_payload: public irs::token_stream {
+class token_stream_payload final : public irs::token_stream {
  public:
   explicit token_stream_payload(irs::token_stream* impl);
-  bool next(); 
+  bool next();
 
-  const irs::attribute_view& attributes() const noexcept {
-    return impl_->attributes();
-  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type);
 
  private:
   const irs::term_attribute* term_;
@@ -316,7 +314,7 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const irs::string_ref& name, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")) {
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw irs::illegal_state();
@@ -328,7 +326,7 @@ class text_field : public tests::field_base {
 
   text_field(
       const irs::string_ref& name, const T& value, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")),
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")),
      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -351,8 +349,8 @@ class text_field : public tests::field_base {
 
   const irs::flags& features() const {
     static irs::flags features{
-      iresearch::frequency::type(), iresearch::position::type(),
-      iresearch::offset::type(), iresearch::payload::type()
+      irs::type<irs::frequency>::get(), irs::type<irs::position>::get(),
+      irs::type<irs::offset>::get(), irs::type<irs::payload>::get()
     };
     return features;
   }
