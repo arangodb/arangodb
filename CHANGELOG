@@ -1,7 +1,7 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Fix spurious bugs in `resilience_move` tests due to replication context of 
+* Fix spurious bugs in `resilience_move` tests due to replication context of
   to-be-dropped collections lingering around until timeout.
 
 * Fix potential undefined behavior in some operations issued to the REST
