@@ -147,7 +147,7 @@ void AgencyCache::run() {
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
           << "AgencyCache: poll polls: waiting for commitIndex " << commitIndex + 1;
-      return AsyncAgencyComm().poll(10s, commitIndex+1);
+      return AsyncAgencyComm().poll(60s, commitIndex+1);
     };
 
   // while not stopping

@@ -614,20 +614,25 @@ void ClusterFeature::start() {
 }
 
 void ClusterFeature::beginShutdown() {
+  _agencyCache->beginShutdown();
 }
-
-void ClusterFeature::stop() {}
 
 void ClusterFeature::unprepare() {
   if (!_enableCluster) {
     return;
   }
+  _clusterInfo->cleanup();
+}
 
-  // change into shutdown state
-  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
+void ClusterFeature::stop() {
+  if (!_enableCluster) {
+    return;
+  }
 
   shutdownHeartbeatThread();
 
+  // change into shutdown state
+  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   AgencyComm comm(server());
   comm.sendServerState();
@@ -684,13 +689,10 @@ void ClusterFeature::unprepare() {
     }
   }
 
-  AsyncAgencyCommManager::INSTANCE->setStopping(true);
-
   TRI_ASSERT(tries <= maxTries);
+
+  AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
-
-  _clusterInfo->cleanup();
-
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {

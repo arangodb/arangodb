@@ -208,17 +208,17 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
               }
               return futures::makeFuture(AsyncAgencyCommResult{result.error,
                                                                std::move(resp)});  // otherwise return error as is
-            case Error::CouldNotConnect:
-            case Error::ConnectionClosed:
-            case Error::Timeout:
-            case Error::ReadError:
-            case Error::WriteError:
             case Error::Canceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
                   AsyncAgencyCommResult{result.error, std::move(resp)});
               }
               [[fallthrough]];
+            case Error::CouldNotConnect:
+            case Error::ConnectionClosed:
+            case Error::Timeout:
+            case Error::ReadError:
+            case Error::WriteError:
             case Error::ProtocolError:
             case Error::CloseRequested:
               // retry the request at different endpoint
@@ -331,14 +331,14 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 
               [[fallthrough]];
               /* fallthrough */
-            case Error::Timeout:
-            case Error::ConnectionClosed:
             case Error::Canceled:
               if (man.server().isStopping()) {
                 return futures::makeFuture(
                   AsyncAgencyCommResult{result.error, std::move(resp)});
               }
               [[fallthrough]];
+            case Error::Timeout:
+            case Error::ConnectionClosed:
             case Error::ProtocolError:
             case Error::WriteError:
             case Error::ReadError:
