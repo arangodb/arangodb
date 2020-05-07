@@ -545,7 +545,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     }
 #endif
   } else {
-    LOG_DEVEL << "TRAVERSAL PARALLELISM TO USE: " << opts->effectiveParallelism();
+    LOG_DEVEL << "TRAVERSAL PARALLELISM TO USE: " << opts->parallelism();
 
     traverser.reset(new arangodb::traverser::SingleServerTraverser(opts));
   }

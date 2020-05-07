@@ -222,21 +222,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
         } else if (name == "parallelism") {
-          bool invalidValue = false;
-          if (value->isIntValue()) {
-            int64_t p = value->getIntValue();
-            if (p > 0) {
-              options->setParallelism(static_cast<size_t>(p));
-            } else {
-              invalidValue = true;
-            }
-          }
-          if (invalidValue) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_BAD_PARAMETER,
-                "parallelism: invalid value"
-            );
-          }
+          options->setParallelism(Ast::validatedParallelism(value));
         }
       }
     }
@@ -1130,11 +1116,6 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
   auto options =
       createTraversalOptions(getAst()->query(), direction, node->getMember(4));
   
-#warning this is shit, needs to be set before createTraversalOptions
-  if (options->effectiveParallelism() > 1) {
-    _ast->setContainsParallelNode();
-  }
-
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);

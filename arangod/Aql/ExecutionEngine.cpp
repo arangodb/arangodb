@@ -758,7 +758,7 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
   } else {
     
 #ifdef USE_ENTERPRISE
-  ExecutionEngine::parallelizeTraversals(query, plan);
+    ExecutionEngine::parallelizeTraversals(query, plan);
 #endif
    
     // instantiate the engine on a local server
