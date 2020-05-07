@@ -1273,7 +1273,7 @@ std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
 
 bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
   TRI_ASSERT(_varUsageValid);
-  return (_varsUsedLaterStack.back().find(variable) != _varsUsedLaterStack.back().end());
+  return (getVarsUsedLater().find(variable) != getVarsUsedLater().end());
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }

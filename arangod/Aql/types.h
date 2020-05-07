@@ -43,10 +43,6 @@ struct Collection;
 typedef uint32_t VariableId;
 
 /// @brief type for register numbers/ids
-/*class RegisterId : public basics::Identifier {
- public:
-  using Identifier::Identifier;
-};*/
 typedef unsigned RegisterId;
 typedef size_t RegisterCount;
 
