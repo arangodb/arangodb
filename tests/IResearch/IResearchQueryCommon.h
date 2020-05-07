@@ -78,7 +78,7 @@ class IResearchQueryTest
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
-                          irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                          irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
         );  // cache analyzer
     EXPECT_TRUE(res.ok());
 
@@ -92,7 +92,7 @@ class IResearchQueryTest
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()});  // cache analyzer
+        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
@@ -102,7 +102,7 @@ class IResearchQueryTest
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
-                            irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                            irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
 

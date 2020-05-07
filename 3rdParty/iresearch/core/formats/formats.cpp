@@ -77,8 +77,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
-
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
   return INVALID_COLUMN;
 }
@@ -158,7 +156,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
 // -----------------------------------------------------------------------------
 
 format_registrar::format_registrar(
-    const format::type_id& type,
+    const type_info& type,
     const string_ref& module,
     format::ptr(*factory)(),
     const char* source /*= nullptr*/) {

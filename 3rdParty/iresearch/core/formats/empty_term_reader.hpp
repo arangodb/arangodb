@@ -31,9 +31,9 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a term_reader implementation with docs_count but without terms
 ////////////////////////////////////////////////////////////////////////////////
-class empty_term_reader: public irs::term_reader {
+class empty_term_reader final : public irs::term_reader {
  public:
-  empty_term_reader(uint64_t docs_count) noexcept
+  explicit empty_term_reader(uint64_t docs_count) noexcept
     : docs_count_(docs_count) {
   }
 
@@ -49,27 +49,27 @@ class empty_term_reader: public irs::term_reader {
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
+    return nullptr;
   }
 
   // total number of terms
-  virtual size_t size() const noexcept override {
+  virtual size_t size() const noexcept {
     return 0; // no terms in reader
   }
 
   // total number of documents
-  virtual uint64_t docs_count() const noexcept override {
+  virtual uint64_t docs_count() const noexcept {
     return docs_count_;
   }
 
   // least significant term
-  virtual const irs::bytes_ref& (min)() const noexcept override {
+  virtual const irs::bytes_ref& (min)() const noexcept {
     return irs::bytes_ref::NIL;
   }
 
   // most significant term
-  virtual const irs::bytes_ref& (max)() const noexcept override {
+  virtual const irs::bytes_ref& (max)() const noexcept {
     return irs::bytes_ref::NIL;
   }
 
