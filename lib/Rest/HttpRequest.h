@@ -42,17 +42,8 @@ class HttpRequest final : public GeneralRequest {
  public:
   HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
 
- private:
-  // HACK HACK HACK
-  // This should only be called by createFakeRequest in ClusterComm
-  // as the Request is not fully constructed. This 2nd constructor
-  // avoids the need of a additional FakeRequest class.
-  HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-              std::unordered_map<std::string, std::string> const& headers);
-
- public:
   HttpRequest(HttpRequest&&) = default;
-  ~HttpRequest() override = default;
+  ~HttpRequest() = default;
 
  public:
   arangodb::Endpoint::TransportType transportType() override {
@@ -72,7 +63,7 @@ class HttpRequest final : public GeneralRequest {
   size_t contentLength() const override { return _payload.size(); }
   // Payload
   arangodb::velocypack::StringRef rawPayload() const override;
-  arangodb::velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  arangodb::velocypack::Slice payload(bool strictValidation) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override {
     _payload = std::move(buffer);
   }
@@ -93,10 +84,6 @@ class HttpRequest final : public GeneralRequest {
   /// @brief parse an existing path
   void parseUrl(char const* start, size_t len);
   void setHeaderV2(std::string&& key, std::string&& value);
-
-  static HttpRequest* createHttpRequest(ContentType contentType,
-                                        char const* body, int64_t contentLength,
-                                        std::unordered_map<std::string, std::string> const& headers);
 
  protected:
   void setArrayValue(char const* key, size_t length, char const* value);

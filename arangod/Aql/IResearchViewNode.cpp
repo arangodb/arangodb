@@ -1396,7 +1396,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     TRI_ASSERT(previousNode != nullptr);
 
     return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(
-        &engine, this, emptyRegisterInfos, aql::RegisterInfos{emptyRegisterInfos});
+        &engine, this, std::move(emptyRegisterInfos), aql::EmptyExecutorInfos{});
   };
 
   auto const createSnapshot = [this](aql::ExecutionEngine& engine) {

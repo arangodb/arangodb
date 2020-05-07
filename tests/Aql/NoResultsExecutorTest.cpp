@@ -84,7 +84,7 @@ INSTANTIATE_TEST_CASE_P(NoResultsExecutorTest, NoResultsExecutorTest,
 TEST_P(NoResultsExecutorTest, do_never_ever_return_results) {
   ExecutionStats stats{};
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<NoResultsExecutor>(makeInfos(), makeInfos(), ExecutionNode::NORESULTS)
+      .addConsumer<NoResultsExecutor>(makeInfos(), EmptyExecutorInfos{}, ExecutionNode::NORESULTS)
       .setInputFromRowNum(getInput())
       .setInputSplitType(getSplit())
       .setCall(getCall())
