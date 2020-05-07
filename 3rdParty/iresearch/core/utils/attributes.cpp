@@ -29,12 +29,10 @@
 
 NS_LOCAL
 
-class attribute_register:
-  public irs::tagged_generic_register<irs::string_ref, irs::type_info, irs::string_ref, attribute_register> {
+class attribute_register
+    : public irs::tagged_generic_register<irs::string_ref, irs::type_info,
+                                          irs::string_ref, attribute_register> {
 };
-
-const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
-const iresearch::attribute_view  EMPTY_ATTRIBUTE_VIEW(0);
 
 NS_END
 
@@ -138,28 +136,6 @@ attribute_registrar::attribute_registrar(
 
 attribute_registrar::operator bool() const noexcept {
   return registered_;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   attribute_store
-// -----------------------------------------------------------------------------
-
-attribute_store::attribute_store(size_t /*reserve = 0*/) {
-}
-
-/*static*/ const attribute_store& attribute_store::empty_instance() {  
-  return EMPTY_ATTRIBUTE_STORE;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    attribute_view
-// -----------------------------------------------------------------------------
-
-attribute_view::attribute_view(size_t /*reserve = 0*/) {
-}
-
-/*static*/ const attribute_view& attribute_view::empty_instance() {  
-  return EMPTY_ATTRIBUTE_VIEW;
 }
 
 NS_END

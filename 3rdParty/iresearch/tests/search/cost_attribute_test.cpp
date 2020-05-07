@@ -120,10 +120,11 @@ TEST(cost_attribute_test, lazy_estimation) {
 TEST(cost_attribute_test, extract) {
   struct basic_attribute_provider : irs::attribute_provider {
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
-      return attrs.get(type, {}).get();
+      return type == irs::type<irs::cost>::id()
+        ? cost : nullptr;
     }
 
-    irs::attribute_view attrs;
+    irs::cost* cost{};
   } attrs;
 
   ASSERT_EQ(
@@ -134,7 +135,7 @@ TEST(cost_attribute_test, extract) {
   ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
   irs::cost cost;
-  attrs.attrs.emplace(cost);
+  attrs.cost = &cost;
 
   auto est = 7;
   auto evaluated = false;

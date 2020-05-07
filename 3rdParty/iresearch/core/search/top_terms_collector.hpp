@@ -31,6 +31,7 @@
 #include "index/iterators.hpp"
 #include "search/sort.hpp"
 #include "utils/hash_utils.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 NS_ROOT

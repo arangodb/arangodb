@@ -337,7 +337,8 @@ class doc_iterator : public irs::doc_iterator {
   }
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return attrs_.get(type, {}).get();
+    const auto it = attrs_.find(type);
+    return it == attrs_.end() ? nullptr : it->second;
   }
 
   virtual bool next() override {
@@ -404,7 +405,7 @@ class doc_iterator : public irs::doc_iterator {
     }
 
     bool next() override {
-      if ( next_ == owner_.prev_->positions().end() ) {
+      if (next_ == owner_.prev_->positions().end()) {
         value_ = irs::type_limits<irs::type_t::pos_t>::eof();
         return false;
       }
@@ -432,7 +433,7 @@ class doc_iterator : public irs::doc_iterator {
   };
 
   const tests::term& data_;
-  irs::attribute_view attrs_;
+  std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::document doc_;
   irs::frequency freq_;
   irs::cost cost_;
@@ -448,19 +449,17 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
   next_ = data_.postings.begin();
 
   cost_.value(data_.postings.size());
-  attrs_.emplace(cost_);
+  attrs_[irs::type<irs::cost>::id()] = &cost_;
 
-  attrs_.emplace(doc_);
-  attrs_.emplace(score_);
-
-  attrs_.emplace(cost_);
+  attrs_[irs::type<irs::document>::id()] = &doc_;
+  attrs_[irs::type<irs::score>::id()] = &score_;
 
   if (features.check<irs::frequency>()) {
-    attrs_.emplace(freq_);
+    attrs_[irs::type<irs::frequency>::id()] = &freq_;
   }
 
   if (features.check<irs::position>()) {
-    attrs_.emplace(pos_); // ensure we use base class type
+    attrs_[irs::type<irs::position>::id()] = &pos_;
   }
 }
 

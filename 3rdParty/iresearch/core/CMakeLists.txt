@@ -134,6 +134,7 @@ set(IResearch_core_sources
   ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
+  ./utils/attribute_store.cpp
   ./utils/automaton_utils.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
@@ -485,6 +486,10 @@ set_target_properties(${IResearch_TARGET_NAME}-static
   OUTPUT_NAME iresearch-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
+
+if (USE_IWYU)
+  set_property(TARGET ${IResearch_TARGET_NAME}-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
+endif()
 
 # setup CRT
 if(MSVC)

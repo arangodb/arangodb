@@ -21,23 +21,25 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOKEN_STREAM_H
-#define IRESEARCH_TOKEN_STREAM_H
+#include "attribute_store.hpp"
 
-#include <memory>
+NS_LOCAL
 
-#include "utils/attribute_provider.hpp"
-
-NS_ROOT
-
-class IRESEARCH_API token_stream : public attribute_provider {
- public:
-  using ptr = std::unique_ptr<token_stream>;
-
-  virtual ~token_stream() = default;
-  virtual bool next() = 0;
-};
+const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
 
 NS_END
 
-#endif
+NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   attribute_store
+// -----------------------------------------------------------------------------
+
+attribute_store::attribute_store(size_t /*reserve = 0*/) {
+}
+
+/*static*/ const attribute_store& attribute_store::empty_instance() {  
+  return EMPTY_ATTRIBUTE_STORE;
+}
+
+NS_END

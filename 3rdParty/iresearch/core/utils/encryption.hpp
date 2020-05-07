@@ -25,7 +25,7 @@
 
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 

@@ -240,7 +240,7 @@ class term_reader : public irs::term_reader {
           freq_.value += p.positions().size();
         }
       }
-      attrs_.emplace(freq_);
+      pfreq_ = &freq_;
     }
   }
 
@@ -252,13 +252,16 @@ class term_reader : public irs::term_reader {
   virtual const irs::bytes_ref& (min)() const override { return min_; }
   virtual const irs::bytes_ref& (max)() const override { return max_; }
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return attrs_.get(type, {}).get();
+    if (irs::type<irs::frequency>::id() == type) {
+      return pfreq_;
+    }
+    return nullptr;
   }
 
  private:
   const tests::field& data_;
-  irs::attribute_view attrs_;
   irs::frequency freq_;
+  irs::frequency* pfreq_{};
   irs::bytes_ref min_;
   irs::bytes_ref max_;
 };

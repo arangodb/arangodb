@@ -40,15 +40,18 @@ class format_10_test_case : public tests::format_test_case {
   const size_t VERSION10_POSTINGS_WRITER_BLOCK_SIZE = 128;
 
   struct basic_attribute_provider : irs::attribute_provider {
-    explicit basic_attribute_provider(irs::attribute_view& attrs)
-      : attrs(attrs) {
-    }
-
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
-      return attrs.get(type, {}).get();
+      if (type == irs::type<irs::frequency>::id()) {
+        return freq;
+      }
+      if (type == irs::type<irs::term_meta>::id()) {
+        return meta;
+      }
+      return nullptr;
     }
 
-    irs::attribute_view& attrs;
+    irs::frequency* freq{};
+    irs::term_meta* meta{};
   };
 
   void assert_positions(irs::doc_iterator& expected, irs::doc_iterator& actual) {
@@ -166,16 +169,15 @@ class format_10_test_case : public tests::format_test_case {
       irs::frequency freq;
       freq.value = 10;
 
-      irs::attribute_view attrs;
+      basic_attribute_provider read_attrs;
       if (field.features.check<irs::frequency>()) {
-        attrs.emplace(freq);
+        read_attrs.freq = &freq;
       }
-      basic_attribute_provider read_attrs(attrs);
 
       // read term attributes
       {
         irs::version10::term_meta read_meta;
-        attrs.emplace(read_meta);
+        read_attrs.meta = &read_meta;
         begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
         // check term_meta
@@ -415,9 +417,8 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // read term0 attributes & postings
     {
       irs::version10::term_meta read_meta;
-      irs::attribute_view attrs;
-      attrs.emplace(read_meta);
-      basic_attribute_provider read_attrs(attrs);
+      basic_attribute_provider read_attrs;
+      read_attrs.meta = &read_meta;
 
       begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
@@ -443,9 +444,8 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // check term_meta for term1
     {
       irs::version10::term_meta read_meta;
-      irs::attribute_view attrs;
-      attrs.emplace(read_meta);
-      basic_attribute_provider read_attrs(attrs);
+      basic_attribute_provider read_attrs;
+      read_attrs.meta = &read_meta;
       begin += reader->decode(begin, field.features, read_attrs, read_meta);
 
       {
@@ -555,9 +555,8 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // cumulative attribute
     irs::version10::term_meta read_meta;
-    irs::attribute_view attrs;
-    attrs.emplace(read_meta);
-    basic_attribute_provider read_attrs(attrs);
+    basic_attribute_provider read_attrs;
+    read_attrs.meta = &read_meta;
 
     // read term0 attributes
     {

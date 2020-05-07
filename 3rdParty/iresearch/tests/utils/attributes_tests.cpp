@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 
 NS_LOCAL
 
@@ -210,128 +210,6 @@ TEST(attributes_tests, store_visit) {
   {
     std::unordered_set<irs::type_info::type_id> expected;
     auto visitor = [&expected](irs::type_info::type_id type_id, const attribute_store::ref<attribute>::type&)->bool {
-      return 1 == expected.erase(type_id);
-    };
-
-    expected.insert(irs::type<tests::attribute>::id());
-    expected.insert(irs::type<tests::invalid_attribute>::id());
-    ASSERT_TRUE(attrs.visit(visitor));
-    ASSERT_TRUE(expected.empty());
-  }
-}
-
-TEST(attributes_tests, view_ctor) {
-  irs::attribute_view attrs;
-
-  ASSERT_EQ(0, attrs.size());
-  ASSERT_EQ(flags{}, attrs.features());
-
-  {
-    tests::attribute value;
-    attrs.emplace(value);
-    irs::attribute_view attrs1(std::move(attrs));
-    ASSERT_EQ(1, attrs1.size());
-    ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs1.features());
-    ASSERT_TRUE(attrs1.contains<tests::attribute>());
-    ASSERT_EQ(&value, attrs1.get<tests::attribute>()->get());
-  }
-
-  ASSERT_EQ(0, attrs.size());
-  ASSERT_EQ(flags{}, attrs.features());
-  ASSERT_FALSE(attrs.contains<tests::attribute>());
-}
-
-TEST(attributes_tests, view_add_placeholder) {
-  irs::attribute_view attrs;
-  auto& added = attrs.emplace<tests::attribute>();
-  ASSERT_TRUE(!added);
-  ASSERT_EQ(1, attrs.size());
-  ASSERT_TRUE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(nullptr, attrs.get<tests::attribute>()->get());
-
-  tests::attribute value;
-  added = &value;
-  ASSERT_FALSE(!added);
-  ASSERT_EQ(&value, attrs.get<tests::attribute>()->get());
-}
-
-TEST(attributes_tests, view_add_get_clear_state_clear) {
-  irs::attribute_view attrs;
-  tests::attribute value0;
-  auto& added = attrs.emplace(value0);
-  ASSERT_FALSE(!added);
-  ASSERT_EQ(1, attrs.size());
-  ASSERT_TRUE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(&value0, attrs.get<tests::attribute>()->get());
-  ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
-
-  // add attribute
-  {
-    tests::attribute value;
-    auto& added1 = attrs.emplace(value);
-    ASSERT_EQ(added.get(), added1.get());
-    ASSERT_EQ(1, attrs.size());
-    ASSERT_TRUE(attrs.contains<tests::attribute>());
-    ASSERT_EQ(&value0, attrs.get<tests::attribute>()->get());
-    ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
-  }
-
-  // get attribute
-  {
-    auto& added1 = added;
-    ASSERT_FALSE(!added1);
-    auto& added2 = const_cast<const irs::attribute_view&>(attrs).get<tests::attribute>();
-    ASSERT_FALSE(!added2);
-    ASSERT_EQ(added.get(), added2.get());
-    ASSERT_EQ(reinterpret_cast<const void*>(added1.get()), added2.get());
-  }
-
-  // add attribute
-  tests::invalid_attribute value1;
-  attrs.emplace(value1);
-  ASSERT_EQ(2, attrs.size());
-  ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
-  ASSERT_EQ(&value1, attrs.get<tests::invalid_attribute>()->get());
-  ASSERT_EQ(flags({irs::type<tests::attribute>::get(), irs::type<tests::invalid_attribute>::get()}),
-            attrs.features());
-
-  // remove attribute
-  attrs.remove<tests::invalid_attribute>();
-  ASSERT_EQ(1, attrs.size());
-  ASSERT_FALSE(attrs.contains<tests::invalid_attribute>());
-  ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
-
-  // clear
-  attrs.clear();
-  ASSERT_EQ(0, attrs.size());
-  ASSERT_FALSE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(flags{}, attrs.features());
-}
-
-TEST(attributes_tests, view_visit) {
-  irs::attribute_view attrs;
-  tests::attribute value0;
-  tests::invalid_attribute value1;
-
-  // add first attribute
-  ASSERT_FALSE(!attrs.emplace(value0));
-  ASSERT_EQ(1, attrs.size());
-  ASSERT_TRUE(attrs.contains<tests::attribute>());
-  ASSERT_EQ(&value0, attrs.get<tests::attribute>()->get());
-  ASSERT_EQ(flags{irs::type<tests::attribute>::get()}, attrs.features());
-
-  // add second attribute
-  ASSERT_FALSE(!attrs.emplace(value1));
-  ASSERT_EQ(2, attrs.size());
-  ASSERT_TRUE(attrs.contains<tests::invalid_attribute>());
-  ASSERT_EQ(&value1, attrs.get<tests::invalid_attribute>()->get());
-  ASSERT_EQ(flags({irs::type<tests::attribute>::get(), irs::type<tests::invalid_attribute>::get()}),
-            attrs.features());
-
-  // visit 2 attributes
-  {
-    std::unordered_set<irs::type_info::type_id> expected;
-    auto visitor = [&expected](const irs::type_info::type_id type_id, const attribute_view::ref<attribute>::type&)->bool {
       return 1 == expected.erase(type_id);
     };
 

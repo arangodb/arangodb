@@ -25,7 +25,7 @@
 
 #include "frozen/map.h"
 
-#include "attributes_provider.hpp"
+#include "attribute_provider.hpp"
 
 NS_ROOT
 

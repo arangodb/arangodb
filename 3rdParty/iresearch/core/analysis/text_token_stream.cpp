@@ -61,6 +61,7 @@
 #include "utils/json_utils.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"

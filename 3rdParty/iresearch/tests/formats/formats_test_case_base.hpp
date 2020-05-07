@@ -117,13 +117,12 @@ class format_test_case : public index_test_base {
         const docs_t::const_iterator& end,
         const irs::flags& features = irs::flags::empty_instance())
       : next_(begin), end_(end), pos_(features) {
-      attrs_.emplace(callback_);
+      attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (features.check<irs::frequency>()) {
         freq_.value = 10;
-        attrs_.emplace(freq_);
-
+        attrs_[irs::type<irs::frequency>::id()] = &freq_;
         if (features.check<irs::position>()) {
-          attrs_.emplace(pos_); // ensure we use base class type
+          attrs_[irs::type<irs::position>::id()] = &pos_;
         }
       }
     }
@@ -157,11 +156,12 @@ class format_test_case : public index_test_base {
     }
 
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs_.get(type, {}).get();
+      const auto it = attrs_.find(type);
+      return it == attrs_.end() ? nullptr : it->second;
     }
 
    private:
-    irs::attribute_view attrs_;
+    std::map<irs::type_info::type_id, irs::attribute*> attrs_;
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
     irs::frequency freq_;

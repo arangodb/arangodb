@@ -144,8 +144,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       stats_(stats),
       doc_(irs::doc_limits::invalid()) {
     est_.value(std::distance(first_, last_));
-    attrs_.emplace(est_);
-    attrs_.emplace(doc_);
+    attrs_[irs::type<irs::cost>::id()] = &est_;
+    attrs_[irs::type<irs::document>::id()] = &doc_;
 
     if (!ord.empty()) {
       assert(stats_);
@@ -162,7 +162,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
         self.scorers_.score(score);
       });
 
-      attrs_.emplace(score_);
+      attrs_[irs::type<irs::score>::id()] = &score_;
     }
   }
 
@@ -175,7 +175,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
   virtual irs::doc_id_t value() const override { return doc_.value; }
 
   virtual bool next() override {
-    if ( first_ == last_ ) {
+    if (first_ == last_) {
       doc_.value = irs::doc_limits::eof();
       return false;
     }
@@ -186,7 +186,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
   }
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return attrs_.get(type, {}).get();
+    const auto it = attrs_.find(type);
+    return it == attrs_.end() ? nullptr : it->second;
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
@@ -202,8 +203,8 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
   }
 
  private:
+  std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  irs::attribute_view attrs_;
   irs::order::prepared::scorers scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
@@ -1239,9 +1240,6 @@ NS_BEGIN(detail)
 
 struct unestimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
-    doc_iterator() {
-      attrs.emplace(doc);
-    }
     virtual irs::doc_id_t value() const override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
@@ -1252,11 +1250,11 @@ struct unestimated: public irs::filter {
       return irs::doc_limits::invalid();
     }
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs.get(type, {}).get();
+      return type == irs::type<irs::document>::id()
+        ? &doc : nullptr;
     }
 
     irs::document doc;
-    irs::attribute_view attrs;
   }; // doc_iterator
 
   struct prepared: public irs::filter::prepared {
@@ -1294,8 +1292,6 @@ struct estimated: public irs::filter {
         *evaluated = true;
         return est;
       });
-      attrs.emplace(cost);
-      attrs.emplace(doc);
     }
     virtual irs::doc_id_t value() const override {
       // prevent iterator to filter out
@@ -1307,12 +1303,16 @@ struct estimated: public irs::filter {
       return irs::doc_limits::invalid();
     }
     virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return attrs.get(type, {}).get();
+      if (type == irs::type<irs::cost>::id()) {
+        return &cost;
+      }
+
+      return type == irs::type<irs::document>::id()
+        ? &doc : nullptr;
     }
 
     irs::document doc;
     irs::cost cost;
-    irs::attribute_view attrs;
   }; // doc_iterator
 
   struct prepared: public irs::filter::prepared {

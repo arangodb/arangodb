@@ -185,7 +185,7 @@ struct Doc {
     mutable irs::analysis::analyzer::ptr stream;
     static const std::string& aname;
     static const std::string& aignore;
-    static constexpr auto aignore_format = irs::type<irs::type<irs::text_format::json>::id()>::get();
+    static constexpr auto aignore_format = irs::type<irs::text_format::json>::get();
 
     TextField(const std::string& n, const irs::flags& flags)
       : Field(n, flags) {

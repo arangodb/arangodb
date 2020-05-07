@@ -25,7 +25,7 @@
 #define IRESEARCH_DIRECTORY_ATTRIBUTES_H
 
 #include "shared.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 #include "utils/ref_counter.hpp"
 #include "utils/container_utils.hpp"
 

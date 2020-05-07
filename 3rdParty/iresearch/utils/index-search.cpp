@@ -443,7 +443,7 @@ int search(
 
   static const std::map<std::string, irs::type_info> text_formats = {
     { "csv", irs::type<irs::text_format::csv>::get() },
-    { "json", irs::type<irs::type<irs::text_format::json>::id()>::get() },
+    { "json", irs::type<irs::text_format::json>::get() },
     { "text", irs::type<irs::text_format::text>::get() },
     { "xml", irs::type<irs::text_format::xml>::get() },
   };
@@ -576,7 +576,7 @@ int search(
     thread_pool.run([&task_provider, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
-      auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::type<irs::type<irs::text_format::json>::id()>::get(), analyzer_args);
+      auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::type<irs::text_format::json>::get(), analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
       const timers_t building_timers("building");

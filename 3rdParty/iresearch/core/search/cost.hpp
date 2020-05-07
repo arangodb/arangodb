@@ -25,6 +25,7 @@
 
 #include <functional>
 
+#include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
 NS_ROOT
