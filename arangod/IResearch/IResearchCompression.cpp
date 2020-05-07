@@ -35,7 +35,7 @@ irs::string_ref columnCompressionToString(irs::type_info::type_id type) noexcept
     TRI_ASSERT(false);
     return irs::string_ref::EMPTY;
   }
-  auto const& mangled_name = type().name();
+  auto const mangled_name = type().name();
   TRI_ASSERT(!mangled_name.empty());
   auto demangled_start = mangled_name.end() - 1;
   while (demangled_start != mangled_name.begin() && *(demangled_start-1) != ':') {
