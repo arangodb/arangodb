@@ -8,14 +8,35 @@ v3.6.4 (XXXX-XX-XX)
   small chance that this DBServer dead-locks itself. Will not happen if the
   DBServer has enough threads. This dead-lock can no longer be triggered.
 
+* Fix spurious bugs in `resilience_move` tests due to replication context of
+  to-be-dropped collections lingering around until timeout.
+
+* Fixed issue 11243: `db._isSystem()` returns true for a non-system DB.
+
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
+  edges. The option is turned on by default. This normally helps with
+  performance in read-only and read-mostly workloads.
+
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
-
-* Updated OpenSSL to 1.1.1g.
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
   and no replication factor was specified for a graph. In this case, the new
   graph will use the configured minimum replication factor.
+
+
+v3.6.3.1 (2020-05-06)
+---------------------
+
+* Fixed issue #11303: The result data of filter operation on edge document with
+  _from or _to field ALWAYS miss some data on version 3.6.2.
+
+  This bug could have led to some edges from a RocksDB edge index not being
+  returned when a non-traversal edge lookup was done in an AQL query in an inner
+  FOR loop. Whether or not edges were withheld depended on whether edges were
+  located within the same prefix domain.
+
+* Updated OpenSSL to 1.1.1g.
 
 
 v3.6.3 (2020-04-15)
