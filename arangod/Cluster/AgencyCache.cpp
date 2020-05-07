@@ -217,7 +217,10 @@ void AgencyCache::run() {
                     handleCallbacksNoLock(i.get("query"), toCall);
                   }
                 }
-                _commitIndex = commitIndex;
+                {
+                  std::lock_guard g(_storeLock);
+                  _commitIndex = commitIndex;
+                }
               }
             } else {
               TRI_ASSERT(rs.hasKey("readDB"));
@@ -227,7 +230,7 @@ void AgencyCache::run() {
               _readDB = rs;                  // overwrite
               _commitIndex = commitIndex;
             }
-            triggerWaitingNoLock(commitIndex);
+            triggerWaiting(commitIndex);
             if (firstIndex > 0) {
               if (!toCall.empty()) {
                 invokeCallbacks(toCall);
@@ -266,9 +269,11 @@ void AgencyCache::run() {
 
 }
 
-void AgencyCache::triggerWaitingNoLock(index_t commitIndex) {
+void AgencyCache::triggerWaiting(index_t commitIndex) {
 
   auto* scheduler = SchedulerFeature::SCHEDULER;
+  std::lock_guard w(_waitLock);
+
   auto pit = _waiting.begin();
   while (pit != _waiting.end()) {
     if (pit->first > commitIndex) {
@@ -329,7 +334,7 @@ void AgencyCache::beginShutdown() {
 
 // trigger all waiting for an index
   {
-    std::lock_guard g(_storeLock);
+    std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
       pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
