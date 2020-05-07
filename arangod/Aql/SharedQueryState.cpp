@@ -31,6 +31,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+SharedQueryState::SharedQueryState()
+  : _wakeupCb(nullptr), _numWakeups(0),
+    _cbVersion(0), _numTasks(0), _valid(true) {}
+
 void SharedQueryState::invalidate() {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = nullptr;

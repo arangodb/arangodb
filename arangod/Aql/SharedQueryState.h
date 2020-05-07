@@ -35,9 +35,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState()
-    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
-
+  SharedQueryState();
   ~SharedQueryState() = default;
 
   void invalidate();
