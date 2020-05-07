@@ -1,0 +1,82 @@
+language: nix
+dist: trusty
+
+git:
+  depth: false
+
+matrix:
+  include:
+    - env: DO=check TYPE=Debug COMPILER=clang_39 SANITIZE=true
+    - env: DO=check TYPE=Release COMPILER=clang_39 BENCHMARKS=true
+    - env: DO=check TYPE=Debug COMPILER=gcc6 COVERAGE=true
+    - env: DO=check TYPE=Release COMPILER=gcc6 BENCHMARKS=true
+    - env: DO=check TYPE=Debug COMPILER=gcc7 STD=17
+    - env: DO=build
+    - env: DO=docs
+
+before_install:
+  - |
+    : ${COMPILER:=gcc6}
+    : ${TYPE:=Debug}
+    : ${STD:=14}
+    function build-p { [[ "${DO}" == build ]]; }
+    function check-p { [[ "${DO}" == check ]]; }
+    function docs-p  { [[ "${DO}" == docs ]]; }
+    function coverage-p { [[ "${COVERAGE}" == true ]]; }
+    function benchmarks-p { [[ "${BENCHMARKS}" == true ]]; }
+    function deploy-p {
+        [[ "${TRAVIS_PULL_REQUEST}" == "false" && \
+           "${TRAVIS_BRANCH}" == "master" ]]
+    }
+    function upload-p {
+        [[ -n "$encrypted_1c8d51d72e41_key" && \
+           -n "$encrypted_1c8d51d72e41_iv" ]]
+    }
+    function decrypt-ssh-key {
+        openssl aes-256-cbc \
+            -K  $encrypted_1c8d51d72e41_key \
+            -iv $encrypted_1c8d51d72e41_iv \
+            -in tools/travis/ssh-key.enc \
+            -out tools/travis/ssh-key -d
+        chmod 600 tools/travis/ssh-key
+    }
+    function with-nix {
+        nix-shell --argstr compiler $COMPILER --run "set -e; $1"
+    }
+
+install:
+  - with-nix "echo == nix environment ok"
+
+before_script:
+  - |
+    with-nix "
+        mkdir build && cd build
+        cmake .. \
+            -DCMAKE_BUILD_TYPE=${TYPE} \
+            -DCHECK_SLOW_TESTS=false \
+            -DCXX_STANDARD=${STD} \
+            -DCHECK_BENCHMARKS=${BENCHMARKS} \
+            -DENABLE_COVERAGE=${COVERAGE} \
+            -DENABLE_SANITIZE=${SANITIZE} \
+            -DDISABLE_FREE_LIST=${SANITIZE}
+    "
+
+script:
+  - |
+    set -e
+    ! build-p || nix-build
+    ! check-p || with-nix "cd build && make -j2 check"
+    ! docs-p  || with-nix "cd build && make docs"
+
+after_success:
+  - |
+    ! coverage-p || with-nix "
+        cd build
+        find . -name \"*.gcno\" | xargs gcov -bcprs ${PWD}
+        bash <(curl -s https://codecov.io/bash) -x gcov
+    "
+    if upload-p; then
+        decrypt-ssh-key
+        ! benchmarks-p || with-nix "cd build && make upload-benchmark-reports"
+        ! docs-p || ! deploy-p || with-nix "cd build && make upload-docs"
+    fi
