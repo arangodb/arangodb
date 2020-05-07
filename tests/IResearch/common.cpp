@@ -131,15 +131,15 @@ namespace iresearch {
 
   std::ostream& operator<<(std::ostream& os, filter const& filter) {
     const auto& type = filter.type();
-    if (type == And::type()) {
+    if (type == irs::type<And>::id()) {
       return os << static_cast<And const&>(filter);
-    } else if (type == Or::type()) {
+    } else if (type == irs::type<Or>::id()) {
       return os << static_cast<Or const&>(filter);
-    } else if (type == Not::type()) {
+    } else if (type == irs::type<Not>::id()) {
       return os << static_cast<Not const&>(filter);
-    } else if (type == by_term::type()) {
+    } else if (type == irs::type<by_term>::id()) {
       return os << static_cast<by_term const&>(filter);
-    } else if (type == by_range::type()) {
+    } else if (type == irs::type<by_range>::id()) {
       return os << static_cast<by_range const&>(filter);
     } else {
       return os << "[Unknown filter]";
@@ -150,10 +150,12 @@ namespace iresearch {
 namespace {
 
 struct BoostScorer : public irs::sort {
-  struct Prepared : public irs::prepared_sort_base<irs::boost_t, void> {
-   public:
-    DECLARE_FACTORY(Prepared);
+  static constexpr irs::string_ref type_name() noexcept {
+    return "boostscorer";
+  }
 
+  struct Prepared : public irs::prepared_sort_base<irs::boost_t, void> {
+  public:
     Prepared() = default;
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
@@ -183,8 +185,8 @@ struct BoostScorer : public irs::sort {
     }
 
     virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
-        irs::attribute_view const&, irs::boost_t boost) const override {
+                    irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+                    irs::attribute_provider const&, irs::boost_t boost) const override {
       struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(irs::boost_t score) : scr(score) {}
 
@@ -193,38 +195,34 @@ struct BoostScorer : public irs::sort {
 
       return {
         std::make_unique<ScoreCtx>(boost),
-        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
+                        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
           auto & state = *static_cast<const ScoreCtx*>(ctx);
           irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
-      }
-  };
-}
-};  // namespace
+        }
+      };
+    }
+  };  // namespace
 
-static ::iresearch::sort::type_id const& type() {
-  static ::iresearch::sort::type_id TYPE("boostscorer");
-  return TYPE;
-}
+  static irs::sort::ptr make(irs::string_ref const&) {
+    return std::make_shared<BoostScorer>();
+  }
 
-static irs::sort::ptr make(irs::string_ref const&) {
-  return std::make_shared<BoostScorer>();
-}
+  BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
 
-BoostScorer() : irs::sort(BoostScorer::type()) {}
-
-virtual irs::sort::prepared::ptr prepare() const override {
-  return irs::memory::make_unique<Prepared>();
-}
-}
-;  // BoostScorer
+  virtual irs::sort::prepared::ptr prepare() const override {
+    return irs::memory::make_unique<Prepared>();
+  }
+}; // BoostScorer
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
 struct CustomScorer : public irs::sort {
-  struct Prepared : public irs::prepared_sort_base<float_t, void> {
-   public:
-    DECLARE_FACTORY(Prepared);
+  static constexpr irs::string_ref type_name() noexcept {
+    return "customscorer";
+  }
 
+  struct Prepared : public irs::prepared_sort_base<float_t, void> {
+  public:
     Prepared(float_t i) : i(i) {}
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
@@ -254,8 +252,8 @@ struct CustomScorer : public irs::sort {
     }
 
     virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
-        irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
-        irs::attribute_view const&, irs::boost_t) const override {
+                    irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
+                    irs::attribute_provider const&, irs::boost_t) const override {
       struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(float_t score) : i(score) {}
 
@@ -263,59 +261,52 @@ struct CustomScorer : public irs::sort {
       };
 
       return {std::make_unique<ScoreCtx>(i),
-              [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
-                  auto & state = *static_cast<const ScoreCtx*>(ctx);
-      irs::sort::score_cast<float_t>(score_buf) = state.i;
+                        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
+          auto & state = *static_cast<const ScoreCtx*>(ctx);
+          irs::sort::score_cast<float_t>(score_buf) = state.i;
+        }
+      };
     }
+
+    float_t i;
   };
-}
 
-float_t i;
-}
-;
+  static irs::sort::ptr make(irs::string_ref const& args) {
+    if (args.null()) {
+      return std::make_shared<CustomScorer>(0u);
+    }
 
-static ::iresearch::sort::type_id const& type() {
-  static ::iresearch::sort::type_id TYPE("customscorer");
-  return TYPE;
-}
+    // velocypack::Parser::fromJson(...) will throw exception on parse error
+    auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+    auto slice = json ? json->slice() : arangodb::velocypack::Slice();
 
-static irs::sort::ptr make(irs::string_ref const& args) {
-  if (args.null()) {
-    return std::make_shared<CustomScorer>(0u);
+    if (!slice.isArray()) {
+      return nullptr;  // incorrect argument format
+    }
+
+    arangodb::velocypack::ArrayIterator itr(slice);
+
+    if (!itr.valid()) {
+      return nullptr;
+    }
+
+    auto const value = itr.value();
+
+    if (!value.isNumber()) {
+      return nullptr;
+    }
+
+    return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
   }
 
-  // velocypack::Parser::fromJson(...) will throw exception on parse error
-  auto json = arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
-  auto slice = json ? json->slice() : arangodb::velocypack::Slice();
+  CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
 
-  if (!slice.isArray()) {
-    return nullptr;  // incorrect argument format
+  virtual irs::sort::prepared::ptr prepare() const override {
+    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
-  arangodb::velocypack::ArrayIterator itr(slice);
-
-  if (!itr.valid()) {
-    return nullptr;
-  }
-
-  auto const value = itr.value();
-
-  if (!value.isNumber()) {
-    return nullptr;
-  }
-
-  return std::make_shared<CustomScorer>(itr.value().getNumber<size_t>());
-}
-
-CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
-
-virtual irs::sort::prepared::ptr prepare() const override {
-  return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
-}
-
-size_t i;
-}
-;  // CustomScorer
+  size_t i;
+};  // CustomScorer
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 

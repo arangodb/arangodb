@@ -385,16 +385,12 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size()),
-      _filterCtx(1),  // arangodb::iresearch::ExpressionExecutionContext
       _ctx(_trx, infos.getQuery(), _regexCache,
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
+      _filterCtx(_ctx),  // arangodb::iresearch::ExpressionExecutionContext
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
-      _execCtx(_ctx),
       _isInitialized(false) {
-
-  // add expression execution context
-  _filterCtx.emplace(_execCtx);
 }
 
 template <typename Impl, typename Traits>
@@ -596,7 +592,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _order, irs::no_boost(), _filterCtx);
+    _filter = root.prepare(*_reader, _order, irs::no_boost(), &_filterCtx);
 
     _isInitialized = true;
   }
@@ -961,15 +957,15 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   }
 
   _itr = segmentReader.mask(
-      this->_filter->execute(segmentReader, this->_order, this->_filterCtx));
+      this->_filter->execute(segmentReader, this->_order, &this->_filterCtx));
   TRI_ASSERT(_itr);
-  _doc = _itr->attributes().get<irs::document>().get();
+  _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
 
   if constexpr (ordered) {
-    _scr = _itr->attributes().get<irs::score>().get();
+    _scr = irs::get<irs::score>(*_itr);
 
-    if (_scr) {
+    if (_scr && !_scr->empty()) {
       _scrVal = _scr->value();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto const numScores =
@@ -1190,19 +1186,19 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
     auto& segment = (*this->_reader)[i];
 
     irs::doc_iterator::ptr it =
-        segment.mask(this->_filter->execute(segment, this->_order, this->_filterCtx));
+        segment.mask(this->_filter->execute(segment, this->_order, &this->_filterCtx));
     TRI_ASSERT(it);
 
-    auto const* doc = it->attributes().get<irs::document>().get();
+    auto const* doc = irs::get<irs::document>(*it);
     TRI_ASSERT(doc);
 
     auto const* score = &irs::score::no_score();
 
     if constexpr (ordered) {
-      auto& scoreRef = it->attributes().get<irs::score>();
+      auto* scoreRef = irs::get<irs::score>(*it);
 
       if (scoreRef) {
-        score = scoreRef.get();
+        score = scoreRef;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         irs::bytes_ref const scrVal = score->value();

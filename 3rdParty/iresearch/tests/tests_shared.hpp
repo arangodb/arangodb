@@ -36,10 +36,6 @@ NS_BEGIN(cmdline)
 class parser;
 NS_END // cmdline
 
-inline void TODO_IMPLEMENT() {
-  std::cerr << "\x1b[31mTODO: implement me" << std::endl;
-}
-
 class test_env {
  public:
   static const std::string test_results;
