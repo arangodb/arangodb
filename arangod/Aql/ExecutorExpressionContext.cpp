@@ -55,7 +55,7 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 
-ExecutorExpressionContext::ExecutorExpressionContext(transaction::Methods& trx,
+ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
                                                      QueryContext& context,
                                                      RegexCache& cache,
                                                      InputAqlItemRow const& inputRow,
