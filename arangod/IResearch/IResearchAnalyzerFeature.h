@@ -283,6 +283,8 @@ class IResearchAnalyzerFeature final
   //////////////////////////////////////////////////////////////////////////////
   Result remove(irs::string_ref const& name, bool force = false);
 
+  Result finalizeRemove(irs::string_ref const& name);
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit all analyzers for the specified vocbase
@@ -324,6 +326,8 @@ class IResearchAnalyzerFeature final
   static Analyzers const& getStaticAnalyzers();
 
   Result removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase);
+  Result cleanupAnalyzersCollection(irs::string_ref const& database,
+                                    AnalyzersRevision::Revision buildingRevision);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate analyzer parameters and emplace into map

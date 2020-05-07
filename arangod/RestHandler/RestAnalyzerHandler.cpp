@@ -456,6 +456,7 @@ void RestAnalyzerHandler::removeAnalyzer(
 
   if (finishPlanModifying(databaseID, false)) {
     restore = false;
+    analyzers.finalizeRemove(normalizedName);// TODO: log if failure
   } else {
     return;
   }

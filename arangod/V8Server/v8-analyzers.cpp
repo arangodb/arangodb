@@ -698,6 +698,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     FinishPlanModifying(isolate, v8g, databaseID, false);
+    analyzers.finalizeRemove(name);// TODO: log if failure
     restore = false;
 
     TRI_V8_RETURN_UNDEFINED();

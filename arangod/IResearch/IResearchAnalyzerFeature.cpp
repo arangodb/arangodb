@@ -1432,6 +1432,12 @@ Result IResearchAnalyzerFeature::emplace(
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
+    auto cleanupResult = cleanupAnalyzersCollection(split.first, 
+                                                    getLatestRevision(split.first)->getBuildingRevision());
+    if (cleanupResult.fail()) {
+      return cleanupResult;
+    }
+
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
       auto res = loadAnalyzers(split.first);
 
@@ -1439,6 +1445,7 @@ Result IResearchAnalyzerFeature::emplace(
         return res;
       }
     }
+
 
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
@@ -1702,6 +1709,79 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   static const Identity identity;
 
   return identity.instance;
+}
+
+Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref const& database, 
+                                                            AnalyzersRevision::Revision buildingRevision) {
+  if (ServerState::instance()->isCoordinator()) {
+    if (!server().hasFeature<DatabaseFeature>()) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to find feature 'Database' while loading analyzers for database '" + std::string(database) + "'"
+      };
+    }
+
+    auto& dbFeature = server().getFeature<DatabaseFeature>();
+    auto* engine = EngineSelectorFeature::ENGINE;
+    auto* vocbase = dbFeature.lookupDatabase(database);
+    if (!vocbase) {
+      if (engine && engine->inRecovery()) {
+        return {}; // database might not have come up yet
+      }
+    }
+    static const auto queryDeleteString = arangodb::aql::QueryString(
+      "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER d." + 
+      arangodb::StaticStrings::AnalyzersRevision + " > @rev OR ( HAS(d, '" +
+      arangodb::StaticStrings::AnalyzersDeletedRevision +  "') AND d." + 
+      arangodb::StaticStrings::AnalyzersDeletedRevision + " <= @rev) REMOVE d IN " + 
+      arangodb::StaticStrings::AnalyzersCollection);
+
+
+    auto bindBuilder = std::make_shared<VPackBuilder>();
+    bindBuilder->openObject();
+    bindBuilder->add("rev", VPackValue(getLatestRevision(*vocbase)->getRevision()));
+    bindBuilder->close();
+
+    auto ctx = arangodb::transaction::StandaloneContext::Create(*vocbase);
+    SingleCollectionTransaction trx(ctx, arangodb::StaticStrings::AnalyzersCollection, AccessMode::Type::WRITE);
+    trx.begin();
+
+    arangodb::aql::Query queryDelete(ctx, queryDeleteString, bindBuilder, nullptr);
+
+    auto deleteResult = queryDelete.executeSync();
+    if (deleteResult.fail()) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to remove dangling analyzers from '" + std::string(database) + "' Aql error: (" +
+        std::to_string(deleteResult.errorNumber()) + " ) " +
+        deleteResult.errorMessage()
+      };
+    }
+
+    static const auto queryUpdateString = arangodb::aql::QueryString(
+      "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER " +
+      " ( HAS(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision + "') AND d." +
+      arangodb::StaticStrings::AnalyzersDeletedRevision + " > @rev) " +
+      "UPDATE d WITH UNSET(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision  + "') IN " +
+      arangodb::StaticStrings::AnalyzersCollection);
+    arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder, nullptr);
+
+    auto updateResult = queryUpdate.executeSync();
+    if (updateResult.fail()) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to restore dangling analyzers from '" + std::string(database) + "' Aql error: (" +
+        std::to_string(updateResult.errorNumber()) + " ) " +
+        updateResult.errorMessage()
+      };
+    }
+
+    auto commitRes = trx.finish(Result{});
+    if (commitRes.fail()) {
+      return commitRes;
+    }
+  }
+  return {};
 }
 
 Result IResearchAnalyzerFeature::loadAnalyzers(
@@ -2198,6 +2278,41 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& nam
   return trx.commit();
 }
 
+Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name) {
+  try {
+    auto split = splitAnalyzerName(name);
+    TRI_ASSERT(!split.first.null()); 
+    auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+
+    if (itr == _analyzers.end()) {
+      return {
+        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+        "failure to find analyzer while finalizing removing arangosearch analyzer '" + std::string(name) + "'"
+      };
+    }
+    // this is ok. As if we got  there removal is committed into agency
+    _analyzers.erase(itr);
+
+    return removeFromCollection(split.second, split.first);
+  }
+  catch (basics::Exception const& e) {
+    return { e.code(),
+            "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
+            std::string(name) + "': " + std::to_string(e.code()) + " " + e.what() };
+  }
+  catch (std::exception const& e) {
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
+             std::string(name) + "': " + e.what() };
+  }
+  catch (...) {
+    return { TRI_ERROR_INTERNAL,
+             "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
+             std::string(name) + "'" };
+  }
+  return {};
+}
+
 Result IResearchAnalyzerFeature::remove(
     irs::string_ref const& name,
     bool force /*= false*/) {
@@ -2210,6 +2325,14 @@ Result IResearchAnalyzerFeature::remove(
 
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
+
+    if (!split.first.null()) { // do not trigger load for static-analyzer requests
+      auto res = loadAnalyzers(split.first);
+
+      if (!res.ok()) {
+        return res;
+      }
+    }
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
@@ -2247,6 +2370,11 @@ Result IResearchAnalyzerFeature::remove(
       return {};
     }
 
+    auto cleanupResult = cleanupAnalyzersCollection(split.first, 
+                                                    getLatestRevision(split.first)->getBuildingRevision());
+    if (cleanupResult.fail()) {
+      return cleanupResult;
+    }
     // .........................................................................
     // after here the analyzer must be removed from the persisted store first
     // .........................................................................
@@ -2274,6 +2402,7 @@ Result IResearchAnalyzerFeature::remove(
       if (!commitResult.ok()) {
         return commitResult;
       }
+      _analyzers.erase(itr);
     } else {
       auto& dbFeature = server().getFeature<DatabaseFeature>();
 
@@ -2318,8 +2447,7 @@ Result IResearchAnalyzerFeature::remove(
         return commitResult;
       }
     }
-    _analyzers.erase(itr);
-  } catch (basics::Exception const& e) {
+    } catch (basics::Exception const& e) {
     return { e.code(),
             "caught exception while removing configuration for arangosearch analyzer name '" +
             std::string(name) + "': " + std::to_string(e.code()) + " "+ e.what() };
