@@ -6,7 +6,7 @@ const internal = require('internal');
 const expect = require('chai').expect;
 
 const isServer = typeof arango === 'undefined';
-const query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
+const query = 'FOR x IN 1..5 LET y = SLEEP(x == 1 ? @value : 1) RETURN x';
 
 function filterQueries (q) {
   return (q.query === query);
@@ -24,7 +24,7 @@ function sendQuery (count, async) {
     if (async === true) {
       opts.batchSize = 1; // runs SLEEP once
     }
-    let cc = internal.db._query(query, { value: 1 }, opts);
+    let cc = internal.db._query(query, { value: 3 }, opts);
     cursors.push(cc);
   }
   /*if (async === true) {
@@ -96,8 +96,8 @@ describe('AQL query analyzer', function () {
       }
       testee.properties({
         enabled: true,
-        slowQueryThreshold: 20,
-        slowStreamingQueryThreshold: 20
+        slowQueryThreshold: 60,
+        slowStreamingQueryThreshold: 60
       });
       testee.clearSlow();
     });
@@ -114,13 +114,19 @@ describe('AQL query analyzer', function () {
         }
       }
       cursors = [];
-      const list = testee.current().filter(filterQueries);
-      for (let item of list) {
-        try {
-          testee.kill(item.id);
-        } catch (e) {
-          // noop
+
+      // wait until query is gone from list of running queries
+      let list = testee.current().filter(filterQueries);
+      while (list.length) {
+        for (let item of list) {
+          try {
+            testee.kill(item.id);
+          } catch (e) {
+            // noop
+          }
         }
+        internal.wait(0.25, false);
+        list = testee.current().filter(filterQueries);
       }
     });
 
@@ -146,7 +152,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('id');
       expect(queries[0]).to.have.property('query', query);
       expect(queries[0]).to.have.property('bindVars');
-      expect(queries[0].bindVars).to.eql({ value: 1 });
+      expect(queries[0].bindVars).to.eql({ value: 3 });
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
       expect(queries[0]).to.have.property('stream', true);
@@ -214,7 +220,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('id');
       expect(queries[0]).to.have.property('query', query);
       expect(queries[0]).to.have.property('bindVars');
-      expect(queries[0].bindVars).to.eql({ value: 1 });
+      expect(queries[0].bindVars).to.eql({ value: 3 });
       expect(queries[0]).to.have.property('started');
       expect(queries[0]).to.have.property('runTime');
       expect(queries[0]).to.have.property('stream', true);

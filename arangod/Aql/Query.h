@@ -87,11 +87,6 @@ class Query : public QueryContext {
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
 
-  /// @brief clone a query
-  /// note: as a side-effect, this will also create and start a transaction for
-  /// the query
-//  TEST_VIRTUAL Query* clone(QueryPart, bool withPlan);
-
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
