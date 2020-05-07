@@ -513,7 +513,7 @@ void ClusterFeature::start() {
   // ClusterInfo etc, need to start after first poll result from the agency.
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such a
-  // outcome. But there is also no point continuing with a first agency poll. 
+  // outcome. But there is also no point continuing with a first agency poll.
   auto role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
     _agencyCache->start();
@@ -614,7 +614,6 @@ void ClusterFeature::start() {
 }
 
 void ClusterFeature::beginShutdown() {
-  shutdownAgencyCache();
 }
 
 void ClusterFeature::stop() {}
@@ -628,7 +627,6 @@ void ClusterFeature::unprepare() {
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   shutdownHeartbeatThread();
-  AsyncAgencyCommManager::INSTANCE->setStopping(true);
 
 
   AgencyComm comm(server());
@@ -637,8 +635,6 @@ void ClusterFeature::unprepare() {
   if (_unregisterOnShutdown) {
     ServerState::instance()->unregister();
   }
-
-  comm.sendServerState();
 
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
@@ -662,6 +658,7 @@ void ClusterFeature::unprepare() {
   int tries = 0;
   while (true) {
     AgencyCommResult res = comm.sendTransactionWithFailover(unreg, 120.0);
+
     if (res.successful()) {
       break;
     }
@@ -687,9 +684,11 @@ void ClusterFeature::unprepare() {
     }
   }
 
-  TRI_ASSERT(tries <= maxTries);
+  AsyncAgencyCommManager::INSTANCE->setStopping(true);
 
-  _asyncAgencyCommPool.reset();
+  TRI_ASSERT(tries <= maxTries);
+  shutdownAgencyCache();
+
   _clusterInfo->cleanup();
 
 }

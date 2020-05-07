@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -213,6 +214,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
             case Error::ReadError:
             case Error::WriteError:
             case Error::Canceled:
+              if (man.server().isStopping()) {
+                return futures::makeFuture(
+                  AsyncAgencyCommResult{result.error, std::move(resp)});
+              }
+              [[fallthrough]];
             case Error::ProtocolError:
             case Error::CloseRequested:
               // retry the request at different endpoint
@@ -328,9 +334,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             case Error::Timeout:
             case Error::ConnectionClosed:
             case Error::Canceled:
-              if (man.isStopping()) {
+              if (man.server().isStopping()) {
                 return futures::makeFuture(
-                  AsyncAgencyCommResult{result.error, std::move(resp)});  // unrecoverable error
+                  AsyncAgencyCommResult{result.error, std::move(resp)});
               }
               [[fallthrough]];
             case Error::ProtocolError:

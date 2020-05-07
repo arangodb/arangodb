@@ -503,7 +503,7 @@ void HeartbeatThread::runDBServer() {
           self->getNewsFromAgencyForDBServer();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
-        if (!queued) {
+        if (!queued && !isStopping()) {
           LOG_TOPIC("aacce", WARN, Logger::HEARTBEAT)
               << "Could not schedule getNewsFromAgency job in scheduler. Don't "
                  "worry, this will be tried again later.";
