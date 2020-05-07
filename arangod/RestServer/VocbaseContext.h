@@ -24,9 +24,6 @@
 #ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
 #define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
 
@@ -37,7 +34,7 @@ namespace arangodb {
 /// @brief just also stores the context
 class VocbaseContext : public arangodb::ExecContext {
  public:
-  TEST_VIRTUAL ~VocbaseContext();
+  ~VocbaseContext();
 
   static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
   TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }

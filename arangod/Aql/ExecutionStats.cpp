@@ -101,7 +101,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(aql::ExecutionNodeId id, ExecutionNodeStats const& stats) {
+void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId id, ExecutionNodeStats const& stats) {
   auto it = _nodes.find(id);
   if (it != _nodes.end()) {
     it->second += stats;
