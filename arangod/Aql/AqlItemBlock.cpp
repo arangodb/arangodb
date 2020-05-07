@@ -813,7 +813,7 @@ void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const*
     } else {
       builder.add(VPackSlice::nullSlice());
     }
-    RegisterId const n = getNrRegs();
+    auto const n = getNrRegs();
     for (RegisterId reg = 0; reg < n; ++reg) {
       AqlValue const& ref = getValueReference(row, reg);
       if (ref.isEmpty()) {
@@ -985,7 +985,7 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   return value;
 }
 
-RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
+RegisterCount AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 

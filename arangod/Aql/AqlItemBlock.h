@@ -160,7 +160,7 @@ class AqlItemBlock {
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
   /// @brief getter for _nrRegs
-  RegisterId getNrRegs() const noexcept;
+  RegisterCount getNrRegs() const noexcept;
 
   /// @brief getter for _nrItems
   size_t size() const noexcept;
