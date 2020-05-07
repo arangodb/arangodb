@@ -1298,6 +1298,10 @@ void ExecutionNode::setRegsToClear(RegIdSet toClear) {
   _regsToClear = std::move(toClear);
 }
 
+void ExecutionNode::setRegsToKeep(RegIdSetStack toKeep) {
+  _regsToKeepStack = std::move(toKeep);
+}
+
 RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) const {
   if (var) {
     return variableToRegisterId(var);
