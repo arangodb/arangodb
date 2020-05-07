@@ -64,7 +64,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void InsertNewShadowRowAfterEachDataRow(size_t targetNumberOfRows,
                                           SharedAqlItemBlockPtr const& inputBlock,
                                           SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{};
@@ -81,8 +81,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
       protoRegSet.emplace(r);
     }
 
-    auto registersToKeep = RegIdSetStack{{}};
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 1, [&]{ return protoRegSet; });
+    RegIdSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
 
     auto registersToClear = RegIdSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
@@ -117,7 +117,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void ConsumeRelevantShadowRows(size_t targetNumberOfRows,
                                  SharedAqlItemBlockPtr const& inputBlock,
                                  SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
@@ -135,8 +135,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
       protoRegSet.emplace(r);
     }
 
-    auto registersToKeep = RegIdSetStack{{}};  // need two
-    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 1, [&]{ return protoRegSet; });
+    RegIdSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
 
     auto registersToClear = RegIdSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,

@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_TYPES_H 1
 
 #include "Aql/ExecutionNodeId.h"
+#include "Basics/debugging.h"
 
 #include <Basics/debugging.h>
 #include <Containers/HashSetFwd.h>

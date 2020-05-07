@@ -250,7 +250,7 @@ auto DistributeExecutor::ClientBlockData::execute(AqlCallStack callStack, Execut
 }
 
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
-    : _infos(infos){};
+    : _infos(infos) {}
 
 auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                                          std::unordered_map<std::string, ClientBlockData>& blockMap)

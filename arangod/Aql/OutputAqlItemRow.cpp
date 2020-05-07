@@ -431,6 +431,11 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
     return baseRowDepth + delta;
   });
   auto const& regsToKeep = std::invoke([this, rowDepth] {
+    if (registersToKeep().size() == 1) {
+      // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
+      return registersToKeep().back();
+    }
+
     auto const roffset = rowDepth + 1;
 
     TRI_ASSERT(roffset <= registersToKeep().size());
@@ -506,6 +511,10 @@ void OutputAqlItemRow::doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId item
 auto constexpr OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
     -> std::underlying_type_t<OutputAqlItemRow::AdaptRowDepth> {
   return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
+}
+
+RegisterCount OutputAqlItemRow::getNrRegisters() const {
+  return block().getNrRegs();
 }
 
 template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,

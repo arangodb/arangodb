@@ -48,7 +48,8 @@ class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
   auto MakeCountCollectRegisterInfos(RegisterId outReg) -> RegisterInfos {
-    return RegisterInfos({}, RegIdSet{outReg}, outReg, outReg + 1, {}, {});
+    return RegisterInfos({}, RegIdSet{outReg}, outReg,
+		         outReg + 1, {}, {{}, {}});
   }
 
   auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {
@@ -63,7 +64,7 @@ class CountCollectExecutorTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -92,7 +93,7 @@ class CountCollectExecutorTest
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
-    auto toKeepRegisterSet = RegIdSetStack{};
+    auto toKeepRegisterSet = RegIdSetStack{{}, {}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -110,7 +111,7 @@ class CountCollectExecutorTest
   auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {
     auto numRegs = RegisterCount{1};
 
-    RegIdSetStack toKeep{{}};
+    RegIdSetStack toKeep{{}, {}};
     for (RegisterId r = 0; r < numRegs; ++r) {
       toKeep.back().emplace(r);
     }

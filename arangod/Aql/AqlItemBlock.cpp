@@ -71,7 +71,7 @@ inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a
 }  // namespace
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
+AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterCount nrRegs)
     : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
@@ -379,7 +379,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 }
 
-void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
+void AqlItemBlock::rescale(size_t nrItems, RegisterCount nrRegs) {
   TRI_ASSERT(_valueCount.empty());
   TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
 
@@ -813,7 +813,7 @@ void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const*
     } else {
       builder.add(VPackSlice::nullSlice());
     }
-    RegisterId const n = getNrRegs();
+    auto const n = getNrRegs();
     for (RegisterId reg = 0; reg < n; ++reg) {
       AqlValue const& ref = getValueReference(row, reg);
       if (ref.isEmpty()) {
@@ -984,7 +984,7 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   return value;
 }
 
-RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
+RegisterCount AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 

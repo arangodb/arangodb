@@ -44,7 +44,7 @@ class CreateCollection : public ActionBase {
   void setState(ActionState state) override final;
 
  private:
-  bool _doNotIncrement;   // indicate that `setState` shall not increment the version
+  bool _doNotIncrement = false;   // indicate that `setState` shall not increment the version
 };
 
 }  // namespace maintenance

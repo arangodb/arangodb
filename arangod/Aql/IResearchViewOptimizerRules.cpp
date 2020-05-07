@@ -116,7 +116,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, arangodb::aql::QueryCo
       return false;
     }
 
-    auto const& varsValid = viewNode.getVarsValidStack().back();
+    auto const& varsValid = viewNode.getVarsValid();
 
     // remove all invalid variables from the condition
     if (searchCondition.removeInvalidVariables(varsValid)) {

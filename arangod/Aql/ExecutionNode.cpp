@@ -420,7 +420,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
       if (!stackEntrySlice.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-            "\"varsUsedLaterStack\" needs contain arrays");
+            "\"varsUsedLaterStack\" needs to contain arrays");
       }
       auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
 
@@ -470,7 +470,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
           "\"varsValidStack\" needs to be a non-empty array");
     }
 
-    _varsUsedLaterStack.reserve(varsValidStackSlice.length());
+    _varsValidStack.reserve(varsValidStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
       if (!stackEntrySlice.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -588,7 +588,7 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
   } else {
     // point to current AST -> don't do deep copies.
     other._varsUsedLaterStack = _varsUsedLaterStack;
-    other._varsUsedLaterStack = _varsUsedLaterStack;
+    other._varsValidStack = _varsValidStack;
     other._registerPlan = _registerPlan;
   }
 }
@@ -827,6 +827,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("varsUsedLaterStack"));
     {
       VPackArrayBuilder guard(&nodes);
+      TRI_ASSERT(!_varsUsedLaterStack.empty());
       for (auto const& stackEntry : _varsUsedLaterStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
@@ -838,6 +839,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("varsValidStack"));
     {
       VPackArrayBuilder guard(&nodes);
+      TRI_ASSERT(!_varsValidStack.empty());
       for (auto const& stackEntry : _varsValidStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
@@ -1271,7 +1273,7 @@ RegIdSet const& ExecutionNode::getRegsToClear() const {
 
 bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
   TRI_ASSERT(_varUsageValid);
-  return (_varsUsedLaterStack.back().find(variable) != _varsUsedLaterStack.back().end());
+  return (getVarsUsedLater().find(variable) != getVarsUsedLater().end());
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
@@ -2393,9 +2395,9 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   auto registerInfos = createRegisterInfos({}, {});
-  auto executorInfos = registerInfos;
-  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
+                                                                 std::move(registerInfos),
+                                                                 EmptyExecutorInfos{});
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0

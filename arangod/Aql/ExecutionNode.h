@@ -406,6 +406,10 @@ class ExecutionNode {
   /// (see getVariablesSetHere).
   auto getVarsValidStack() const noexcept -> VarSetStack const&;
 
+  /// @brief shortcut functions matching the old interface
+  auto getVarsValid() const noexcept -> VarSet const& { return getVarsValidStack().back(); }
+  auto getVarsUsedLater() const noexcept -> VarSet const& { return getVarsUsedLaterStack().back(); }
+
   /// @brief setVarUsageValid
   void setVarUsageValid();
 

@@ -45,11 +45,12 @@ using namespace arangodb::tests::aql;
 
 namespace {
 RegisterInfos MakeBaseInfos(RegisterId numRegs) {
-  RegIdSetStack toKeep = {{}};
+  RegIdSet prototype{};
   for (RegisterId r = 0; r < numRegs; ++r) {
-    toKeep.back().emplace(r);
+    prototype.emplace(r);
   }
-  return RegisterInfos({}, {}, numRegs, numRegs, {}, toKeep);
+  return RegisterInfos({}, {}, numRegs, numRegs, {},
+                       {{prototype}, {prototype}, {prototype}});
 }
 }  // namespace
 

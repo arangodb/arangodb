@@ -152,10 +152,11 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
     return stats;
   }
 
+  RegIdSet const toWrite = {};
+  RegIdSetStack const toKeep = {RegIdSet{0}};
+  RegIdSet const toClear = {};
+
   auto prepareOutputRow(SharedAqlItemBlockPtr input) -> OutputAqlItemRow {
-    auto toWrite = RegIdSet{};
-    auto toKeep = RegIdSetStack{RegIdSet{0}};
-    auto toClear = RegIdSet{};
     auto const& [unused, upstreamState, clientCall, unused2] = GetParam();
     AqlCall callCopy = clientCall;
     // For passthrough we reuse the block

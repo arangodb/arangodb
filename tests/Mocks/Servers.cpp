@@ -22,6 +22,7 @@
 
 #include <algorithm>
 
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -294,7 +295,6 @@ MockServer::MockServer()
 MockServer::~MockServer() {
   stopFeatures();
   _server.setStateUnsafe(_oldApplicationServerState);
-  arangodb::AgencyCommManager::MANAGER.reset();
 }
 
 application_features::ApplicationServer& MockServer::server() {
@@ -486,13 +486,8 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 }
 
 MockClusterServer::MockClusterServer()
-    : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
-  arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+    : MockServer(), _agencyStore(_server, nullptr, "arango"), _pool(nullptr) {
+
   _oldRole = arangodb::ServerState::instance()->getRole();
 
   // Add features
@@ -515,7 +510,22 @@ MockClusterServer::~MockClusterServer() {
 
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
-  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
+  poolConfig.numIOThreads = 1;
+  poolConfig.minOpenConnections = 1;
+  poolConfig.maxOpenConnections = 3;
+  poolConfig.verifyHosts = false;
+
+  _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
+
+  arangodb::AgencyCommHelper::initialize("arango");
+  AsyncAgencyCommManager::initialize(server());
+  AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
+  AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
+  arangodb::AgencyComm(server()).ensureStructureInitialized();
+
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers

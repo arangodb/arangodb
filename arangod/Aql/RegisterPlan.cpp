@@ -124,7 +124,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
-      unusedRegisters.emplace_back(unusedRegisters.back());
+      auto top = unusedRegisters.back();
+      unusedRegisters.emplace_back(std::move(top));
     } break;
     case ExecutionNode::SUBQUERY_END: {
       unusedRegisters.pop_back();
