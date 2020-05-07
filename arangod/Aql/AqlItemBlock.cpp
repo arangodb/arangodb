@@ -71,7 +71,7 @@ inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a
 }  // namespace
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
+AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterCount nrRegs)
     : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
@@ -379,7 +379,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 }
 
-void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
+void AqlItemBlock::rescale(size_t nrItems, RegisterCount nrRegs) {
   TRI_ASSERT(_valueCount.empty());
   TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
 

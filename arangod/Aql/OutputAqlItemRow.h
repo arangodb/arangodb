@@ -128,9 +128,7 @@ class OutputAqlItemRow {
    */
   auto fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows) -> void;
 
-  [[nodiscard]] std::size_t getNrRegisters() const {
-    return block().getNrRegs();
-  }
+  [[nodiscard]] RegisterCount getNrRegisters() const;
 
   /**
    * @brief May only be called after all output values in the current row have

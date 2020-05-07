@@ -81,7 +81,7 @@ void AqlItemMatrix::clear() {
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
-RegisterId AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
+RegisterCount AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _size; }
 

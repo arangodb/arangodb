@@ -64,7 +64,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void InsertNewShadowRowAfterEachDataRow(size_t targetNumberOfRows,
                                           SharedAqlItemBlockPtr const& inputBlock,
                                           SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{};
@@ -117,7 +117,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void ConsumeRelevantShadowRows(size_t targetNumberOfRows,
                                  SharedAqlItemBlockPtr const& inputBlock,
                                  SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
