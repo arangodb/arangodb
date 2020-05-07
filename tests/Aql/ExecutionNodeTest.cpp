@@ -60,6 +60,8 @@ TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryStartNode>(&plan, ExecutionNodeId{0}, nullptr);
+  node->setVarsUsedLater({{}});
+  node->setVarsValid({{}});
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
@@ -90,6 +92,8 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_no_invariable) {
   std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr, &outvar, false);
+  node->setVarsUsedLater({{}});
+  node->setVarsValid({{}});
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
@@ -113,6 +117,8 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_invariable) {
   std::unordered_set<ExecutionNode const*> seen{};
 
   node = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar, &outvar, false);
+  node->setVarsUsedLater({{}});
+  node->setVarsValid({{}});
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);

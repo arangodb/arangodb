@@ -207,7 +207,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
-  
+
   virtual void collectExecStats(ExecutionStats& stats) const override {
     ExecutionBlock::collectExecStats(stats);
     stats += _blockStats; // additional stats;
@@ -291,6 +291,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto countShadowRowProduced(AqlCallStack& stack, size_t depth) -> void;
 
  private:
+  RegisterInfos _registerInfos;
+
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
    *        ExecutionBlock object.
@@ -302,8 +304,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        memory management of AqlItemBlocks as needed by Executor.
    */
   Fetcher _rowFetcher;
-
-  RegisterInfos _registerInfos;
 
   /**
    * @brief This is the working party of this implementation
@@ -333,7 +333,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   bool _hasMemoizedCall{false};
 
   AqlCall _clientRequest;
-  
+
   /// used to track the stats per executor
   typename Executor::Stats _blockStats;
 

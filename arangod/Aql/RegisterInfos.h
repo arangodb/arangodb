@@ -34,17 +34,6 @@
 namespace arangodb {
 namespace aql {
 
-std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(
-    std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{});
-
-std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(RegisterId size);
-
-template <typename Iterator>
-inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(Iterator begin,
-                                                                                 Iterator end) {
-  return std::make_shared<std::unordered_set<RegisterId>>(begin, end);
-}
-
 /**
  * @brief Class to be handed into ExecutionBlock during construction
  *        This class should be independent from AQL internal
@@ -72,10 +61,10 @@ class RegisterInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  RegisterInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                std::unordered_set<RegisterId> registersToClear,
+  RegisterInfos(std::unordered_set<RegisterId> readableInputRegisters,
+                std::unordered_set<RegisterId> writeableOutputRegisters,
+                RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+                RegIdSet registersToClear,
                 RegIdSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
@@ -90,7 +79,7 @@ class RegisterInfos {
    *
    * @return The indices of the input registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId> const> getInputRegisters() const;
+  RegIdSet const& getInputRegisters() const;
 
   /**
    * @brief Get the output registers the Executor is allowed to write. This has
@@ -102,38 +91,37 @@ class RegisterInfos {
    *
    * @return The indices of the output registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId> const> getOutputRegisters() const;
+  RegIdSet const& getOutputRegisters() const;
 
   /**
    * @brief Total number of registers in input AqlItemBlocks. Not to be confused
    *        with the input registers the current Executor actually reads. See
    *        getInputRegisters() for that.
    */
-  RegisterId numberOfInputRegisters() const;
+  RegisterCount numberOfInputRegisters() const;
 
   /**
    * @brief Total number of registers in output AqlItemBlocks. Not to be
    * confused with the output registers the current Executor actually writes.
    * See getOutputRegisters() for that.
    */
-  RegisterId numberOfOutputRegisters() const;
+  RegisterCount numberOfOutputRegisters() const;
 
   RegIdSetStack const& registersToKeep() const;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const;
+  RegIdSet const& registersToClear() const;
 
  protected:
-  std::shared_ptr<std::unordered_set<RegisterId> const> _inRegs;
+  RegIdSet _inRegs;
+  RegIdSet _outRegs;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> _outRegs;
+  RegisterCount _numInRegs;
 
-  RegisterId _numInRegs;
-
-  RegisterId _numOutRegs;
+  RegisterCount _numOutRegs;
 
   RegIdSetStack _registersToKeep;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> _registersToClear;
+  RegIdSet _registersToClear;
 };
 
 }  // namespace aql

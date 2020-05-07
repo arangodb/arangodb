@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
+#include "Basics/debugging.h"
 #include "Aql/ExecutionNodeId.h"
 
 #include <map>
@@ -42,8 +43,12 @@ struct Collection;
 typedef uint32_t VariableId;
 
 /// @brief type for register numbers/ids
-typedef unsigned int RegisterId;
-typedef RegisterId RegisterCount;
+/*class RegisterId : public basics::Identifier {
+ public:
+  using Identifier::Identifier;
+};*/
+typedef unsigned RegisterId;
+typedef size_t RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
@@ -65,6 +70,8 @@ using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 struct Variable;
 using VarSet = std::unordered_set<Variable const*>;
 using VarSetStack = std::vector<VarSet>;
+
+using RegIdSet = std::unordered_set<RegisterId>;
 using RegIdSetStack = std::vector<std::unordered_set<RegisterId>>;
 using RegIdOrderedSetStack = std::vector<std::set<RegisterId>>;
 
@@ -77,5 +84,7 @@ using GraphEngineList = std::vector<std::pair<arangodb::aql::EngineId, std::uniq
 }  // namespace traverser
 
 }  // namespace arangodb
+
+//DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::RegisterId)
 
 #endif

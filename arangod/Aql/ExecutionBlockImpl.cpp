@@ -145,11 +145,12 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  RegisterInfos registerInfos,
                                                  typename Executor::Infos executorInfos)
     : ExecutionBlock(engine, node),
-      _dependencyProxy(_dependencies, engine->itemBlockManager(),
-          registerInfos.getInputRegisters(),
-          registerInfos.numberOfInputRegisters(), &engine->getQuery().vpackOptions()),
-      _rowFetcher(_dependencyProxy),
       _registerInfos(std::move(registerInfos)),
+      _dependencyProxy(_dependencies, engine->itemBlockManager(),
+                       _registerInfos.getInputRegisters(),
+                       _registerInfos.numberOfInputRegisters(),
+                       &engine->getQuery().vpackOptions()),
+      _rowFetcher(_dependencyProxy),
       _executorInfos(std::move(executorInfos)),
       _executor(_rowFetcher, _executorInfos),
       _outputItemRow(),
@@ -178,7 +179,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     // the register planning.
     TRI_ASSERT(newBlock->getNrRegs() == _registerInfos.numberOfOutputRegisters());
     // Check that all output registers are empty.
-    for (auto const& reg : *_registerInfos.getOutputRegisters()) {
+    for (auto const& reg : _registerInfos.getOutputRegisters()) {
       for (size_t row = 0; row < newBlock->size(); row++) {
         if (!newBlock->isShadowRow(row)) {
           AqlValue const& val = newBlock->getValueReference(row, reg);
@@ -574,7 +575,7 @@ auto ExecutionBlockImpl<Executor>::nextState(AqlCall const& call) const -> ExecS
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
 SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
-                                                                 RegisterId nrRegs) {
+                                                                 RegisterCount nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 

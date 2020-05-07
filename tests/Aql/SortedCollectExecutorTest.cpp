@@ -61,8 +61,8 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
+  RegIdSet const regToClear = {};
+  RegIdSetStack const regToKeep = {{}};
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   std::vector<std::string> aggregateTypes;
@@ -75,9 +75,6 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
   Variable const* expressionVariable;
   std::vector<std::pair<std::string, RegisterId>> variables;
   bool count;
-
-  std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters;
 
   RegisterInfos registerInfos;
   SortedCollectExecutorInfos executorInfos;
@@ -95,17 +92,10 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        readableInputRegisters(make_shared_unordered_set({0})),
-        writeableOutputRegisters(make_shared_unordered_set({1})),
-        registerInfos(std::move(readableInputRegisters),
-                      std::move(writeableOutputRegisters),
-                      1 /*nrIn*/,
-                      2 /*nrOut*/,
-                      regToClear,
-                      regToKeep),
+        registerInfos({0}, {1}, 1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-              expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), &VPackOptions::Defaults, count),
+                      expressionVariable, std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
@@ -155,15 +145,9 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters;
-
   RegisterId collectRegister;
-
-  std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -187,15 +171,13 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
         server(),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters(make_shared_unordered_set({0})),
         collectRegister(2),
-        writeableOutputRegisters(make_shared_unordered_set({1, 2})),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-                      1 /*nrIn*/, 3 /*nrOut*/, regToClear, regToKeep),
+        registerInfos({0}, {1, 2},
+                      1 /*nrIn*/, 3 /*nrOut*/, {}, {{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
                       expressionVariable, std::move(aggregateTypes),
                       std::move(variables), std::move(aggregateRegisters), &VPackOptions::Defaults, count),
@@ -409,12 +391,12 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
-  std::unordered_set<RegisterId> regToClear = {};
-  std::unordered_set<RegisterId> regToKeep = {};
+  RegIdSet regToClear = {};
+  RegIdSetStack regToKeep = {{}};
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters = {{1, 0}};
 
-  auto readableInputRegisters = make_shared_unordered_set({0});
-  auto writeableOutputRegisters = make_shared_unordered_set({1, 2});
+  auto readableInputRegisters = RegIdSet{0};
+  auto writeableOutputRegisters = RegIdSet{1, 2};
   RegisterId nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
@@ -497,14 +479,14 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   mocks::MockAqlServer server{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
+  RegIdSet regToClear;
+  RegIdSetStack regToKeep = {{}};
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
 
-  auto readableInputRegisters = make_shared_unordered_set({0});
+  auto readableInputRegisters = RegIdSet{0};
 
-  auto writeableOutputRegisters = make_shared_unordered_set({1, 2});
+  auto writeableOutputRegisters = RegIdSet{1, 2};
 
   RegisterId nrOutputRegister = 3;
 
@@ -607,15 +589,8 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   mocks::MockAqlServer server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
-
-  std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters;
-
   RegisterId collectRegister;
-
-  std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters;
 
   RegisterId nrOutputRegister;
 
@@ -638,19 +613,15 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters(make_shared_unordered_set({0})),
         collectRegister(2),
-        writeableOutputRegisters(make_shared_unordered_set({1, 2})),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-                      1, nrOutputRegister, regToClear, regToKeep),
+        registerInfos({0}, {1, 2}, 1, nrOutputRegister, {}, {{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes),
-                      std::move(variables), std::move(aggregateRegisters),
-                      &VPackOptions::Defaults, count),
+                      expressionVariable, std::move(aggregateTypes), std::move(variables),
+                      std::move(aggregateRegisters), &VPackOptions::Defaults, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
 };
 
@@ -940,16 +911,9 @@ class SortedCollectExecutorTestSplit
     : public AqlExecutorTestCaseWithParam<std::tuple<SortedCollectSplitType>> {
  protected:
 
-  std::unordered_set<RegisterId> regToClear;
-  std::unordered_set<RegisterId> regToKeep;
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
-  std::unordered_set<RegisterId> readableInputRegisters;
-
   RegisterId collectRegister;
-
-  std::unordered_set<RegisterId> writeableOutputRegisters;
-
   RegisterId nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
@@ -966,19 +930,16 @@ class SortedCollectExecutorTestSplit
 
   SortedCollectExecutorTestSplit()
       : groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
-        readableInputRegisters({0}),
         collectRegister(2),
-        writeableOutputRegisters({1, 2}),
         nrOutputRegister(3),
         expressionRegister(RegisterPlan::MaxRegisterId),
         expressionVariable(nullptr),
         count(false),
-        registerInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                      std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                      1, nrOutputRegister, regToClear, regToKeep),
+        registerInfos({0}, {1, 2}, 1, nrOutputRegister, {}, {{}}),
         executorInfos(std::move(groupRegisters), collectRegister, expressionRegister,
-                      expressionVariable, std::move(aggregateTypes), std::move(variables),
-                      std::move(aggregateRegisters), &VPackOptions::Defaults, count) {}
+                      expressionVariable, std::move(aggregateTypes),
+                      std::move(variables), std::move(aggregateRegisters),
+                      &VPackOptions::Defaults, count) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {

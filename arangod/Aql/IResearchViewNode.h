@@ -32,6 +32,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "types.h"
 #include "utils/bit_utils.hpp"
 
 namespace arangodb {
@@ -185,7 +186,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
 
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
+  aql::RegIdSet calcInputRegs() const;
+
+  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   bool isLateMaterialized() const noexcept {
     return _outNonMaterializedDocId != nullptr && _outNonMaterializedColPtr != nullptr;

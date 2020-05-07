@@ -120,7 +120,7 @@ DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                     {},
                     registerInfos.numberOfInputRegisters(),
                     registerInfos.numberOfOutputRegisters(),
-                    *registerInfos.registersToClear(),
+                    registerInfos.registersToClear(),
                     registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
@@ -177,7 +177,8 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
       _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
-  OutputAqlItemRow output{newBlock, make_shared_unordered_set(),
+  RegIdSet const noOutputRegisters;
+  OutputAqlItemRow output{newBlock, noOutputRegisters,
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear()};
   while (!output.isFull()) {

@@ -67,15 +67,24 @@ class AqlShadowItemRowTest : public ::testing::Test {
     RegisterId numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
     // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
+    auto outputRegisters = RegIdSet{};
+    int64_t maxShadowRowDepth = 0;
+    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+      if (inputBlock->isShadowRow(rowIdx)) {
+        maxShadowRowDepth =
+            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx).toInt64() + 1);
+      }
     }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+
+    auto protoRegSet = RegIdSet{};
+    for (RegisterId r = 0; r < numRegisters; ++r) {
+      protoRegSet.emplace(r);
+    }
+
+    RegIdSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+
+    auto registersToClear = RegIdSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
@@ -112,15 +121,24 @@ class AqlShadowItemRowTest : public ::testing::Test {
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{numRegisters});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
+    auto outputRegisters = RegIdSet{numRegisters};
+    int64_t maxShadowRowDepth = 0;
+    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+      if (inputBlock->isShadowRow(rowIdx)) {
+        maxShadowRowDepth =
+            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx).toInt64() + 1);
+      }
     }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+
+    auto protoRegSet = RegIdSet{};
+    for (RegisterId r = 0; r < numRegisters; ++r) {
+      protoRegSet.emplace(r);
+    }
+
+    RegIdSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+
+    auto registersToClear = RegIdSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 

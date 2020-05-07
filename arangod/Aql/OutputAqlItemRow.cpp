@@ -49,9 +49,9 @@ using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
     SharedAqlItemBlockPtr block,
-    std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
+    RegIdSet const& outputRegisters,
     RegIdSetStack const& registersToKeep,
-    std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+    RegIdSet const& registersToClear,
     AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
@@ -65,19 +65,19 @@ OutputAqlItemRow::OutputAqlItemRow(
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
       _call(clientCall),
-      _outputRegisters(std::move(outputRegisters)),
+      _outputRegisters(outputRegisters),
       _registersToKeep(registersToKeep),
-      _registersToClear(std::move(registersToClear)) {
+      _registersToClear(registersToClear) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
-    for (auto const& reg : *_outputRegisters) {
+    for (auto const& reg : _outputRegisters) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
     // the block must have enough columns for the registers of both data rows,
     // and all the different shadow row depths
     if (_doNotCopyInputRow) {
       // pass-through case, we won't use _registersToKeep
-      for (auto const& reg : *_registersToClear) {
+      for (auto const& reg : _registersToClear) {
         TRI_ASSERT(reg < _block->getNrRegs());
       }
     } else {
@@ -173,7 +173,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
   // been set, and copyRow should only be called once.
   TRI_ASSERT(!_inputRowCopied);
   // We either have a shadowRow, or we need to have all values written
-  TRI_ASSERT((std::is_same<ItemRowType, ShadowAqlItemRow>::value) || allValuesWritten());
+  TRI_ASSERT((std::is_same_v<ItemRowType, ShadowAqlItemRow>) || allValuesWritten());
   if (_inputRowCopied) {
     _lastBaseIndex = _baseIndex;
     return;
@@ -293,7 +293,7 @@ AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; };
 
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
 
-void OutputAqlItemRow::setCall(AqlCall&& call) { _call = call; }
+void OutputAqlItemRow::setCall(AqlCall call) { _call = call; }
 
 void OutputAqlItemRow::didSkip(size_t n) { _call.didSkip(n); }
 

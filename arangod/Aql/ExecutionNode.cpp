@@ -827,6 +827,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("varsUsedLaterStack"));
     {
       VPackArrayBuilder guard(&nodes);
+      TRI_ASSERT(!_varsUsedLaterStack.empty());
       for (auto const& stackEntry : _varsUsedLaterStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
@@ -838,6 +839,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("varsValidStack"));
     {
       VPackArrayBuilder guard(&nodes);
+      TRI_ASSERT(!_varsValidStack.empty());
       for (auto const& stackEntry : _varsValidStack) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
@@ -1027,7 +1029,7 @@ void ExecutionNode::removeDependencies() {
 }
 
 auto ExecutionNode::calcRegsToKeep() const -> RegIdSetStack {
-  auto regsToKeepStack = RegIdSetStack{};
+  RegIdSetStack regsToKeepStack;
   regsToKeepStack.reserve(getVarsUsedLaterStack().size());
 
   auto const& varsSetHere = getVariablesSetHere();
@@ -1068,21 +1070,20 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 }
 
 // This is the general case and will not work if e.g. there is no predecessor.
-RegisterInfos ExecutionNode::createRegisterInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const {
+RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters,
+                                                 RegIdSet writableOutputRegisters) const {
   auto const nrOutRegs = getNrOutputRegisters();
   auto const nrInRegs = getNrInputRegisters();
 
-  auto&& regsToKeep = calcRegsToKeep();
-  auto&& regsToClear = getRegsToClear();
+  auto const& regsToKeep = calcRegsToKeep();
+  auto const& regsToClear = getRegsToClear();
 
   return RegisterInfos{std::move(readableInputRegisters),
                        std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
-                       std::move(regsToClear),
-                       std::move(regsToKeep)};
+                       regsToClear,
+                       regsToKeep};
 }
 
 RegisterId ExecutionNode::getNrInputRegisters() const {
@@ -1313,11 +1314,11 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
   }
 }
 
-bool ExecutionNode::alwaysCopiesRows() const {
+bool ExecutionNode::alwaysCopiesRows(NodeType type) {
   // TODO This can be improved. And probably should be renamed.
   //      It is used in the register planning to discern whether we may reuse
   //      an input register immediately as an output register at this very block.
-  switch (getType()) {
+  switch (type) {
     case ENUMERATE_COLLECTION:
     case ENUMERATE_LIST:
     case FILTER:
@@ -1363,6 +1364,10 @@ bool ExecutionNode::alwaysCopiesRows() const {
   ADB_UNREACHABLE;
 }
 
+bool ExecutionNode::alwaysCopiesRows() const {
+  return ExecutionNode::alwaysCopiesRows(getType());
+}
+
 void ExecutionNode::setVarsUsedLater(VarSetStack varStack) {
   _varsUsedLaterStack = std::move(varStack);
 }
@@ -1385,7 +1390,7 @@ auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
 
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set(), make_shared_unordered_set());
+  auto registerInfos = createRegisterInfos({}, {});
   IdExecutorInfos infos(false);
 
   auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
@@ -1464,8 +1469,8 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   }
   auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   auto outputRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set(),
-                                           make_shared_unordered_set({outputRegister}));
+  auto registerInfos = createRegisterInfos({},
+                                           RegIdSet{outputRegister});
   auto executorInfos =
       EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(), collection(),
                                        _outVariable, produceResult,
@@ -1554,8 +1559,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
   RegisterId outRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set({inputRegister}),
-                                           make_shared_unordered_set({outRegister}));
+  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister},
+                                           RegIdSet{outRegister});
   auto executorInfos = EnumerateListExecutorInfos(inputRegister, outRegister);
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1809,9 +1814,14 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   std::vector<RegisterId> expInRegs;
   expInRegs.reserve(inVars.size());
 
+  auto inputRegisters = RegIdSet{};
+  inputRegisters.reserve(inVars.size());
+
   for (auto& var : inVars) {
     expInVars.emplace_back(var);
-    expInRegs.emplace_back(variableToRegisterId(var));
+    auto regId = variableToRegisterId(var);
+    expInRegs.emplace_back(regId);
+    inputRegisters.emplace(regId);
   }
 
   bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
@@ -1824,8 +1834,8 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
 
   auto registerInfos =
-      createRegisterInfos(make_shared_unordered_set(expInRegs.begin(), expInRegs.end()),
-                          make_shared_unordered_set({outputRegister}));
+      createRegisterInfos(std::move(inputRegisters),
+                          RegIdSet{outputRegister});
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
@@ -2009,15 +2019,14 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = RegIdSet{};
 
   auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
   TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
   RegisterId outReg = outVar->second.registerId;
-  outputRegisters->emplace(outReg);
+  outputRegisters.emplace(outReg);
 
-  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
 
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
@@ -2209,8 +2218,8 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set({inputRegister}),
-                                           make_shared_unordered_set());
+  auto registerInfos = createRegisterInfos({inputRegister},
+                                           {});
 
   auto executorInfos = FilterExecutorInfos(inputRegister);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
@@ -2308,8 +2317,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
-        createRegisterInfos(make_shared_unordered_set({inputRegister}),
-                            make_shared_unordered_set({outputRegister}));
+        createRegisterInfos({inputRegister},
+                            {outputRegister});
     auto executorInfos = ReturnExecutorInfos(inputRegister, _count);
 
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
@@ -2528,7 +2537,7 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
 
   // Everything that is cleared here could and should have been cleared before
   TRI_ASSERT(regsToClear.empty());
-  
+
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "Parallel Start is not implemented");
 
 //  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
@@ -2707,10 +2716,10 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
 
-  auto const readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
-  auto const writableOutputRegisters = make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
+  auto readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
+  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
-  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos =
       MaterializerExecutorInfos(inNmColPtrRegId, inNmDocIdRegId,
@@ -2790,11 +2799,10 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   }
   auto const& name = collection()->name();
 
-  auto const readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
-  auto const writableOutputRegisters =
-      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
+  auto readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
+  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
-  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos =
       MaterializerExecutorInfos<decltype(name)>(name, inNmDocIdRegId, outDocumentRegId,

@@ -339,9 +339,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
-  auto inAndOutRegs = make_shared_unordered_set({regId});
+  auto inAndOutRegs = RegIdSet{regId};
   if (alternativeRegId != RegisterPlan::MaxRegisterId) {
-    inAndOutRegs->emplace(alternativeRegId);
+    inAndOutRegs.emplace(alternativeRegId);
   }
   auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
   auto infos = DistributeExecutorInfos(clients(), collection(), regId, alternativeRegId,
@@ -646,19 +646,19 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  auto readableInputRegisters = make_shared_unordered_set();
+  auto readableInputRegisters = RegIdSet{};
   if (in < RegisterPlan::MaxRegisterId) {
-    readableInputRegisters->emplace(in);
+    readableInputRegisters.emplace(in);
   }
-  auto writableOutputRegisters = make_shared_unordered_set();
+  auto writableOutputRegisters = RegIdSet{};
   if (out < RegisterPlan::MaxRegisterId) {
-    writableOutputRegisters->emplace(out);
+    writableOutputRegisters.emplace(out);
   }
   if (outputNew < RegisterPlan::MaxRegisterId) {
-    writableOutputRegisters->emplace(outputNew);
+    writableOutputRegisters.emplace(outputNew);
   }
   if (outputOld < RegisterPlan::MaxRegisterId) {
-    writableOutputRegisters->emplace(outputOld);
+    writableOutputRegisters.emplace(outputOld);
   }
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
