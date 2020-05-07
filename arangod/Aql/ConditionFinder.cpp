@@ -243,7 +243,7 @@ bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
     return false;
   }
 
-  auto const& varsValid = en->getVarsValidStack().back();
+  auto const& varsValid = en->getVarsValid();
 
   // remove all invalid variables from the condition
   if (condition->removeInvalidVariables(varsValid)) {

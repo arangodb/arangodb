@@ -1242,7 +1242,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
-    auto const& varsUsedLater = n->getVarsUsedLaterStack().back();
+    auto const& varsUsedLater = n->getVarsUsedLater();
     auto outVariable = collectNode->outVariable();
 
     if (outVariable != nullptr &&
@@ -6839,7 +6839,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   TRI_ASSERT(info.index);
 
   // verify that all vars used in the index condition are valid
-  auto const& valid = info.collectionNodeToReplace->getVarsValidStack().back();
+  auto const& valid = info.collectionNodeToReplace->getVarsValid();
   auto checkVars = [&valid](AstNode const* expr) {
     if (expr != nullptr) {
       VarSet varsUsed;
