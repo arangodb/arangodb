@@ -82,7 +82,7 @@ CommTask::CommTask(GeneralServer& server,
   _connectionStatistics.SET_START();
 }
 
-CommTask::~CommTask() = default
+CommTask::~CommTask() = default;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -204,7 +204,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
         ReplicationFeature::prepareFollowerResponse(res.get(), mode);
-        sendResponse(std::move(res), nullptr);
+        sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
       break;
@@ -389,7 +389,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
         // return the job id we just created
         resp->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
-      sendResponse(std::move(resp), nullptr);
+      sendResponse(std::move(resp), RequestStatistics::Item());
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        respType, messageId, TRI_ERROR_QUEUE_FULL);
