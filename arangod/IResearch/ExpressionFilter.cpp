@@ -30,7 +30,6 @@
 #include "formats/empty_term_reader.hpp"
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
-#include "search/score_doc_iterators.hpp"
 #include "utils/hash_utils.hpp"
 
 #include <type_traits>
