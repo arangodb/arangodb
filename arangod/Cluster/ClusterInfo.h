@@ -335,7 +335,7 @@ class ClusterInfo {
 class ClusterInfo final {
 #endif
  private:
-  typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
+  typedef std::unordered_map<CollectionID, std::pair<std::shared_ptr<LogicalCollection>, uint64_t>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent> AllCollectionsCurrent;
@@ -468,6 +468,16 @@ class ClusterInfo final {
                                                                 CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a collection without reload and with hash, only used during
+  /// loadPlan.
+  //////////////////////////////////////////////////////////////////////////////
+
+ private:
+  std::shared_ptr<LogicalCollection> getCollectionNTWithHash(DatabaseID const& databaseID,
+                                                             CollectionID const& collectionID,
+                                                             uint64_t& hash);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
@@ -476,6 +486,7 @@ class ClusterInfo final {
   /// will not throw but return nullptr if the collection isn't found.
   //////////////////////////////////////////////////////////////////////////////
 
+ public:
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
 

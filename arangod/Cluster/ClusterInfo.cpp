@@ -604,7 +604,9 @@ void ClusterInfo::loadPlan() {
   std::set<std::string> buildingDatabases;
   decltype(_plannedCollections) newCollections;  // map<string /*database id*/
                                                  //    ,map<string /*collection id*/
-                                                 //        ,shared_ptr<LogicalCollection>
+                                                 //        ,pair<shared_ptr<LogicalCollection>
+                                                 //              ,uint64_t
+                                                 //             >
                                                  //        >
                                                  //    >
   decltype(_shards) newShards;
@@ -896,65 +898,79 @@ void ClusterInfo::loadPlan() {
 
         auto const collectionId = collectionPairSlice.key.copyString();
 
+        uint64_t computedHash = collectionSlice.hash();
+        uint64_t foundHash = 0;
         try {
           std::shared_ptr<LogicalCollection> newCollection;
 
+          // Try if hash is different from last time:
+          newCollection = getCollectionNTWithHash(databaseName, collectionId, foundHash);
+          if (newCollection.get() == nullptr || computedHash != foundHash) {
+            LOG_TOPIC("52631", TRACE, Logger::CLUSTER)
+                << "loadPlan: Old LogicalCollection not found or hash "
+                   "mismatch, (re-)building LogicalCollection object.";
 #ifdef USE_ENTERPRISE
-          auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
+            auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
 
-          if (isSmart.isTrue()) {
-            auto type = collectionSlice.get(StaticStrings::DataSourceType);
+            if (isSmart.isTrue()) {
+              auto type = collectionSlice.get(StaticStrings::DataSourceType);
 
-            if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-              newCollection = std::make_shared<VirtualSmartEdgeCollection>(  // create collection
-                  *vocbase, collectionSlice, newPlanVersion  // args
-              );
-            } else {
-              newCollection = std::make_shared<SmartVertexCollection>(  // create collection
-                  *vocbase, collectionSlice, newPlanVersion  // args
+              if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
+                newCollection = std::make_shared<VirtualSmartEdgeCollection>(  // create collection
+                    *vocbase, collectionSlice, newPlanVersion  // args
+                );
+              } else {
+                newCollection = std::make_shared<SmartVertexCollection>(  // create collection
+                    *vocbase, collectionSlice, newPlanVersion  // args
+                );
+              }
+            } else
+#endif
+            {
+              newCollection = std::make_shared<LogicalCollection>(  // create collection
+                  *vocbase, collectionSlice, true, newPlanVersion  // args
               );
             }
-          } else
-#endif
-          {
-            newCollection = std::make_shared<LogicalCollection>(  // create collection
-                *vocbase, collectionSlice, true, newPlanVersion  // args
-            );
-          }
 
-          auto& collectionName = newCollection->name();
+            if (isCoordinator) {
+              // copying over index estimates from the old version of the
+              // collection into the new one
+              LOG_TOPIC("7a884", TRACE, Logger::CLUSTER)
+                  << "copying index estimates";
 
-          bool isBuilding = isCoordinator &&
-                            arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                collectionSlice, StaticStrings::AttrIsBuilding, false);
-          if (isCoordinator) {
-            // copying over index estimates from the old version of the
-            // collection into the new one
-            LOG_TOPIC("7a884", TRACE, Logger::CLUSTER)
-                << "copying index estimates";
+              // it is effectively safe to access _plannedCollections in
+              // read-only mode here, as the only places that modify
+              // _plannedCollections are the shutdown and this function
+              // itself, which is protected by a mutex
+              auto it = _plannedCollections.find(databaseName);
+              if (it != _plannedCollections.end()) {
+                auto it2 = (*it).second.find(collectionId);
 
-            // it is effectively safe to access _plannedCollections in
-            // read-only mode here, as the only places that modify
-            // _plannedCollections are the shutdown and this function
-            // itself, which is protected by a mutex
-            auto it = _plannedCollections.find(databaseName);
-            if (it != _plannedCollections.end()) {
-              auto it2 = (*it).second.find(collectionId);
+                if (it2 != (*it).second.end()) {
+                  try {
+                    auto estimates = (*it2).second.first->clusterIndexEstimates(false);
 
-              if (it2 != (*it).second.end()) {
-                try {
-                  auto estimates = (*it2).second->clusterIndexEstimates(false);
-
-                  if (!estimates.empty()) {
-                    // already have an estimate... now copy it over
-                    newCollection->setClusterIndexEstimates(std::move(estimates));
+                    if (!estimates.empty()) {
+                      // already have an estimate... now copy it over
+                      newCollection->setClusterIndexEstimates(std::move(estimates));
+                    }
+                  } catch (...) {
+                    // this may fail during unit tests, when mocks are used
                   }
-                } catch (...) {
-                  // this may fail during unit tests, when mocks are used
                 }
               }
             }
+          } else {
+            LOG_TOPIC("52632", TRACE, Logger::CLUSTER)
+                << "loadPlan: Previous LogicalCollection found and hash "
+                   "match, not rebuilding LogicalCollection object.";
           }
+
+          bool isBuilding =
+              isCoordinator &&
+              arangodb::basics::VelocyPackHelper::getBooleanValue(collectionSlice,
+                                                                  StaticStrings::AttrIsBuilding,
+                                                                  false);
 
           // NOTE: This is building has the following feature. A collection needs to be working on
           // all DBServers to allow replication to go on, also we require to have the shards planned.
@@ -964,8 +980,8 @@ void ClusterInfo::loadPlan() {
 
           if (!isBuilding) {
             // register with name as well as with id:
-            databaseCollections.try_emplace(collectionName, newCollection);
-            databaseCollections.try_emplace(collectionId, newCollection);
+            databaseCollections.try_emplace(newCollection->name(), newCollection, computedHash);
+            databaseCollections.try_emplace(collectionId, newCollection, computedHash);
           }
 
           auto shardIDs = newCollection->shardIds();
@@ -1032,7 +1048,7 @@ void ClusterInfo::loadPlan() {
         auto it2 = (*it).second.find(StaticStrings::GraphCollection);
         if (it2 != (*it).second.end()) {
           // found!
-          if ((*it2).second->distributeShardsLike().empty()) {
+          if ((*it2).second.first->distributeShardsLike().empty()) {
             // _graphs collection has no distributeShardsLike, so it is
             // the prototype!
             systemDB->setShardingPrototype(ShardingPrototype::Graphs);
@@ -1280,6 +1296,24 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& 
   }
 }
 
+std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNTWithHash(
+  DatabaseID const& databaseID, CollectionID const& collectionID, uint64_t& hash) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  // look up database by id
+  AllCollections::const_iterator it = _plannedCollections.find(databaseID);
+
+  if (it != _plannedCollections.end()) {
+    // look up collection by id (or by name)
+    DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
+
+    if (it2 != (*it).second.end()) {
+      hash = (*it2).second.second;
+      return (*it2).second.first;
+    }
+  }
+  return nullptr;
+}
+
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const& databaseID,
                                                                 CollectionID const& collectionID) {
   int tries = 0;
@@ -1300,7 +1334,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
         DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
 
         if (it2 != (*it).second.end()) {
-          return (*it2).second;
+          return (*it2).second.first;
         }
       }
     }
@@ -1344,7 +1378,7 @@ std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollection
 
     if (c < '0' || c > '9') {
       // skip collections indexed by id
-      result.push_back((*it2).second);
+      result.push_back((*it2).second.first);
     }
 
     ++it2;
