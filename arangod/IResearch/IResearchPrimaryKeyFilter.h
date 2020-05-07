@@ -48,7 +48,7 @@ class PrimaryKeyFilter final
   static irs::type_info type();
 
   explicit PrimaryKeyFilter(arangodb::LocalDocumentId const& value) noexcept
-      : irs::filter(irs::type<PrimaryKeyFilter>::get()),
+      : irs::filter(PrimaryKeyFilter::type()),
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false) {}
 

@@ -1064,7 +1064,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
-    EXPECT_FALSE(irs::get<irs::score>(*docs));
+    auto* score = irs::get<irs::score>(*docs);
+    EXPECT_TRUE(score);
+    EXPECT_TRUE(score->empty());
 
     // set reachable filter condition
     {
@@ -1323,7 +1325,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), &queryCtx);
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
-    EXPECT_FALSE(irs::get<irs::score>(*docs));
+    auto* score = irs::get<irs::score>(*docs);
+    EXPECT_TRUE(score);
+    EXPECT_TRUE(score->empty());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
