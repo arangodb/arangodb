@@ -1,6 +1,9 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fix spurious bugs in `resilience_move` tests due to replication context of
+  to-be-dropped collections lingering around until timeout.
+
 * Fixed issue 11243: `db._isSystem()` returns true for a non-system DB.
 
 * Added option `--rocksdb.edge-cache` to toggle in-memory caching for 

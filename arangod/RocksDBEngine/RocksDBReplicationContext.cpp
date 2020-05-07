@@ -127,6 +127,20 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   }
 }
 
+/// invalidate all iterators with that collection
+bool RocksDBReplicationContext::removeCollection(LogicalCollection& collection) {
+  MUTEX_LOCKER(locker, _contextLock);
+
+  for (auto const& it : _iterators) {
+    if (it.second->logical != nullptr &&
+        it.second->logical->id() == collection.id()) {
+      _isDeleted = true;  // setDeleted also gets the lock
+      return true;
+    }
+  }
+  return false;
+}
+
 /// remove matching iterator
 void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid) {
   MUTEX_LOCKER(locker, _contextLock);
