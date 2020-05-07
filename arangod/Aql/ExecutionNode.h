@@ -399,7 +399,10 @@ class ExecutionNode {
   void setVarsValid(VarSetStack varStack);
 
   /// @brief set regs to be deleted
-  void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
+  void setRegsToClear(RegIdSet toClear);
+
+  /// @brief set regs to be kept
+  void setRegsToKeep(RegIdSetStack toKeep);
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
@@ -475,8 +478,7 @@ class ExecutionNode {
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
                                  std::unordered_set<ExecutionNode const*>& seen) const;
 
-
-  auto calcRegsToKeep() const -> RegIdSetStack;
+  auto getRegsToKeepStack() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
@@ -530,7 +532,12 @@ class ExecutionNode {
   /// @brief the following contains the registers which should be cleared
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
-  std::unordered_set<RegisterId> _regsToClear;
+  RegIdSet _regsToClear;
+
+  /// @brief contains the registers which should be copied into the next row
+  /// This is computed during the static analysis for each node using the
+  /// variable usage in the plan.
+  RegIdSetStack _regsToKeepStack;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

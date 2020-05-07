@@ -143,6 +143,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     planRegistersForCurrentNode(en);
   }
 
+  en->setRegsToKeep(plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
+                                   en->getVariablesSetHere()));
+
   en->_depth = plan->depth;
   en->_registerPlan = plan;
 }
@@ -317,6 +320,59 @@ void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
 template <typename T>
 auto RegisterPlanT<T>::getTotalNrRegs() -> unsigned int {
   return totalNrRegs;
+}
+
+template <typename T>
+auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
+                                      VarSetStack const& varsValidStack,
+                                      // we use a vector here because of 3.7 compatibility
+                                      std::vector<Variable const*> const& varsSetHere) const
+    -> RegIdSetStack {
+  RegIdSetStack regsToKeepStack;
+  regsToKeepStack.reserve(varsUsedLaterStack.size());
+
+  TRI_ASSERT(varsValidStack.size() == varsUsedLaterStack.size());
+
+  // TODO The lower levels of the stacks inside the same subquery do not differ,
+  //      so we calculate the same thing multiple times.
+  //      Instead, calculate it in the register planning and pass the results.
+
+  // TODO this function was moved but is still used in some cases. (i.e. during rolling upgrades)
+
+  for (auto const [idx, stackEntry] : enumerate(varsValidStack)) {
+    auto& regsToKeep = regsToKeepStack.emplace_back();
+    auto const& varsUsedLater = varsUsedLaterStack[idx];
+
+    for (auto const var : stackEntry) {
+      auto reg = variableToRegisterId(var);
+
+      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                       varsSetHere.end();
+      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                         varsUsedLater.end();
+      if (!isSetHere && isUsedLater) {
+        regsToKeep.emplace(reg);
+      }
+    }
+  }
+
+  return regsToKeepStack;
+}
+
+template <typename T>
+void RegisterPlanT<T>::registerVariable(VariableId v) {
+  std::set<RegisterId> tmp;
+  registerVariable(v, tmp);
+}
+
+template <typename T>
+auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> RegisterId {
+  TRI_ASSERT(variable != nullptr);
+  auto it = varInfo.find(variable->id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId rv = it->second.registerId;
+  TRI_ASSERT(rv < RegisterPlan::MaxRegisterId);
+  return rv;
 }
 
 template <typename T>
