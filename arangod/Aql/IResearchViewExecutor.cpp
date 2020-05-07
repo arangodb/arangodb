@@ -82,16 +82,16 @@ inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find c
   return collection->collection();
 }
 
-inline irs::columnstore_reader::values_reader_f pkColumn(irs::sub_reader const& segment) {
+inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
   auto const* reader = segment.column_reader(DocumentPrimaryKey::PK());
 
-  return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
+  return reader ? reader->iterator() : nullptr;
 }
 
-inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const& segment) {
+inline irs::doc_iterator::ptr sortColumn(irs::sub_reader const& segment) {
   auto const* reader = segment.sort();
 
-  return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
+  return reader ? reader->iterator() : nullptr;
 }
 
 }  // namespace
@@ -713,13 +713,13 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
                                                                size_t index) {
   TRI_ASSERT(index < _storedValuesReaders.size());
   auto const& reader = _storedValuesReaders[index];
-  TRI_ASSERT(reader);
+  TRI_ASSERT(reader.itr);
   auto& storedValues = _indexReadBuffer.getStoredValues();
   storedValues.emplace_back();
   auto& storedValue = storedValues.back();
-  auto const ok = reader(doc.value, storedValue);
-  TRI_ASSERT(ok);
-  if (storedValue.empty()) {
+  if (doc.value == reader.itr->seek(doc.value)) {
+    storedValue = reader.value->value;
+  } else {
     storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
 }
@@ -750,7 +750,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
                "executing a query, ignoring";
         return false;
       }
-      _storedValuesReaders[index++] = std::move(sortReader);
+      _storedValuesReaders[index++].reset(std::move(sortReader));
       ++columnFieldsRegs;
     }
     // if stored values exist
@@ -769,7 +769,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
                  "executing a query, ignoring";
           return false;
         }
-        _storedValuesReaders[index++] = storedValuesReader->values();
+
+        _storedValuesReaders[index++].reset(storedValuesReader->iterator());
       }
     }
   }
@@ -812,11 +813,11 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   TRI_ASSERT(!documentId.isSet());
   TRI_ASSERT(_itr);
   TRI_ASSERT(_doc);
-  TRI_ASSERT(_pkReader);
+  TRI_ASSERT(_pkReader.itr);
 
   if (_itr->next()) {
-    if (_pkReader(_doc->value, this->_pk)) {
-      bool const readSuccess = DocumentPrimaryKey::read(documentId, this->_pk);
+    if (_doc->value == _pkReader.itr->seek(_doc->value)) {
+      bool const readSuccess = DocumentPrimaryKey::read(documentId, _pkReader.value->value);
 
       TRI_ASSERT(readSuccess == documentId.isSet());
 
@@ -879,7 +880,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       this->_indexReadBuffer.reset();
     }
 
-    TRI_ASSERT(_pkReader);
+    TRI_ASSERT(_pkReader.itr);
 
     LocalDocumentId documentId;
 
@@ -940,14 +941,16 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
 
   auto& segmentReader = (*this->_reader)[_readerOffset];
 
-  _pkReader = ::pkColumn(segmentReader);
+  auto it = ::pkColumn(segmentReader);
 
-  if (ADB_UNLIKELY(!_pkReader)) {
+  if (ADB_UNLIKELY(!it)) {
     LOG_TOPIC("bd01b", WARN, arangodb::iresearch::TOPIC)
         << "encountered a sub-reader without a primary key column while "
            "executing a query, ignoring";
     return false;
   }
+
+  _pkReader.reset(std::move(it));
 
   if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                 MaterializeType::UseStoredValues) {
@@ -1105,20 +1108,19 @@ IResearchViewMergeExecutor<ordered, materializeType>::IResearchViewMergeExecutor
 template <bool ordered, MaterializeType materializeType>
 IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     irs::doc_iterator::ptr&& docs, irs::document const& doc, irs::score const& score,
-    LogicalCollection const& collection, irs::columnstore_reader::values_reader_f&& pkReader,
-    irs::columnstore_reader::values_reader_f&& sortReader, size_t storedValuesIndex) noexcept
+    LogicalCollection const& collection, irs::doc_iterator::ptr&& pkReader,
+    irs::doc_iterator::ptr&& sortReader, size_t storedValuesIndex) noexcept
     : docs(std::move(docs)),
       doc(&doc),
       score(&score),
       collection(&collection),
-      pkReader(std::move(pkReader)),
-      sortReader(std::move(sortReader)),
       storedValuesIndex(storedValuesIndex) {
   TRI_ASSERT(this->docs);
   TRI_ASSERT(this->doc);
   TRI_ASSERT(this->score);
   TRI_ASSERT(this->collection);
-  TRI_ASSERT(this->pkReader);
+  this->pkReader.reset(std::move(pkReader));
+  this->sortReader.reset(std::move(sortReader));
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1133,7 +1135,7 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
   while (segment.docs->next()) {
     auto const doc = segment.docs->value();
 
-    if (segment.sortReader(doc, segment.sortValue)) {
+    if (doc == segment.sortReader.itr->seek(doc)) {
       return true;
     }
 
@@ -1147,7 +1149,8 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::MinHeapContext::opera
     const size_t lhs, const size_t rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
-  return _less((*_segments)[rhs].sortValue, (*_segments)[lhs].sortValue);
+  return _less((*_segments)[rhs].sortReader.value->value,
+               (*_segments)[lhs].sortReader.value->value);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1245,19 +1248,22 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       TRI_ASSERT(!isSortReaderUsedInStoredValues);
     }
 
-    irs::columnstore_reader::values_reader_f sortReader;
+    typename Base::ColumnIterator sortReader;
     if (isSortReaderUsedInStoredValues) {
       TRI_ASSERT(i * storedValuesCount < this->_storedValuesReaders.size());
       sortReader = this->_storedValuesReaders[i * storedValuesCount];
     } else {
-      sortReader = ::sortColumn(segment);
+      auto itr = ::sortColumn(segment);
 
-      if (ADB_UNLIKELY(!sortReader)) {
+      if (ADB_UNLIKELY(!itr)) {
         LOG_TOPIC("af4cd", WARN, arangodb::iresearch::TOPIC)
             << "encountered a sub-reader without a sort column while "
                "executing a query, ignoring";
         continue;
       }
+
+
+      sortReader.reset(std::move(itr));
     }
 
     _segments.emplace_back(std::move(it), *doc, *score, *collection,
@@ -1272,8 +1278,8 @@ LocalDocumentId IResearchViewMergeExecutor<ordered, materializeType>::readPK(
     IResearchViewMergeExecutor<ordered, materializeType>::Segment const& segment) {
   LocalDocumentId documentId;
 
-  if (segment.pkReader(segment.doc->value, this->_pk)) {
-    bool const readSuccess = DocumentPrimaryKey::read(documentId, this->_pk);
+  if (segment.doc->value == segment.pkReader.itr->seek(segment.doc->value)) {
+    bool const readSuccess = DocumentPrimaryKey::read(documentId, segment.pkReader.value->value);
 
     TRI_ASSERT(readSuccess == documentId.isSet());
 
@@ -1300,7 +1306,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     TRI_ASSERT(segment.doc);
     TRI_ASSERT(segment.score);
     TRI_ASSERT(segment.collection);
-    TRI_ASSERT(segment.pkReader);
+    TRI_ASSERT(segment.pkReader.itr);
 
     // try to read a document PK from iresearch
     LocalDocumentId const documentId = readPK(segment);
