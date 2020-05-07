@@ -93,8 +93,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
-    if (num + 1 < _maxTasks) {
-      _numTasks.fetch_sub(1);
+    if (num + 1 > _maxTasks) {
+      _numTasks.fetch_sub(1); // revert
       try {
         std::forward<F>(cb)(false);
       } catch(...) {}

@@ -67,6 +67,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
   _internalState = AsyncState::InProgress;
   bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+    LOG_DEVEL << "executing async: " << isAsync;
 
     auto [state, skip, block] = _dependencies[0]->execute(stack);
     if (isAsync) {
@@ -77,9 +78,9 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
     _returnBlock = std::move(block);
     
     if (_returnBlock.get()) {
-      LOG_DEVEL << "getSome rows " << _returnBlock->size();
+      LOG_DEVEL << "execute rows " << _returnBlock->size();
     } else {
-      LOG_DEVEL << "getSome rows " << 0;
+      LOG_DEVEL << "execute rows " << 0;
     }
 
     _internalState = AsyncState::GotResult;
