@@ -208,8 +208,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferSizeMax(mask),
       _primarySort(mask),
       _storedValues(mask),
-      _primarySortCompression(mask){
-}
+      _primarySortCompression(mask) {}
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),

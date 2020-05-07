@@ -231,6 +231,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
                                       VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
                                       std::string& output) {
+  TRI_ASSERT(!coll.isAStub());
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   TRI_ASSERT(appliedSeq > 0);
 
@@ -324,7 +325,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   // Step 4. store the revision tree
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
-    if (coll.syncByRevision()) {
+    if (coll.useSyncByRevision()) {
       output.clear();
       rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
       appliedSeq = std::min(appliedSeq, seq);
@@ -364,6 +365,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
 /// @brief deserialize collection metadata, only called on startup
 Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
+  TRI_ASSERT(!coll.isAStub());
+
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. load the counter
@@ -449,7 +452,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   }
 
   // Step 4. load the revision tree
-  if (coll.syncByRevision()) {
+  if (coll.useSyncByRevision()) {
     key.constructRevisionTreeValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {

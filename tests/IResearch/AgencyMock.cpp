@@ -33,7 +33,6 @@
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Rest/HttpResponse.h"
 
 #include <velocypack/velocypack-aliases.h>
 

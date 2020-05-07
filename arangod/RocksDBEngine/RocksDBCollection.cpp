@@ -1468,7 +1468,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     }
   }
 
-  if(options.validate && options.isSynchronousReplicationFrom.empty()) {
+  if (options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(builder->slice(), oldDoc,
                                       trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {

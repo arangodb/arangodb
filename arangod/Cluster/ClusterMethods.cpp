@@ -2366,7 +2366,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
     for (auto& col : collections) {
       // We can only serve on Database at a time with this call.
-      // We have the vocbase context around this calls anyways, so this is save.
+      // We have the vocbase context around this calls anyways, so this is safe.
       TRI_ASSERT(col->vocbase().name() == dbName);
       std::string distributeShardsLike = col->distributeShardsLike();
       std::vector<std::string> avoid = col->avoidServers();

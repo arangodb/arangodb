@@ -251,13 +251,13 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
 }
 
 void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
-  if (_collection->syncByRevision()) {
+  if (_collection->useSyncByRevision()) {
     _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
   }
 }
 
 void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
-  if (_collection->syncByRevision()) {
+  if (_collection->useSyncByRevision()) {
     _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
   }
 }

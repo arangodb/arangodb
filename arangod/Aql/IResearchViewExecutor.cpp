@@ -101,8 +101,8 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
 ///////////////////////////////////////////////////////////////////////////////
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    std::shared_ptr<const IResearchView::Snapshot> reader, OutRegisters outRegisters,
-    std::vector<RegisterId> scoreRegisters, QueryContext& query, std::vector<Scorer> const& scorers,
+    std::shared_ptr<const IResearchView::Snapshot> reader, OutRegisters outRegisters, std::vector<RegisterId> scoreRegisters,
+    arangodb::aql::QueryContext& query, std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,

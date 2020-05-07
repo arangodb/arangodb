@@ -354,7 +354,7 @@ void MaintenanceFeature::stop() {
   // Current workers could be stuck on the condition variable.
   // Let's wake them up now.
   {
-    // Only if we have flagged shutdown this operation is save, all other threads potentially
+    // Only if we have flagged shutdown this operation is safe, all other threads potentially
     // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
     TRI_ASSERT(_isShuttingDown);
     std::unique_lock<std::mutex> guard(_currentCounterLock);
@@ -967,7 +967,7 @@ uint64_t MaintenanceFeature::getCurrentCounter() const {
   //    Within PhaseOne this getCurrentCounter is called, but never after.
   //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
   // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
-  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
+  //    It is read-only, so it is safe to have it concurrent to getCurrentCounter
   //    without any locking.
   //    However we need locking for increase and waitFor in order to guarantee
   //    it's functionallity.
