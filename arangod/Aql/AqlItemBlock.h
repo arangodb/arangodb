@@ -69,7 +69,7 @@ class AqlItemBlock {
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
   /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterId nrRegs);
+  AqlItemBlock(AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs);
 
   void initFromSlice(arangodb::velocypack::Slice);
 
@@ -128,8 +128,6 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-      // TODO - instead of disabling it completely we could you use
-      // a constexpr if() with c++17
       _data[address].destroy();
       throw;
     }
@@ -162,7 +160,7 @@ class AqlItemBlock {
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
   /// @brief getter for _nrRegs
-  RegisterId getNrRegs() const noexcept;
+  RegisterCount getNrRegs() const noexcept;
 
   /// @brief getter for _nrItems
   size_t size() const noexcept;
@@ -185,7 +183,7 @@ class AqlItemBlock {
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent
   /// losses of still managed AqlValues
-  void rescale(size_t nrItems, RegisterId nrRegs);
+  void rescale(size_t nrItems, RegisterCount nrRegs);
 
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.

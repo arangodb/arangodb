@@ -515,6 +515,10 @@ auto constexpr OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
   return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
 }
 
+RegisterCount OutputAqlItemRow::getNrRegisters() const {
+  return block().getNrRegs();
+}
+
 template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,
                                                          bool ignoreMissing);
 template void OutputAqlItemRow::copyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow,

@@ -225,7 +225,7 @@ template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     RegIdSet const& inputRegisters,
-    RegisterId nrInputRegisters, velocypack::Options const* const options)
+    RegisterCount nrInputRegisters, velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
       _inputRegisters(inputRegisters),
@@ -243,7 +243,7 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
 }
 
 template <BlockPassthrough blockPassthrough>
-RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
+RegisterCount DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
   return _nrInputRegisters;
 }
 

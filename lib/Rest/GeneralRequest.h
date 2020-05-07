@@ -80,6 +80,11 @@ class GeneralRequest {
  protected:
   static RequestType findRequestType(char const*, size_t const);
 
+  /// @brief get VelocyPack options for validation. effectively turns off
+  /// validation if strictValidation is false. This optimization can be used for
+  /// internal requests
+  arangodb::velocypack::Options const* validationOptions(bool strictValidation);
+
  public:
   explicit GeneralRequest(ConnectionInfo const& connectionInfo,
                           uint64_t mid)
@@ -100,7 +105,7 @@ class GeneralRequest {
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
 
   /// Database used for this request, _system by default
-  TEST_VIRTUAL std::string const& databaseName() const { return _databaseName; }
+  std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;
   }
@@ -112,11 +117,11 @@ class GeneralRequest {
   void setAuthenticated(bool a) { _authenticated = a; }
 
   // @brief User sending this request
-  TEST_VIRTUAL std::string const& user() const { return _user; }
+  std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
 
   /// @brief the request context depends on the application
-  TEST_VIRTUAL RequestContext* requestContext() const {
+  RequestContext* requestContext() const {
     return _requestContext;
   }
 
@@ -124,7 +129,7 @@ class GeneralRequest {
   ///        to delete it
   void setRequestContext(RequestContext*, bool);
 
-  TEST_VIRTUAL RequestType requestType() const { return _type; }
+  RequestType requestType() const { return _type; }
 
   void setRequestType(RequestType type) { _type = type; }
 
@@ -141,7 +146,7 @@ class GeneralRequest {
   void setPrefix(std::string const& prefix) { _prefix = prefix; }
 
   // Returns the request path suffixes in non-URL-decoded form
-  TEST_VIRTUAL std::vector<std::string> const& suffixes() const {
+  std::vector<std::string> const& suffixes() const {
     return _suffixes;
   }
 
@@ -172,12 +177,6 @@ class GeneralRequest {
     _headers.erase(key);
   }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  void addHeader(std::string key, std::string value) {
-    _headers.try_emplace(std::move(key), std::move(value));
-  }
-#endif
-
   // the value functions give access to to query string parameters
   std::string const& value(std::string const& key) const;
   std::string const& value(std::string const& key, bool& found) const;
@@ -188,6 +187,8 @@ class GeneralRequest {
   std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
     return _arrayValues;
   }
+  
+  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(bool strictValidation = true);
 
   /// @brief returns parsed value, returns valueNotFound if parameter was not
   /// found
@@ -199,15 +200,9 @@ class GeneralRequest {
   /// @brief unprocessed request payload
   virtual velocypack::StringRef rawPayload() const = 0;
   /// @brief parsed request payload
-  virtual velocypack::Slice payload(arangodb::velocypack::Options const* options =
-                                    &velocypack::Options::Defaults) = 0;
+  virtual velocypack::Slice payload(bool strictValidation = true) = 0;
   /// @brief overwrite payload
   virtual void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) = 0;
-
-  TEST_VIRTUAL std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr();
-  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtrNoUniquenessChecks() {
-    return std::make_shared<velocypack::Builder>(payload());
-  };
 
   virtual void setDefaultContentType() = 0;
   /// @brieg should reflect the Content-Type header

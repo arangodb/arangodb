@@ -65,7 +65,7 @@ class AqlItemMatrix {
   /**
    * @brief Number of registers, i.e. width of the matrix.
    */
-  RegisterId getNrRegisters() const noexcept;
+  RegisterCount getNrRegisters() const noexcept;
 
   /**
    * @brief Test if this matrix is empty
@@ -108,7 +108,7 @@ class AqlItemMatrix {
 
   uint64_t _size;
 
-  RegisterId _nrRegs;
+  RegisterCount _nrRegs;
   size_t _startIndexInFirstBlock{0};
   size_t _stopIndexInLastBlock;
 };

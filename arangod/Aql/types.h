@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
-#include "Basics/debugging.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Basics/debugging.h"
 
 #include <map>
 #include <memory>
@@ -76,11 +76,10 @@ using RegIdOrderedSetStack = std::vector<std::set<RegisterId>>;
 namespace traverser {
 class BaseEngine;
 // list of graph engines on coordinators
-using GraphEngineList = std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
+using GraphEngineList =
+    std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
 }  // namespace traverser
 
 }  // namespace arangodb
-
-//DECLARE_HASH_FOR_IDENTIFIER(arangodb::aql::RegisterId)
 
 #endif

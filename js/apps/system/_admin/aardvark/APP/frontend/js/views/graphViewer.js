@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window */
+/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, document, sigma, Backbone, templateEngine, $, window, JSONEditor */
 (function () {
   'use strict';
 
@@ -1063,12 +1063,22 @@
 
       var callback = function (error, id, msg) {
         if (!error) {
-          var edge = {
-            source: from,
-            target: to,
-            id: id,
-            color: self.graphConfig.edgeColor || self.ecolor
-          };
+          var edge;
+          try {
+            edge = this.editor.get();
+          } catch (x) {
+            arangoHelper.arangoError("failed to parse JSON document", x.message);
+            return;
+          }
+          try {
+            edge.source = from;
+          } catch (x) {
+            edge = {};
+            edge.source = from;
+          }
+          edge.target = to;
+          edge.id = id;
+          edge.color = self.graphConfig.edgeColor || self.ecolor;
 
           if (self.graphConfig.edgeEditable === 'true') {
             edge.size = 1;
@@ -1089,16 +1099,28 @@
         // then clear states
         self.clearOldContextMenu(true);
         window.modalView.hide();
-      };
+      }.bind(this);
 
-      var data = {
-        _from: from,
-        _to: to
-      };
-      if (key !== '' && key !== undefined) {
-        data._key = key;
+      var body;
+      try {
+        body = this.editor.get();
+      } catch (x) {
+        arangoHelper.arangoError("failed to parse JSON document", x.message);
+        return;
       }
-      this.collection.createEdge(self.name, collection, data, callback);
+
+      try {
+        body._from = from;
+      } catch (x) {
+        body = {};
+        body._from = from;
+      }
+
+      body._to = to;
+      if (key !== '' && key !== undefined) {
+        body._key = key;
+      }
+      this.collection.createEdge(self.name, collection, body, callback);
     },
 
     addEdgeModal: function (edgeDefinitions) {
@@ -1152,6 +1174,8 @@
           );
         }
 
+        tableContent.push(window.modalView.createJsonEditor());
+
         buttons.push(
           window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
         );
@@ -1162,6 +1186,20 @@
           buttons,
           tableContent
         );
+        var container = document.getElementById('jsoneditor');
+        this.resize();
+        var options = {
+          onChange: function () {
+          },
+          onModeChange: function (newMode) {
+            void (newMode);
+          },
+          search: true,
+          mode: 'code',
+          modes: ['tree', 'code'],
+          ace: window.ace
+        };
+        this.editor = new JSONEditor(container, options);
       } else {
         arangoHelper.arangoError('Graph', 'No valid edge definitions found.');
       }

@@ -236,7 +236,6 @@ size_t H1Connection<ST>::requestsLeft() const {
 
 template <SocketType ST>
 void H1Connection<ST>::activate() {
-  FUERTE_ASSERT(_active.load());
   Connection::State state = this->_state.load();
   FUERTE_ASSERT(state != Connection::State::Connecting);
   if (state == Connection::State::Connected) {
@@ -616,7 +615,7 @@ void H1Connection<ST>::setTimeout(std::chrono::milliseconds millis, TimeoutType 
           // handlers will do the rest.
           return;
         } else if (type == TimeoutType::IDLE) {
-          if (me->_state == Connection::State::Connected) {
+          if (!me->_active && me->_state == Connection::State::Connected) {
             me->shutdownConnection(Error::CloseRequested);
           }
         }
