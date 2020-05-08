@@ -1,6 +1,9 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fix a bad deadlock because transaction cleanup was pushed with too low
+  priority.
+
 * Fix a dead-lock situation in hot-backup case.
 
   If the cluster is under high write load, then a hot-backup is requested, and
