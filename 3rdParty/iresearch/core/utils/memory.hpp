@@ -618,9 +618,6 @@ NS_END // ROOT
   friend struct irs::memory::maker<class_name, false>; \
   typedef std::unique_ptr<class_name> ptr
 
-#define DECLARE_REFERENCE(class_name) typedef std::reference_wrapper<class_name> ref
-#define DECLARE_CONST_REFERENCE(class_name) typedef std::reference_wrapper<const class_name> cref
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default inline implementation of a factory method, instantiation on
 ///        heap

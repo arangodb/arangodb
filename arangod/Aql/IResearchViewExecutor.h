@@ -362,18 +362,31 @@ class IResearchViewExecutorBase {
   bool next(ReadContext& ctx);
 
  protected:
+  struct FilterCtx final : irs::attribute_provider {
+    explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
+      : _execCtx(ctx) {
+    }
+
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      return irs::type<iresearch::ExpressionExecutionContext>::id() == type
+        ? &_execCtx
+        : nullptr;
+    }
+
+    iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+  }; // FilterCtx
+
   transaction::Methods _trx;
   RegexCache _regexCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
   irs::bytes_ref _pk;  // temporary store for pk buffer before decoding it
-  irs::attribute_view _filterCtx;  // filter context
   iresearch::ViewExpressionContext _ctx;
+  FilterCtx _filterCtx;  // filter context
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
-  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
   std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders;  // current stored values readers
   bool _isInitialized;
 };  // IResearchViewExecutorBase

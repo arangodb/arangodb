@@ -85,21 +85,23 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
+if(MSVC)
+  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
+else()
+  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
+endif()
+
+get_target_property(IRESEARCH_INCLUDE
+  ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
+
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
-  PRIVATE ${LZ4_INCLUDE_DIR}
 )
 
 if (USE_ENTERPRISE)
   target_include_directories(arango_iresearch
     PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
   )
-endif()
-
-if(MSVC)
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
-else()
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
 endif()
 
 target_link_libraries(arango_iresearch
@@ -565,6 +567,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
+  Cluster/AgencyCache.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterCollectionCreationInfo.cpp

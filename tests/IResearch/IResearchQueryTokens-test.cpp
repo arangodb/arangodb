@@ -36,14 +36,11 @@ namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
-struct TestTermAttribute : public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) { value_ = value; }
-};
-
 class TestDelimAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestDelimAnalyzer";
+  }
 
   static ptr make(irs::string_ref const& args) {
     auto slice = arangodb::iresearch::slice(args);
@@ -83,13 +80,15 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   }
 
   TestDelimAnalyzer(irs::string_ref const& delim)
-      : irs::analysis::analyzer(TestDelimAnalyzer::type()),
+      : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
         _delim(irs::ref_cast<irs::byte_type>(delim)) {
-    _attrs.emplace(_term);
   }
 
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &_term;
+    }
+    return nullptr;
   }
 
   virtual bool next() override {
@@ -104,7 +103,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
       auto delim = irs::ref_cast<char>(_delim);
 
       if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value(irs::bytes_ref(_data.c_str(), i));
+        _term.value = irs::bytes_ref(_data.c_str(), i);
         _data =
             irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()),
                            _data.size() - i - (std::max)(size_t(1), _delim.size()));
@@ -112,7 +111,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
       }
     }
 
-    _term.value(_data);
+    _term.value = _data;
     _data = irs::bytes_ref::NIL;
     return true;
   }
@@ -123,13 +122,11 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   }
 
  private:
-  irs::attribute_view _attrs;
   std::basic_string<irs::byte_type> _delim;
   irs::bytes_ref _data;
-  TestTermAttribute _term;
+  irs::term_attribute _term;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------

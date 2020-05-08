@@ -534,12 +534,12 @@ void set_granular_term(by_granular_range_options::terms& boundary,
                        numeric_token_stream& term) {
   boundary.clear();
 
-  for (auto& term_attr = term.attributes().get<term_attribute>(); term.next(); ) {
-    boundary.emplace_back(term_attr->value());
+  for (auto* term_attr = get<term_attribute>(term); term.next(); ) {
+    assert(term_attr);
+    boundary.emplace_back(term_attr->value);
   }
 }
 
-DEFINE_FILTER_TYPE(by_granular_range)
 DEFINE_FACTORY_DEFAULT(by_granular_range)
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
@@ -625,12 +625,12 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     static ptr make() { return memory::make_unique<multiterm_filter_proxy>(); }
 
     multiterm_filter_proxy()
-      : filter(by_range::type()) {
+      : filter(irs::type<by_range>::get()) {
     }
 
     virtual filter::prepared::ptr prepare(
         const index_reader&, const order::prepared&,
-        boost_t, const attribute_view&) const override {
+        boost_t, const attribute_provider*) const override {
       return query_;
     }
 

@@ -30,12 +30,12 @@
 namespace arangodb {
 namespace iresearch {
 
-irs::string_ref columnCompressionToString(irs::compression::type_id const* type) {
+irs::string_ref columnCompressionToString(irs::type_info::type_id type) noexcept {
   if (ADB_UNLIKELY(type == nullptr)) {
     TRI_ASSERT(false);
     return irs::string_ref::EMPTY;
   }
-  auto const& mangled_name = type->name();
+  auto const mangled_name = type().name();
   TRI_ASSERT(!mangled_name.empty());
   auto demangled_start = mangled_name.end() - 1;
   while (demangled_start != mangled_name.begin() && *(demangled_start-1) != ':') {
@@ -44,24 +44,24 @@ irs::string_ref columnCompressionToString(irs::compression::type_id const* type)
   return irs::string_ref(demangled_start, std::distance(demangled_start, mangled_name.end()));
 }
 
-irs::compression::type_id const*  columnCompressionFromString(irs::string_ref const& c) {
+irs::type_info::type_id columnCompressionFromString(irs::string_ref const& c) noexcept {
   TRI_ASSERT(!c.null());
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (c == "test") {
-    return &irs::compression::mock::test_compressor::type();
+    return irs::type<irs::compression::mock::test_compressor>::id();
   }
 #endif
   if (c == "lz4") {
-    return &irs::compression::lz4::type();
+    return irs::type<irs::compression::lz4>::id();
   }
   if (c == "none") {
-    return &irs::compression::none::type();
+    return irs::type<irs::compression::none>::id();
   } 
   return nullptr;
 }
 
-irs::compression::type_id const& getDefaultCompression() {
-  return irs::compression::lz4::type();
+irs::type_info::type_id getDefaultCompression() noexcept {
+  return irs::type<irs::compression::lz4>::id();
 }
 
 }  // namespace iresearch
