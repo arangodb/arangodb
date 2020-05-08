@@ -1419,13 +1419,13 @@ Result IResearchAnalyzerFeature::emplace(
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    auto cleanupResult = cleanupAnalyzersCollection(split.first, 
-                                                    getLatestRevision(split.first)->getBuildingRevision());
-    if (cleanupResult.fail()) {
-      return cleanupResult;
-    }
-
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
+      auto cleanupResult = cleanupAnalyzersCollection(split.first,
+                                                      getLatestRevision(split.first)->getBuildingRevision());
+      if (cleanupResult.fail()) {
+        return cleanupResult;
+      }
+
       auto res = loadAnalyzers(split.first);
 
       if (!res.ok()) {
@@ -1715,6 +1715,10 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
       if (engine && engine->inRecovery()) {
         return {}; // database might not have come up yet
       }
+      return {
+        TRI_ERROR_INTERNAL,
+        "failure to find feature database while loading analyzers for database '" + std::string(database) + "'"
+      };
     }
     static const auto queryDeleteString = arangodb::aql::QueryString(
       "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER d." + 
