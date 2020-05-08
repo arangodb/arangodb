@@ -77,9 +77,9 @@
 
 namespace {
 
-bool accessesCollectionVariable(
-    arangodb::aql::ExecutionPlan const* plan, arangodb::aql::ExecutionNode const* node,
-    ::arangodb::containers::HashSet<arangodb::aql::Variable const*>& vars) {
+bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
+                                arangodb::aql::ExecutionNode const* node,
+                                arangodb::aql::VarSet& vars) {
   using EN = arangodb::aql::ExecutionNode;
 
   if (node->getType() == EN::CALCULATION) {
@@ -233,10 +233,9 @@ class CollectionVariableTracker final
   using DependencyPair =
       std::pair<arangodb::aql::Variable const*, arangodb::aql::Collection const*>;
   using DependencySet = std::unordered_set<DependencyPair, ::PairHash>;
-  using VariableSet = ::arangodb::containers::HashSet<arangodb::aql::Variable const*>;
   bool _stop;
   std::unordered_map<arangodb::aql::Variable const*, DependencySet> _dependencies;
-  std::unordered_map<arangodb::aql::Collection const*, VariableSet> _collectionVariables;
+  std::unordered_map<arangodb::aql::Collection const*, arangodb::aql::VarSet> _collectionVariables;
 
  private:
   template <class NodeType>
@@ -244,7 +243,7 @@ class CollectionVariableTracker final
                      arangodb::aql::Variable const* outVariable) {
     auto node = arangodb::aql::ExecutionNode::castTo<NodeType const*>(en);
     try {
-      ::arangodb::containers::HashSet<arangodb::aql::Variable const*> inputVariables;
+      arangodb::aql::VarSet inputVariables;
       node->getVariablesUsedHere(inputVariables);
       for (auto var : inputVariables) {
         for (auto dep : _dependencies[var]) {
@@ -279,7 +278,7 @@ class CollectionVariableTracker final
     return _dependencies[var];
   }
 
-  VariableSet const& getCollectionVariables(arangodb::aql::Collection const* collection) {
+  arangodb::aql::VarSet const& getCollectionVariables(arangodb::aql::Collection const* collection) {
     return _collectionVariables[collection];
   }
 
@@ -1612,8 +1611,8 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
   bool modified = false;
-  ::arangodb::containers::HashSet<Variable const*> neededVars;
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet neededVars;
+  VarSet vars;
 
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
@@ -1704,8 +1703,8 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
   plan->findNodesOfType(nodes, {EN::CALCULATION, EN::SUBQUERY}, true);
 
   std::vector<ExecutionNode*> stack;
-  ::arangodb::containers::HashSet<Variable const*> vars;
-  ::arangodb::containers::HashSet<Variable const*> usedHere;
+  VarSet vars;
+  VarSet usedHere;
   bool modified = false;
 
   for (auto const& n : nodes) {
@@ -2071,7 +2070,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
   void replaceInCalculation(ExecutionNode* en) {
     auto node = ExecutionNode::castTo<CalculationNode*>(en);
-    ::arangodb::containers::HashSet<Variable const*> variables;
+    VarSet variables;
     node->expression()->variables(variables);
 
     // check if the calculation uses any of the variables that we want to
@@ -2092,7 +2091,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
       return;
     }
     AstNode const& search = view->filterCondition();
-    ::arangodb::containers::HashSet<Variable const*> variables;
+    VarSet variables;
     Ast::getReferencedVariables(&search, variables);
 
     // check if the search condition uses any of the variables that we want to
@@ -2819,7 +2818,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
         }
       }
 
-      ::arangodb::containers::HashSet<Variable const*> vars;
+      VarSet vars;
 
       size_t usageCount = 0;
       CalculationNode* other = nullptr;
@@ -4287,8 +4286,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
 
-  ::arangodb::containers::HashSet<Variable const*> allUsed;
-  ::arangodb::containers::HashSet<Variable const*> used;
+  VarSet allUsed;
+  VarSet used;
 
   for (auto& node : nodes) {
     allUsed.clear();
@@ -4592,7 +4591,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  ::arangodb::containers::HashSet<Variable const*> varsSetHere;
+  VarSet varsSetHere;
 
   for (auto& n : nodes) {
     auto const& remoteNodeList = n->getDependencies();
@@ -4691,7 +4690,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
                      inspectNode->getType() == EN::CALCULATION ||
                      inspectNode->getType() == EN::FILTER);
 
-          ::arangodb::containers::HashSet<Variable const*> used;
+          VarSet used;
           inspectNode->getVariablesUsedHere(used);
           for (auto& v : used) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
@@ -5151,7 +5150,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
 
             // set the varsToRemove to the variable in the expression of this
             // node and also define enumColl
-            ::arangodb::containers::HashSet<Variable const*> varsToRemove;
+            VarSet varsToRemove;
             cn->getVariablesUsedHere(varsToRemove);
             TRI_ASSERT(varsToRemove.size() == 1);
             toRemove = *(varsToRemove.begin());
@@ -6143,7 +6142,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt,
           if (indexesUsed.size() == 1) {*/
           // single index. this is something that we can handle
           Variable const* outVariable = traversalNode->pathOutVariable();
-          ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
+          VarSet varsUsedByCondition;
           Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
@@ -6287,13 +6286,13 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     Variable const* out = subqueryNode->outVariable();
     TRI_ASSERT(out != nullptr);
     // the subquery outvariable and all its aliases
-    ::arangodb::containers::HashSet<Variable const*> subqueryVars;
+    VarSet subqueryVars;
     subqueryVars.emplace(out);
 
     // the potential calculation nodes that produce the aliases
     std::vector<ExecutionNode*> aliasNodesToRemoveLater;
 
-    ::arangodb::containers::HashSet<Variable const*> varsUsed;
+    VarSet varsUsed;
 
     current = n->getFirstParent();
     // now check where the subquery is used
@@ -6970,7 +6969,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   auto const& valid = info.collectionNodeToReplace->getVarsValid();
   auto checkVars = [&valid](AstNode const* expr) {
     if (expr != nullptr) {
-      ::arangodb::containers::HashSet<Variable const*> varsUsed;
+      VarSet varsUsed;
       Ast::getReferencedVariables(expr, varsUsed);
       for (Variable const* v : varsUsed) {
         if (valid.find(v) == valid.end()) {
@@ -7345,7 +7344,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
     // scan from the subquery node to the bottom of the ExecutionPlan to check
     // if any of the following nodes also use the subquery result
     auto out = sn->outVariable();
-    ::arangodb::containers::HashSet<Variable const*> used;
+    VarSet used;
     bool invalid = false;
 
     auto current = node->getFirstParent();
@@ -7420,7 +7419,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ::moveFilterIntoEnumerateTypes, true);
 
-  ::arangodb::containers::HashSet<Variable const*> found;
+  VarSet found;
 
   for (auto const& n : nodes) {
     auto en = dynamic_cast<DocumentProducingNode*>(n);

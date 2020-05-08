@@ -101,11 +101,9 @@ class CalculationExecutorTest
         expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        registerInfos(make_shared_unordered_set({inRegID}),
-                      make_shared_unordered_set({outRegID}),
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
                       RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
-                      std::unordered_set<RegisterId>{} /*to clear*/,
-                      std::unordered_set<RegisterId>{} /*to keep*/),
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
         executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
                       std::vector<Variable const*>{&var} /*expression input variables*/,
                       std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}

@@ -193,7 +193,7 @@ void QuerySnippet::serializeIntoBuilder(
     // We need to modify the registerPlanning.
     // The internalGather is NOT allowed to reduce the number of registers,
     // it needs to expose it's input register by all means
-    internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLater());
+    internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
     auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
     nodeAliases.try_emplace(internalGather->id(), reservedId);

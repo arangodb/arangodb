@@ -81,7 +81,7 @@ void AqlItemMatrix::clear() {
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
-RegisterId AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
+RegisterCount AqlItemMatrix::getNrRegisters() const noexcept { return _nrRegs; }
 
 uint64_t AqlItemMatrix::size() const noexcept { return _size; }
 
@@ -162,7 +162,7 @@ ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
   return ShadowAqlItemRow{_blocks.back(), _stopIndexInLastBlock};
 }
 
-AqlItemMatrix::AqlItemMatrix(RegisterId nrRegs)
+AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     : _size(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
 
 [[nodiscard]] auto AqlItemMatrix::countDataRows() const noexcept -> std::size_t {

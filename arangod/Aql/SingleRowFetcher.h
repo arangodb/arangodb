@@ -181,7 +181,7 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  [[nodiscard]] RegisterId getNrInputRegisters() const;
+  [[nodiscard]] RegisterCount getNrInputRegisters() const;
 
   [[nodiscard]] bool indexIsValid() const;
 

@@ -102,9 +102,7 @@ class SharedScatterExecutionBlockTest {
   }
 
   auto generateRegisterInfos() const -> RegisterInfos {
-    auto inputRegs = make_shared_unordered_set({0});
-    auto outputRegs = make_shared_unordered_set({});
-    return RegisterInfos{inputRegs, outputRegs, 1, 1, {}, {0}};
+    return RegisterInfos{{0}, {}, 1, 1, {}, {{0}}};
   }
 
   auto generateExecutorInfos() const -> ScatterExecutorInfos {

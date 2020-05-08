@@ -44,8 +44,8 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
   InAndOutRowExpressionContext(transaction::Methods& trx,
                                QueryContext& query,
                                RegexCache& cache,
-                               std::vector<Variable const*> const&& vars,
-                               std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
+                               std::vector<Variable const*> vars,
+                               std::vector<RegisterId> regs, size_t vertexVarIdx,
                                size_t edgeVarIdx, size_t pathVarIdx);
 
   ~InAndOutRowExpressionContext() override = default;

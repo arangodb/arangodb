@@ -51,13 +51,21 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  bool const isPassthrough = en->isPassthrough();
-  if (!isPassthrough) {
+  bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
+
+  if (en->isIncreaseDepth()) {
+    // isIncreaseDepth => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
 
-  if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
+  if (en->getType() == ExecutionNode::SUBQUERY) {
     plan->addSubqueryNode(en);
+  }
+
+  if (en->getType() == ExecutionNode::SUBQUERY_START || en->getType() == ExecutionNode::SUBQUERY_END) {
+    // is SQS or SQE => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
   }
 
   /*
@@ -67,20 +75,17 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * This is not the case if the block is not passthrough since in that case the output row
    * is different from the input row.
    */
-  auto const planRegistersForCurrentNode = [&](T* en, bool isBefore) -> void {
-    if (isBefore == isPassthrough) {
-      auto const outputVariables = en->getOutputVariables();
-      for (VariableId const& v : outputVariables) {
-        TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
-        plan->registerVariable(v, unusedRegisters);
-      }
+  auto const planRegistersForCurrentNode = [&](T* en) -> void {
+    auto const outputVariables = en->getOutputVariables();
+    for (VariableId const& v : outputVariables) {
+      TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
+      plan->registerVariable(v, unusedRegisters.back());
     }
   };
 
   auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
-    ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
-        en->getVarsUsedLater();
-    ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
+    auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
+    VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
     std::unordered_set<RegisterId> regsToClear;
 
@@ -113,15 +118,31 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     return regsToClear;
   };
 
-  planRegistersForCurrentNode(en, true);
-  auto regsToClear = calculateRegistersToClear(en);
-  unusedRegisters.insert(regsToClear.begin(), regsToClear.end());
-  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
-  planRegistersForCurrentNode(en, false);
+  if (!mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
 
-  // We need to delete those variables that have been used here but are not
-  // used any more later:
-  en->setRegsToClear(std::move(regsToClear));
+  switch (en->getType()) {
+    case ExecutionNode::SUBQUERY_START: {
+      auto top = unusedRegisters.back();
+      unusedRegisters.emplace_back(std::move(top));
+    } break;
+    case ExecutionNode::SUBQUERY_END: {
+      unusedRegisters.pop_back();
+    } break;
+    default: {
+      auto regsToClear = calculateRegistersToClear(en);
+      unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
+      // We need to delete those variables that have been used here but are not
+      // used any more later:
+      en->setRegsToClear(std::move(regsToClear));
+    } break;
+  }
+
+  // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
+  if (mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
 
   en->_depth = plan->depth;
   en->_registerPlan = plan;
@@ -190,6 +211,7 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
     nrRegs.emplace_back(it.getNumericValue<RegisterId>());
   }
 }
+
 template <typename T>
 auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   auto other = std::make_shared<RegisterPlanT>();
@@ -242,13 +264,6 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
         std::string("duplicate register assignment for variable #") +
             std::to_string(v) + " while planning registers");
   }
-}
-
-template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v) {
-  auto regId = addRegister();
-
-  varInfo.try_emplace(v, VarInfo(depth, regId));
 }
 
 template <typename T>

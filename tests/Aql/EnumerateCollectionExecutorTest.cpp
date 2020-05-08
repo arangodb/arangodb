@@ -81,8 +81,6 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   Variable outVariable;
   bool varUsedLater;
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
   ExecutionEngine* engine;
   Collection aqlCollection;
   std::vector<std::string> const projections;
@@ -108,8 +106,8 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({0}),
-                      1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep),
+        registerInfos({},{0},
+                      1 /*nrIn*/, 1 /*nrOut*/, {}, {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
                       nullptr, projections, coveringIndexAttributePositions, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
@@ -291,20 +289,20 @@ class EnumerateCollectionExecutorTestProduce
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({1}),
-                      1 /*nrIn*/, 1 /*nrOut*/, {}, {}),
+        registerInfos({}, {1},
+                      1 /*nrIn*/, 1 /*nrOut*/, {}, {{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
                       projections, coveringIndexAttributePositions, random) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1,
-                         std::unordered_set<RegisterId> regToClear = {},
-                         std::unordered_set<RegisterId> regToKeep = {}) -> RegisterInfos {
-    auto inputRegisters = make_shared_unordered_set({});
-    auto outputRegisters = make_shared_unordered_set({outputRegister});
-    RegisterInfos registerInfos{inputRegisters,        outputRegisters,
-                                nrInputRegister,       nrOutputRegister,
-                                std::move(regToClear), std::move(regToKeep)};
+                         RegisterId nrOutputRegister = 1, RegIdSet regToClear = {},
+                         RegIdSetStack regToKeep = {{}}) -> RegisterInfos {
+    RegisterInfos registerInfos{{},
+                                {outputRegister},
+                                nrInputRegister,
+                                nrOutputRegister,
+                                std::move(regToClear),
+                                std::move(regToKeep)};
     return registerInfos;
   }
 

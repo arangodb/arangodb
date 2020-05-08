@@ -318,7 +318,7 @@ TEST_P(LimitExecutorTest, testSuite) {
         return std::make_tuple(skipped, output, stats, state);
       });
 
-  auto registerInfos = RegisterInfos{{}, {}, 1, 1, {}, {0}};
+  auto registerInfos = RegisterInfos{{}, {}, 1, 1, {}, {{0}}};
   auto executorInfos = LimitExecutorInfos{offset, limit, fullCount};
 
   auto expectedStats = ExecutionStats{};

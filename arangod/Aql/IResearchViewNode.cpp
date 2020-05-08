@@ -51,6 +51,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "types.h"
 
 #include <velocypack/Iterator.h>
 
@@ -451,8 +452,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view, aql::AstNod
 
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
-                     aql::Variable const& ref,
-                     ::arangodb::containers::HashSet<aql::Variable const*>& vars) {
+                     aql::Variable const& ref, aql::VarSet& vars) {
   vars.clear();
   aql::Ast::getReferencedVariables(&node, vars);
   vars.erase(&ref);  // remove "our" variable
@@ -531,7 +531,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
   auto const& plan = *node.plan();
   auto const& outVariable = node.outVariable();
 
-  ::arangodb::containers::HashSet<aql::Variable const*> vars;
+  aql::VarSet vars;
   int mask = 0;
 
   // evaluate filter condition volatility
@@ -1098,30 +1098,6 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
   }
 }
 
-void IResearchViewNode::planNodeRegisters(aql::RegisterPlan& registerPlan) const {
-  // plan registers for output scores
-  for (auto const& scorer : _scorers) {
-    registerPlan.registerVariable(scorer.var->id);
-  }
-
-  if (isLateMaterialized() || noMaterialization()) {
-    if (isLateMaterialized()) {
-      registerPlan.registerVariable(_outNonMaterializedColPtr->id);
-      registerPlan.registerVariable(_outNonMaterializedDocId->id);
-    } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-      // there is no variable if noMaterialization()
-      registerPlan.addRegister();
-    }
-    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
-      for (auto const& fieldVar : columnFieldsVars.second) {
-        registerPlan.registerVariable(fieldVar.var->id);
-      }
-    }
-  } else {  // plan register for document-id only block
-    registerPlan.registerVariable(_outVariable->id);
-  }
-}
-
 std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const {
   if (force || _volatilityMask < 0) {
     _volatilityMask = evaluateVolatility(*this);
@@ -1331,8 +1307,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IResearchViewNode::getVariablesUsedHere(
-    ::arangodb::containers::HashSet<aql::Variable const*>& vars) const {
+void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
   if (!::filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
@@ -1376,12 +1351,11 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   return vars;
 }
 
-std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInputRegs() const {
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> inputRegs =
-      std::make_shared<std::unordered_set<aql::RegisterId>>();
+aql::RegIdSet IResearchViewNode::calcInputRegs() const {
+  auto inputRegs = aql::RegIdSet{};
 
   if (!::filterConditionIsEmpty(_filterCondition)) {
-    ::arangodb::containers::HashSet<aql::Variable const*> vars;
+    aql::VarSet vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
     if (noMaterialization()) {
@@ -1392,7 +1366,7 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
       aql::RegisterId reg = varToRegUnchecked(*it);
       // The filter condition may refer to registers that are written here
       if (reg < getNrInputRegisters()) {
-        inputRegs->emplace(reg);
+        inputRegs.emplace(reg);
       }
     }
   }
@@ -1417,8 +1391,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const {
   auto const createNoResultsExecutor = [this](aql::ExecutionEngine& engine) {
-    auto emptyRegisterInfos = createRegisterInfos(aql::make_shared_unordered_set(),
-                                                  aql::make_shared_unordered_set());
+    auto emptyRegisterInfos = createRegisterInfos({}, {});
     aql::ExecutionNode const* previousNode = getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
 
@@ -1428,7 +1401,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto const createSnapshot = [this](aql::ExecutionEngine& engine) {
     auto* trx = &engine.getQuery().trxForOptimization();
-   
+
     if (!trx) {
       LOG_TOPIC("7c905", WARN, arangodb::iresearch::TOPIC)
           << "failed to get transaction while creating IResearchView "
@@ -1438,14 +1411,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "failed to get transaction while creating "
                                      "IResearchView ExecutionBlock");
     }
-  
+
     if (options().forceSync &&
         trx->state()->hasHint(arangodb::transaction::Hints::Hint::GLOBAL_MANAGED)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "cannot use waitForSync with "
                                      "views and transactions");
     }
-  
+
     auto& view = LogicalView::cast<IResearchView>(*this->view());
 
     std::shared_ptr<IResearchView::Snapshot const> reader;
@@ -1491,10 +1464,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       materializeType = MaterializeType::Materialize;
       numDocumentRegs += 1;
     }
-  
+
     // We have one output register for documents, which is always the first after
     // the input registers.
-    
+
     auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
     auto numViewVarsRegisters =
         std::accumulate(_outNonMaterializedViewVars.cbegin(),
@@ -1512,24 +1485,23 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // the output register(s) for documents (one or two + vars, depending on
     // late materialization) These must of course fit in the available
     // registers. There may be unused registers reserved for later blocks.
-    std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-        aql::make_shared_unordered_set();
-    writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+    auto writableOutputRegisters = aql::RegIdSet{};
+    writableOutputRegisters.reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
     auto const outRegister = std::invoke([&]() -> aql::IResearchViewExecutorInfos::OutRegisters {
       if (isLateMaterialized()) {
         aql::RegisterId documentRegId = variableToRegisterId(_outNonMaterializedDocId);
         aql::RegisterId collectionRegId = variableToRegisterId(_outNonMaterializedColPtr);
 
-        writableOutputRegisters->emplace(documentRegId);
-        writableOutputRegisters->emplace(collectionRegId);
+        writableOutputRegisters.emplace(documentRegId);
+        writableOutputRegisters.emplace(collectionRegId);
         return aql::IResearchViewExecutorInfos::LateMaterializeRegister{documentRegId, collectionRegId};
       } else if (noMaterialization()) {
         return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
       } else {
         auto outReg = variableToRegisterId(_outVariable);
 
-        writableOutputRegisters->emplace(outReg);
+        writableOutputRegisters.emplace(outReg);
         return aql::IResearchViewExecutorInfos::MaterializeRegisters{outReg};
       }
     });
@@ -1538,7 +1510,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     scoreRegisters.reserve(numScoreRegisters);
     std::for_each(_scorers.begin(), _scorers.end(), [&](auto const& scorer) {
       auto registerId = variableToRegisterId(scorer.var);
-      writableOutputRegisters->emplace(registerId);
+      writableOutputRegisters.emplace(registerId);
       scoreRegisters.emplace_back(registerId);
     });
 
@@ -1553,18 +1525,18 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         TRI_ASSERT(it != varInfos.cend());
 
         auto const regId = it->second.registerId;
-        writableOutputRegisters->emplace(regId);
+        writableOutputRegisters.emplace(regId);
         fields.emplace(fieldsVars.fieldNum, regId);
       }
     }
 
-    TRI_ASSERT(writableOutputRegisters->size() ==
+    TRI_ASSERT(writableOutputRegisters.size() ==
                numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
 
     aql::RegisterInfos registerInfos =
         createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
 
-    auto executorInfos = 
+    auto executorInfos =
         aql::IResearchViewExecutorInfos{std::move(reader),
                                         outRegister,
                                         std::move(scoreRegisters),
@@ -1644,6 +1616,30 @@ aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
     vars.insert(_outVariable->id);
   }
   return vars;
+}
+
+void IResearchViewNode::planNodeRegisters(aql::RegisterPlan& registerPlan) const {
+  // plan registers for output scores
+  for (auto const& scorer : _scorers) {
+    registerPlan.registerVariable(scorer.var->id);
+  }
+
+  if (isLateMaterialized() || noMaterialization()) {
+    if (isLateMaterialized()) {
+      registerPlan.registerVariable(_outNonMaterializedColPtr->id);
+      registerPlan.registerVariable(_outNonMaterializedDocId->id);
+    } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
+      // there is no variable if noMaterialization()
+      registerPlan.addRegister();
+    }
+    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+      for (auto const& fieldVar : columnFieldsVars.second) {
+        registerPlan.registerVariable(fieldVar.var->id);
+      }
+    }
+  } else {  // plan register for document-id only block
+    registerPlan.registerVariable(_outVariable->id);
+  }
 }
 
 #if defined(__GNUC__)
