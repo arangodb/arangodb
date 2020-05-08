@@ -322,6 +322,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
   REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
+  REG_ERROR(ERROR_INVALID_DISJOINT_SMART_EDGE, "non disjoint edge found");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
