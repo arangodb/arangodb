@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a bad deadlock because transaction cleanup was pushed with too low
+  priority.
+
 * Allow specifying graph names as unquoted string in an AQL graph traversal
   query, e.g. `FOR ... IN ... GRAPH abc`. Previously, the graph name had
   to be a bind parameter or a string enclosed in quotes.
