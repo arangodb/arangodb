@@ -53,11 +53,15 @@
 
 namespace iresearch {
 namespace text_format {
-class type_id;
-const type_id& vpack_t();
-static const auto& vpack = vpack_t();
-}
-}
+
+struct vpack {
+  static constexpr irs::string_ref type_name() noexcept {
+    return "vpack";
+  }
+};
+
+} // iresearch
+} // text_format
 
 #define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) \
   REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)

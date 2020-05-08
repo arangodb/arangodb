@@ -404,13 +404,14 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref const& value,
   stream.reset(value);
 
   // get token attribute
-  assert(stream.attributes().contains<irs::term_attribute>());
-  irs::term_attribute const& token = *stream.attributes().get<irs::term_attribute>();
+  TRI_ASSERT(irs::get<irs::term_attribute>(stream));
+  irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+  TRI_ASSERT(token);
 
   // add tokens
   for (auto* options = filter.mutable_options(); stream.next(); ) {
     irs::assign(options->push_back<irs::by_term_options>(firstOffset).term,
-                token.value());
+                token->value);
 
     firstOffset = 0;
   }
@@ -466,16 +467,15 @@ arangodb::Result byTerm(irs::by_term* filter, std::string&& name,
         kludge::mangleNumeric(name);
 
         irs::numeric_token_stream stream;
-        irs::term_attribute const* term =
-            stream.attributes().get<irs::term_attribute>().get();
-        TRI_ASSERT(term);
+        irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+        TRI_ASSERT(token);
         stream.reset(dblValue);
         stream.next();
 
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
-                    term->value());
+                    token->value);
       }
       return {};
     case arangodb::iresearch::SCOPED_VALUE_TYPE_STRING:
@@ -2396,10 +2396,11 @@ arangodb::Result fromFuncPhraseTerms(char const* funcName,
       // reset analyzer
       analyzer->reset(term);
       // get token attribute
-      irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+      irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
+      TRI_ASSERT(token);
       // add tokens
       while (analyzer->next()) {
-        terms.emplace(token.value());
+        terms.emplace(token->value);
       }
     } else {
       terms.emplace(irs::ref_cast<irs::byte_type>(term));
@@ -3003,9 +3004,10 @@ arangodb::Result fromFuncNgramMatch(
     ngramFilter.boost(filterCtx.boost);
 
     analyzer->reset(matchValue);
-    irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+    irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
+    TRI_ASSERT(token);
     while (analyzer->next()) {
-      opts->ngrams.push_back(token.value());
+      opts->ngrams.push_back(token->value);
     }
   }
   return {};

@@ -34,6 +34,7 @@
 
 namespace arangodb {
 
+class AgencyCache;
 class AgencyCallbackRegistry;
 class HeartbeatThread;
 
@@ -50,9 +51,13 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void unprepare() override final;
 
+  void allocateMembers();
+
   std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
 
   std::string agencyPrefix() const { return _agencyPrefix; }
+
+  AgencyCache& agencyCache();
 
   /// @return role argument as it was supplied by a user
   std::string const& myRole() const noexcept { return _myRole; }
@@ -94,6 +99,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
                             std::string const& endpoints);
 
   void shutdownHeartbeatThread();
+  void shutdownAgencyCache();
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -115,8 +121,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _enableCluster = false;
   bool _requirePersistedId = false;
   double _indexCreationTimeout = 3600.0;
+  bool _allocated = false;
   std::unique_ptr<ClusterInfo> _clusterInfo;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
+  std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;

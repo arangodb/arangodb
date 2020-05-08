@@ -259,8 +259,8 @@ irs::filter::prepared::ptr prepareFilter(
 
     analyzer->reset(terms);
 
-    for (auto& term = analyzer->attributes().get<irs::term_attribute>(); analyzer->next();) {
-      irs::assign(opts->push_back<irs::by_term_options>().term, term->value());
+    for (auto* term = irs::get<irs::term_attribute>(*analyzer); analyzer->next();) {
+      irs::assign(opts->push_back<irs::by_term_options>().term, term->value);
     }
 
     return query.prepare(reader, order);
@@ -441,11 +441,11 @@ int search(
   irs::default_pdp(1, false); irs::default_pdp(1, true);
   irs::default_pdp(2, false); irs::default_pdp(2, true);
 
-  static const std::map<std::string, const irs::text_format::type_id&> text_formats = {
-    { "csv", irs::text_format::csv },
-    { "json", irs::text_format::json },
-    { "text", irs::text_format::text },
-    { "xml", irs::text_format::xml },
+  static const std::map<std::string, irs::type_info> text_formats = {
+    { "csv", irs::type<irs::text_format::csv>::get() },
+    { "json", irs::type<irs::text_format::json>::get() },
+    { "text", irs::type<irs::text_format::text>::get() },
+    { "xml", irs::type<irs::text_format::xml>::get() },
   };
   auto arg_format_itr = text_formats.find(scorer_arg_format);
 
@@ -576,7 +576,7 @@ int search(
     thread_pool.run([&task_provider, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
-      auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::text_format::json, analyzer_args);
+      auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::type<irs::text_format::json>::get(), analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
       const timers_t building_timers("building");
@@ -615,9 +615,8 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            auto& attributes = docs->attributes();
-            const irs::score& score = irs::score::extract(attributes);
-            const irs::document* doc = attributes.get<irs::document>().get();
+            const irs::score& score = irs::score::get(*docs);
+            const irs::document* doc = irs::get<irs::document>(*docs);
 
             const auto& score_value = &score != &irs::score::no_score()
               ? order.get<float>(score.c_str(), 0)

@@ -135,7 +135,6 @@ void lz4::init() {
   REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::lz4);
 REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
 NS_END // compression

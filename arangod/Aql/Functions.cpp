@@ -1713,19 +1713,19 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
 
   auto analyzerImpl = analyzer->get();
   TRI_ASSERT(analyzerImpl);
-  irs::term_attribute const& token =
-      *analyzerImpl->attributes().get<irs::term_attribute>();
+  irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzerImpl);
+  TRI_ASSERT(token);
 
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.push_back(token.value());
+    attrNgrams.push_back(token->value);
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.push_back(token.value());
+    targetNgrams.push_back(token->value);
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match

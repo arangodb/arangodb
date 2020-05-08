@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "utils/attributes.hpp"
-#include "utils/attributes_provider.hpp"
+#include "utils/attribute_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
@@ -50,11 +50,13 @@ constexpr boost_t no_boost() noexcept { return 1.f; }
 /// @brief represents an addition to score from filter specific to a particular
 ///        document. May vary from document to document.
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
-  DECLARE_ATTRIBUTE_TYPE();
+struct IRESEARCH_API filter_boost final : attribute {
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::filter_boost";
+  }
 
-  filter_boost() noexcept;
-};
+  boost_t value{no_boost()};
+}; // filter_boost
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stateful object used for computing the document score based on the
@@ -157,7 +159,7 @@ class IRESEARCH_API sort {
     virtual void collect(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_view& term_attrs) = 0;
+      const attribute_provider& term_attrs) = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief clear collected stats
@@ -278,7 +280,7 @@ class IRESEARCH_API sort {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
-      const attribute_view& doc_attrs,
+      const attribute_provider& doc_attrs,
       boost_t boost) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -337,28 +339,15 @@ class IRESEARCH_API sort {
     merge_f max_func_;
   }; // prepared
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  }; // type_id
-
-  explicit sort(const type_id& id) noexcept;
+  explicit sort(const type_info& type) noexcept;
   virtual ~sort() = default;
 
-  const type_id& type() const { return *type_; }
+  constexpr type_info::type_id type() const noexcept { return type_; }
 
   virtual prepared::ptr prepare() const = 0;
 
  private:
-  const type_id* type_;
+  type_info::type_id type_;
 }; // sort
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -765,9 +754,8 @@ class IRESEARCH_API order final {
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats,
-        const attribute_view& doc,
-        boost_t boost
-      );
+        const attribute_provider& doc,
+        boost_t boost);
       scorers(scorers&& other) noexcept; // function definition explicitly required by MSVC
 
       scorers& operator=(scorers&& other) noexcept; // function definition explicitly required by MSVC
@@ -914,7 +902,7 @@ class IRESEARCH_API order final {
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats_buf,
-        const attribute_view& doc,
+        const attribute_provider& doc,
         irs::boost_t boost) const {
       return scorers(order_, segment, field, stats_buf, doc, boost);
     }
@@ -1035,7 +1023,7 @@ class IRESEARCH_API order final {
     remove(type::type());
   }
 
-  void remove(const type_id& id);
+  void remove(type_info::type_id type);
   void clear() noexcept { order_.clear(); }
 
   size_t size() const noexcept { return order_.size(); }

@@ -161,7 +161,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        auto* feature = irs::attribute::type_id::get(getStringRef(value), false);
+        const auto feature = irs::attributes::get(getStringRef(value), false);
 
         if (!feature) {
           generateError(arangodb::Result(
@@ -172,7 +172,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
           return;
         }
 
-        features.add(*feature);
+        features.add(feature.id());
       }
     } else {
       generateError(arangodb::Result(

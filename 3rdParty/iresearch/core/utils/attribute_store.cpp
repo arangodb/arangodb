@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,32 +15,31 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "string.hpp"
-
-#include "text_format.hpp"
+#include "attribute_store.hpp"
 
 NS_LOCAL
 
-static const irs::text_format::type_id CSV("csv");
-static const irs::text_format::type_id JSON("json");
-static const irs::text_format::type_id TEXT("text");
-static const irs::text_format::type_id XML("xml");
+const iresearch::attribute_store EMPTY_ATTRIBUTE_STORE(0);
 
-NS_END // NS_LOCAL
+NS_END
 
 NS_ROOT
-NS_BEGIN(text_format)
 
-const type_id& csv_t() { return CSV; }
-const type_id& json_t() { return JSON; }
-const type_id& text_t() { return TEXT; }
-const type_id& xml_t() { return XML; }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   attribute_store
+// -----------------------------------------------------------------------------
 
-NS_END // text_format
-NS_END // ROOT
+attribute_store::attribute_store(size_t /*reserve = 0*/) {
+}
+
+/*static*/ const attribute_store& attribute_store::empty_instance() {  
+  return EMPTY_ATTRIBUTE_STORE;
+}
+
+NS_END
