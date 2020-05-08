@@ -1,11 +1,11 @@
-v3.5.6 (XXXX-XX-XX)
--------------------
+v3.5.5.1 (2020-05-08)
+---------------------
 
-* Fixed issue #11303: The result data of filter operation on edge document with 
+* Fixed issue #11303: The result data of filter operation on edge document with
   _from or _to field ALWAYS miss some data on version 3.6.2.
 
-  This bug could have led to some edges from a RocksDB edge index not being 
-  returned when a non-traversal edge lookup was done in an AQL query in an inner 
+  This bug could have led to some edges from a RocksDB edge index not being
+  returned when a non-traversal edge lookup was done in an AQL query in an inner
   FOR loop. Whether or not edges were withheld depended on whether edges were
   located within the same prefix domain.
 
