@@ -22,14 +22,8 @@
 
 #include "MutexExecutor.h"
 
-#include "Aql/AqlValue.h"
-#include "Aql/Query.h"
-#include "Aql/ConstFetcher.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/QueryOptions.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
 
@@ -63,8 +57,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<MutexExecutor>::initializeC
   LOG_DEVEL << "MutexExecutor::initializeCursor";
   
   std::lock_guard<std::mutex> guard(_mutex);
-  auto ret = ExecutionBlock::initializeCursor(input);
-  return ret;
+  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief shutdown, will be called exactly once for the whole query
@@ -79,4 +72,3 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<MutexExecutor>::shutdown(in
   }
   return ret;
 }
-

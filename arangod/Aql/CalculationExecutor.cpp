@@ -95,7 +95,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);

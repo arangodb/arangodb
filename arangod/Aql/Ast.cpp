@@ -42,7 +42,6 @@
 #include "Aql/QueryContext.h"
 #include "Aql/RegexCache.h"
 #include "Basics/Exceptions.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -1864,7 +1863,7 @@ size_t Ast::validatedParallelism(AstNode const* value) {
     int64_t p = value->getIntValue();
     if (p > 0) {
 #ifdef USE_ENTERPRISE
-      return std::min(static_cast<size_t>(p), NumberOfCores::getValue());
+      return static_cast<size_t>(p);
 #else 
       return 1;
 #endif
