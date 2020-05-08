@@ -891,6 +891,11 @@ void ClusterInfo::loadPlan() {
       auto& views = _newPlannedViews[databaseName];
       bool doingHashTrick = views.empty();
 
+      // We fetch the read lock on the plan to do the lookups for the old
+      // LogicalCollection object and hashes (see getCollectionNTWithHashNoLock.
+      // Since we are the only one changing things (apart from `cleanup`, which
+      // holds the same mutex _planProt.mutex), this is safe.
+      READ_LOCKER(readLocker, _planProt.lock);
       for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
         auto const& collectionSlice = collectionPairSlice.value;
 
@@ -912,7 +917,8 @@ void ClusterInfo::loadPlan() {
 
           if (doingHashTrick) {
             // Try if hash is different from last time:
-            newCollection = getCollectionNTWithHash(databaseName, collectionId, foundHash);
+            newCollection =
+                getCollectionNTWithHashNoLock(databaseName, collectionId, foundHash);
           }
           if (!doingHashTrick || newCollection.get() == nullptr || computedHash != foundHash) {
             LOG_TOPIC("52631", TRACE, Logger::CLUSTER)
@@ -973,6 +979,7 @@ void ClusterInfo::loadPlan() {
             LOG_TOPIC("52632", TRACE, Logger::CLUSTER)
                 << "loadPlan: Previous LogicalCollection found and hash "
                    "match, not rebuilding LogicalCollection object.";
+            newCollection->setPlanVersion(newPlanVersion);
           }
 
           bool isBuilding =
@@ -1305,9 +1312,9 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& 
   }
 }
 
-std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNTWithHash(
+std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNTWithHashNoLock(
   DatabaseID const& databaseID, CollectionID const& collectionID, uint64_t& hash) {
-  READ_LOCKER(readLocker, _planProt.lock);
+  // Only use this when you have the readlock on _planProt.lock!
   // look up database by id
   AllCollections::const_iterator it = _plannedCollections.find(databaseID);
 

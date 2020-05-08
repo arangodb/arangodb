@@ -473,7 +473,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  std::shared_ptr<LogicalCollection> getCollectionNTWithHash(DatabaseID const& databaseID,
+  std::shared_ptr<LogicalCollection> getCollectionNTWithHashNoLock(DatabaseID const& databaseID,
                                                              CollectionID const& collectionID,
                                                              uint64_t& hash);
 
