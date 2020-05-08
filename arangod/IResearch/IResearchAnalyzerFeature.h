@@ -261,7 +261,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
   AnalyzerPool::ptr get(irs::string_ref const& name,
-                        AnalyzersRevision::Revision const revision = AnalyzersRevision::LATEST,
+                        AnalyzersRevision::Revision const revision,
                         bool onlyCached = false) const noexcept {
     return get(name, splitAnalyzerName(name), revision, onlyCached);
   }

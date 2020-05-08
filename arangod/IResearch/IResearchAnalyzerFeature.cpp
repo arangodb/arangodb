@@ -2268,7 +2268,6 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& nam
 Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name) {
   try {
     auto split = splitAnalyzerName(name);
-    TRI_ASSERT(!split.first.null()); 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
     if (itr == _analyzers.end()) {
@@ -2313,13 +2312,17 @@ Result IResearchAnalyzerFeature::remove(
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    if (!split.first.null()) { // do not trigger load for static-analyzer requests
-      auto res = loadAnalyzers(split.first);
+    // FIXME: really strange  we don`t have this load in remove
+    //        This means if we just start server and call remove - we will fail
+    //        Event test IResearchAnalyzerFeatureTest.test_persistence_remove_existing_records  checks this behaviour  
+    //        Maybe this is to avoid having here something like onlyCached kludge in get ?
+    //if (!split.first.null()) { // do not trigger load for static-analyzer requests
+    //  auto res = loadAnalyzers(split.first);
 
-      if (!res.ok()) {
-        return res;
-      }
-    }
+    //  if (!res.ok()) {
+    //    return res;
+    //  }
+    //}
 
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 

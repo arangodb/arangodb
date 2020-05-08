@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -234,7 +235,7 @@ bool FieldMeta::init(arangodb::application_features::ApplicationServer& server,
         if (!found) {
           // for cluster only check cache to avoid ClusterInfo locking issues
           // analyzer should have been populated via 'analyzerDefinitions' above
-          analyzer = analyzers.get(name, ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(name, AnalyzersRevision::LATEST, ServerState::instance()->isClusterRole());
         }
 
         if (!analyzer) {
@@ -673,7 +674,6 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
             }
           }
         }
-
         irs::string_ref type;
 
         {

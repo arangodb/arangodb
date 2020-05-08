@@ -339,7 +339,7 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto pool = analyzers.get(normalizedName);
+  auto pool = analyzers.get(normalizedName, AnalyzersRevision::LATEST);
   if (!pool) {
     generateError(arangodb::Result(
       TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -456,11 +456,11 @@ void RestAnalyzerHandler::removeAnalyzer(
 
   if (finishPlanModifying(databaseID, false)) {
     restore = false;
-    auto finalizeResult = analyzers.finalizeRemove(name);
+    auto finalizeResult = analyzers.finalizeRemove(normalizedName);
     if (finalizeResult.fail()) {
       // note the failure here. But change itself is already committed so report success
-      LOG_TOPIC("86631", WARN, arangodb::Logger::CLUSTER)
-        << " Failed to perform analyzer " << name << " removal finazlizing in cluster. Code: "
+      LOG_TOPIC("86631", WARN, arangodb::iresearch::TOPIC)
+        << " Failed to perform analyzer " << normalizedName << " removal finazlizing in cluster. Code: "
         << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
     }
   } else {
