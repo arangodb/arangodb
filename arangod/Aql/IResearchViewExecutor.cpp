@@ -94,6 +94,13 @@ inline irs::doc_iterator::ptr sortColumn(irs::sub_reader const& segment) {
   return reader ? reader->iterator() : nullptr;
 }
 
+inline void reset(ColumnIterator& it, irs::doc_iterator::ptr&& itr) noexcept {
+  it.itr = std::move(itr);
+  TRI_ASSERT(it.itr);
+  it.value = irs::get<irs::payload>(*it.itr);
+  TRI_ASSERT(it.value);
+}
+
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -714,11 +721,14 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(irs::document con
   TRI_ASSERT(index < _storedValuesReaders.size());
   auto const& reader = _storedValuesReaders[index];
   TRI_ASSERT(reader.itr);
+  TRI_ASSERT(reader.value);
+  auto const& payload = reader.value->value;
   auto& storedValues = _indexReadBuffer.getStoredValues();
   storedValues.emplace_back();
   auto& storedValue = storedValues.back();
-  if (doc.value == reader.itr->seek(doc.value)) {
-    storedValue = reader.value->value;
+  bool const found = (doc.value == reader.itr->seek(doc.value));
+  if (found && !payload.empty()) {
+    storedValue = payload;
   } else {
     storedValue = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
@@ -750,7 +760,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
                "executing a query, ignoring";
         return false;
       }
-      _storedValuesReaders[index++].reset(std::move(sortReader));
+      ::reset(_storedValuesReaders[index++], std::move(sortReader));
       ++columnFieldsRegs;
     }
     // if stored values exist
@@ -770,7 +780,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
           return false;
         }
 
-        _storedValuesReaders[index++].reset(storedValuesReader->iterator());
+        ::reset(_storedValuesReaders[index++], storedValuesReader->iterator());
       }
     }
   }
@@ -950,7 +960,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
     return false;
   }
 
-  _pkReader.reset(std::move(it));
+  ::reset(_pkReader, std::move(it));
 
   if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                 MaterializeType::UseStoredValues) {
@@ -1109,18 +1119,20 @@ template <bool ordered, MaterializeType materializeType>
 IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     irs::doc_iterator::ptr&& docs, irs::document const& doc, irs::score const& score,
     LogicalCollection const& collection, irs::doc_iterator::ptr&& pkReader,
-    irs::doc_iterator::ptr&& sortReader, size_t storedValuesIndex) noexcept
+    ColumnIterator&& sortReader, size_t storedValuesIndex) noexcept
     : docs(std::move(docs)),
       doc(&doc),
       score(&score),
       collection(&collection),
+      sortReader(std::move(sortReader)),
       storedValuesIndex(storedValuesIndex) {
   TRI_ASSERT(this->docs);
   TRI_ASSERT(this->doc);
   TRI_ASSERT(this->score);
   TRI_ASSERT(this->collection);
-  this->pkReader.reset(std::move(pkReader));
-  this->sortReader.reset(std::move(sortReader));
+  TRI_ASSERT(this->sortReader.itr);
+  ::reset(this->pkReader, std::move(pkReader));
+  TRI_ASSERT(this->pkReader.itr);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1248,7 +1260,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       TRI_ASSERT(!isSortReaderUsedInStoredValues);
     }
 
-    typename Base::ColumnIterator sortReader;
+    ColumnIterator sortReader;
     if (isSortReaderUsedInStoredValues) {
       TRI_ASSERT(i * storedValuesCount < this->_storedValuesReaders.size());
       sortReader = this->_storedValuesReaders[i * storedValuesCount];
@@ -1262,8 +1274,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
         continue;
       }
 
-
-      sortReader.reset(std::move(itr));
+      ::reset(sortReader, std::move(itr));
     }
 
     _segments.emplace_back(std::move(it), *doc, *score, *collection,

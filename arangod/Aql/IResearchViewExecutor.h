@@ -154,6 +154,25 @@ class IResearchViewStats {
 ExecutionStats& operator+=(ExecutionStats& executionStats,
                            IResearchViewStats const& iResearchViewStats) noexcept;
 
+struct ColumnIterator {
+  irs::doc_iterator::ptr itr;
+  const irs::payload* value{};
+}; // ColumnIterator
+
+struct FilterCtx final : irs::attribute_provider {
+  explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
+    : _execCtx(ctx) {
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<iresearch::ExpressionExecutionContext>::id() == type
+      ? &_execCtx
+      : nullptr;
+  }
+
+  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+}; // FilterCtx
+
 template <typename Impl>
 struct IResearchViewExecutorTraits;
 
@@ -362,32 +381,6 @@ class IResearchViewExecutorBase {
   bool next(ReadContext& ctx);
 
  protected:
-  struct ColumnIterator {
-    void reset(irs::doc_iterator::ptr&& itr) noexcept {
-      itr = std::move(itr);
-      TRI_ASSERT(this->itr);
-      value = irs::get<irs::payload>(*this->itr);
-      TRI_ASSERT(value);
-    }
-
-    irs::doc_iterator::ptr itr;
-    const irs::payload* value{};
-  };
-
-  struct FilterCtx final : irs::attribute_provider {
-    explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
-      : _execCtx(ctx) {
-    }
-
-    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return irs::type<iresearch::ExpressionExecutionContext>::id() == type
-        ? &_execCtx
-        : nullptr;
-    }
-
-    iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
-  }; // FilterCtx
-
   transaction::Methods _trx;
   RegexCache _regexCache;
   Infos& _infos;
@@ -440,7 +433,7 @@ class IResearchViewExecutor
   // unset if readPK returns true.
   bool readPK(LocalDocumentId& documentId);
 
-  typename Base::ColumnIterator _pkReader;  // current primary key reader
+  ColumnIterator _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
@@ -481,7 +474,7 @@ class IResearchViewMergeExecutor
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
             irs::doc_iterator::ptr&& pkReader,
-            irs::doc_iterator::ptr&& sortReader,
+            ColumnIterator&& sortReader,
             size_t storedValuesIndex) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
@@ -492,8 +485,8 @@ class IResearchViewMergeExecutor
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
-    typename Base::ColumnIterator pkReader;    // primary key reader
-    typename Base::ColumnIterator sortReader;  // sort column reader
+    ColumnIterator pkReader;    // primary key reader
+    ColumnIterator sortReader;  // sort column reader
     size_t storedValuesIndex;  // first stored values index
   };
 
