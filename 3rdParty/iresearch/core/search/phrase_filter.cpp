@@ -207,12 +207,11 @@ class phrase_term_visitor final : public filter_visitor,
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;
-    attrs_ = &terms.attributes();
     found_ = true;
   }
 
   virtual void visit(boost_t boost) override {
-    assert(terms_ && attrs_ && collectors_ && segment_ && reader_);
+    assert(terms_ && collectors_ && segment_ && reader_);
 
     // disallow negative boost
     boost = std::max(0.f, boost);
@@ -225,7 +224,7 @@ class phrase_term_visitor final : public filter_visitor,
       volatile_boost_ |= (boost != no_boost());
     }
 
-    collectors_->collect(*segment_, *reader_, term_offset_++, *attrs_);
+    collectors_->collect(*segment_, *reader_, term_offset_++, *terms_);
     phrase_states_.emplace_back(terms_->cookie(), boost);
   }
 
@@ -253,7 +252,6 @@ class phrase_term_visitor final : public filter_visitor,
   PhraseStates& phrase_states_;
   term_collectors* collectors_ = nullptr;
   const seek_term_iterator* terms_ = nullptr;
-  const attribute_view* attrs_ = nullptr;
   bool found_ = false;
   bool volatile_boost_ = false;
 };
@@ -304,7 +302,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const {
+      const attribute_provider* /*ctx*/) const {
     using conjunction_t = conjunction<doc_iterator::ptr>;
     using phrase_iterator_t = phrase_iterator<
       conjunction_t,
@@ -341,7 +339,8 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       }
 
       auto docs = terms->postings(features); // postings
-      auto& pos = docs->attributes().get<irs::position>(); // needed postings attributes
+
+      auto* pos = irs::get_mutable<irs::position>(docs.get());
 
       if (!pos) {
         // positions not found
@@ -363,8 +362,7 @@ class fixed_phrase_query : public phrase_query<fixed_phrase_state> {
       *phrase_state->reader,
       stats_.c_str(),
       ord,
-      boost()
-    );
+      boost());
   }
 }; // fixed_phrase_query
 
@@ -390,7 +388,7 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
   doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     using adapter_t = variadic_phrase_adapter;
     using disjunction_t = disjunction<doc_iterator::ptr, adapter_t, true>;
     using compound_doc_iterator_t = irs::compound_doc_iterator<adapter_t>;
@@ -488,18 +486,17 @@ class variadic_phrase_query : public phrase_query<variadic_phrase_state> {
 // -----------------------------------------------------------------------------
 
 /* static */ const flags& by_phrase::required() {
-  static flags req{ frequency::type(), position::type() };
+  static const flags req{ irs::type<frequency>::get(), irs::type<position>::get() };
   return req;
 }
 
-DEFINE_FILTER_TYPE(by_phrase)
 DEFINE_FACTORY_DEFAULT(by_phrase)
 
 filter::prepared::ptr by_phrase::prepare(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
     return filter::prepared::empty();

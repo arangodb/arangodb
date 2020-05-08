@@ -276,7 +276,7 @@ class IRESEARCH_API term_collectors : public collectors_base<term_collector_wrap
   void collect(const sub_reader& segment,
                const term_reader& field,
                size_t term_idx,
-               const attribute_view& attrs) const;
+               const attribute_provider& attrs) const;
 
   //////////////////////////////////////////////////////////////////////////
   /// @brief store collected index statistics into 'stats' of the

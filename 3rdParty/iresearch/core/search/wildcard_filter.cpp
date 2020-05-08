@@ -99,7 +99,6 @@ NS_ROOT
 // --SECTION--                                        by_wildcard implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_wildcard)
 DEFINE_FACTORY_DEFAULT(by_wildcard)
 
 field_visitor by_wildcard::visitor(const bytes_ref& term) {

@@ -63,7 +63,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     return RestStatus::DONE;
   }
 
-  uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
+  uint64_t index = basics::StringUtils::uint64(suffixes.at(0));
   auto cb = _agencyCallbackRegistry->getCallback(index);
   if (cb.get() == nullptr) {
     // no entry by this id!
