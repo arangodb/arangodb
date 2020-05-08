@@ -531,7 +531,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     waitForSatelliteIfRequired(&engine);
-    if (isSmart()) {
+    if (isSmart() && !isDisjoint()) {
       traverser.reset(
           new arangodb::traverser::SmartGraphTraverser(opts, engines()));
     } else {
