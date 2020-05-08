@@ -71,6 +71,7 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   }
 
   RegIdOrderedSetStack unusedRegisters = RegIdOrderedSetStack{{}};
+  RegIdSetStack regsToKeepStack = RegIdSetStack{{}};
   std::shared_ptr<RegisterPlanT<T>> plan;
 };
 

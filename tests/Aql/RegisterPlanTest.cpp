@@ -85,7 +85,7 @@ struct ExecutionNodeMock {
 
   auto getType() -> ExecutionNode::NodeType { return _type; }
 
-  auto getVarsUsedLater() -> VarSet const& { return _usedLater; }
+  auto getVarsUsedLater() -> VarSet const& { return _usedLaterStack.back(); }
 
   auto getVariablesUsedHere(VarSet& res) const -> void {
     for (auto const v : _input) {
@@ -93,12 +93,11 @@ struct ExecutionNodeMock {
     }
   }
 
-  auto setVarsUsedLater(VarSet& v) -> void { _usedLater = v; }
   auto setVarsUsedLater(VarSetStack& s) -> void { _usedLaterStack = s; }
 
   auto invalidateVarUsage() -> void {
-    _usedLater.clear();
-    _varsValid.clear();
+    _usedLaterStack.clear();
+    _varsValidStack.clear();
     _varUsageValid = false;
   }
 
@@ -112,20 +111,34 @@ struct ExecutionNodeMock {
     return res;
   }
 
-  auto getVariablesSetHere() const -> VarSet { return _output; }
+  auto getVariablesSetHere() const -> std::vector<Variable const*> {
+    std::vector<Variable const*> result;
+    std::copy(_output.begin(), _output.end(), std::back_inserter(result));
+    return result;
+  }
 
-  auto setRegsToClear(std::unordered_set<RegisterId>&& toClear) -> void {}
+  auto setRegsToClear(RegIdSet toClear) -> void {
+    _regsToClear = std::move(toClear);
+  }
 
   auto getTypeString() const -> std::string const& {
     return ExecutionNode::getTypeString(_type);
   }
 
-  auto setVarsValid(VarSet const& v) -> void { _varsValid = v; }
   auto setVarsValid(VarSetStack varsValidStack) -> void {
     _varsValidStack = std::move(varsValidStack);
   }
   auto getVarsValid() const -> VarSet const&;
   auto getVarsValidStack() const -> VarSetStack const&;
+
+  void setRegsToKeep(RegIdSetStack regsToKeep) {
+    _regsToKeep = std::move(regsToKeep);
+  }
+
+  auto getRegsToKeep() -> RegIdSetStack const& {
+    return _regsToKeep;
+  }
+
 
   auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
     if (worker.before(this)) {
@@ -169,10 +182,10 @@ struct ExecutionNodeMock {
   ExecutionNode::NodeType _type;
   VarSet _input;
   VarSet _output;
-  VarSet _usedLater;
   VarSetStack _usedLaterStack;
   VarSetStack _varsValidStack;
-  VarSet _varsValid{};
+  RegIdSetStack _regsToKeep;
+  RegIdSet _regsToClear;
   bool _varUsageValid{false};
   PlanMiniMock _plan;
   std::vector<ExecutionNodeMock>* _subquery;
@@ -180,7 +193,7 @@ struct ExecutionNodeMock {
 };
 
 auto ExecutionNodeMock::getVarsValid() const -> VarSet const& {
-  return _varsValid;
+  return _varsValidStack.back();
 }
 auto ExecutionNodeMock::getVarsValidStack() const -> VarSetStack const& {
   return _varsValidStack;

@@ -83,6 +83,24 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
+  auto const updateRegsToKeep = [this](T* en, VarSet const& varsUsedLater,
+                                       VarSet const& varsValid) {
+    auto const& varsSetHere = en->getVariablesSetHere();
+
+    // regsToKeep
+    regsToKeepStack.back().clear();
+    for (auto const var : varsValid) {
+      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                       varsSetHere.end();
+      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                         varsUsedLater.end();
+      if (!isSetHere && isUsedLater) {
+        auto reg = plan->variableToRegisterId(var);
+        regsToKeepStack.back().emplace(reg);
+      }
+    }
+  };
+
   auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
     auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
     VarSet varsUsedHere;
@@ -124,10 +142,21 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
-      unusedRegisters.emplace_back(unusedRegisters.back());
+      auto topUnused = unusedRegisters.back();
+      unusedRegisters.emplace_back(std::move(topUnused));
+
+      auto const& varsValid = en->getVarsValidStack();
+      auto const& varsUsedLater = en->getVarsUsedLaterStack();
+
+      TRI_ASSERT(varsValid.size() > 1);
+      TRI_ASSERT(varsUsedLater.size() > 1);
+      updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
+                       varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
+      regsToKeepStack.emplace_back();
     } break;
     case ExecutionNode::SUBQUERY_END: {
       unusedRegisters.pop_back();
+      regsToKeepStack.pop_back();
     } break;
     default: {
       auto regsToClear = calculateRegistersToClear(en);
@@ -143,8 +172,15 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     planRegistersForCurrentNode(en);
   }
 
-  en->setRegsToKeep(plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
-                                   en->getVariablesSetHere()));
+  updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
+                                     en->getVariablesSetHere());
+  TRI_ASSERT(regsToKeepStack == actual);
+#endif
+
+  en->setRegsToKeep(regsToKeepStack);
 
   en->_depth = plan->depth;
   en->_registerPlan = plan;
@@ -325,19 +361,12 @@ auto RegisterPlanT<T>::getTotalNrRegs() -> unsigned int {
 template <typename T>
 auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
                                       VarSetStack const& varsValidStack,
-                                      // we use a vector here because of 3.7 compatibility
                                       std::vector<Variable const*> const& varsSetHere) const
     -> RegIdSetStack {
   RegIdSetStack regsToKeepStack;
   regsToKeepStack.reserve(varsUsedLaterStack.size());
 
   TRI_ASSERT(varsValidStack.size() == varsUsedLaterStack.size());
-
-  // TODO The lower levels of the stacks inside the same subquery do not differ,
-  //      so we calculate the same thing multiple times.
-  //      Instead, calculate it in the register planning and pass the results.
-
-  // TODO this function was moved but is still used in some cases. (i.e. during rolling upgrades)
 
   for (auto const [idx, stackEntry] : enumerate(varsValidStack)) {
     auto& regsToKeep = regsToKeepStack.emplace_back();

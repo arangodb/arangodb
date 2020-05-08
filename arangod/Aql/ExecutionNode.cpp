@@ -518,7 +518,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     }
   } else {
     // otherwise this is lazily computed in getRegsToKeep.
-    // This is 3.7 compatibility and can be uncommented in 3.8
+    // This is 3.6 compatibility and can be uncommented in 3.7
     //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
     //                               "\"regsToKeepStack\" needs to be an array");
   }
@@ -1098,7 +1098,7 @@ RegisterId ExecutionNode::getNrInputRegisters() const {
 
 auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
   if (_regsToKeepStack.empty()) {
-    // This is 3.7 compatibility code. It can be removed in 3.8.
+    // This is 3.6 compatibility code. It can be removed in 3.7.
     // The function should then become const noexcept and should return a const& instead
     return _registerPlan->calcRegsToKeep(_varsUsedLaterStack, _varsValidStack,
                                          getVariablesSetHere());
