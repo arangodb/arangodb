@@ -26,6 +26,8 @@
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/FinalFeaturePhase.h"
 #include "Logger/LogMacros.h"
@@ -107,23 +109,28 @@ void ClusterUpgradeFeature::setBootstrapVersion() {
 void ClusterUpgradeFeature::tryClusterUpgrade() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  AgencyComm agency(server());
-  AgencyCommResult result = agency.getValues(::upgradeVersionKey);
+  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = cache.read(
+    std::vector<std::string>{AgencyCommHelper::path(::upgradeVersionKey)});
+  auto res = acb->slice();
 
-  if (!result.successful()) {
-    LOG_TOPIC("26104", ERR, arangodb::Logger::CLUSTER) << "unable to fetch cluster upgrade version from agency: " << result.errorMessage();
+  if (!res.isArray()) {
+    LOG_TOPIC("26104", ERR, arangodb::Logger::CLUSTER)
+      << "unable to fetch cluster upgrade version from agency: " << res.toJson();
     return;
   }
 
   uint64_t latestUpgradeVersion = 0;
-  VPackSlice value = result.slice()[0].get(
+  VPackSlice value = res[0].get(
       std::vector<std::string>({AgencyCommHelper::path(), ::upgradeVersionKey}));
   if (value.isNumber()) {
     latestUpgradeVersion = value.getNumber<uint64_t>();
-    LOG_TOPIC("54f69", DEBUG, arangodb::Logger::CLUSTER) << "found previous cluster upgrade version in agency: " << latestUpgradeVersion;
+    LOG_TOPIC("54f69", DEBUG, arangodb::Logger::CLUSTER)
+      << "found previous cluster upgrade version in agency: " << latestUpgradeVersion;
   } else {
     // key not there yet.
-    LOG_TOPIC("5b00d", DEBUG, arangodb::Logger::CLUSTER) << "did not find previous cluster upgrade version in agency";
+    LOG_TOPIC("5b00d", DEBUG, arangodb::Logger::CLUSTER)
+      << "did not find previous cluster upgrade version in agency";
   }
 
   if (arangodb::methods::Version::current() <= latestUpgradeVersion) {
@@ -146,8 +153,12 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   // operation._ttl = TRI_microtime() + 1800.0;
   AgencyWriteTransaction transaction(operation, precs);
 
-  result = agency.sendTransactionWithFailover(transaction);
+  AgencyComm agency(server());
+  AgencyCommResult result = agency.sendTransactionWithFailover(transaction);
   if (result.successful()) {
+    auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+
     // we are responsible for the upgrade!
     LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER)
         << "running cluster upgrade from "
