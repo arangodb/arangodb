@@ -884,6 +884,13 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
+      // We can only recycle old LogicalCollection objects if there are no
+      // views present. It is enough to look into the new list of links, since
+      // an unchanged collection cannot have a link into a view which was
+      // deleted since the latest loadPlan.
+      auto& views = _newPlannedViews[databaseName];
+      bool doingHashTrick = views.empty();
+
       for (auto const& collectionPairSlice : velocypack::ObjectIterator(collectionsSlice)) {
         auto const& collectionSlice = collectionPairSlice.value;
 
@@ -903,12 +910,14 @@ void ClusterInfo::loadPlan() {
         try {
           std::shared_ptr<LogicalCollection> newCollection;
 
-          // Try if hash is different from last time:
-          newCollection = getCollectionNTWithHash(databaseName, collectionId, foundHash);
-          if (newCollection.get() == nullptr || computedHash != foundHash) {
+          if (doingHashTrick) {
+            // Try if hash is different from last time:
+            newCollection = getCollectionNTWithHash(databaseName, collectionId, foundHash);
+          }
+          if (!doingHashTrick || newCollection.get() == nullptr || computedHash != foundHash) {
             LOG_TOPIC("52631", TRACE, Logger::CLUSTER)
-                << "loadPlan: Old LogicalCollection not found or hash "
-                   "mismatch, (re-)building LogicalCollection object.";
+                << "loadPlan: Views present or old LogicalCollection not found "
+                   "or hash mismatch, (re-)building LogicalCollection object.";
 #ifdef USE_ENTERPRISE
             auto isSmart = collectionSlice.get(StaticStrings::IsSmart);
 
