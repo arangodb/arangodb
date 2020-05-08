@@ -123,7 +123,7 @@ class multiterm_query : public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      const attribute_view& /*ctx*/) const override;
+      const attribute_provider* /*ctx*/) const override;
 
  private:
   const stats_t& stats() const noexcept {

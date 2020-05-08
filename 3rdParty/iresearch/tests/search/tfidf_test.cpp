@@ -81,7 +81,7 @@ class tfidf_test: public index_test_base {
 
 TEST_P(tfidf_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+  auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
   ASSERT_EQ(1, order.add(true, scorer).size());
@@ -92,22 +92,22 @@ TEST_P(tfidf_test, test_load) {
 TEST_P(tfidf_test, make_from_bool) {
   // `withNorms` argument
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
   }
 
   // invalid `withNorms` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "\"false\""));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "null"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "1"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "\"false\""));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "null"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "1"));
 }
 
 TEST_P(tfidf_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
@@ -115,7 +115,7 @@ TEST_P(tfidf_test, make_from_array) {
 
   // default args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "[]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
@@ -123,18 +123,18 @@ TEST_P(tfidf_test, make_from_array) {
 
   // `withNorms` argument
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "[ true ]");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
   }
 
   // invalid `withNorms` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ \"false\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ 1 ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ [] ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ \"false\" ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ null]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ 1 ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ {} ]"));
+  ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "[ [] ]"));
 }
 
 #endif // IRESEARCH_DLL
@@ -142,47 +142,47 @@ TEST_P(tfidf_test, make_from_array) {
 TEST_P(tfidf_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 
   // with norms (as args)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
   }
 
   // with norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": true}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get(), irs::type<irs::norm>::get()}), prepared->features());
   }
 
   // without norms (as args)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "false");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "false");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 
   // without norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": false}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": false}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+    ASSERT_EQ(irs::flags({irs::type<irs::frequency>::get()}), prepared->features());
   }
 }
 
@@ -200,7 +200,7 @@ TEST_P(tfidf_test, test_phrase) {
       }
 
       const irs::flags& features() const {
-        static irs::flags features{ irs::frequency::type() };
+        static irs::flags features{ irs::type<irs::frequency>::get() };
         return features;
       }
     }; // string_field
@@ -229,7 +229,7 @@ TEST_P(tfidf_test, test_phrase) {
   }
 
   irs::order order;
-  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
   auto prepared_order = order.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
@@ -260,7 +260,7 @@ TEST_P(tfidf_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
@@ -315,7 +315,7 @@ TEST_P(tfidf_test, test_phrase) {
 
     auto prepared_filter = filter.prepare(*index, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     auto column = segment.column_reader("name");
@@ -362,7 +362,7 @@ TEST_P(tfidf_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
+  order.add(true, irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -388,7 +388,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -476,7 +476,7 @@ TEST_P(tfidf_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -575,7 +575,7 @@ TEST_P(tfidf_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -665,7 +665,7 @@ TEST_P(tfidf_test, test_query) {
       ASSERT_NE(nullptr, column);
       auto values = column->values();
       auto docs = prepared_filter->execute(segment, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
@@ -706,7 +706,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -747,7 +747,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -787,7 +787,7 @@ TEST_P(tfidf_test, test_query) {
 //    irs::bytes_ref_input in;
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
 //    auto docs = prepared_filter->execute(segment, prepared_order);
-//    auto& score = docs->attributes().get<irs::score>();
+//    auto* score = irs::get<irs::score>(*docs);
 //    ASSERT_TRUE(bool(score));
 //
 //    // ensure that we avoid COW for pre c++11 std::basic_string
@@ -834,7 +834,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -882,7 +882,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -925,7 +925,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -962,7 +962,7 @@ TEST_P(tfidf_test, test_query) {
     irs::bytes_ref actual_value;
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<irs::score>();
+    auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
@@ -976,7 +976,7 @@ TEST_P(tfidf_test, test_query) {
       ++doc;
       ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
     }
-    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
 }
 
@@ -1053,7 +1053,7 @@ TEST_P(tfidf_test, test_collector_serialization) {
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
-    collector->collect(reader[0], *field, term->attributes());
+    collector->collect(reader[0], *field, *term);
     bstring_data_output out1;
     collector->write(out1);
     tcollector_out = out1.out_;
@@ -1122,7 +1122,7 @@ TEST_P(tfidf_test, test_collector_serialization) {
 TEST_P(tfidf_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_FALSE(scr.normalize());
@@ -1130,13 +1130,13 @@ TEST_P(tfidf_test, test_make) {
 
   // invalid args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "\"12345");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "\"12345");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // custom value
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
@@ -1144,13 +1144,13 @@ TEST_P(tfidf_test, test_make) {
 
   // invalid value (non-bool)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "42");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "42");
     ASSERT_EQ(nullptr, scorer);
   }
 
   // custom values
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": true}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
@@ -1158,7 +1158,7 @@ TEST_P(tfidf_test, test_make) {
 
   // invalid values (withNorms)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": 42}");
+    auto scorer = irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(), "{\"withNorms\": 42}");
     ASSERT_EQ(nullptr, scorer);
   }
 }
@@ -1207,7 +1207,7 @@ TEST_P(tfidf_test, test_order) {
     irs::bytes_ref_input in;
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
-    auto& score = docs->attributes().get<iresearch::score>();
+    auto* score = irs::get<iresearch::score>(*docs);
     ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string

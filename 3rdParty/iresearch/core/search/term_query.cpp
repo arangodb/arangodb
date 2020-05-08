@@ -43,9 +43,10 @@ term_query::term_query(
 doc_iterator::ptr term_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(rdr);
+
   if (!state) {
     // invalid state
     return doc_iterator::empty();
@@ -65,13 +66,17 @@ doc_iterator::ptr term_query::execute(
   }
 
   auto docs = terms->postings(ord.features());
-  auto& attrs = docs->attributes();
+  assert(docs);
 
-  // set score
-  auto& score = attrs.get<irs::score>();
+  if (!ord.empty()) {
+    auto* score = irs::get_mutable<irs::score>(docs.get());
 
-  if (score) {
-    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats_.c_str(), attrs, boost()));
+    if (score) {
+      score->prepare(
+        ord,
+        ord.prepare_scorers(rdr, *state->reader,
+                            stats_.c_str(), *docs, boost()));
+    }
   }
 
   return docs;

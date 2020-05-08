@@ -318,7 +318,7 @@ class IResearchLink {
   Result initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::compression::type_id const& primarySortCompression);
+    irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up asynchronous maintenance tasks

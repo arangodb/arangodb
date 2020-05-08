@@ -8,6 +8,14 @@ if (MSVC)
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 endif()
 
+include_directories( 
+  ${PROJECT_BINARY_DIR}/core
+)
+
+include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
+  ${FROZEN_INCLUDE_DIR}
+)
+
 ################################################################################
 ### iresearch-util
 ################################################################################
@@ -27,10 +35,6 @@ add_executable(${IResearchUtil_TARGET_NAME}
 )
 
 set_ipo(${IResearchUtil_TARGET_NAME})
-
-target_include_directories(${IResearchUtil_TARGET_NAME}
-  PRIVATE ${PROJECT_BINARY_DIR}/core
-)
 
 set_target_properties(${IResearchUtil_TARGET_NAME}
   PROPERTIES
@@ -90,10 +94,6 @@ add_dependencies(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
 
-target_include_directories(${IResearchBencmarks_TARGET_NAME}
-  PRIVATE ${PROJECT_BINARY_DIR}/core
-)
-
 set_target_properties(${IResearchBencmarks_TARGET_NAME}
   PROPERTIES
   OUTPUT_NAME iresearch-benchmarks
@@ -145,10 +145,6 @@ set_ipo(${IResearchPDD_TARGET_NAME})
 
 add_dependencies(${IResearchPDD_TARGET_NAME}
   ${IResearch_TARGET_NAME}-static-allinone
-)
-
-target_include_directories(${IResearchPDD_TARGET_NAME}
-  PRIVATE ${PROJECT_BINARY_DIR}/core
 )
 
 set_target_properties(${IResearchPDD_TARGET_NAME}

@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -48,7 +49,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster") {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -398,6 +399,8 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
       << "Starting up with role " << roleString;
 }
 
+// IMPORTANT: Please make sure that you understand that the agency is not
+// available before ::start and this should not be accessed in this section.
 void ClusterFeature::prepare() {
   if (_enableCluster && _requirePersistedId && !ServerState::instance()->hasPersistedId()) {
     LOG_TOPIC("d2194", FATAL, arangodb::Logger::CLUSTER)
@@ -408,15 +411,9 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
-
-  // create callback registery
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
-
-  // Initialize ClusterInfo library:
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  if (!_allocated) {
+    allocateMembers();
+  }
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -499,15 +496,37 @@ void ClusterFeature::prepare() {
         << "'. No role configured in agency (" << endpoints << ")";
     FATAL_ERROR_EXIT();
   }
+}
 
-  // if nonempty, it has already been set above
+// IMPORTANT: Please read the first comment block a couple of lines down, before
+// Adding code to this section.
+void ClusterFeature::start() {
+
+  // return if cluster is disabled
+  if (!_enableCluster) {
+    startHeartbeatThread(nullptr, 5000, 5, std::string());
+    return;
+  }
+
+  // We need to wait for any cluster operation, which needs access to the
+  // agency cache for it to become ready. The essentials in the cluster, namely
+  // ClusterInfo etc, need to start after first poll result from the agency.
+  // This is of great importance to not accidentally delete data facing an
+  // empty agency. There are also other measures that guard against such a
+  // outcome. But there is also no point continuing with a first agency poll.
+  auto role = ServerState::instance()->getRole();
+  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    _agencyCache->start();
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
+    _agencyCache->waitFor(1).get();
+    LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER) << "Agency cache is ready.";
+  }
 
   // If we are a coordinator, we wait until at least one DBServer is there,
   // otherwise we can do very little, in particular, we cannot create
   // any collection:
   if (role == ServerState::ROLE_COORDINATOR) {
     double start = TRI_microtime();
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // in maintainer mode, a developer does not want to spend that much time
     // waiting for extra nodes to start up
@@ -515,28 +534,20 @@ void ClusterFeature::prepare() {
 #else
     constexpr double waitTime = 15.0;
 #endif
-
     while (true) {
       LOG_TOPIC("d4db4", INFO, arangodb::Logger::CLUSTER)
-          << "Waiting for DBservers to show up...";
+        << "Waiting for DBservers to show up...";
+
       _clusterInfo->loadCurrentDBServers();
       std::vector<ServerID> DBServers = _clusterInfo->getCurrentDBServers();
       if (DBServers.size() >= 1 &&
           (DBServers.size() > 1 || TRI_microtime() - start > waitTime)) {
         LOG_TOPIC("22f55", INFO, arangodb::Logger::CLUSTER)
-            << "Found " << DBServers.size() << " DBservers.";
+          << "Found " << DBServers.size() << " DBservers.";
         break;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-  }
-}
-
-void ClusterFeature::start() {
-  // return if cluster is disabled
-  if (!_enableCluster) {
-    startHeartbeatThread(nullptr, 5000, 5, std::string());
-    return;
   }
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
@@ -551,7 +562,6 @@ void ClusterFeature::start() {
 
   std::string const endpoints = AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
@@ -567,11 +577,13 @@ void ClusterFeature::start() {
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
       << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
 
-  AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
+  auto [acb,idx] = _agencyCache->read(
+    std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
+  auto result = acb->slice();
 
-  if (result.successful()) {
-    velocypack::Slice HeartbeatIntervalMs = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Sync", "HeartbeatIntervalMs"}));
+  if (result.isArray()) {
+    velocypack::Slice HeartbeatIntervalMs = result[0].get(
+      std::vector<std::string>({AgencyCommHelper::path(), "Sync", "HeartbeatIntervalMs"}));
 
     if (HeartbeatIntervalMs.isInteger()) {
       try {
@@ -601,11 +613,18 @@ void ClusterFeature::start() {
   ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
-void ClusterFeature::beginShutdown() {}
-
-void ClusterFeature::stop() { shutdownHeartbeatThread(); }
+void ClusterFeature::beginShutdown() {
+  _agencyCache->beginShutdown();
+}
 
 void ClusterFeature::unprepare() {
+  if (!_enableCluster) {
+    return;
+  }
+  _clusterInfo->cleanup();
+}
+
+void ClusterFeature::stop() {
   if (!_enableCluster) {
     return;
   }
@@ -618,23 +637,9 @@ void ClusterFeature::unprepare() {
   AgencyComm comm(server());
   comm.sendServerState();
 
-  if (_heartbeatThread != nullptr) {
-    int counter = 0;
-    while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      // emit warning after 5 seconds
-      if (++counter == 10 * 5) {
-        LOG_TOPIC("26835", WARN, arangodb::Logger::CLUSTER)
-            << "waiting for heartbeat thread to finish";
-      }
-    }
-  }
-
   if (_unregisterOnShutdown) {
     ServerState::instance()->unregister();
   }
-
-  comm.sendServerState();
 
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
@@ -658,6 +663,7 @@ void ClusterFeature::unprepare() {
   int tries = 0;
   while (true) {
     AgencyCommResult res = comm.sendTransactionWithFailover(unreg, 120.0);
+
     if (res.successful()) {
       break;
     }
@@ -685,14 +691,8 @@ void ClusterFeature::unprepare() {
 
   TRI_ASSERT(tries <= maxTries);
 
-  while (_heartbeatThread != nullptr && _heartbeatThread->isRunning()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  }
-
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
-
-  _asyncAgencyCommPool.reset();
-  _clusterInfo->cleanup();
+  shutdownAgencyCache();
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
@@ -703,6 +703,7 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                                           std::string const& endpoints) {
+
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -725,9 +726,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
   if (_heartbeatThread == nullptr) {
     return;
   }
-
   _heartbeatThread->beginShutdown();
-
   int counter = 0;
   while (_heartbeatThread->isRunning()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -735,6 +734,22 @@ void ClusterFeature::shutdownHeartbeatThread() {
     if (++counter == 10 * 5) {
       LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
           << "waiting for heartbeat thread to finish";
+    }
+  }
+}
+
+void ClusterFeature::shutdownAgencyCache() {
+  if (_agencyCache == nullptr) {
+    return;
+  }
+  _agencyCache->beginShutdown();
+  int counter = 0;
+  while (_agencyCache != nullptr && _agencyCache->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)
+          << "waiting for agency cache thread to finish";
     }
   }
 }
@@ -754,4 +769,24 @@ ClusterInfo& ClusterFeature::clusterInfo() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   return *_clusterInfo;
+}
+
+AgencyCache& ClusterFeature::agencyCache() {
+  if (_agencyCache == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  return *_agencyCache;
+}
+
+void ClusterFeature::allocateMembers() {
+  try {
+    server().getFeature<arangodb::MetricsFeature>().histogram(
+      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
+      "Request time for Agency requests");
+  } catch (...) {}
+  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  _agencyCache =
+    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
+  _allocated = true;
 }

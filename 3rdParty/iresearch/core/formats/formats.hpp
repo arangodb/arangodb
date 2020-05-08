@@ -34,7 +34,7 @@
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_id.hpp"
-#include "utils/attributes_provider.hpp"
+#include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
 
 NS_ROOT
@@ -56,9 +56,10 @@ typedef std::vector<doc_id_t> doc_map;
 /// @brief represents metadata associated with the term
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API term_meta : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::term_meta";
+  }
 
-  term_meta() = default;
   virtual ~term_meta() = default;
 
   virtual void clear() {
@@ -73,7 +74,7 @@ struct IRESEARCH_API term_meta : attribute {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct postings_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
+struct IRESEARCH_API postings_writer : attribute_provider {
   DECLARE_UNIQUE_PTR(postings_writer);
   DEFINE_FACTORY_INLINE(postings_writer)
 
@@ -99,10 +100,6 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual void end() = 0;
-
-  virtual const attribute_view& attributes() const noexcept override {
-    return attribute_view::empty_instance();
-  }
 
  protected:
   friend struct term_meta;
@@ -146,29 +143,26 @@ struct IRESEARCH_API postings_reader {
   virtual void prepare(
     index_input& in, 
     const reader_state& state,
-    const flags& features
-  ) = 0;
+    const flags& features) = 0;
 
   // parses input block "in" and populate "attrs" collection with attributes
   // returns number of bytes read from in
   virtual size_t decode(
     const byte_type* in,
     const flags& features,
-    const attribute_view& attrs,
-    term_meta& state
-  ) = 0;
+    attribute_provider& attrs,
+    term_meta& state) = 0;
 
   virtual doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_view& attrs,
-    const flags& features
-  ) = 0;
+    const attribute_provider& attrs,
+    const flags& features) = 0;
 }; // postings_reader
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct basic_term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provider {
+struct IRESEARCH_API basic_term_reader : public attribute_provider {
   virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
@@ -186,7 +180,7 @@ struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provid
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct term_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
+struct IRESEARCH_API term_reader: public attribute_provider {
   DECLARE_UNIQUE_PTR(term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 
@@ -464,20 +458,7 @@ class IRESEARCH_API format {
  public:
   typedef std::shared_ptr<const format> ptr;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  };
-
-  format(const type_id& type) noexcept : type_(&type) {}
+  explicit format(const type_info& type) noexcept : type_(type) {}
   virtual ~format() = default;
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;
@@ -498,10 +479,10 @@ class IRESEARCH_API format {
   virtual columnstore_writer::ptr get_columnstore_writer() const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
-  const type_id& type() const { return *type_; }
+  const type_info& type() const { return type_; }
 
  private:
-  const type_id* type_;
+  type_info type_;
 }; // format
 
 NS_END
@@ -567,24 +548,13 @@ class IRESEARCH_API formats {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 format definition
-// -----------------------------------------------------------------------------
-
-#define DECLARE_FORMAT_TYPE() DECLARE_TYPE_ID(iresearch::format::type_id)
-#define DEFINE_FORMAT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, iresearch::format::type_id) { \
-  static iresearch::format::type_id type(class_name); \
-  return type; \
-}
-#define DEFINE_FORMAT_TYPE(class_type) DEFINE_FORMAT_TYPE_NAMED(class_type, #class_type)
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                               format registration
 // -----------------------------------------------------------------------------
 
 class IRESEARCH_API format_registrar {
  public:
   format_registrar(
-    const format::type_id& type,
+    const type_info& type,
     const string_ref& module,
     format::ptr(*factory)(),
     const char* source = nullptr);
@@ -595,7 +565,8 @@ class IRESEARCH_API format_registrar {
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, mudule_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), mudule_name, &format_name::make, source)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source) \
+  static ::iresearch::format_registrar format_registrar ## _ ## line(::iresearch::type<format_name>::get(), mudule_name, &format_name::make, source)
 #define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
 #define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
