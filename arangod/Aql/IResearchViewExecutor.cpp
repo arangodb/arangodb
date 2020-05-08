@@ -60,6 +60,8 @@ using namespace arangodb::iresearch;
 
 namespace {
 
+constexpr irs::payload NoPayload;
+
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
     TRI_voc_cid_t cid,                    // collection identifier
@@ -94,11 +96,13 @@ inline irs::doc_iterator::ptr sortColumn(irs::sub_reader const& segment) {
   return reader ? reader->iterator() : nullptr;
 }
 
-inline void reset(ColumnIterator& it, irs::doc_iterator::ptr&& itr) noexcept {
-  it.itr = std::move(itr);
-  TRI_ASSERT(it.itr);
-  it.value = irs::get<irs::payload>(*it.itr);
-  TRI_ASSERT(it.value);
+inline void reset(ColumnIterator& column, irs::doc_iterator::ptr&& itr) noexcept {
+  TRI_ASSERT(itr);
+  column.itr = std::move(itr);
+  column.value = irs::get<irs::payload>(*column.itr);
+  if (ADB_UNLIKELY(!column.value)) {
+    column.value = &NoPayload;
+  }
 }
 
 }  // namespace
@@ -824,6 +828,7 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   TRI_ASSERT(_itr);
   TRI_ASSERT(_doc);
   TRI_ASSERT(_pkReader.itr);
+  TRI_ASSERT(_pkReader.value);
 
   if (_itr->next()) {
     if (_doc->value == _pkReader.itr->seek(_doc->value)) {
@@ -891,6 +896,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     }
 
     TRI_ASSERT(_pkReader.itr);
+    TRI_ASSERT(_pkReader.value);
 
     LocalDocumentId documentId;
 
@@ -1131,8 +1137,10 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
   TRI_ASSERT(this->score);
   TRI_ASSERT(this->collection);
   TRI_ASSERT(this->sortReader.itr);
+  TRI_ASSERT(this->sortReader.value);
   ::reset(this->pkReader, std::move(pkReader));
   TRI_ASSERT(this->pkReader.itr);
+  TRI_ASSERT(this->pkReader.value);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1287,6 +1295,10 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
 template <bool ordered, MaterializeType materializeType>
 LocalDocumentId IResearchViewMergeExecutor<ordered, materializeType>::readPK(
     IResearchViewMergeExecutor<ordered, materializeType>::Segment const& segment) {
+  TRI_ASSERT(segment.doc);
+  TRI_ASSERT(segment.pkReader.itr);
+  TRI_ASSERT(segment.pkReader.value);
+
   LocalDocumentId documentId;
 
   if (segment.doc->value == segment.pkReader.itr->seek(segment.doc->value)) {
@@ -1318,6 +1330,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     TRI_ASSERT(segment.score);
     TRI_ASSERT(segment.collection);
     TRI_ASSERT(segment.pkReader.itr);
+    TRI_ASSERT(segment.pkReader.value);
 
     // try to read a document PK from iresearch
     LocalDocumentId const documentId = readPK(segment);
