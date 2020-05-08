@@ -291,7 +291,6 @@ void QuerySnippet::serializeIntoBuilder(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     ShardLocking& shardLocking, std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
     VPackBuilder& infoBuilder) {
-  _nodes.front()->plan()->show();
 
   ExecutionNode* remoteParent{nullptr};
 
