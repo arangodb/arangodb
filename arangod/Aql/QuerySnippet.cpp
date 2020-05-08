@@ -68,17 +68,25 @@ using NodeAliasMap = std::map<ExecutionNodeId, ExecutionNodeId>;
 
 // The CloneWorker "clones" a snippet
 //
-// rootNode -> N1 -> N2 -> ... -> Nk -> remoteNode
+// rootNode -> N1 -> N2 -> ... -> Nk [-> DistributeConsumer -> internalScatter -> remoteNode]
+//
+// (the back part is optional, because we could be the last snippet and hence do not need to
+// talk to a coordinator)
 //
 // to
 //
-// internalGather -> rootNode -> CN1 -> CN2 -> ... -> CNk -> DistributeConsumerNode -> internalScatter
+// internalGather -> rootNode -> CN1 -> CN2 -> ... -> CNk [ -> DistributeConsumerNode -> internalScatter ]
 //
-// where CN1 ... CNk are clones of N1 ... Nk, taking into account subquery nodes.
+// where CN1 ... CNk are clones of N1 ... Nk, taking into account subquery nodes,
+// and the DistributeConsumer are only inserted (and *newly created*) if the original snippet
+// has the back part.
+//
+// Note that there is only *one* internal scatter/internal gather involved, and these are neither
+// created nor cloned in this code.
 //
 // This is used to create a plan of the form
 //
-//                           INTERNAL_SCATTER
+//                      INTERNAL_SCATTER
 //            /               |                         \
 //           /                |                          \
 //  DistributeConsumer   DistributeConsumer  ...  DistributeConsumer
@@ -90,23 +98,24 @@ using NodeAliasMap = std::map<ExecutionNodeId, ExecutionNodeId>;
 //         CN0               CN0                         CN0
 //          \                 |                           /
 //           \                |                          /
-//                           INTERNAL_GATHER
+//                      INTERNAL_GATHER
 //
-
 class CloneWorker final : public WalkerWorker<ExecutionNode> {
  public:
-  explicit CloneWorker(ExecutionNode* rootNode, RemoteNode* remoteNode,
-                       GatherNode* internalGather, ScatterNode* internalScatter,
+  explicit CloneWorker(ExecutionNode* rootNode, GatherNode* internalGather,
+                       ScatterNode* internalScatter,
                        LocalExpansions const& localExpansions, size_t shardId,
                        std::string_view const distId, NodeAliasMap& nodeAliases);
+  void process();
 
+ private:
   bool before(ExecutionNode* node) final;
-  void after(ExecutionNode* node) final;
   bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final;
+
+  void processAfter(ExecutionNode* node);
 
  private:
   ExecutionNode* _root{nullptr};
-  RemoteNode* _remote{nullptr};
   ScatterNode* _internalScatter;
   GatherNode* _internalGather;
   LocalExpansions const& _localExpansions;
@@ -114,14 +123,15 @@ class CloneWorker final : public WalkerWorker<ExecutionNode> {
   std::string_view const _distId;
   std::map<ExecutionNode*, ExecutionNode*> _originalToClone;
   NodeAliasMap& _nodeAliases;
+
+  std::vector<ExecutionNode*> _stack{};
 };
 
-CloneWorker::CloneWorker(ExecutionNode* root, RemoteNode* remote,
-                         GatherNode* internalGather, ScatterNode* internalScatter,
+CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
+                         ScatterNode* internalScatter,
                          LocalExpansions const& localExpansions, size_t shardId,
                          std::string_view const distId, NodeAliasMap& nodeAliases)
     : _root{root},
-      _remote{remote},
       _internalScatter{internalScatter},
       _internalGather{internalGather},
       _localExpansions(localExpansions),
@@ -129,18 +139,33 @@ CloneWorker::CloneWorker(ExecutionNode* root, RemoteNode* remote,
       _distId(distId),
       _nodeAliases{nodeAliases} {}
 
+void CloneWorker::process() {
+  _root->walk(*this);
+
+  // Home-brew early cancel: We collect the processed nodes on a stack
+  // and process them in reverse order in processAfter
+  for (auto&& n = _stack.rbegin(); n != _stack.rend(); n++) {
+    processAfter(*n);
+  }
+}
+
 bool CloneWorker::before(ExecutionNode* node) {
   auto plan = node->plan();
 
-  // We don't clone the remote node, but create a DistributeConsumerNode instead
+  // We don't clone the DistributeConsumerNode, but create a new one instead
   // This will get `internalScatter` as its sole dependency
-  // TODO: probably should set the map differently here
-  if (node == _remote) {
-    DistributeConsumerNode* consumer = createConsumerNode(plan, _internalScatter, _distId);
+  if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
+    auto consumer = createConsumerNode(plan, _internalScatter, _distId);
     consumer->isResponsibleForInitializeCursor(false);
     _nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
+    _originalToClone.try_emplace(node, consumer);
+
+    // Stop here. Note that we do things special here and don't really
+    // use the WalkerWorker!
+    return true;
   } else if (node == _internalGather || node == _internalScatter) {
-    // Never clone these nodes. We should not run into this case?
+    // Never clone these nodes. We should never run into this case.
+    TRI_ASSERT(false);
   } else {
     auto clone = node->clone(plan, false, false);
 
@@ -156,13 +181,14 @@ bool CloneWorker::before(ExecutionNode* node) {
     TRI_ASSERT(clone->id() != node->id());
     _originalToClone.try_emplace(node, clone);
     _nodeAliases.try_emplace(clone->id(), node->id());
+    _stack.push_back(node);
   }
-  return true;
+  return false;
 }
 
 // This hooks up dependencies; we're doing this in after to make sure
 // that all nodes (including those contained in subqueries!) are cloned
-void CloneWorker::after(ExecutionNode* node) {
+void CloneWorker::processAfter(ExecutionNode* node) {
   auto clone = _originalToClone.at(node);
 
   auto deps = node->getDependencies();
@@ -249,13 +275,25 @@ void QuerySnippet::addNode(ExecutionNode* node) {
   }
 }
 
+/*
+ * WARNING --- WARNING
+ *
+ * This function changes the plan, and then (tries to) restore the original state
+ * after serialisation.
+ *
+ * If the restoration is not complete this will lead to ugly bugs.
+ *
+ */
 void QuerySnippet::serializeIntoBuilder(
     ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     ShardLocking& shardLocking,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
     VPackBuilder& infoBuilder) {
-  TRI_ASSERT(!_nodes.empty());
+  _nodes.front()->plan()->show();
+
+  ExecutionNode *remoteParent{nullptr};
+
   TRI_ASSERT(!_expansions.empty());
   auto firstBranchRes = prepareFirstBranch(server, nodesById, shardLocking);
   if (!firstBranchRes.ok()) {
@@ -302,12 +340,11 @@ void QuerySnippet::serializeIntoBuilder(
     _globalScatter->addClient(_remoteNode);
 
     // For serialization remove the dependency of Remote
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    std::vector<ExecutionNode*> deps;
-    _remoteNode->dependencies(deps);
-    TRI_ASSERT(deps.size() == 1);
-    TRI_ASSERT(deps[0] == _globalScatter);
-#endif
+
+    auto remoteDependencies = _remoteNode->getDependencies();
+    TRI_ASSERT(remoteDependencies.size() == 1);
+    TRI_ASSERT(remoteDependencies[0] == _globalScatter);
+
     _remoteNode->removeDependencies();
   }
 
@@ -326,6 +363,7 @@ void QuerySnippet::serializeIntoBuilder(
     // Create an internal GatherNode, that will connect to all execution
     // steams of the query
     auto plan = _nodes.front()->plan();
+
     TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
@@ -341,7 +379,8 @@ void QuerySnippet::serializeIntoBuilder(
     auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
-    ScatterNode* internalScatter = nullptr;
+    DistributeConsumerNode* prototypeConsumer{nullptr};
+    ScatterNode* internalScatter{nullptr};
     if (_remoteNode != nullptr) {  // RemoteBlock talking to coordinator snippet
       TRI_ASSERT(_globalScatter != nullptr);
       TRI_ASSERT(plan == _globalScatter->plan());
@@ -350,8 +389,11 @@ void QuerySnippet::serializeIntoBuilder(
       internalScatter->clearClients();
 
       TRI_ASSERT(_remoteNode->getDependencies().size() == 0);
+      TRI_ASSERT(_remoteNode->getParents().size() == 1);
 
-      ExecutionNode* secondToLast = _remoteNode->getFirstParent();
+      // we store the remote parent to be able to
+      // restore the plan later. Please, please don't ask why.
+      remoteParent = _remoteNode->getFirstParent();
       plan->unlinkNode(_remoteNode);
 
       internalScatter->addDependency(_remoteNode);
@@ -395,15 +437,15 @@ void QuerySnippet::serializeIntoBuilder(
       }
 
       // hook distribute node into stream '0', since that does not happen below
-      DistributeConsumerNode* consumer =
+      prototypeConsumer =
           createConsumerNode(plan, internalScatter, distIds[0]);
-      nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(prototypeConsumer->id(), std::numeric_limits<size_t>::max());
       // now wire up the temporary nodes
 
       TRI_ASSERT(_nodes.size() > 1);
 
-      TRI_ASSERT(!secondToLast->hasDependency());
-      secondToLast->addDependency(consumer);
+      TRI_ASSERT(!remoteParent->hasDependency());
+      remoteParent->addDependency(prototypeConsumer);
     }
     
 #if 0
@@ -430,21 +472,44 @@ void QuerySnippet::serializeIntoBuilder(
     auto snippetRoot = _nodes.at(0);
 
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
-      auto cloneWorker = CloneWorker(snippetRoot, _remoteNode, internalGather, internalScatter,
+      auto cloneWorker = CloneWorker(snippetRoot, internalGather, internalScatter,
                                      localExpansions, i, distIds[i], nodeAliases);
-      snippetRoot->walk(cloneWorker);
+      // Warning, the walkerworker is abused.
+      cloneWorker.process();
     }
 
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
     internalGather->toVelocyPack(infoBuilder, flags, false);
 
+    // Clean up plan for next run
+    //
+    // TODO: This is so ragingly upsetting and needs to be fixed.
+    //
+    //       with a big hammer.
+    //
+    //       please.
+    if (prototypeConsumer != nullptr) {
+      plan->unlinkNode(prototypeConsumer);
+    }
+    if (internalScatter != nullptr) {
+      plan->unlinkNode(internalScatter);
+    }
+
+    if(_remoteNode != nullptr) {
+      TRI_ASSERT(remoteParent != nullptr);
+      // Yes, we want setParent, to make sure all the
+      // DistributeConsumer Junk we added upstairs is pruned.
+      _remoteNode->setParent(remoteParent);
+      TRI_ASSERT(remoteParent->getDependencies().size() == 1);
+      TRI_ASSERT(remoteParent->getDependencies()[0] == _remoteNode);
+    }
   } else {
     const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
     _nodes.front()->toVelocyPack(infoBuilder, flags, false);
   }
 
   if (_remoteNode != nullptr) {
-    // For the local copy read the dependency of Remote
+  // For the local copy read the dependency of Remote
     TRI_ASSERT(_remoteNode->getDependencies().size() == 0);
     _remoteNode->addDependency(_globalScatter);
   }
