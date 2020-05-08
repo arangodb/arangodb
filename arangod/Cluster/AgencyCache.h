@@ -98,7 +98,7 @@ private:
   void invokeCallbacks(std::unordered_set<uint64_t> const&) const;
 
   /// @brief invoke given callbacks
-  void invokeCallbackNoLock(uint64_t const&, std::string const& = std::string()) const;
+  void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
   /// @brief handle callbacks for specific log document
   void handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& toCall);

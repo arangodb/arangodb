@@ -46,6 +46,9 @@ class QuerySnippet {
  public:
   using Id = size_t;
  private:
+
+  using MapNodeToColNameToShards = std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
+
   struct ExpansionInformation {
     ExecutionNode* node;
     bool doExpand;
@@ -81,7 +84,7 @@ class QuerySnippet {
   Id id() const { return _id; }
 
  private:
-  ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> prepareFirstBranch(
+  ResultT<MapNodeToColNameToShards> prepareFirstBranch(
       ServerID const& server,
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       ShardLocking& shardLocking);

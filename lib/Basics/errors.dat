@@ -448,6 +448,7 @@ ERROR_INVALID_SMART_JOIN_ATTRIBUTE,4006,"invalid smart join attribute declaratio
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE,4007,"shard key value must be prefixed with the value of the smart join attribute","when using smartJoinAttribute for a collection, the shard key value must be prefixed with the value of the smart join attribute."
 ERROR_NO_SMART_JOIN_ATTRIBUTE,4008,"smart join attribute not given or invalid","The given document does not have the required smart join attribute set or it has an invalid value."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the value of the smartJoinAttribute","Will be raised if there is an attempt to update the value of the smartJoinAttribute."
+ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised if there is an attempt to create an edge between separated graph components."
 
 ################################################################################
 ## Cluster repair errors

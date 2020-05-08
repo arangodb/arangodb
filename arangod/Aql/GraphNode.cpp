@@ -101,7 +101,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _defaultDirection(parseDirection(direction)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(false),
+      _isDisjoint(false) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
@@ -123,6 +124,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = true;
+      _isDisjoint = true;
       std::string distributeShardsLike;
       for (size_t i = 0; i < edgeCollectionCount; ++i) {
         auto col = graph->getMember(i);
@@ -131,14 +133,19 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         }
         std::string n = col->getString();
         auto c = ci.getCollection(_vocbase->name(), n);
+        if (c->isSmart() && !c->isDisjoint()) {
+          _isDisjoint = false;
+        }
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
           _isSmart = false;
+          _isDisjoint = false;
           break;
         }
         if (distributeShardsLike.empty()) {
           distributeShardsLike = c->distributeShardsLike();
         } else if (distributeShardsLike != c->distributeShardsLike()) {
           _isSmart = false;
+          _isDisjoint = false;
           break;
         }
       }
@@ -232,21 +239,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     // like a common collection:
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = true;
-      std::string distributeShardsLike;
-      for (auto const& n : eColls) {
-        auto c = ci.getCollection(_vocbase->name(), n);
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
-          _isSmart = false;
-          break;
-        }
-        if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
-          _isSmart = false;
-          break;
-        }
-      }
+      _isSmart = _graphObj->isSmart();
+      _isDisjoint = _graphObj->isDisjoint();
     }
 
     for (const auto& n : eColls) {
@@ -457,7 +451,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
       _directions(std::move(directions)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(false),
+      _isDisjoint(false) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
 
@@ -490,6 +485,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
+      _isDisjoint(other.isDisjoint()),
       _collectionToShard(other._collectionToShard) {
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
@@ -734,6 +730,8 @@ std::vector<aql::Collection const*> GraphNode::collections() const {
 }
 
 bool GraphNode::isSmart() const { return _isSmart; }
+
+bool GraphNode::isDisjoint() const { return _isDisjoint; }
 
 TRI_vocbase_t* GraphNode::vocbase() const { return _vocbase; }
 

@@ -156,9 +156,8 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
-ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, SubqueryNode* snode,
+ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
-                                                          ExecutionNode* originalParent,
                                                           bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections
@@ -305,6 +304,16 @@ void insertScatterGatherSnippet(
 //// @brief find all subqueries in a plan and store a map from subqueries to nodes
 void findSubqueriesInPlan(ExecutionPlan& plan,
                           containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
+
+//// @brief create a DistributeNode for the given ExecutionNode
+auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
+
+//// @brief create a gather node matching the given DistributeNode
+auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;
+
+//// @brief enclose a node in DISTRIBUTE/GATHER
+auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
+    -> DistributeNode*;
 
 }  // namespace aql
 }  // namespace arangodb

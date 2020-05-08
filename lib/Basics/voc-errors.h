@@ -1695,6 +1695,12 @@ constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 
 /// smartJoinAttribute.
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
 
+/// 4010: ERROR_INVALID_DISJOINT_SMART_EDGE
+/// "non disjoint edge found"
+/// Will be raised if there is an attempt to create an edge between separated
+/// graph components.
+constexpr int TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = 4010;
+
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"
 /// General error during cluster repairs
