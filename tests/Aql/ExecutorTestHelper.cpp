@@ -82,7 +82,7 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
   EXPECT_EQ(actual->size(), expected->size());
-  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  auto outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
   if (onlyCompareRegisters) {
     outRegs = onlyCompareRegisters->size();
     ASSERT_GE(actual->getNrRegs(), outRegs);
@@ -130,7 +130,7 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
 
   EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
 
-  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  auto outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
   if (onlyCompareRegisters) {
     outRegs = onlyCompareRegisters->size();
     ASSERT_GE(actual->getNrRegs(), outRegs);

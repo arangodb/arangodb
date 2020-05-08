@@ -76,10 +76,10 @@ class HashedCollectExecutorTest
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> RegisterInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    auto readableInputRegisters = make_shared_unordered_set();
-    auto writeableOutputRegisters = make_shared_unordered_set();
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -87,18 +87,18 @@ class HashedCollectExecutorTest
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters->emplace(in);
-      writeableOutputRegisters->emplace(out);
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
     }
 
     if (collectRegister != RegisterPlan::MaxRegisterId) {
-      writeableOutputRegisters->emplace(collectRegister);
+      writeableOutputRegisters.emplace(collectRegister);
     }
     for (auto const& [out, in] : aggregateRegisters) {
       if (in != RegisterPlan::MaxRegisterId) {
-        readableInputRegisters->emplace(in);
+        readableInputRegisters.emplace(in);
       }
-      writeableOutputRegisters->emplace(out);
+      writeableOutputRegisters.emplace(out);
     }
 
     return RegisterInfos{std::move(readableInputRegisters),
@@ -568,10 +568,10 @@ class HashedCollectExecutorTestAggregate
   auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> const& groupRegisters)
       -> RegisterInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    auto readableInputRegisters = make_shared_unordered_set();
-    auto writeableOutputRegisters = make_shared_unordered_set();
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -579,17 +579,17 @@ class HashedCollectExecutorTestAggregate
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters->emplace(in);
-      writeableOutputRegisters->emplace(out);
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
     }
 
     auto agg = getAggregator();
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
     if (agg.inReg != RegisterPlan::MaxRegisterId) {
-      readableInputRegisters->emplace(agg.inReg);
+      readableInputRegisters.emplace(agg.inReg);
     }
 
-    writeableOutputRegisters->emplace(3);
+    writeableOutputRegisters.emplace(3);
 
     return RegisterInfos{std::move(readableInputRegisters),
                          std::move(writeableOutputRegisters),

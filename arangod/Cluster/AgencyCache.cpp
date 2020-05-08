@@ -38,7 +38,7 @@ AgencyCache::AgencyCache(
 
 
 AgencyCache::~AgencyCache() {
-    beginShutdown();
+  beginShutdown();
 }
 
 /// Start all agent thread
@@ -51,8 +51,8 @@ bool AgencyCache::start() {
 // Get Builder from readDB mainly /Plan /Current
 std::tuple <query_t, index_t> const AgencyCache::get(
   std::string const& path) const {
-  std::lock_guard g(_storeLock);
   auto ret = std::make_shared<VPackBuilder>();
+  std::lock_guard g(_storeLock);
   if (_commitIndex > 0) {
     _readDB.get("arango/" + path).toBuilder(*ret);
   }
@@ -62,9 +62,9 @@ std::tuple <query_t, index_t> const AgencyCache::get(
 // Get Builder from readDB mainly /Plan /Current
 std::tuple <query_t, index_t> const AgencyCache::read(
   std::vector<std::string> const& paths) const {
+  auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::lock_guard g(_storeLock);
 
-  auto result = std::make_shared<arangodb::velocypack::Builder>();
   if (_commitIndex > 0) {
     auto query = std::make_shared<arangodb::velocypack::Builder>();
     {
@@ -84,6 +84,7 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   if (index <= _commitIndex) {
     return futures::makeFuture(arangodb::Result());
   }
+  // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitLock);
   return _waiting.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
 }
@@ -147,7 +148,7 @@ void AgencyCache::run() {
       }
       LOG_TOPIC("afede", TRACE, Logger::CLUSTER)
           << "AgencyCache: poll polls: waiting for commitIndex " << commitIndex + 1;
-      return AsyncAgencyComm().poll(60s, commitIndex+1);
+      return AsyncAgencyComm().poll(60s, commitIndex + 1);
     };
 
   // while not stopping
@@ -332,7 +333,7 @@ void AgencyCache::beginShutdown() {
 
   LOG_TOPIC("a63ae", TRACE, Logger::CLUSTER) << "Clearing books in agency cache";
 
-// trigger all waiting for an index
+  // trigger all waiting for an index
   {
     std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
@@ -380,7 +381,7 @@ std::vector<bool> AgencyCache::has(std::vector<std::string> const& paths) const 
 }
 
 
-void AgencyCache::invokeCallbackNoLock(uint64_t const& id, std::string const& key) const {
+void AgencyCache::invokeCallbackNoLock(uint64_t id, std::string const& key) const {
   auto cb = _callbackRegistry.getCallback(id);
   if (cb.get() != nullptr) {
     try {

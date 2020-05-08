@@ -33,6 +33,7 @@
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
 #include "Basics/StaticStrings.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -44,7 +45,8 @@ using namespace arangodb::aql;
 DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
-    bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
+    bool allowKeyConversionToObject, bool createKeys, bool fixupGraphInput,
+     ScatterNode::ScatterType type)
     : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
@@ -52,6 +54,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
       _createKeys(createKeys),
       _usesDefaultSharding(collection->usesDefaultSharding()),
       _allowSpecifiedKeys(allowSpecifiedKeys),
+      _fixupGraphInput(fixupGraphInput),
       _collection(collection),
       _logCol(collection->getCollection()),
       _type(type) {}
@@ -80,6 +83,10 @@ auto DistributeExecutorInfos::usesDefaultSharding() const noexcept -> bool {
 }
 auto DistributeExecutorInfos::allowSpecifiedKeys() const noexcept -> bool {
   return _allowSpecifiedKeys;
+}
+
+auto DistributeExecutorInfos::needsToFixGraphInput() const -> bool {
+  return _fixupGraphInput;
 }
 
 auto DistributeExecutorInfos::scatterType() const noexcept -> ScatterNode::ScatterType {
@@ -120,8 +127,8 @@ DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                     {},
                     registerInfos.numberOfInputRegisters(),
                     registerInfos.numberOfOutputRegisters(),
-                    *registerInfos.registersToClear(),
-                    *registerInfos.registersToKeep()};
+                    registerInfos.registersToClear(),
+                    registerInfos.registersToKeep()};
   // NOTE: Do never change this type! The execute logic below requires this and only this type.
   _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
       &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
@@ -177,7 +184,8 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
       _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
-  OutputAqlItemRow output{newBlock, make_shared_unordered_set(),
+  RegIdSet const noOutputRegisters;
+  OutputAqlItemRow output{newBlock, noOutputRegisters,
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear()};
   while (!output.isFull()) {
@@ -291,6 +299,21 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
   }
 }
 
+auto DistributeExecutor::getClientByIdSlice(VPackSlice input) -> std::string {
+  // Need to fix this document.
+  // We need id and key as input.
+  auto keyPart = transaction::helpers::extractKeyPart(input);
+  _keyBuilder.clear();
+  _keyBuilder.openObject(true);
+  _keyBuilder.add(StaticStrings::KeyString,
+                  VPackValuePair(keyPart.data(), keyPart.size(), VPackValueType::String));
+  _keyBuilder.close();
+  // If _key is invalid, we will throw here.
+  auto res = _infos.getResponsibleClient(_keyBuilder.slice());
+  THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
+  return res.get();
+}
+
 auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
     -> std::string {
   InputAqlItemRow row{block, rowIndex};
@@ -312,69 +335,92 @@ auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
   }
 
   VPackSlice value = input;
-  bool hasCreatedKeyAttribute = false;
-
-  if (input.isString() && _infos.allowKeyConversionToObject()) {
-    _keyBuilder.clear();
-    _keyBuilder.openObject(true);
-    _keyBuilder.add(StaticStrings::KeyString, input);
-    _keyBuilder.close();
-
-    // clear the previous value
-    block->destroyValue(rowIndex, _infos.registerId());
-
-    // overwrite with new value
-    block->emplaceValue(rowIndex, _infos.registerId(), _keyBuilder.slice());
-
-    value = _keyBuilder.slice();
-    hasCreatedKeyAttribute = true;
-  } else if (!input.isObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  TRI_ASSERT(value.isObject());
-
-  if (_infos.createKeys()) {
-    bool buildNewObject = false;
-    // we are responsible for creating keys if none present
-
-    if (_infos.usesDefaultSharding()) {
-      // the collection is sharded by _key...
-      if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
-        // there is no _key attribute present, so we are responsible for
-        // creating one
-        buildNewObject = true;
-      }
-    } else {
-      // the collection is not sharded by _key
-      if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
-        // a _key was given, but user is not allowed to specify _key
-        if (usedAlternativeRegId || !_infos.allowSpecifiedKeys()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-        }
-      } else {
-        buildNewObject = true;
-      }
+  if (_infos.needsToFixGraphInput()) {
+    if (input.isString()) {
+      return getClientByIdSlice(input);
+    } else if (input.isObject() && input.hasKey(StaticStrings::IdString) && !input.hasKey(StaticStrings::KeyString)) {
+      // The input is an object, but only contains an _id, not a _key value that could be extracted.
+      // We can work with _id value only however so let us do this.
+      return getClientByIdSlice(input.get(StaticStrings::IdString));
     }
+    if (!input.isObject() || !input.hasKey(StaticStrings::IdString)) {
+      // non objects cannot be sharded.
+      // Need to throw here.
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "invalid start vertex. Must either be "
+                                     "an _id string or an object with _id."
+                                     "Instead got: " + input.toJson());
+    }
+    // If the value is valid (like a document) it will simply work.
+    auto res = _infos.getResponsibleClient(value);
+    THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
+    return res.get();
+  } else {
+    bool hasCreatedKeyAttribute = false;
 
-    if (buildNewObject) {
+    if (input.isString() && _infos.allowKeyConversionToObject()) {
       _keyBuilder.clear();
       _keyBuilder.openObject(true);
-      _keyBuilder.add(StaticStrings::KeyString, VPackValue(_infos.createKey(value)));
+      _keyBuilder.add(StaticStrings::KeyString, input);
       _keyBuilder.close();
 
-      _objectBuilder.clear();
-      VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
+      // clear the previous value
+      block->destroyValue(rowIndex, _infos.registerId());
 
-      // clear the previous value and overwrite with new value:
-      auto reg = usedAlternativeRegId ? _infos.alternativeRegisterId()
-                                      : _infos.registerId();
+      // overwrite with new value
+      block->emplaceValue(rowIndex, _infos.registerId(), _keyBuilder.slice());
 
-      block->destroyValue(rowIndex, reg);
-      block->emplaceValue(rowIndex, reg, _objectBuilder.slice());
-      value = _objectBuilder.slice();
+      value = _keyBuilder.slice();
+      hasCreatedKeyAttribute = true;
+    } else if (!input.isObject()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+
+    TRI_ASSERT(value.isObject());
+
+    if (_infos.createKeys()) {
+      bool buildNewObject = false;
+      // we are responsible for creating keys if none present
+
+      if (_infos.usesDefaultSharding()) {
+        // the collection is sharded by _key...
+        if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
+          // there is no _key attribute present, so we are responsible for
+          // creating one
+          buildNewObject = true;
+        }
+      } else {
+        // the collection is not sharded by _key
+        if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
+          // a _key was given, but user is not allowed to specify _key
+          if (usedAlternativeRegId || !_infos.allowSpecifiedKeys()) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+          }
+        } else {
+          buildNewObject = true;
+        }
+      }
+
+      if (buildNewObject) {
+        _keyBuilder.clear();
+        _keyBuilder.openObject(true);
+        _keyBuilder.add(StaticStrings::KeyString, VPackValue(_infos.createKey(value)));
+        _keyBuilder.close();
+
+        _objectBuilder.clear();
+        VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
+
+        // clear the previous value and overwrite with new value:
+        auto reg = usedAlternativeRegId ? _infos.alternativeRegisterId()
+                                        : _infos.registerId();
+
+        block->destroyValue(rowIndex, reg);
+        block->emplaceValue(rowIndex, reg, _objectBuilder.slice());
+        value = _objectBuilder.slice();
+      }
     }
   }
+
   auto res = _infos.getResponsibleClient(value);
   THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
   return res.get();

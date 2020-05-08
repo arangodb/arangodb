@@ -242,8 +242,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
-      std::unordered_set<RegisterId> readableInputRegisters;
-      std::unordered_set<RegisterId> writeableOutputRegisters;
+      RegIdSet readableInputRegisters;
+      RegIdSet writeableOutputRegisters;
 
       RegisterId collectRegister = RegisterPlan::MaxRegisterId;
       calcCollectRegister(collectRegister, writeableOutputRegisters);
@@ -259,9 +259,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       TRI_ASSERT(groupRegisters.size() == _groupVariables.size());
       TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 
-      auto registerInfos = createRegisterInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-          std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
+      auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                               std::move(writeableOutputRegisters));
 
       std::vector<std::string> aggregateTypes;
       std::transform(aggregateVariables().begin(), aggregateVariables().end(),
@@ -299,9 +298,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
       calcAggregateRegisters(aggregateRegisters, readableInputRegisters, writeableOutputRegisters);
 
-      auto registerInfos = createRegisterInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-          std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
+      auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                               std::move(writeableOutputRegisters));
 
       // calculate the aggregate type // TODO refactor nicely
       std::vector<std::unique_ptr<Aggregator>> aggregateValues;
@@ -339,7 +337,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegisterId collectRegister = (*it).second.registerId;
 
       auto registerInfos =
-          createRegisterInfos({}, make_shared_unordered_set({collectRegister}));
+          createRegisterInfos({}, {collectRegister});
 
       auto executorInfos = CountCollectExecutorInfos(collectRegister);
 
@@ -357,9 +355,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       // calculate the group registers
       calcGroupRegisters(groupRegisters, readableInputRegisters, writeableOutputRegisters);
 
-      auto registerInfos = createRegisterInfos(
-          std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-          std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters));
+      auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                               std::move(writeableOutputRegisters));
 
       TRI_ASSERT(groupRegisters.size() == 1);
       auto executorInfos = DistinctCollectExecutorInfos(groupRegisters.front(),
@@ -631,7 +628,7 @@ void CollectNode::calculateAccessibleUserVariables(ExecutionNode const& node,
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }

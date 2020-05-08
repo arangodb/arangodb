@@ -201,7 +201,7 @@ AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& execu
       _blockToReturnNext(0),
       _dataFetchedState(NONE) {}
 
-RegisterId AllRowsFetcher::getNrInputRegisters() const {
+RegisterCount AllRowsFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 

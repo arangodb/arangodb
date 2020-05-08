@@ -171,7 +171,7 @@ class MultiDependencySingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
+  RegisterCount getNrInputRegisters() const;
 
   bool indexIsValid(DependencyInfo const& info) const;
 

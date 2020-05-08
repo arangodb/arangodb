@@ -231,15 +231,15 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   std::vector<SortRegister> sortRegs;
-  auto inputRegs = make_shared_unordered_set();
+  auto inputRegs = RegIdSet{};
   for (auto const& element : _elements) {
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
     sortRegs.emplace_back(id, element);
-    inputRegs->emplace(id);
+    inputRegs.emplace(id);
   }
-  auto registerInfos = createRegisterInfos(inputRegs, make_shared_unordered_set());
+  auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   auto executorInfos =
       SortExecutorInfos(registerInfos.numberOfInputRegisters(),
                         registerInfos.numberOfOutputRegisters(),

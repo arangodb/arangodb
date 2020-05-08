@@ -1398,7 +1398,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     TRI_voc_rid_t requestResume = ranges[0].first;  // start with beginning
-    TRI_ASSERT(requestResume);
+    TRI_ASSERT(requestResume >= coll->minRevision());
     TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =

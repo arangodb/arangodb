@@ -100,7 +100,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   TraverserOptions(arangodb::aql::QueryContext& query,
                    arangodb::velocypack::Slice definition);
-  
+
   TraverserOptions(arangodb::aql::QueryContext&,
                    arangodb::velocypack::Slice info,
                    arangodb::velocypack::Slice collections);
@@ -154,8 +154,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   double estimateCost(size_t& nrItems) const override;
 
-  void activatePrune(std::vector<aql::Variable const*> const&& vars,
-                     std::vector<aql::RegisterId> const&& regs, size_t vertexVarIdx,
+  void activatePrune(std::vector<aql::Variable const*> vars,
+                     std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
                      size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
 
   bool usesPrune() const { return _pruneExpression != nullptr; }

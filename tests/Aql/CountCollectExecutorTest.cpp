@@ -48,8 +48,8 @@ class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
   auto MakeCountCollectRegisterInfos(RegisterId outReg) -> RegisterInfos {
-    return RegisterInfos({}, make_shared_unordered_set({outReg}), outReg,
-                         outReg + 1, {}, {});
+    return RegisterInfos({}, {outReg}, outReg,
+                         outReg + 1, {}, {{}, {}});
   }
 
   auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {
@@ -61,43 +61,43 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryStartRegisterInfos() -> RegisterInfos {
-    auto inputRegisterSet = make_shared_unordered_set({0});
-    auto outputRegisterSet = make_shared_unordered_set({});
+    auto inputRegisterSet = RegIdSet{0};
+    auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto toKeepRegisterSet = RegIdSetStack{{0}, {0}};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
   auto MakeSubqueryStartExecutorInfos() -> SubqueryStartExecutor::Infos {
-    auto inputRegisterSet = make_shared_unordered_set({0});
-    auto outputRegisterSet = make_shared_unordered_set({});
+    auto inputRegisterSet = RegIdSet{0};
+    auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{0};
+    auto toKeepRegisterSet = RegIdSetStack{{0}};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                                         nrOutputRegisters, {}, toKeepRegisterSet);
   }
 
   auto MakeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
     auto const outputRegister = RegisterId{inputRegister + 1};
-    auto inputRegisterSet = make_shared_unordered_set({});
+    auto inputRegisterSet = RegIdSet{};
     for (RegisterId r = 0; r <= inputRegister; ++r) {
-      inputRegisterSet->emplace(r);
+      inputRegisterSet.emplace(r);
     }
-    auto outputRegisterSet = make_shared_unordered_set({outputRegister});
-    auto toKeepRegisterSet = std::unordered_set<RegisterId>{};
+    auto outputRegisterSet = RegIdSet{outputRegister};
+    auto toKeepRegisterSet = RegIdSetStack{{}, {}};
 
-    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet->size());
+    auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
-        static_cast<RegisterCount>(inputRegisterSet->size() + outputRegisterSet->size());
+        static_cast<RegisterCount>(inputRegisterSet.size() + outputRegisterSet.size());
     return RegisterInfos(inputRegisterSet, outputRegisterSet, nrInputRegisters,
                          nrOutputRegisters, {}, toKeepRegisterSet);
   }
@@ -111,9 +111,9 @@ class CountCollectExecutorTest
   auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {
     auto numRegs = RegisterCount{1};
 
-    std::unordered_set<RegisterId> toKeep;
+    RegIdSetStack toKeep{{}, {}};
     for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
+      toKeep.back().emplace(r);
     }
 
     return RegisterInfos({}, {}, numRegs, numRegs, {}, std::move(toKeep));

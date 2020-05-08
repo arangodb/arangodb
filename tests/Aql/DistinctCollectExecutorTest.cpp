@@ -63,11 +63,8 @@ class DistinctCollectExecutorTest
   ResourceMonitor monitor;
   // arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
-
-  std::unordered_set<RegisterId> readableInputRegisters = {0};
-  std::unordered_set<RegisterId> writeableOutputRegisters = {1};
+  RegIdSet readableInputRegisters = {0};
+  RegIdSet writeableOutputRegisters = {1};
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
@@ -77,9 +74,8 @@ class DistinctCollectExecutorTest
   DistinctCollectExecutorInfos executorInfos;
 
   DistinctCollectExecutorTest()
-      : registerInfos(std::make_shared<decltype(readableInputRegisters)>(readableInputRegisters),
-                      std::make_shared<decltype(readableInputRegisters)>(writeableOutputRegisters), 1, 2,
-                      regToClear, regToKeep),
+      : registerInfos(std::move(readableInputRegisters),
+                      std::move(writeableOutputRegisters), 1, 2, {}, {{}}),
         executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
 };
 
