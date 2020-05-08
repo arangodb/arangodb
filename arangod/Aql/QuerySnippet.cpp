@@ -66,40 +66,42 @@ DistributeConsumerNode* createConsumerNode(ExecutionPlan* plan, ScatterNode* int
 using LocalExpansions = std::unordered_map<ExecutionNode*, std::set<ShardID>>;
 using NodeAliasMap = std::map<ExecutionNodeId, ExecutionNodeId>;
 
-// The CloneWorker "clones" a snippet
-//
-// rootNode -> N1 -> N2 -> ... -> Nk [-> DistributeConsumer -> internalScatter -> remoteNode]
-//
-// (the back part is optional, because we could be the last snippet and hence do not need to
-// talk to a coordinator)
-//
-// to
-//
-// internalGather -> rootNode -> CN1 -> CN2 -> ... -> CNk [ -> DistributeConsumerNode -> internalScatter ]
-//
-// where CN1 ... CNk are clones of N1 ... Nk, taking into account subquery nodes,
-// and the DistributeConsumer are only inserted (and *newly created*) if the original snippet
-// has the back part.
-//
-// Note that there is only *one* internal scatter/internal gather involved, and these are neither
-// created nor cloned in this code.
-//
-// This is used to create a plan of the form
-//
-//                      INTERNAL_SCATTER
-//            /               |                         \
-//           /                |                          \
-//  DistributeConsumer   DistributeConsumer  ...  DistributeConsumer
-//          |                 |                           |
-//         CNk               CNk                         CNk
-//          |                 |                           |
-//         ...               ...                         ...
-//          |                 |                           |
-//         CN0               CN0                         CN0
-//          \                 |                           /
-//           \                |                          /
-//                      INTERNAL_GATHER
-//
+/*
+ * The CloneWorker "clones" a snippet
+ *
+ * rootNode -> N1 -> N2 -> ... -> Nk [-> DistributeConsumer -> internalScatter -> remoteNode]
+ *
+ * (the back part is optional, because we could be the last snippet and hence do not need to
+ * talk to a coordinator)
+ *
+ * to
+ *
+ * internalGather -> rootNode -> CN1 -> CN2 -> ... -> CNk [ -> DistributeConsumerNode -> internalScatter ]
+ *
+ * where CN1 ... CNk are clones of N1 ... Nk, taking into account subquery nodes,
+ * and the DistributeConsumer are only inserted (and *newly created*) if the original snippet
+ * has the back part.
+ *
+ * Note that there is only *one* internal scatter/internal gather involved, and these are neither
+ * created nor cloned in this code.
+ *
+ * This is used to create a plan of the form
+ *
+ *                      INTERNAL_SCATTER
+ *            /               |                         \
+ *           /                |                          \
+ *  DistributeConsumer   DistributeConsumer  ...  DistributeConsumer
+ *          |                 |                           |
+ *         CNk               CNk                         CNk
+ *          |                 |                           |
+ *         ...               ...                         ...
+ *          |                 |                           |
+ *         CN0               CN0                         CN0
+ *          \                 |                           /
+ *           \                |                          /
+ *                      INTERNAL_GATHER
+ *
+ */
 class CloneWorker final : public WalkerWorker<ExecutionNode> {
  public:
   explicit CloneWorker(ExecutionNode* rootNode, GatherNode* internalGather,
@@ -225,7 +227,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::REMOTE: {
       TRI_ASSERT(_remoteNode == nullptr);
-      _remoteNode = ExecutionNode::castTo<RemoteNode *>(node);
+      _remoteNode = ExecutionNode::castTo<RemoteNode*>(node);
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
@@ -278,8 +280,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
 /*
  * WARNING --- WARNING
  *
- * This function changes the plan, and then (tries to) restore the original state
- * after serialisation.
+ * This function changes the plan, and then (tries to) restore the original
+ * state after serialisation.
  *
  * If the restoration is not complete this will lead to ugly bugs.
  *
@@ -287,12 +289,11 @@ void QuerySnippet::addNode(ExecutionNode* node) {
 void QuerySnippet::serializeIntoBuilder(
     ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    ShardLocking& shardLocking,
-    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+    ShardLocking& shardLocking, std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
     VPackBuilder& infoBuilder) {
   _nodes.front()->plan()->show();
 
-  ExecutionNode *remoteParent{nullptr};
+  ExecutionNode* remoteParent{nullptr};
 
   TRI_ASSERT(!_expansions.empty());
   auto firstBranchRes = prepareFirstBranch(server, nodesById, shardLocking);
@@ -322,7 +323,8 @@ void QuerySnippet::serializeIntoBuilder(
 
       // Need to wire up the internal scatter and distribute consumer in between the last two nodes
       // Note that we need to clean up this after we produced the snippets.
-      _globalScatter = ExecutionNode::castTo<ScatterNode*>(_remoteNode->getFirstDependency());
+      _globalScatter =
+          ExecutionNode::castTo<ScatterNode*>(_remoteNode->getFirstDependency());
       // Let the globalScatter node distribute data by server
       _globalScatter->setScatterType(ScatterNode::ScatterType::SERVER);
 
@@ -351,12 +353,12 @@ void QuerySnippet::serializeIntoBuilder(
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
       arangodb::basics::StringUtils::itoa(_idOfSinkRemoteNode.id()) + ":" + server));
-  if (!localExpansions.empty()) { // one expansion
+  if (!localExpansions.empty()) {  // one expansion
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
     size_t numberOfShardsToPermutate = localExpansions.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
-    
+
     std::vector<std::string> distIds{};
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
@@ -376,7 +378,8 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLater());
     internalGather->setRegsToClear({});
-    auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
+    auto const reservedId =
+        ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
     DistributeConsumerNode* prototypeConsumer{nullptr};
@@ -437,8 +440,7 @@ void QuerySnippet::serializeIntoBuilder(
       }
 
       // hook distribute node into stream '0', since that does not happen below
-      prototypeConsumer =
-          createConsumerNode(plan, internalScatter, distIds[0]);
+      prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0]);
       nodeAliases.try_emplace(prototypeConsumer->id(), std::numeric_limits<size_t>::max());
       // now wire up the temporary nodes
 
@@ -447,7 +449,7 @@ void QuerySnippet::serializeIntoBuilder(
       TRI_ASSERT(!remoteParent->hasDependency());
       remoteParent->addDependency(prototypeConsumer);
     }
-    
+
 #if 0
     // hook in the async executor node, if required
     if (internalGather->parallelism() == GatherNode::Parallelism::Async) {
@@ -460,7 +462,7 @@ void QuerySnippet::serializeIntoBuilder(
       plan->registerNode(async.release());
     }
 #endif
-    
+
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
     internalGather->addDependency(_nodes.front());
@@ -495,7 +497,7 @@ void QuerySnippet::serializeIntoBuilder(
       plan->unlinkNode(internalScatter);
     }
 
-    if(_remoteNode != nullptr) {
+    if (_remoteNode != nullptr) {
       TRI_ASSERT(remoteParent != nullptr);
       // Yes, we want setParent, to make sure all the
       // DistributeConsumer Junk we added upstairs is pruned.
@@ -509,7 +511,7 @@ void QuerySnippet::serializeIntoBuilder(
   }
 
   if (_remoteNode != nullptr) {
-  // For the local copy read the dependency of Remote
+    // For the local copy read the dependency of Remote
     TRI_ASSERT(_remoteNode->getDependencies().size() == 0);
     _remoteNode->addDependency(_globalScatter);
   }
@@ -568,7 +570,8 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       // prototype collection.
       // We want to instantiate this snippet here exactly iff this is the case.
       auto needInstanceHere = std::invoke([&]() {
-        auto const* const protoCol = localGraphNode->isUsedAsSatellite()
+        auto const* const protoCol =
+            localGraphNode->isUsedAsSatellite()
                 ? ExecutionNode::castTo<CollectionAccessingNode*>(
                       localGraphNode->getSatelliteOf(nodesById))
                       ->collection()
@@ -617,7 +620,9 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
 
       TRI_ASSERT(numShards > 0);
       if (numShards == 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Could not find a shard to instantiate for graph node when expected to");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                       "Could not find a shard to instantiate "
+                                       "for graph node when expected to");
       }
 
       auto foundEnoughShards = numShards == localGraphNode->collections().size();
@@ -692,4 +697,3 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
   }  // for _expansions - end;
   return {localExpansions};
 }
-
