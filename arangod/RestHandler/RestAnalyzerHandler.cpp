@@ -456,7 +456,13 @@ void RestAnalyzerHandler::removeAnalyzer(
 
   if (finishPlanModifying(databaseID, false)) {
     restore = false;
-    analyzers.finalizeRemove(normalizedName);// TODO: log if failure
+    auto finalizeResult = analyzers.finalizeRemove(name);
+    if (finalizeResult.fail()) {
+      // note the failure here. But change itself is already committed so report success
+      LOG_TOPIC("86631", WARN, arangodb::Logger::CLUSTER)
+        << " Failed to perform analyzer " << name << " removal finazlizing in cluster. Code: "
+        << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
+    }
   } else {
     return;
   }

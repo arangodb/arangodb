@@ -697,8 +697,15 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     FinishPlanModifying(isolate, v8g, databaseID, false);
-    analyzers.finalizeRemove(name);// TODO: log if failure
     restore = false;
+    auto finalizeResult  = analyzers.finalizeRemove(name);
+    if (finalizeResult.fail()) {
+      // note the failure here. But change itself is already committed so report success
+      LOG_TOPIC("86631", WARN, arangodb::Logger::CLUSTER)
+        << " Failed to perform analyzer " << name << " removal finazlizing in cluster. Code: "
+        << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
+    }
+    
 
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {
