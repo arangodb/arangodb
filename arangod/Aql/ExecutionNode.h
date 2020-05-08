@@ -485,9 +485,9 @@ class ExecutionNode {
   RegisterInfos createRegisterInfos(RegIdSet readableInputRegisters,
                                     RegIdSet writableOutputRegisters) const;
 
-  RegisterId getNrInputRegisters() const;
+  RegisterCount getNrInputRegisters() const;
 
-  RegisterId getNrOutputRegisters() const;
+  RegisterCount getNrOutputRegisters() const;
 
   RegisterId varToRegUnchecked(Variable const& var) const;
 

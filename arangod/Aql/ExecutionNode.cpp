@@ -1086,13 +1086,13 @@ RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters
                        regsToKeep};
 }
 
-RegisterId ExecutionNode::getNrInputRegisters() const {
+RegisterCount ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   // in case of the SingletonNode, there are no input registers
   return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
-RegisterId ExecutionNode::getNrOutputRegisters() const {
+RegisterCount ExecutionNode::getNrOutputRegisters() const {
   if (getType() == ExecutionNode::RETURN) {
     // Special case for RETURN, which usually writes only 1 register.
     // TODO We should be able to remove this when the new register planning is ready!
