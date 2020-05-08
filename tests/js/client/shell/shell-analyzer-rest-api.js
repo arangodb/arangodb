@@ -269,7 +269,6 @@ function testSuite() {
             }
           }
         };
-        print("========================================================================================================\n");
         view.properties(properties);
 
         result = arango.DELETE("/_api/analyzer/" + name);

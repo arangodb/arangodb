@@ -700,7 +700,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto finalizeResult  = analyzers.finalizeRemove(name);
     if (finalizeResult.fail()) {
       // note the failure here. But change itself is already committed so report success
-      LOG_TOPIC("86631", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("a4813", WARN, arangodb::iresearch::TOPIC)
         << " Failed to perform analyzer " << name << " removal finazlizing in cluster. Code: "
         << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
     }
