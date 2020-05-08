@@ -122,7 +122,7 @@ RestStatus RestSystemReportHandler::execute() {
         std::unique_lock<std::mutex> exclusive(_exclusive, std::defer_lock);
         if (exclusive.try_lock()) {
           for (auto const& cmd : cmds) {
-            if(server().isStopping()) {
+            if (server().isStopping()) {
               generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
               return RestStatus::DONE;
             }

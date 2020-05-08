@@ -26,7 +26,10 @@
 
 TEST(formats_tests, duplicate_register) {
   struct dummy_format: public irs::format {
-    DECLARE_FORMAT_TYPE() { static irs::format::type_id type("dummy_format"); return type; }
+    static constexpr irs::string_ref type_name() noexcept {
+      return "dummy_format";
+    }
+
     static ptr make() { return ptr(new dummy_format()); }
     dummy_format(): irs::format(dummy_format::type()) { }
     virtual irs::column_meta_writer::ptr get_column_meta_writer() const override { return nullptr; }
@@ -50,12 +53,12 @@ TEST(formats_tests, duplicate_register) {
     ASSERT_FALSE(irs::formats::exists("dummy_format"));
     ASSERT_EQ(nullptr, irs::formats::get("dummy_format"));
 
-    irs::format_registrar initial(dummy_format::type(), irs::string_ref::NIL, &dummy_format::make);
+    irs::format_registrar initial(irs::type<dummy_format>::get(), irs::string_ref::NIL, &dummy_format::make);
     ASSERT_EQ(!initial_expected, !initial);
   }
 
   initial_expected = false; // next test iteration will not be able to register the same format
-  irs::format_registrar duplicate(dummy_format::type(), "foo", &dummy_format::make);
+  irs::format_registrar duplicate(irs::type<dummy_format>::get(), "foo", &dummy_format::make);
   ASSERT_TRUE(!duplicate);
 
   ASSERT_TRUE(irs::formats::exists("dummy_format"));

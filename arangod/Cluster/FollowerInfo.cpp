@@ -337,6 +337,8 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   std::string planPath = PlanShardPath(*_docColl);
   AgencyComm ac(_docColl->vocbase().server());
   int badCurrentCount = 0;
+  using namespace std::chrono_literals;
+  auto wait(50ms), waitMore(wait);
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
       LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
@@ -401,8 +403,11 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           << reportName(isRemove) << ", could not read " << planPath << " and "
           << curPath << " in agency.";
     }
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(500ms);
+
+    std::this_thread::sleep_for(wait);
+    if(wait < 500ms) {
+      wait += waitMore;
+    }
   } while (!_docColl->vocbase().server().isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
 }

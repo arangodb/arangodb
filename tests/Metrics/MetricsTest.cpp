@@ -55,9 +55,6 @@ TEST_F(MetricsTest, test_counter) {
   c.store(0);
   ASSERT_EQ(c.load(),  0);
 
-  //std::string s;
-  //c.toPrometheus(s);
-  //LOG_DEVEL << s;
 }
 
 template<typename T> void gauge_test() {
@@ -78,9 +75,6 @@ template<typename T> void gauge_test() {
   g -= g.load();
   ASSERT_DOUBLE_EQ(g.load(),  zero);
 
-  //std::string s;
-  //g.toPrometheus(s);
-  //LOG_DEVEL << s;
 }
 
 TEST_F(MetricsTest, test_gauge_double) {

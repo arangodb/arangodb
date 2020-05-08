@@ -28,24 +28,16 @@
 
 #include "gtest/gtest.h"
 
-#include <map>
-
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringBuffer.h"
 #include "Cluster/MaintenanceRestHandler.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
+#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-// GeneralResponse only has a "protected" constructor.
-class TestResponse : public arangodb::HttpResponse {
- public:
-  TestResponse()
-      : arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr){};
-
-};  // class TestResponse
 
 // give access to some protected routines for more thorough unit tests
 class TestHandler : public arangodb::MaintenanceRestHandler {
@@ -61,7 +53,8 @@ class TestHandler : public arangodb::MaintenanceRestHandler {
 };  // class TestHandler
 
 TEST(MaintenanceRestHandler, parse_rest_put) {
-  VPackBuilder body;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder body(buffer);
 
   // intentionally building this in non-alphabetic order, and name not first
   //  {"name":"CreateCollection","collection":"a","database":"test","properties":{"journalSize":1111}}
@@ -77,17 +70,15 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
     body.add("collection", VPackValue("a"));
   }
 
-  std::string json_str(body.toJson());
-
-  std::unordered_map<std::string, std::string> x;
-  arangodb::HttpRequest* dummyRequest =
-      arangodb::HttpRequest::createHttpRequest(arangodb::rest::ContentType::JSON,
-                                               json_str.c_str(), json_str.length(), x);
+  auto* dummyRequest = new arangodb::HttpRequest(arangodb::ConnectionInfo(), 1, false);
+  dummyRequest->setDefaultContentType(); // JSON
+  dummyRequest->setPayload(buffer);
   dummyRequest->setRequestType(arangodb::rest::RequestType::PUT);
-  TestResponse* dummyResponse = new TestResponse;
+
+  auto* dummyResponse = new arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr);
   arangodb::application_features::ApplicationServer dummyServer{nullptr, nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
-
+  
   ASSERT_TRUE(dummyHandler.test_parsePutBody(body.slice()));
   ASSERT_TRUE(dummyHandler.getActionDesc().has("name"));
   ASSERT_EQ(dummyHandler.getActionDesc().get("name"), "CreateCollection");

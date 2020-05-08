@@ -431,7 +431,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
-            ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)},
+            ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                                {std::string(DATABASE), std::string(dbname)}},
                               HIGHER_PRIORITY));
       } else {
@@ -446,7 +446,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(
-          ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)},
+          ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                              {std::string(DATABASE), std::string(dbname)}},
                             HIGHER_PRIORITY));
     }
@@ -888,12 +888,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
         if (!pdbs.hasKey(planPath)) {
           LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
-              << "Ooops, we have a shard for which we believe to be the "
-                 "leader,"
-                 " but the Plan does not have it any more, we do not report "
-                 "in "
-                 "Current about this, database: "
-              << dbName << ", shard: " << shName;
+            << "Ooops, we have a shard for which we believe to be the "
+               "leader, but the Plan does not have it any more, we do not "
+               "report in Current about this, database: "
+            << dbName << ", shard: " << shName;
           continue;
         }
 
