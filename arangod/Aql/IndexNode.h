@@ -108,7 +108,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<Variable const*> getVariablesSetHere() const final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const final;
@@ -119,8 +119,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief called to build up the matching positions of the index values for
   /// the projection attributes (if any)
   void initIndexCoversProjections();
-
-  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||

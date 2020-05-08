@@ -49,9 +49,9 @@ using namespace arangodb::aql;
 
 OutputAqlItemRow::OutputAqlItemRow(
     SharedAqlItemBlockPtr block,
-    std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
-    std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+    RegIdSet const& outputRegisters,
+    RegIdSetStack const& registersToKeep,
+    RegIdSet const& registersToClear,
     AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
@@ -65,19 +65,28 @@ OutputAqlItemRow::OutputAqlItemRow(
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
       _call(clientCall),
-      _outputRegisters(std::move(outputRegisters)),
-      _registersToKeep(std::move(registersToKeep)),
-      _registersToClear(std::move(registersToClear)) {
+      _outputRegisters(outputRegisters),
+      _registersToKeep(registersToKeep),
+      _registersToClear(registersToClear) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
-    for (auto const& reg : *_outputRegisters) {
+    for (auto const& reg : _outputRegisters) {
       TRI_ASSERT(reg < _block->getNrRegs());
     }
-    for (auto const& reg : *_registersToKeep) {
-      TRI_ASSERT(reg < _block->getNrRegs());
-    }
-    for (auto const& reg : *_registersToClear) {
-      TRI_ASSERT(reg < _block->getNrRegs());
+    // the block must have enough columns for the registers of both data rows,
+    // and all the different shadow row depths
+    if (_doNotCopyInputRow) {
+      // pass-through case, we won't use _registersToKeep
+      for (auto const& reg : _registersToClear) {
+        TRI_ASSERT(reg < _block->getNrRegs());
+      }
+    } else {
+      // copying (non-pass-through) case, we won't use _registersToClear
+      for (auto const& stackEntry : _registersToKeep) {
+        for (auto const& reg : stackEntry) {
+          TRI_ASSERT(reg < _block->getNrRegs());
+        }
+      }
     }
   }
 #endif
@@ -128,7 +137,7 @@ void OutputAqlItemRow::consumeShadowRow(RegisterId registerId, ShadowAqlItemRow&
 
   moveValueWithoutRowCopy<ShadowAqlItemRow>(registerId, guard);
   TRI_ASSERT(allValuesWritten());
-  moveRow(sourceRow);
+  copyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE, AdaptRowDepth::DecreaseDepth>(sourceRow, false);
   TRI_ASSERT(produced());
   block().makeDataRow(_baseIndex);
 }
@@ -157,14 +166,14 @@ void OutputAqlItemRow::copyRow(ItemRowType const& sourceRow, bool ignoreMissing)
   copyOrMoveRow<ItemRowType const, CopyOrMove::COPY>(sourceRow, ignoreMissing);
 }
 
-template <class ItemRowType, OutputAqlItemRow::CopyOrMove copyOrMove>
+template <class ItemRowType, OutputAqlItemRow::CopyOrMove copyOrMove, OutputAqlItemRow::AdaptRowDepth adaptRowDepth>
 void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing) {
   // While violating the following asserted states would do no harm, the
   // implementation as planned should only copy a row after all values have
   // been set, and copyRow should only be called once.
   TRI_ASSERT(!_inputRowCopied);
   // We either have a shadowRow, or we need to have all values written
-  TRI_ASSERT((std::is_same<ItemRowType, ShadowAqlItemRow>::value) || allValuesWritten());
+  TRI_ASSERT((std::is_same_v<ItemRowType, ShadowAqlItemRow>) || allValuesWritten());
   if (_inputRowCopied) {
     _lastBaseIndex = _baseIndex;
     return;
@@ -182,7 +191,7 @@ void OutputAqlItemRow::copyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing)
     return;
   }
 
-  doCopyOrMoveRow<ItemRowType, copyOrMove>(sourceRow, ignoreMissing);
+  doCopyOrMoveRow<ItemRowType, copyOrMove, adaptRowDepth>(sourceRow, ignoreMissing);
 }
 
 auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow, size_t rows)
@@ -284,7 +293,7 @@ AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; };
 
 AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
 
-void OutputAqlItemRow::setCall(AqlCall&& call) { _call = call; }
+void OutputAqlItemRow::setCall(AqlCall call) { _call = call; }
 
 void OutputAqlItemRow::didSkip(size_t n) { _call.didSkip(n); }
 
@@ -339,12 +348,12 @@ void OutputAqlItemRow::createShadowRow(InputAqlItemRow const& sourceRow) {
   TRI_ASSERT(!sourceRow.internalBlockIs(_block));
 #endif
   block().makeShadowRow(_baseIndex);
-  doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY>(sourceRow, true);
+  doCopyOrMoveRow<InputAqlItemRow const, CopyOrMove::COPY, AdaptRowDepth::IncreaseDepth>(sourceRow, true);
 }
 
 void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
   size_t newDepth = sourceRow.getDepth() + 1;
-  doCopyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE>(sourceRow, false);
+  doCopyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE, AdaptRowDepth::IncreaseDepth>(sourceRow, false);
   block().setShadowRowDepth(_baseIndex, AqlValue{AqlValueHintUInt{newDepth}});
   // We need to fake produced state
   _numValuesWritten = numRegistersToWrite();
@@ -352,7 +361,7 @@ void OutputAqlItemRow::increaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
 }
 
 void OutputAqlItemRow::decreaseShadowRowDepth(ShadowAqlItemRow& sourceRow) {
-  doCopyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE>(sourceRow, false);
+  doCopyOrMoveRow<ShadowAqlItemRow, CopyOrMove::MOVE, AdaptRowDepth::DecreaseDepth>(sourceRow, false);
   TRI_ASSERT(!sourceRow.isRelevant());
   block().setShadowRowDepth(_baseIndex,
                             AqlValue{AqlValueHintUInt{sourceRow.getDepth() - 1}});
@@ -392,15 +401,52 @@ void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow c
 template <class T>
 struct dependent_false : std::false_type {};
 
-template <class ItemRowType, OutputAqlItemRow::CopyOrMove copyOrMove>
+template <class ItemRowType, OutputAqlItemRow::CopyOrMove copyOrMove, OutputAqlItemRow::AdaptRowDepth adaptRowDepth>
 void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissing) {
   // Note that _lastSourceRow is invalid right after construction. However, when
   // _baseIndex > 0, then we must have seen one row already.
   TRI_ASSERT(!_doNotCopyInputRow);
-  bool mustClone = testIfWeMustClone(sourceRow);
+  bool constexpr createShadowRow = adaptRowDepth == AdaptRowDepth::IncreaseDepth;
+  bool mustClone = testIfWeMustClone(sourceRow) || createShadowRow;
+
+  // Indexes (reversely) which entry in the registersToKeep() stack we need to
+  // use.
+  // Usually, for all InputAqlItemRows, it is zero, respectively the top of the
+  // stack or the back of the vector.
+  // Similarly, for all ShadowAqlItemRows, it is their respective shadow row
+  // depth plus one.
+  // The exceptions are SubqueryStart and SubqueryEnd nodes, where the depth
+  // of all rows increases or decreases, respectively. In these cases, we have
+  // to adapt the depth by plus one or minus one, respectively.
+  auto const rowDepth = std::invoke([&sourceRow]() -> size_t {
+    static bool constexpr isShadowRow = std::is_same_v<std::decay_t<ItemRowType>, ShadowAqlItemRow>;
+    auto const baseRowDepth = std::invoke([&sourceRow]() -> size_t {
+      if constexpr (isShadowRow) {
+        return sourceRow.getDepth() + 1;
+      } else {
+        (void)sourceRow;
+        return 0;
+      }
+    });
+    auto constexpr delta = depthDelta(adaptRowDepth);
+    static_assert(isShadowRow || delta >= 0);
+    return baseRowDepth + delta;
+  });
+  auto const& regsToKeep = std::invoke([this, rowDepth] {
+    if (registersToKeep().size() == 1) {
+      // 3.6 compatibility mode for rolling upgrades. This can be removed in 3.8!
+      return registersToKeep().back();
+    }
+
+    auto const roffset = rowDepth + 1;
+
+    TRI_ASSERT(roffset <= registersToKeep().size());
+    auto idx = registersToKeep().size() - roffset;
+    return registersToKeep().at(idx);
+  });
 
   if (mustClone) {
-    for (auto itemId : registersToKeep()) {
+    for (auto itemId : regsToKeep) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       if (!_allowSourceRowUninitialized) {
         TRI_ASSERT(sourceRow.isInitialized());
@@ -417,7 +463,7 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
   } else {
     TRI_ASSERT(_baseIndex > 0);
     if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
-      block().referenceValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+      block().referenceValuesFromRow(_baseIndex, regsToKeep, _lastBaseIndex);
     }
   }
 
@@ -462,6 +508,15 @@ void OutputAqlItemRow::doCopyOrMoveValue(ItemRowType& sourceRow, RegisterId item
   } else {
     static_assert(dependent_false<ItemRowType>::value, "Unhandled value");
   }
+}
+
+auto constexpr OutputAqlItemRow::depthDelta(AdaptRowDepth adaptRowDepth)
+    -> std::underlying_type_t<OutputAqlItemRow::AdaptRowDepth> {
+  return static_cast<std::underlying_type_t<AdaptRowDepth>>(adaptRowDepth);
+}
+
+RegisterCount OutputAqlItemRow::getNrRegisters() const {
+  return block().getNrRegs();
 }
 
 template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,

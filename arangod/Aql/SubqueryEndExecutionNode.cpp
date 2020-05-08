@@ -92,17 +92,17 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet{};
+  auto outputRegisters = RegIdSet{};
 
   auto inReg = variableToRegisterOptionalId(_inVariable);
   if (inReg != RegisterPlan::MaxRegisterId) {
-    inputRegisters->emplace(inReg);
+    inputRegisters.emplace(inReg);
   }
   auto outReg = variableToRegisterId(_outVariable);
-  outputRegisters->emplace(outReg);
+  outputRegisters.emplace(outReg);
 
-  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto const& vpackOptions = engine.getQuery().vpackOptions();
   auto executorInfos =
