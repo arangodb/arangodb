@@ -45,7 +45,7 @@ class AqlItemMatrix {
   // Anything beyond that has a questionable runtime on nowadays hardware anyways.
   using RowIndex = std::pair<uint32_t, uint32_t>;
 
-  explicit AqlItemMatrix(RegisterId nrRegs);
+  explicit AqlItemMatrix(RegisterCount nrRegs);
   ~AqlItemMatrix() = default;
 
   /**

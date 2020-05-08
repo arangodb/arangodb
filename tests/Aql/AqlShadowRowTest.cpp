@@ -157,7 +157,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
             bool mustDestroy = true;
             AqlValue clonedValue = shadowRowData.clone();
             AqlValueGuard guard{clonedValue, mustDestroy};
-            testee.consumeShadowRow(numRegisters, source, guard);
+            testee.consumeShadowRow(static_cast<RegisterId>(numRegisters), source, guard);
           }
           ASSERT_TRUE(testee.produced());
           testee.advanceRow();
