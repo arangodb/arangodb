@@ -355,8 +355,6 @@ RestStatus RestCursorHandler::handleQueryResult() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     generateResult(rest::ResponseCode::CREATED, std::move(buffer), _queryResult.context);
-    generateResult(rest::ResponseCode::CREATED, std::move(buffer),
-                   _queryResult.context->getVPackOptionsForDump());
     // directly after returning from here, we will free the query's context and free the
     // resources it uses (e.g. leases for a managed transaction). this way the server
     // can send back the query result to the client and the client can make follow-up

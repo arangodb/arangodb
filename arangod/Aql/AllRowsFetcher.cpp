@@ -213,32 +213,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
   return res;
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
-    std::size_t limit = ExecutionBlock::DefaultBatchSize) {
-  // TODO this method is considered obsolete.
-  // It cannot yet be removed as we need modification on the calling Executors which is ongoing
-  // However this method will not be fixed and updated for ShadowRows
-  while (_upstreamState != ExecutionState::DONE) {
-    auto state = fetchUntilDone();
-    if (state == ExecutionState::WAITING) {
-      return {state, nullptr};
-    }
-  }
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-  // This is to remember that this function is obsolete and needs to be removed
-  // before releasing the ShadowRow improvement!
-  TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
-  auto size = _aqlItemMatrix->numberOfBlocks();
-  if (_blockToReturnNext >= size) {
-    return {ExecutionState::DONE, nullptr};
-  }
-  auto blk = _aqlItemMatrix->getBlock(_blockToReturnNext);
-  ++_blockToReturnNext;
-
-  return {(_blockToReturnNext < size ? ExecutionState::HASMORE : ExecutionState::DONE),
-          std::move(blk)};
-}
-
 ExecutionState AllRowsFetcher::upstreamState() {
   if (_aqlItemMatrix == nullptr) {
     // We have not pulled anything yet!

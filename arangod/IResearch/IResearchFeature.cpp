@@ -484,10 +484,10 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
                                       // <scorer-specific properties>...]);
 
   irs::scorers::visit([&functions, &args](irs::string_ref const& name,
-                                          irs::text_format::type_id const& args_format) -> bool {
+                                          irs::type_info const& args_format) -> bool {
     // ArangoDB, for API consistency, only supports scorers configurable via
     // jSON
-    if (irs::text_format::json != args_format) {
+    if (irs::type<irs::text_format::json>::id() != args_format.id()) {
       return true;
     }
 

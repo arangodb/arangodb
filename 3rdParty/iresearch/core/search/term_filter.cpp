@@ -56,7 +56,7 @@ class term_visitor : private util::noncopyable {
   void visit(boost_t /*boost*/) {
     // collect statistics
     assert(segment_ && reader_ && terms_);
-    term_stats_.collect(*segment_, *reader_, 0, terms_->attributes());
+    term_stats_.collect(*segment_, *reader_, 0, *terms_);
 
     // Cache term state in prepared query attributes.
     // Later, using cached state we could easily "jump" to
@@ -103,7 +103,6 @@ NS_ROOT
 // --SECTION--                                            by_term implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_term)
 DEFINE_FACTORY_DEFAULT(by_term)
 
 /*static*/ void by_term::visit(

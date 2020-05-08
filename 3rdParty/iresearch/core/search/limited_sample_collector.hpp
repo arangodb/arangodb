@@ -40,7 +40,7 @@ struct index_reader;
 
 template<typename DocIterator>
 void fill(bitset& bs, DocIterator& it) {
-  auto* doc = it.attributes().template get<irs::document>().get();
+  auto* doc = irs::get<irs::document>(it);
 
   if (!doc) {
     return; // no doc value
@@ -105,7 +105,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     state_.terms = &terms;
 
     // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
+    auto* meta = irs::get<term_meta>(terms);
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
@@ -197,7 +197,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       auto& stats_entry = res.first->second;
 
       // collect statistics, 0 because only 1 term
-      stats_entry.term_stats.collect(*scored_state.segment, field, 0, term_itr->attributes());
+      stats_entry.term_stats.collect(*scored_state.segment, field, 0, *term_itr);
 
       scored_state.state->scored_states.emplace_back(
         std::move(scored_state.cookie),
@@ -341,7 +341,7 @@ class multiterm_visitor {
       const term_reader& reader,
       const seek_term_iterator& terms) {
     // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
+    auto* meta = irs::get<term_meta>(terms);
 
     // NOTE: we can't use reference to 'docs_count' here, like
     // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
