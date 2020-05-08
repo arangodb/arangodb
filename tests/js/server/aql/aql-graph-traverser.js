@@ -598,6 +598,22 @@ function namedGraphSuite() {
       cleanup();
     },
 
+    testGraphNameAccessFromParser: function () {
+      let queries = [
+        [ 'FOR x IN OUTBOUND @startId GRAPH @graph RETURN x', { graph: gn, startId: vertex.B } ],
+        [ 'FOR x IN OUTBOUND @startId GRAPH ' + gn + ' RETURN x', { startId: vertex.B } ],
+        [ 'FOR x IN OUTBOUND @startId GRAPH "' + gn + '" RETURN x', { startId: vertex.B } ],
+        [ 'FOR x IN OUTBOUND @startId GRAPH `' + gn + '` RETURN x', { startId: vertex.B } ],
+        [ 'FOR x IN OUTBOUND @startId GRAPH \'' + gn + '\' RETURN x', { startId: vertex.B } ],
+      ];
+
+      queries.forEach(function(query) {
+        let nodes = AQL_EXPLAIN(query[0], query[1]).plan.nodes;
+        assertEqual("TraversalNode", nodes[1].type); 
+        assertEqual("UnitTestGraph", nodes[1].graph);
+      });
+    },
+
     testNamedFirstEntryIsVertex: function () {
       var query = 'FOR x IN OUTBOUND @startId GRAPH @graph RETURN x';
       var bindVars = {
