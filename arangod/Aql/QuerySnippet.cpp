@@ -142,7 +142,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->walk(*this);
+  _root->walkSubqueriesFirst(*this);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -191,10 +191,12 @@ bool CloneWorker::before(ExecutionNode* node) {
 // This hooks up dependencies; we're doing this in after to make sure
 // that all nodes (including those contained in subqueries!) are cloned
 void CloneWorker::processAfter(ExecutionNode* node) {
+  TRI_ASSERT(_originalToClone.count(node) == 1);
   auto clone = _originalToClone.at(node);
 
   auto deps = node->getDependencies();
   for (auto d : deps) {
+    TRI_ASSERT(_originalToClone.count(d) == 1);
     auto depClone = _originalToClone.at(d);
     clone->addDependency(depClone);
   }
@@ -211,12 +213,16 @@ void CloneWorker::processAfter(ExecutionNode* node) {
     auto cloneSq = ExecutionNode::castTo<SubqueryNode*>(clone);
 
     auto sqRoot = sq->getSubquery();
+
+    TRI_ASSERT(_originalToClone.count(sqRoot) == 1);
     auto cloneSqRoot = _originalToClone.at(sqRoot);
+
     cloneSq->setSubquery(cloneSqRoot, true);
   }
 }
 
 bool CloneWorker::enterSubquery(ExecutionNode* subq, ExecutionNode* root) {
+  // Enter all subqueries
   return true;
 }
 
@@ -470,6 +476,7 @@ void QuerySnippet::serializeIntoBuilder(
     // We will inject the permuted shards on the way.
     // Also note: the local plan will take memory responsibility
     // of the ExecutionNodes created during this procedure.
+    TRI_ASSERT(!_nodes.empty());
     auto snippetRoot = _nodes.at(0);
 
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
