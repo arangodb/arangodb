@@ -1651,6 +1651,9 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID) {
+  // always reload
+  loadPlan();
+
   READ_LOCKER(readLocker, _planProt.lock);
   // look up database by id
   auto it = _dbAnalyzersRevision.find(databaseID);
