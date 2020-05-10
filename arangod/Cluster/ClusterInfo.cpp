@@ -1651,17 +1651,30 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID) {
-  // always reload
-  loadPlan();
 
-  READ_LOCKER(readLocker, _planProt.lock);
-  // look up database by id
-  auto it = _dbAnalyzersRevision.find(databaseID);
+  int tries = 0;
 
-  if (it != _dbAnalyzersRevision.cend()) {
-    return it->second;
+  if (!_planProt.isValid) {
+    loadPlan();
+    ++tries;
   }
+  while (true) {  // left by break
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // look up database by id
+      auto it = _dbAnalyzersRevision.find(databaseID);
 
+      if (it != _dbAnalyzersRevision.cend()) {
+        return it->second;
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+
+    // must load collections outside the lock
+    loadPlan();
+  }
   return nullptr;
 }
 
