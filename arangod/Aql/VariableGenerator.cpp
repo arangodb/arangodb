@@ -96,7 +96,7 @@ Variable* VariableGenerator::createVariable(VPackSlice slice) {
 
   // make sure _id is at least as high as the highest variable id
   // we get.
-  _id = std::max(id, _id);
+  _id = std::max(id + 1, _id);
 
   auto it = _variables.try_emplace(id, std::move(variable)).first;
   return (*it).second.get();
@@ -170,5 +170,5 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
 }
   
 VariableId VariableGenerator::nextId() noexcept {
-  return ++_id; 
+  return _id++; 
 }
