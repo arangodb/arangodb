@@ -530,8 +530,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                         vertexRegIdx, edgeRegIdx, pathRegIdx, pruneExpression());
   }
 
-#warning TODO: remove me!
-
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     waitForSatelliteIfRequired(&engine);
