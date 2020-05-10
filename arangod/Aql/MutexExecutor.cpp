@@ -27,8 +27,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
 
-#include "Logger/LogMacros.h"
-
 #include <algorithm>
 #include <utility>
 
@@ -40,7 +38,6 @@ ExecutionBlockImpl<MutexExecutor>::ExecutionBlockImpl(
     : ExecutionBlock(engine, node), _isShutdown(false) {}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::execute(AqlCallStack stack) {
-
   std::unique_lock<std::mutex> guard(_mutex);
   TRI_ASSERT(_dependencies.size() == 1);
   auto ret = _dependencies[0]->execute(stack);
@@ -53,8 +50,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<MutexExecutor>::initializeC
     InputAqlItemRow const& input) {
   
   TRI_ASSERT(_dependencies.size() == 1);
-  
-  LOG_DEVEL << "MutexExecutor::initializeCursor";
   
   std::lock_guard<std::mutex> guard(_mutex);
   return ExecutionBlock::initializeCursor(input);

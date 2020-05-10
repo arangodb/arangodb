@@ -533,8 +533,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 #warning TODO: remove me!
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    LOG_DEVEL << "TRAVERSAL PARALLELISM NOT SUPPORTED ON COORDINATOR";
-
 #ifdef USE_ENTERPRISE
     waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
@@ -548,8 +546,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     }
 #endif
   } else {
-    LOG_DEVEL << "TRAVERSAL PARALLELISM TO USE: " << opts->parallelism();
-
     traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
   }
 

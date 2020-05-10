@@ -33,8 +33,6 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
 
-#include "Logger/LogMacros.h"
-
 #include <algorithm>
 #include <utility>
 
@@ -67,7 +65,6 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
   _internalState = AsyncState::InProgress;
   bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
-    LOG_DEVEL << "executing async: " << isAsync << ", threadID: " << std::this_thread::get_id();
 
     auto [state, skip, block] = _dependencies[0]->execute(stack);
     if (isAsync) {
@@ -76,12 +73,6 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
     _returnState = state;
     _returnSkip = std::move(skip);
     _returnBlock = std::move(block);
-    
-    if (_returnBlock.get()) {
-      LOG_DEVEL << "execute rows " << _returnBlock->size();
-    } else {
-      LOG_DEVEL << "execute rows " << 0;
-    }
 
     _internalState = AsyncState::GotResult;
   });
@@ -101,8 +92,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<AsyncExecutor>::initializeC
 //  }
   
   TRI_ASSERT(_dependencies.size() == 1);
-  
-  LOG_DEVEL << "AsyncExecutor::initializeCursor";
   
   std::lock_guard<std::mutex> guard(_mutex);
   auto res = ExecutionBlock::initializeCursor(input);

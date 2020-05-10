@@ -36,10 +36,6 @@ namespace arangodb {
 namespace aql {
 
 class MutexNode;
-class NoStats;
-class OutputAqlItemRow;
-class SharedQueryState;
-
 
 // MutexExecutor is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.

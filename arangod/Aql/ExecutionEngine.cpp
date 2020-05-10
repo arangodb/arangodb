@@ -158,8 +158,6 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
         std::string const& serverID = serverToSnippet.first;
         for (std::string const& snippetId : serverToSnippet.second) {
           
-          LOG_DEVEL << "remoteNodeId: " << serversForRemote->first << " serverID: " << serverID << " snippetId: " << snippetId;
-          
           remoteNode->queryId(snippetId);
           remoteNode->server(serverID);
           remoteNode->setDistributeId({""});
