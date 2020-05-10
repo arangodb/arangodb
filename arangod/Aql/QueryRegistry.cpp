@@ -281,6 +281,10 @@ bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
 
     EngineInfo& ei = it->second;
     if (ei._isOpen) {
+      if (ei._queryInfo && errorCode == TRI_ERROR_QUERY_KILLED) {
+        ei._queryInfo->_query->kill();
+        ei._queryInfo->_expires = 0.0;
+      }
       LOG_TOPIC("b342e", DEBUG, arangodb::Logger::AQL) << "engine id " << engineId << " is open.";
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "engine with given vocbase and id is open");
