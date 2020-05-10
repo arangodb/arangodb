@@ -218,9 +218,9 @@ void Query::prepareQuery(SerializationFormat format) {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
   
-#warning V8Context needs to implement clone()
+#warning V8Context needs to implement clone(). TODO: remove this check and comment
   if (_transactionContext->isV8Context() && _ast->containsParallelNode()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 context does not support clone yet");
+  //  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 context does not support clone yet");
   }
     
   // note that the engine returned here may already be present in our

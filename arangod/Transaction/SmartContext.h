@@ -68,6 +68,10 @@ class SmartContext : public Context {
     return _state != nullptr;
   }
   
+  void setState(std::shared_ptr<arangodb::TransactionState> const& state) {
+    _state = state;
+  }
+  
  protected:
   /// @brief ID of the transaction to use
   TRI_voc_tid_t const _globalId;
