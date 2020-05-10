@@ -184,7 +184,7 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (_collection == nullptr) {
     TRI_ASSERT(ServerState::instance()->isRunningInCluster());
     auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    return clusterInfo.getCollection(_vocbase->name(), _name);
+    _collection = clusterInfo.getCollection(_vocbase->name(), _name);
   }
   return _collection;
 }

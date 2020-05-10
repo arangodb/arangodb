@@ -143,7 +143,7 @@ struct Collection {
   std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
 
  private:
-  std::shared_ptr<arangodb::LogicalCollection> _collection;
+  mutable std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;
 
