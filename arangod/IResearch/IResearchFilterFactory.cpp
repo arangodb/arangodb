@@ -1743,7 +1743,7 @@ arangodb::Result fromFuncAnalyzer(
                           : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.analyzers_revision);
 
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
           analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args

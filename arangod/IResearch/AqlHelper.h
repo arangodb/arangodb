@@ -238,7 +238,7 @@ struct QueryContext {
   aql::ExpressionContext* ctx;
   irs::index_reader const* index;
   aql::Variable const* ref;
-  AnalyzersRevision::Revision const analyzers_revision{};
+  AnalyzersRevision::Revision const analyzers_revision{AnalyzersRevision::MIN};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////

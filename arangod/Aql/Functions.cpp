@@ -1702,7 +1702,8 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
     arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
-  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase);//!!!! needs revision!!!
+  // FIXME: Get Proper revision here
+  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase, AnalyzersRevision::LATEST);//!!!!
   if (!analyzer) {
     arangodb::aql::registerWarning(
         ctx, AFN,

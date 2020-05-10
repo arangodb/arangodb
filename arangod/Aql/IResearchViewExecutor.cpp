@@ -566,7 +566,6 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
   ExecutionPlan const* plan = &infos().plan();
-
   iresearch::QueryContext const queryCtx = { &_trx, plan, plan->getAst(),
                                             &_ctx, _reader.get(), &infos().outVariable(), infos().getQueryConst().analyzersRevision()};
 

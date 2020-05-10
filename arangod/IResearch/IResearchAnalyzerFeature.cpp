@@ -467,7 +467,7 @@ namespace norm_vpack {
     norm_vpack_normalizer);
 }
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
 
@@ -500,7 +500,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
                           ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
                           : nullptr;
     if (sysVocbase) {
-      pool = analyzers.get(name, trx->vocbase(), *sysVocbase);
+      pool = analyzers.get(name, trx->vocbase(), *sysVocbase, arangodb::AnalyzersRevision::LATEST);///!!!! add to context revisions!
     }
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
@@ -1543,7 +1543,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       if (pool->revision() <= revision) {
         return pool;
       } else {
-        LOG_TOPIC("c4c20", DEBUG, iresearch::TOPIC)
+        LOG_TOPIC("c4c20", WARN, iresearch::TOPIC)
           << "invalid analyzer revision. Requested " << revision << " got " << pool->revision();
       }
     }
@@ -1888,7 +1888,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
     } else if (itr != _lastLoad.end() // had a previous load
                && itr->second == loadingRevision) { // nothing changed
-      LOG_TOPIC("47cb8", TRACE, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("47cb8", WARN, arangodb::iresearch::TOPIC)
         << "Load skipped. Revision:" << itr->second
         << " Current revision:" << loadingRevision;
       return {}; // reload interval not reached
@@ -1966,7 +1966,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
           return {}; // skip analyzer
         }
       }
-
       AnalyzersRevision::Revision revision{ AnalyzersRevision::MIN };
       if (slice.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
         revision = slice.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<AnalyzersRevision::Revision>();

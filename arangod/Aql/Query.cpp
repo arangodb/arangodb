@@ -221,23 +221,13 @@ void Query::prepareQuery(SerializationFormat format) {
 
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-  if (_trx->state()->isCoordinator()) {
-    // for cluser operation we need to set analyzersRevision
-    auto const& vocbase = _trx->vocbase();
-    if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
-      _analyzersRevision = vocbase.server()
-                             .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-                               .getLatestRevision(vocbase)->getRevision();
-    }
-  }
-    
+
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
   auto res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                   format, _snippets);
-
   _plans.push_back(std::move(plan));
   
   if (_snippets.size() > 1) {  // register coordinator snippets
@@ -304,6 +294,18 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
+
+  // From this point we need to lock analyzers revision for this query
+  if (_trx->state()->isCoordinator()) {
+    // for cluser operation we need to set analyzersRevision
+    auto const& vocbase = _trx->vocbase();
+    if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      _analyzersRevision = vocbase.server()
+                                    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
+                                      .getLatestRevision(vocbase)->getRevision();
+      }
+  }
+
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
   if (plan == nullptr) { // oops
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1371,7 +1373,6 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     }
     answerBuilder.close();  // traverserEngines
   }
-
   _analyzersRevision = analyzersRevision;
 
   TRI_ASSERT(_trx != nullptr);
