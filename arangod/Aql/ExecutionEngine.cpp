@@ -245,23 +245,27 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
               TRI_ERROR_INTERNAL,
               "logic error, got cluster node in local query");
         }
-        block = engine.addBlock(en->createBlock(engine, cache));
       } else {
         auto const& cached = cache.find(en);
         if (cached != cache.end()) {
           // We allow to have SCATTER, REMOTE and DISTRIBUTE multiple times.
           // But only these.
           // Chances are if you hit a different node here, that you created a loop.
+#warning TODO: this check breaks when there is parallelism and some nodes are visited multiple times
+          /*
           TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
                      en->getType() == ExecutionNode::SCATTER ||
                      en->getType() == ExecutionNode::DISTRIBUTE);
+          */
           block = cached->second;
           doEmplace = false;
-        } else {
-          block = engine.addBlock(en->createBlock(engine, cache));
         }
       }
 
+      if (doEmplace) {
+        block = engine.addBlock(en->createBlock(engine, cache));
+      }
+      
       if (!en->hasParent()) {
         // yes. found a new root!
         root = block;
@@ -270,7 +274,7 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
 
     TRI_ASSERT(block != nullptr);
     if (doEmplace) {
-      // We have visited this node earlier, so we got it's dependencies
+      // We have visited this node earlier, so we got its dependencies
       // Now add dependencies:
       for (auto const& it : en->getDependencies()) {
         auto it2 = cache.find(it);
