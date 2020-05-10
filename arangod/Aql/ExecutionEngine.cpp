@@ -783,7 +783,8 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
 
     // in short: this avoids copying the return values
 
-    bool const returnInheritedResults = !arangodb::ServerState::isDBServer(role);
+    bool const returnInheritedResults =
+        ExecutionNode::castTo<ReturnNode const*>(root->getPlanNode())->returnInheritedResults();
     if (returnInheritedResults) {
       auto returnNode =
           dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(

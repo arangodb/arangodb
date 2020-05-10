@@ -90,6 +90,8 @@ class DistributeConsumerNode : public ExecutionNode {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
   }
+  
+  void cloneRegisterPlan(ScatterNode* dependency);
 
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:

@@ -76,7 +76,7 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
   }
 
   auto makeRegisterInfos() -> RegisterInfos {
-    return RegisterInfos{{}, {}, 1, 1, {}, {0}};
+    return RegisterInfos{{}, {}, 1, 1, {}, {{0}}};
   }
 
   auto makeExecutorInfos() -> IdExecutorInfos {
@@ -152,14 +152,15 @@ class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
     return stats;
   }
 
+  RegIdSet const toWrite = {};
+  RegIdSetStack const toKeep = {{0}};
+  RegIdSet const toClear = {};
+
   auto prepareOutputRow(SharedAqlItemBlockPtr input) -> OutputAqlItemRow {
-    auto toWrite = make_shared_unordered_set({});
-    auto toKeep = make_shared_unordered_set({0});
-    auto toClear = make_shared_unordered_set();
     auto const& [unused, upstreamState, clientCall, unused2] = GetParam();
     AqlCall callCopy = clientCall;
     // For passthrough we reuse the block
-    return OutputAqlItemRow(input, toWrite, toKeep, toClear, std::move(callCopy),
+    return OutputAqlItemRow(input, toWrite, toKeep, toClear, callCopy,
                             OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   }
 };
@@ -269,7 +270,7 @@ class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
-  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {{0}}};
   IdExecutorInfos executorInfos{false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
@@ -313,7 +314,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
-  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {{0}}};
   IdExecutorInfos executorInfos{false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
@@ -355,7 +356,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
-  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {{0}}};
   IdExecutorInfos executorInfos{false};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
@@ -398,7 +399,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
 }
 
 TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
-  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
+  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {{0}}};
   IdExecutorInfos executorInfos{false};
   makeExecutorTestHelper()
       .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(std::move(registerInfos), std::move(executorInfos))
@@ -420,7 +421,7 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
 class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
  protected:
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
-    RegisterInfos registerInfos{{}, {}, 1, 1, {}, {0}};
+    RegisterInfos registerInfos{{}, {}, 1, 1, {}, {{0}}};
     IdExecutorInfos executorInfos{false};
     return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->rootEngine(),
                                                         generateNodeDummy(),

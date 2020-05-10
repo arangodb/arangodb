@@ -95,7 +95,7 @@ class SortNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }

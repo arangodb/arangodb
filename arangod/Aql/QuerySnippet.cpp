@@ -111,9 +111,8 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(firstBranchRes.is(TRI_ERROR_CLUSTER_NOT_LEADER));
     return;
   }
-  std::unordered_map<ExecutionNode*, std::set<ShardID>>& localExpansions =
+  MapNodeToColNameToShards& localExpansions =
       firstBranchRes.get();
-
   // We clone every Node* and maintain a list of ReportingGroups for profiler
   ExecutionNode* lastNode = _nodes.back();
   bool lastIsRemote = lastNode->getType() == ExecutionNode::REMOTE;
@@ -171,9 +170,13 @@ void QuerySnippet::serializeIntoBuilder(
   if (!localExpansions.empty()) { // one expansion
     // We have Expansions to permutate, guaranteed they have
     // all identical lengths.
-    size_t numberOfShardsToPermutate = localExpansions.begin()->second.size();
+    auto const& colToShardMap = localExpansions.begin()->second;
+    // We will never add an empty map
+    TRI_ASSERT(!colToShardMap.empty());
+    // For all collections within this map we will have the same amount of shards.
+    size_t numberOfShardsToPermutate = colToShardMap.begin()->second.size();
     TRI_ASSERT(numberOfShardsToPermutate > 1);
-    
+
     std::vector<std::string> distIds{};
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
@@ -190,7 +193,7 @@ void QuerySnippet::serializeIntoBuilder(
     // We need to modify the registerPlanning.
     // The internalGather is NOT allowed to reduce the number of registers,
     // it needs to expose it's input register by all means
-    internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLater());
+    internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
     auto const reservedId = ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
     nodeAliases.try_emplace(internalGather->id(), reservedId);
@@ -227,8 +230,11 @@ void QuerySnippet::serializeIntoBuilder(
           TRI_ASSERT(colAcc != nullptr);
           if (colAcc->collection() == distCollection) {
             // Found one, use all shards of it
-            for (auto const& s : exp.second) {
-              distIds.emplace_back(s);
+            auto const collectionMap = exp.second.find(distCollection->name());
+            TRI_ASSERT(collectionMap != exp.second.end());
+            TRI_ASSERT(!collectionMap->second.empty());
+            for (auto const& shardIds : collectionMap->second) {
+              distIds.emplace_back(shardIds);
             }
             break;
           }
@@ -291,10 +297,39 @@ void QuerySnippet::serializeIntoBuilder(
         ExecutionNode* clone = current->clone(plan, false, false);
         auto permuter = localExpansions.find(current);
         if (permuter != localExpansions.end()) {
-          auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
-          TRI_ASSERT(collectionAccessingNode != nullptr);
-          // Get the `i` th shard
-          collectionAccessingNode->setUsedShard(*std::next(permuter->second.begin(), i));
+          if (clone->getType() == ExecutionNode::TRAVERSAL ||
+              clone->getType() == ExecutionNode::SHORTEST_PATH ||
+              clone->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+            // GraphNodes handle multiple collections
+            auto graphNode = dynamic_cast<GraphNode*>(clone);
+            if (graphNode != nullptr) {
+              if (graphNode->isDisjoint()) {
+                TRI_ASSERT(graphNode != nullptr);
+                TRI_ASSERT(graphNode->isDisjoint());
+                // we've found a disjoint smart graph node, now add the `i` th shard for used collections
+                for (auto const& myExp : permuter->second) {
+                  std::string const& cName = myExp.first;
+                  graphNode->addCollectionToShard(cName, *std::next(myExp.second.begin(), i));
+                }
+              }
+            } else {
+              TRI_ASSERT(false);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+            }
+          } else {
+            auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(clone);
+            if (collectionAccessingNode != nullptr) {
+              // we guarantee that we only have one collection here
+              TRI_ASSERT(permuter->second.size() == 1);
+              std::string const& cName = collectionAccessingNode->collection()->name();
+              // Get the `i` th shard
+              collectionAccessingNode->setUsedShard(
+                  *std::next(permuter->second.at(cName).begin(), i));
+            } else {
+              TRI_ASSERT(false);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+            }
+          }
         }
         if (previous != nullptr) {
           clone->addDependency(previous);
@@ -331,14 +366,18 @@ void QuerySnippet::serializeIntoBuilder(
   }
 }
 
-ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::prepareFirstBranch(
+auto QuerySnippet::prepareFirstBranch(
     ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    ShardLocking& shardLocking) {
-  size_t numberOfShardsToPermutate = 0;
-  std::unordered_map<ExecutionNode*, std::set<ShardID>> localExpansions;
+    ShardLocking& shardLocking) -> ResultT<MapNodeToColNameToShards> {
+  MapNodeToColNameToShards localExpansions;
   std::unordered_map<ShardID, ServerID> const& shardMapping =
       shardLocking.getShardMapping();
+
+  // It is of utmost importance that this is an ordered set of Shards.
+  // We can only join identical indexes of shards for each collection
+  // locally.
+  std::unordered_map<std::string, std::set<ShardID>> myExpFinal;
 
   for (auto const& exp : _expansions) {
     if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
@@ -408,9 +447,14 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       }
 
       // This is either one shard or a single satellite graph which is not used
-      // as satellite graph.
+      // as satellite graph or a disjoint smart graph.
       uint64_t numShards = 0;
       for (auto* aqlCollection : localGraphNode->collections()) {
+        // It is of utmost importance that this is an ordered set of Shards.
+        // We can only join identical indexes of shards for each collection
+        // locally.
+        std::set<ShardID> myExp;
+
         auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
         TRI_ASSERT(!shards.empty());
         for (auto const& shard : shards) {
@@ -419,27 +463,56 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
           // We should never have shards on other servers, except for satellite
           // graphs which are used that way, or satellite collections (in a
           // OneShard case) because local graphs (on DBServers) only ever occur
-          // in either OneShard or SatelliteGraphs.
+          // in either OneShard, SatelliteGraphs or DisjointSmartGraphs.
           TRI_ASSERT(found->second == server || localGraphNode->isUsedAsSatellite() ||
-                     aqlCollection->isSatellite());
+                     aqlCollection->isSatellite() || localGraphNode->isDisjoint());
           // provide a correct translation from collection to shard
           // to be used in toVelocyPack methods of classes derived
           // from GraphNode
-          localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
+          if (localGraphNode->isDisjoint()) {
+            if (found->second == server) {
+              myExp.emplace(shard);
+            }
+          } else {
+            localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
+          }
 
           numShards++;
         }
+
+        if (myExp.size() > 0) {
+          localGraphNode->addCollectionToShard(aqlCollection->name(), *myExp.begin());
+          if (myExp.size() > 1) {
+            myExpFinal.insert({aqlCollection->name(), std::move(myExp)});
+          }
+        }
       }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      // additional verification checks for disjoint smart graphs
+      if (localGraphNode->isDisjoint()) {
+        if (!myExpFinal.empty()) {
+          size_t numberOfShards = myExpFinal.begin()->second.size();
+          // We need one expansion for every collection in the Graph
+          TRI_ASSERT(myExpFinal.size() == localGraphNode->collections().size());
+          for (auto const& expDefinition : myExpFinal) {
+            TRI_ASSERT(expDefinition.second.size() == numberOfShards);
+          }
+        }
+      }
+#endif
 
       TRI_ASSERT(numShards > 0);
       if (numShards == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Could not find a shard to instantiate for graph node when expected to");
       }
 
-      auto foundEnoughShards = numShards == localGraphNode->collections().size();
-      TRI_ASSERT(foundEnoughShards);
-      if (!foundEnoughShards) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      if (localGraphNode->isEligibleAsSatelliteTraversal()) {
+        auto foundEnoughShards = numShards == localGraphNode->collections().size();
+        TRI_ASSERT(foundEnoughShards);
+        if (!foundEnoughShards) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+        }
       }
 #endif
     } else {
@@ -483,26 +556,47 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       // For all other Nodes we can inject a single shard at a time.
       // Always use the list of nodes we maintain to hold the first
       // of all shards.
-      // We later use a cone mechanism to inject other shards of permutation
+      // We later use a clone mechanism to inject other shards of permutation
       auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
       TRI_ASSERT(collectionAccessingNode != nullptr);
       collectionAccessingNode->setUsedShard(*myExp.begin());
-      if (exp.doExpand) {
-        TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
-        // All parts need to have exact same size, they need to be permutated pairwise!
-        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.size() == numberOfShardsToPermutate);
-        // set the max loop index (note this will essentially be done only once)
-        numberOfShardsToPermutate = myExp.size();
-        if (numberOfShardsToPermutate > 1) {
+
+      if (!exp.doExpand) {
+        TRI_ASSERT(myExp.size() == 1);
+      } else {
+        if (myExp.size() > 1) {
           // Only in this case we really need to do an expansion
           // Otherwise we get away with only using the main stream for
           // this server
           // NOTE: This might differ between servers.
           // One server might require an expansion (many shards) while another does not (only one shard).
-          localExpansions.emplace(exp.node, std::move(myExp));
+          myExpFinal.insert({col->name(), std::move(myExp)});
         }
-      } else {
-        TRI_ASSERT(myExp.size() == 1);
+      }
+    }
+
+    if (exp.doExpand) {
+      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(exp.node);
+      TRI_ASSERT(collectionAccessingNode != nullptr);
+      TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      size_t numberOfShardsToPermutate = 0;
+      // set the max loop index (note this will essentially be done only once)
+      // we can set first found map to overall size as they all must be the same (asserted above)
+      if (myExpFinal.size() > 0) {
+        numberOfShardsToPermutate = myExpFinal.begin()->second.size();
+      }
+
+      // All parts need to have exact same size, they need to be permutated pairwise!
+      for (auto const& myExp : myExpFinal) {
+        TRI_ASSERT(numberOfShardsToPermutate == 0 || myExp.second.size() == numberOfShardsToPermutate);
+      }
+#endif
+
+      if (myExpFinal.size() > 0) {
+        // we've found at least one entry to be expanded
+        localExpansions.emplace(exp.node, std::move(myExpFinal));
       }
     }
   }  // for _expansions - end;
