@@ -282,6 +282,17 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // we have an AST, optimize the ast
   enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
+  // From this point we need to lock analyzers revision for this query
+  if (_trx->state()->isCoordinator()) {
+    // for cluser operation we need to set analyzersRevision
+    auto const& vocbase = _trx->vocbase();
+    if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
+      _analyzersRevision = vocbase.server()
+        .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
+        .getLatestRevision(vocbase)->getRevision();
+    }
+  }
+
   _ast->validateAndOptimize(*_trx);
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
@@ -294,17 +305,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
-
-  // From this point we need to lock analyzers revision for this query
-  if (_trx->state()->isCoordinator()) {
-    // for cluser operation we need to set analyzersRevision
-    auto const& vocbase = _trx->vocbase();
-    if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
-      _analyzersRevision = vocbase.server()
-                                    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-                                      .getLatestRevision(vocbase)->getRevision();
-      }
-  }
 
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
   if (plan == nullptr) { // oops
