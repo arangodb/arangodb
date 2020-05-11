@@ -48,8 +48,8 @@ class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
   auto MakeCountCollectRegisterInfos(RegisterId outReg) -> RegisterInfos {
-    return RegisterInfos({}, RegIdSet{outReg}, outReg,
-		         outReg + 1, {}, {{}, {}});
+    return RegisterInfos({}, RegIdSet{outReg}, outReg, outReg + 1,
+                         RegIdFlatSet{}, RegIdFlatSetStack{{}, {}});
   }
 
   auto MakeCountCollectExecutorInfos(RegisterId outReg) -> CountCollectExecutorInfos {

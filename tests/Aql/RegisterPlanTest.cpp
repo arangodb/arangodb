@@ -552,51 +552,51 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     // Check varsUsedLater
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[0].getVarsUsedLaterStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[1].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[1].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{{jesse, mary, mark, debra}}), nodes[2].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark, debra}}), nodes[2].getVarsUsedLaterStack());
     // SUBQUERY
-    EXPECT_EQ((VarSetStack{{jesse, mary, mark}}), nodes[3].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse, mary, mark}}), nodes[3].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{{jesse}}), nodes[4].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{jesse}}), nodes[4].getVarsUsedLaterStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{{}}), nodes[5].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{}}), nodes[5].getVarsUsedLaterStack());
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{{tobias, debra, paul}}), subquery[0].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}), subquery[0].getVarsUsedLaterStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{{tobias, debra, paul}}), subquery[1].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{tobias, debra, paul}}), subquery[1].getVarsUsedLaterStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{{paul}}), subquery[2].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{paul}}), subquery[2].getVarsUsedLaterStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{{}}), subquery[3].getVarsUsedLaterStack());
+    EXPECT_EQ((VarSetStack{VarSet{}}), subquery[3].getVarsUsedLaterStack());
   }
 
   {  // Check varsValid
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{{}}), nodes[0].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{}}), nodes[0].getVarsValidStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{{mark}}), nodes[1].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark}}), nodes[1].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{{mark, debra}}), nodes[2].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), nodes[2].getVarsValidStack());
     // SUBQUERY
-    EXPECT_EQ((VarSetStack{{mark, debra, mary}}), nodes[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary}}), nodes[3].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{{mark, debra, mary, jesse}}), nodes[4].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[4].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{{mark, debra, mary, jesse}}), nodes[5].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, mary, jesse}}), nodes[5].getVarsValidStack());
 
     // SINGLETON
-    EXPECT_EQ((VarSetStack{{mark, debra}}), subquery[0].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra}}), subquery[0].getVarsValidStack());
     // ENUMERATE_COLLECTION
-    EXPECT_EQ((VarSetStack{{mark, debra, tobias}}), subquery[1].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias}}), subquery[1].getVarsValidStack());
     // CALCULATION
-    EXPECT_EQ((VarSetStack{{mark, debra, tobias, paul}}), subquery[2].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[2].getVarsValidStack());
     // RETURN
-    EXPECT_EQ((VarSetStack{{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
+    EXPECT_EQ((VarSetStack{VarSet{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
   }
 }
 

@@ -50,8 +50,7 @@ class AqlItemRowsTest : public ::testing::Test {
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
-      RegIdSet const& regsToKeep,
-                          bool assertNotInline = false) {
+                          RegIdFlatSet const& regsToKeep, bool assertNotInline = false) {
     ASSERT_TRUE(result.isArray());
     ASSERT_EQ(in->size(), result.length());
     for (size_t rowIdx = 0; rowIdx < in->size(); ++rowIdx) {
@@ -249,8 +248,8 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   RegisterId nrOutputRegisters = 0;
 
   auto outputRegisters = RegIdSet{3, 4};
-  auto registersToClear = RegIdSet{1, 2};
-  auto registersToKeep = RegIdSetStack{RegIdSet{0}};
+  auto registersToClear = RegIdFlatSet{1, 2};
+  auto registersToKeep = RegIdFlatSetStack{RegIdFlatSet{0}};
   nrInputRegisters = 3;
   nrOutputRegisters = 5;
 
@@ -265,7 +264,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                           registersToKeep, executorInfos.registersToClear());
 
-  RegIdSet& regsToKeep = registersToKeep.back();
+  auto& regsToKeep = registersToKeep.back();
   {
     // Make sure this data is cleared before the assertions
     auto inputBlock =

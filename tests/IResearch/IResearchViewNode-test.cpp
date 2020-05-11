@@ -1861,7 +1861,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     node.setVarsValid({{}});
     node.setVarUsageValid();
 
@@ -1947,7 +1947,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
 
-    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     node.setVarsValid({{}});
     node.setVarUsageValid();
 
@@ -2022,7 +2022,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     arangodb::aql::Variable const outNmDocId("variable101", 2, false);
     node.setLateMaterialized(outNmColPtr, outNmDocId);
 
-    node.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
     node.setVarsValid({{}});
     node.setVarUsageValid();
 
@@ -2137,7 +2137,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     node.setVarsValid({{}});
     node.setVarUsageValid();
 
@@ -2225,7 +2225,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
 
-    node.setVarsUsedLater({{&outVariable}});
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     node.setVarsValid({{}});
     node.setVarUsageValid();
 
@@ -2304,7 +2304,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     node.sort(&viewImpl.primarySort(), 1);
     node.setLateMaterialized(outNmColPtr, outNmDocId);
 
-    node.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
+    node.setVarsUsedLater({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
     node.setVarsValid({{}});
     node.setVarUsageValid();
 
@@ -2542,10 +2542,10 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     node.addDependency(&singleton);
 
     // "Trust me, I'm an IT professional"
-    singleton.setVarsUsedLater({{&outVariable}});
+    singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarsValid({{}});
     node.setVarsUsedLater({{}});
-    node.setVarsValid({{&outVariable}});
+    node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     node.setVarUsageValid();
     singleton.setVarUsageValid();
 
@@ -2633,10 +2633,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   node.addDependency(&singleton);
 
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
-  singleton.setVarsUsedLater({{&outVariable}});
+  singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
-  node.setVarsValid({{&outVariable}});
+  node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
   singleton.planRegisters(nullptr);
@@ -2682,10 +2682,10 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
-  singleton.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
+  singleton.setVarsUsedLater({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
-  node.setVarsValid({{&outNmColPtr, &outNmDocId}});
+  node.setVarsValid({arangodb::aql::VarSet{&outNmColPtr, &outNmDocId}});
   singleton.setVarUsageValid();
   node.setVarUsageValid();
   singleton.planRegisters(nullptr);
