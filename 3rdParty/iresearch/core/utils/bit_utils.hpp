@@ -174,12 +174,12 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
 NS_END
 
 #define ENABLE_BITMASK_ENUM(x) \
-inline constexpr x operator&(x lhs, x rhs) noexcept { return irs::enum_bitwise_and(lhs, rhs); } \
-inline x& operator&=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_and(lhs, rhs); }   \
-inline constexpr x operator|(x lhs, x rhs) noexcept { return irs::enum_bitwise_or(lhs, rhs); }  \
-inline x& operator|=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_or(lhs, rhs); } \
-inline constexpr x operator^(x lhs, x rhs) noexcept { return irs::enum_bitwise_xor(lhs, rhs); } \
-inline x& operator^=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_xor(lhs, rhs); }   \
-inline constexpr x operator~(x v)          noexcept { return irs::enum_bitwise_not(v); }
+[[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept { return irs::enum_bitwise_and(lhs, rhs); } \
+[[maybe_unused]] inline x& operator&=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_and(lhs, rhs); }   \
+[[maybe_unused]] inline constexpr x operator|(x lhs, x rhs) noexcept { return irs::enum_bitwise_or(lhs, rhs); }  \
+[[maybe_unused]] inline x& operator|=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_or(lhs, rhs); } \
+[[maybe_unused]] inline constexpr x operator^(x lhs, x rhs) noexcept { return irs::enum_bitwise_xor(lhs, rhs); } \
+[[maybe_unused]] inline x& operator^=(x& lhs, x rhs)        noexcept { return lhs = irs::enum_bitwise_xor(lhs, rhs); }   \
+[[maybe_unused]] inline constexpr x operator~(x v)          noexcept { return irs::enum_bitwise_not(v); }
 
 #endif

@@ -37,6 +37,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
@@ -302,26 +303,29 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
-      try {
-        AgencyCommResult result =
-            am.getValues("Target/" + path + "/" + std::to_string(jobId));
-        if (result.successful()) {
-          VPackSlice value = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommHelper::path(), "Target", path,
-                                       std::to_string(jobId)});
-          if (value.isObject() && value.hasKey("jobId") &&
-              value.get("jobId").isEqualString(std::to_string(jobId))) {
-            return true;
+    auto checkAgencyPathExists =
+      [cf = &server().getFeature<ClusterFeature>()](
+        std::string const& path, uint64_t jobId) -> bool {
+        try {
+          auto [acb, idx] =
+            cf->agencyCache().read(std::vector<std::string>{
+                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
+          auto result = acb->slice();
+          if (!result.isNone()) {
+            VPackSlice value = result[0].get(
+              std::vector<std::string>{
+                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
+            if (value.isObject() && value.hasKey("jobId") &&
+                value.get("jobId").isEqualString(std::to_string(jobId))) {
+              return true;
+            }
           }
-        }
-      } catch (...) {
-        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+        } catch (...) {
+          LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
             << "Exception when checking for job completion";
-      }
-
-      return false;
-    };
+        }
+        return false;
+      };
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
