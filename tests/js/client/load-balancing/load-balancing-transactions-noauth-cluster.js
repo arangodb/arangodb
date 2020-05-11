@@ -108,6 +108,10 @@ function TransactionsSuite () {
       db._drop(cn);
       db._create(cn);
 
+      for (let i = 0; i < 10; ++i) {
+        db[cn].save({i});
+      }
+
       require("internal").wait(2);
     },
 
@@ -247,6 +251,26 @@ function TransactionsSuite () {
         assertNotInList(result.body.transactions, trx1);
       } finally {
         sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+      }
+    },
+
+
+    testUseTransaction: function () {
+      let trx;
+      try {
+        const obj = { collections: { read: cn } };
+        let result = sendRequest('POST', "/_api/transaction/begin", obj, true);
+        assertEqual(result.status, 201);
+        assertFalse(result.body.result.id === undefined);
+        trx = result.body.result.id;
+
+        // use trx on different coord to run a query
+        const query = `FOR doc IN ${cn} RETURN doc`
+        result = sendRequest('POST', "/_api/cursor", { query }, false);
+        assertFalse(result.body.error);
+        assertEqual(10, result.body.result.length);
+      } finally {
+        sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, true);
       }
     },
 
