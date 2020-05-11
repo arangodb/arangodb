@@ -2125,7 +2125,7 @@ void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<Executio
   root()->walk(finder);
 }
 
-/// @brief find nodes of a certain types
+/// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     std::vector<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
@@ -2135,7 +2135,23 @@ void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<Executio
       // found a node type that is in the plan
       NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
       root()->walk(finder);
-      // abort, because we were looking for all nodes at the same type
+      // abort, because we were looking for all nodes at the same time
+      return;
+    }
+  }
+}
+
+/// @brief find nodes of certain types
+void ExecutionPlan::findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                                          std::vector<ExecutionNode::NodeType> const& types,
+                                          bool enterSubqueries) {
+  // check if any of the node types is actually present in the plan
+  for (auto const& type : types) {
+    if (contains(type)) {
+      // found a node type that is in the plan
+      UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
+      root()->walk(finder);
+      // abort, because we were looking for all nodes at the same time
       return;
     }
   }

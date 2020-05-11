@@ -644,16 +644,12 @@ CostEstimate ExecutionNode::getCost() const {
 }
 
 /// @brief functionality to walk an execution plan recursively
-bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  // Only do every node exactly once
-  // note: this check is not required normally because execution
-  // plans do not contain cycles
+bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
 #endif
-
   if (worker.before(this)) {
     return true;
   }
@@ -691,16 +687,12 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
 ///  - after that recurses on its dependencies.
 /// This is in contrast to walk(), which recurses on the dependencies before
 /// recursing into the subquery.
-bool ExecutionNode::walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  // Only do every node exactly once
-  // note: this check is not required normally because execution
-  // plans do not contain cycles
+bool ExecutionNode::walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
 #endif
-
   if (worker.before(this)) {
     return true;
   }

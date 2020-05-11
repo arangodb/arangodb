@@ -352,8 +352,9 @@ class ExecutionNode {
   CostEstimate getCost() const;
 
   /// @brief walk a complete execution plan recursively
-  bool walk(WalkerWorker<ExecutionNode>& worker);
-  bool walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker);
+  bool walk(WalkerWorkerBase<ExecutionNode>& worker);
+
+  bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;

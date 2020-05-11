@@ -35,13 +35,13 @@
 namespace arangodb {
 namespace aql {
 
-/// @brief functionality to walk an execution plan recursively
+/// @brief base interface to walk an execution plan recursively.
 template <class T>
-class WalkerWorker {
+class WalkerWorkerBase {
  public:
-  WalkerWorker() = default;
+  WalkerWorkerBase() = default;
 
-  virtual ~WalkerWorker() = default;
+  virtual ~WalkerWorkerBase() = default;
 
   /// @brief return true to abort walking, false otherwise
   virtual bool before(T*) {
@@ -51,15 +51,22 @@ class WalkerWorker {
   virtual void after(T*) {}
 
   /// @brief return true to enter subqueries, false otherwise
-  virtual bool enterSubquery(T*, T*) {  // super, sub
-    return true;
-  }
+  virtual bool enterSubquery(T* /*super*/, T* /*sub*/) { return true; }
 
-  virtual void leaveSubquery(T*,  // super,
-                             T*   // sub
-  ) {}
+  virtual void leaveSubquery(T* /*super*/, T* /*sub*/) {}
 
-  virtual bool done(T* en) {
+  virtual bool done(T* en) { return false; }
+
+  virtual void reset() {}
+};
+
+/// @brief functionality to walk an execution plan recursively.
+/// this will fail in maintainer mode with assertion failure if the same 
+/// node is visited twice.
+template <class T>
+class WalkerWorker : public WalkerWorkerBase<T> {
+ public:
+  bool done(T* en) override {
     // this is a no-op in non-maintainer mode
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // make sure a node is only processed once
@@ -76,7 +83,7 @@ class WalkerWorker {
 #endif
   }
 
-  void reset() {
+  void reset() override {
     // this is a no-op in non-failure mode
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _done.clear();
@@ -88,6 +95,26 @@ class WalkerWorker {
   ::arangodb::containers::HashSet<T*> _done;
 #endif
 };
+
+/// @brief functionality to walk an execution plan recursively.
+/// this will visit each node once, even if multiple paths lead
+/// to the same node. no assertions are raised if multiple paths
+/// lead to the same node
+template <class T>
+class UniqueWalkerWorker : public WalkerWorkerBase<T> {
+ public:
+  bool done(T* en) override {
+    return !_done.emplace(en).second;
+  }
+
+  void reset() override {
+    _done.clear();
+  }
+
+ private:
+  ::arangodb::containers::HashSet<T*> _done;
+};
+
 }  // namespace aql
 }  // namespace arangodb
 

@@ -252,11 +252,10 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
           // But only these.
           // Chances are if you hit a different node here, that you created a loop.
 #warning TODO: this check breaks when there is parallelism and some nodes are visited multiple times
-          /*
           TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
                      en->getType() == ExecutionNode::SCATTER ||
-                     en->getType() == ExecutionNode::DISTRIBUTE);
-          */
+                     en->getType() == ExecutionNode::DISTRIBUTE ||
+                     en->getType() == ExecutionNode::MUTEX);
           block = cached->second;
           doEmplace = false;
         }
