@@ -44,6 +44,7 @@
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -1117,6 +1118,7 @@ void ClusterInfo::loadPlan() {
     {
       std::lock_guard w(_waitPlanLock);
       triggerWaiting(_waitPlan, idx);
+      _server.getFeature<ClusterFeature>().heartbeatThread()->notify();
     }
 
     if (!acb->slice().isNumber()) {
@@ -1304,6 +1306,7 @@ void ClusterInfo::loadCurrent() {
     {
       std::lock_guard w(_waitCurrentLock);
       triggerWaiting(_waitCurrent, idx);
+      _server.getFeature<ClusterFeature>().heartbeatThread()->notify();
     }
 
     if (!acb->slice().isNumber()) {
@@ -1703,13 +1706,9 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
   }
 
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (res.slice().get("results").length() > 0) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-
-  // Now update our own cache of planned databases:
-  loadPlan();
 
   // And wait for our database to show up in `Current/Databases`
   auto waitresult = waitForDatabaseInCurrent(database);
@@ -1760,12 +1759,9 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
   }
 
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (res.slice().get("results").length()) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-  // Make sure we're all aware of collections that have been created
-  loadPlan();
 
   // The transaction was successful and the database should
   // now be visible and usable.
@@ -1812,9 +1808,8 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
         << res.errorMessage() << ". Retrying.";
     }
 
-    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
     if (res.slice().get("results").length()) {
-      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
     if (_server.isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
@@ -1885,9 +1880,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (res.slice().get("results").length()) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
   // Load our own caches:
   loadPlan();
@@ -1903,7 +1897,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
         if (res.successful()) {
           if (res.slice().get("results").length()) {
-            cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+            waitForCurrent(res.slice().get("results")[0].getNumber<uint64_t>()).get();
           }
           return Result(TRI_ERROR_NO_ERROR);
         }
@@ -2283,9 +2277,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // into precondition failed, the collections were successfully created, so
       // we're fine too.
       if (res.successful()) {
-        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
         if (res.slice().get("results").length()) {
-          cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+          waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
         }
         return;
       } else if (res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -2359,11 +2352,9 @@ Result ClusterInfo::createCollectionsCoordinator(
         return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
       }
 
-      auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
       if (res.slice().get("results").length() > 0) {
-        cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
       }
-      loadPlan();
     }
   }
 
@@ -2425,9 +2416,8 @@ Result ClusterInfo::createCollectionsCoordinator(
         // Note that this is not strictly necessary, just to avoid an
         // unneccessary request when we're sure that we don't need it anymore.
         deleteCollectionGuard.cancel();
-        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
         if (res.slice().get("results").length() > 0) {
-          cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+          waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
         }
       }
 

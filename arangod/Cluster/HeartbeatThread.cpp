@@ -1320,9 +1320,16 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   LOG_TOPIC("0708a", DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
 
   _lastSyncTime = TRI_microtime();
-  TRI_ASSERT(_maintenanceThread != nullptr);
-  _maintenanceThread->notify();
+  //TRI_ASSERT(_maintenanceThread != nullptr);
+  //_maintenanceThread->notify();
 }
+
+void HeartbeatThread::notify() {
+  if (_maintenanceThread != nullptr) {
+    _maintenanceThread->notify();
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server's state to the agency

@@ -520,7 +520,6 @@ void ClusterFeature::start() {
     LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER) << "Waiting for agency cache to become ready.";
     _agencyCache->waitFor(1).get();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER) << "Agency cache is ready. Starting cluster cache syncers";
-    _clusterInfo->startSyncers();
   }
 
   // If we are a coordinator, we wait until at least one DBServer is there,
@@ -607,6 +606,9 @@ void ClusterFeature::start() {
   }
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
+  if (role != ServerState::ROLE_COORDINATOR) {
+    _clusterInfo->startSyncers();
+  }
 
   comm.increment("Current/Version");
 
