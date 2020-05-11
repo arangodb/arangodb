@@ -66,7 +66,7 @@ bool preparePendingJob(arangodb::velocypack::Builder& job,
   if (!found) {
     // Just in case, this is never going to happen, since we will only
     // call the start() method if the job is already in ToDo.
-    LOG_TOPIC("2482b", INFO, arangodb::Logger::SUPERVISION)
+    LOG_TOPIC("2482c", INFO, arangodb::Logger::SUPERVISION)
         << "Failed to get key " + toDoPrefix + jobId + " from agency snapshot";
     return false;
   }
@@ -270,7 +270,7 @@ UpgradeVirtualCollection::UpgradeVirtualCollection(Supervision& supervision,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC("4668d", ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("4668e", ERR, Logger::SUPERVISION) << err.str();
     finish("", "", false, err.str());
     _status = FAILED;
   }
@@ -331,7 +331,7 @@ bool UpgradeVirtualCollection::start(bool& aborts) {
   bool ok = writeTransaction(trx, messageIfError);
   if (ok) {
     _status = PENDING;
-    LOG_TOPIC("45121", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("45122", DEBUG, Logger::SUPERVISION)
         << "Pending: Upgrade collection '" + _collection + "'";
     return true;
   }
