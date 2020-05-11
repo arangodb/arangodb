@@ -809,7 +809,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
       shardReplicated = numFollowers > 0;
 
       {
-        READ_LOCKER(lock, collection->upgradeStatusLock());
+        std::unique_lock<std::mutex> lock(collection->upgradeStatusLock());
         auto& upgradeStatus = collection->upgradeStatus();
         if (!upgradeStatus.map().empty()) {
           upgradeStatus.toVelocyPack(ret, true);
@@ -986,6 +986,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               VPackObjectBuilder p(&report);
               report.add(PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
                          thePlanList);
+              report.add("/Current/Version", cur.get("Version"));
             }
           }
         }

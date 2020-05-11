@@ -152,7 +152,6 @@ std::pair<bool, bool> checkShard(arangodb::consensus::Node const& snapshot,
           UpgradeStatus::Map::const_iterator it = map.find(server);
           if (it == map.end() || it->second != targetPhase) {
             allMatch = false;
-            break;
           }
         }
       }
@@ -379,47 +378,6 @@ void prepareSetUpgradedPropertiesTransaction(arangodb::velocypack::Builder& trx,
   }
 }
 
-void prepareErrorTransaction(arangodb::velocypack::Builder& trx, std::string const& jobId,
-                             std::string const& prefix, std::string const& errorMessage,
-                             arangodb::velocypack::Slice const& oldJob) {
-  using namespace arangodb::velocypack;
-
-  Builder job;
-  {
-    ObjectBuilder guard(&job);
-    for (ObjectIteratorPair pair : ObjectIterator(oldJob)) {
-      if (pair.key.isEqualString("error")) {
-        job.add("error", Value(errorMessage));
-      } else {
-        job.add(pair.key);
-        job.add(pair.value);
-      }
-    }
-  }
-
-  std::string key = prefix + jobId;
-  {
-    ArrayBuilder listofTransactions(&trx);
-    {
-      ObjectBuilder mutations(&trx);
-
-      // update job
-      trx.add(Value(key));
-      trx.add(job.slice());
-    }
-    {
-      ObjectBuilder preconditions(&trx);
-
-      // job exists
-      trx.add(Value(key));
-      {
-        ObjectBuilder collection(&trx);
-        trx.add("oldEmpty", Value(false));
-      }
-    }
-  }
-}
-
 void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
                                arangodb::consensus::Node const& snapshot,
                                std::string const& database, std::string const& collection,
@@ -553,7 +511,6 @@ UpgradeCollection::UpgradeCollection(Supervision& supervision,
   auto [tmpCreator, foundCreator] = _snapshot.hasAsString(path + "creator");
   auto [tmpCreated, foundCreated] = _snapshot.hasAsString(path + "timeCreated");
 
-  auto [tmpError, errorFound] = _snapshot.hasAsString(path + "error");
   auto [tmpChild, childFound] = _snapshot.hasAsBool(path + StaticStrings::IsSmartChild);
 
   if (foundDatabase && foundCollection && foundCreator && foundCreated) {
@@ -567,10 +524,6 @@ UpgradeCollection::UpgradeCollection(Supervision& supervision,
     LOG_TOPIC("4668d", ERR, Logger::SUPERVISION) << err.str();
     finish("", "", false, err.str());
     _status = FAILED;
-  }
-
-  if (errorFound && !tmpError.empty()) {
-    _error = tmpError;
   }
 
   _smartChild = childFound && tmpChild;
@@ -590,11 +543,6 @@ bool UpgradeCollection::create(std::shared_ptr<VPackBuilder> envelope) {
 bool UpgradeCollection::start(bool& aborts) {
   using namespace cluster::paths::aliases;
 
-  if (!_error.empty()) {
-    abort(_error);
-    return false;
-  }
-
   velocypack::Builder pending;
   bool success = ::preparePendingJob(pending, _jobId, _snapshot);
   if (!success) {
@@ -609,7 +557,7 @@ bool UpgradeCollection::start(bool& aborts) {
       "could not begin upgrade of collection '" + _collection + "'";
 
   TRI_IF_FAILURE("UpgradeCollectionAgent::StartJobTransaction") {
-    registerError(messageIfError);
+    abort(messageIfError);
     return false;
   }
 
@@ -630,17 +578,12 @@ JOB_STATUS UpgradeCollection::status() {
     return _status;
   }
 
-  if (!_error.empty()) {
-    abort(_error);
-    return FAILED;
-  }
-
   ::UpgradeState targetPhase = ::getTargetPhase(_snapshot, _database, _collection);
   std::string errorMessage;
   auto [allMatch, haveShardError] =
       ::checkAllShards(_snapshot, _database, _collection, targetPhase, errorMessage);
   if (haveShardError) {
-    registerError(errorMessage);
+    abort(errorMessage);
   } else if (allMatch) {
     // move to next phase, or report finished if done
     if (targetPhase == ::UpgradeState::Prepare) {
@@ -649,7 +592,7 @@ JOB_STATUS UpgradeCollection::status() {
                                          ::UpgradeState::Finalize);
       std::string messageIfError = "could not set target phase 'Finalize'";
       TRI_IF_FAILURE("UpgradeCollectionAgent::SetFinalizeTransaction") {
-        registerError(messageIfError);
+        abort(messageIfError);
         return _status;
       }
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
@@ -660,7 +603,7 @@ JOB_STATUS UpgradeCollection::status() {
           "could not set upgraded properties on collection";
       TRI_IF_FAILURE(
           "UpgradeCollectionAgent::SetUpgradedPropertiesTransaction") {
-        registerError(messageIfError);
+        abort(messageIfError);
         return _status;
       }
       bool ok = writeTransaction(trx, messageIfError);
@@ -670,7 +613,7 @@ JOB_STATUS UpgradeCollection::status() {
                                            ::UpgradeState::Cleanup);
         messageIfError = "could not set target phase 'Cleanup'";
         TRI_IF_FAILURE("UpgradeCollectionAgent::SetCleanupTransaction") {
-          registerError(messageIfError);
+          abort(messageIfError);
           return _status;
         }
         ok = writeTransaction(trx, messageIfError);
@@ -680,11 +623,13 @@ JOB_STATUS UpgradeCollection::status() {
       ::prepareReleaseTransaction(trx, _snapshot, _database, _collection, _jobId);
       std::string messageIfError = "could not clean up old data after upgrade";
       TRI_IF_FAILURE("UpgradeCollectionAgent::ReleaseTransaction") {
-        registerError(messageIfError);
+        abort(messageIfError);
         return _status;
       }
-      [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
-      finish("", "", _error.empty(), _error);
+      bool ok = writeTransaction(trx, messageIfError);
+      if (ok) {
+        finish("", "", true);
+      }
     }
   }
 
@@ -725,25 +670,7 @@ bool UpgradeCollection::writeTransaction(velocypack::Builder const& trx,
                                          std::string const& errorMessage) {
   write_ret_t res = singleWriteTransaction(_agent, trx, true);
   if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
-    bool registered = registerError(errorMessage);
-    if (!registered) {
-      abort(errorMessage);
-    }
-    return false;
-  }
-  return true;
-}
-
-bool UpgradeCollection::registerError(std::string const& errorMessage) {
-  _error = errorMessage;
-  velocypack::Builder trx;
-  velocypack::Slice jobData = job();
-  if (!jobData.isObject()) {
-    return false;
-  }
-  ::prepareErrorTransaction(trx, _jobId, jobPrefix(), errorMessage, jobData);
-  write_ret_t res = singleWriteTransaction(_agent, trx, true);
-  if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
+    abort(errorMessage);
     return false;
   }
   return true;

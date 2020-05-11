@@ -49,13 +49,11 @@ struct UpgradeVirtualCollection : public Job {
   std::string jobPrefix() const;
   velocypack::Slice job() const;
   bool writeTransaction(velocypack::Builder const&, std::string const&);
-  bool registerError(std::string const&);
   void prepareChildJob(velocypack::Builder&, std::string const&, std::string const&);
 
   std::string _database;
   std::string _collection;
   std::chrono::system_clock::time_point _created;
-  std::string _error;
   std::vector<std::string> _children;
   std::size_t _timeout;
 };

@@ -365,13 +365,21 @@ std::pair<LogicalCollection::UpgradeStatus, bool> LogicalCollection::UpgradeStat
 
   if (slice.isObject()) {
     for (velocypack::ObjectIteratorPair pair : velocypack::ObjectIterator(slice)) {
-      if (!pair.key.isString() || !pair.value.isInteger()) {
+      if (!pair.key.isString()) {
         error = true;
         continue;
       }
       if (pair.key.isEqualString("error")) {
+        if (!pair.value.isString()) {
+          error = true;
+          continue;
+        }
         status.setError(pair.value.copyString());
       } else {
+        if (!pair.value.isInteger()) {
+          error = true;
+          continue;
+        }
         std::string server = pair.key.copyString();
         State state = stateFromSlice(pair.value);
         status.set(server, state);
@@ -1138,7 +1146,7 @@ basics::ReadWriteLock& LogicalCollection::statusLock() {
   return _statusLock;
 }
 
-basics::ReadWriteLock& LogicalCollection::upgradeStatusLock() {
+std::mutex& LogicalCollection::upgradeStatusLock() {
   return _upgradeStatusLock;
 }
 

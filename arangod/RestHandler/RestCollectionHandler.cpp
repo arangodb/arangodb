@@ -630,7 +630,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     auto [res, builder] =
         methods::Collections::upgrade(_vocbase, *coll, phase, timeout, smartChild);
     if (res.fail()) {
-      generateTransactionError(coll->name(), res, "");
+      generateError(res);
       return RestStatus::DONE;
     }
 

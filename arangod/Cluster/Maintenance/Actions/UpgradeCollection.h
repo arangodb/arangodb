@@ -38,7 +38,7 @@ class UpgradeCollection : public ActionBase,
  public:
   UpgradeCollection(MaintenanceFeature&, ActionDescription const&);
 
-  virtual ~UpgradeCollection();
+  virtual ~UpgradeCollection() = default;
 
   virtual bool first() override final;
 
@@ -61,14 +61,17 @@ class UpgradeCollection : public ActionBase,
   bool refreshPlanStatus();
 
   void setError(LogicalCollection&, std::string const&);
+  void setError(LogicalCollection&, std::string const&, std::unique_lock<std::mutex>&);
+
+  void wait() const;
 
  private:
   velocypack::Builder _planStatus;
   std::size_t _timeout;
   bool _isSmartChild;
+  std::atomic<bool> _inRollback;
   std::unique_ptr<transaction::Methods> _trx;
   std::unordered_map<std::string, std::pair<LogicalCollection::UpgradeStatus::State, futures::Future<Result>>> _futures;
-  mutable std::size_t _iteration = 0;
 };
 
 }  // namespace arangodb::maintenance

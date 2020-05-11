@@ -130,9 +130,15 @@ bool getSmartChild(arangodb::application_features::ApplicationServer& server,
   return isSmartChild;
 }
 
-std::pair<arangodb::Result, bool> updateStatusFromCurrent(arangodb::ClusterInfo& ci,
-                                                          arangodb::LogicalCollection& collection,
-                                                          std::string const& shard) {
+bool haveError(arangodb::LogicalCollection& collection) {
+  std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
+  arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
+  return !status.errorMessage().empty();
+}
+
+std::pair<arangodb::Result, bool> updateStatusFromCurrent(
+    arangodb::ClusterInfo& ci, arangodb::LogicalCollection& collection,
+    std::string const& shard, std::unique_lock<std::mutex>& lock) {
   arangodb::Result res;
   bool localChanges = false;
   std::shared_ptr<std::vector<std::string>> currentServers =
@@ -143,24 +149,23 @@ std::pair<arangodb::Result, bool> updateStatusFromCurrent(arangodb::ClusterInfo&
     return std::make_pair(res, localChanges);
   }
   std::set<std::string> servers{currentServers->begin(), currentServers->end()};
-  {
-    WRITE_LOCKER(lock, collection.upgradeStatusLock());
-    arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
-    status = arangodb::LogicalCollection::UpgradeStatus::fetch(collection);
-    auto const& map = status.map();
-    for (auto& it : map) {
-      if (servers.find(it.first) == servers.end()) {
-        // out-dated entry
-        status.remove(it.first);
-        localChanges = true;
-      }
+
+  TRI_ASSERT(lock.owns_lock());
+  arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
+  status = arangodb::LogicalCollection::UpgradeStatus::fetch(collection);
+  auto const& map = status.map();
+  for (auto& it : map) {
+    if (servers.find(it.first) == servers.end()) {
+      // out-dated entry
+      status.remove(it.first);
+      localChanges = true;
     }
-    for (auto& it : servers) {
-      if (map.find(it) == map.end()) {
-        // missing entry
-        status.set(it, arangodb::LogicalCollection::UpgradeStatus::State::ToDo);
-        localChanges = true;
-      }
+  }
+  for (auto& it : servers) {
+    if (map.find(it) == map.end()) {
+      // missing entry
+      status.set(it, arangodb::LogicalCollection::UpgradeStatus::State::ToDo);
+      localChanges = true;
     }
   }
 
@@ -168,10 +173,11 @@ std::pair<arangodb::Result, bool> updateStatusFromCurrent(arangodb::ClusterInfo&
 }
 
 void writeStatusToCurrent(arangodb::LogicalCollection& collection,
-                          arangodb::maintenance::ActionDescription const& desc) {
+                          arangodb::maintenance::ActionDescription const& desc,
+                          std::unique_lock<std::mutex> const& lock) {
   arangodb::velocypack::Builder statusBuilder;
   {
-    READ_LOCKER(lock, collection.upgradeStatusLock());
+    TRI_ASSERT(lock.owns_lock());
     auto const& status = collection.upgradeStatus();
     arangodb::velocypack::ObjectBuilder object(&statusBuilder);
     status.toVelocyPack(statusBuilder, false);
@@ -225,7 +231,7 @@ void removeStatusFromCurrent(arangodb::LogicalCollection& collection,
 std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
     arangodb::LogicalCollection& collection) {
   std::unordered_map<::UpgradeState, std::vector<std::string>> map;
-  WRITE_LOCKER(lock, collection.upgradeStatusLock());
+  std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
 
   arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
   for (auto& it : status.map()) {
@@ -234,12 +240,27 @@ std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
 
   return map;
 }
+
+void setStatusesForRollback(arangodb::LogicalCollection& collection,
+                            std::unique_lock<std::mutex>& lock) {
+  TRI_ASSERT(lock.owns_lock());
+  arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
+  status.setError("");
+
+  auto& map = status.map();
+  for (auto const& [server, state] : map) {
+    if (state == ::UpgradeState::ToDo || state == ::UpgradeState::Prepare) {
+      // effectively already rolled back, so mark it as such
+      status.set(server, ::UpgradeState::Rollback);
+    }
+  }
+}
 }  // namespace
 
 namespace arangodb::maintenance {
 
 UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc), _timeout(600), _isSmartChild(false) {
+    : ActionBase(feature, desc), _timeout(600), _isSmartChild(false), _inRollback(false) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -267,8 +288,6 @@ UpgradeCollection::UpgradeCollection(MaintenanceFeature& feature, ActionDescript
   }
 }
 
-UpgradeCollection::~UpgradeCollection()  = default;
-
 bool UpgradeCollection::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -295,7 +314,7 @@ bool UpgradeCollection::first() {
       if (!ok) {
         // no upgrade status in Plan, clean status out of Current
         {
-          WRITE_LOCKER(lock, config.collection->statusLock());
+          std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
           LogicalCollection::UpgradeStatus& status = config.collection->upgradeStatus();
           status.clear();
         }
@@ -314,6 +333,7 @@ bool UpgradeCollection::first() {
       }
       if (_result.fail()) {
         setError(*config.collection, _result.errorMessage());
+        setState(FAILED);
         return false;
       }
 
@@ -323,6 +343,7 @@ bool UpgradeCollection::first() {
       error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("620fc", ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      setState(FAILED);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -331,9 +352,10 @@ bool UpgradeCollection::first() {
     LOG_TOPIC("79543", WARN, Logger::MAINTENANCE)
         << "UpgradeCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
   }
 
-  return true;
+  return false;
 }
 
 bool UpgradeCollection::next() {
@@ -363,23 +385,44 @@ bool UpgradeCollection::next() {
       LOG_TOPIC("62543", DEBUG, Logger::MAINTENANCE)
           << "Upgrading local collection " + shard;
 
+      Result res;
+
+      {
+        std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+        if (targetPhase == ::UpgradeState::Rollback && !_inRollback) {
+          _inRollback = true;
+          ::setStatusesForRollback(*config.collection, lock);
+          ::writeStatusToCurrent(*config.collection, _description, lock);
+        }
+      }
+
+      // check if we have any async errors since last run
+      if (::haveError(*config.collection)) {
+        // wait for rollback request
+        wait();
+        return true;
+      }
+
       // will check Current, and fill in any missing servers with ToDo
       bool localChanges = false;
       auto& feature = config.vocbase.server().getFeature<ClusterFeature>();
       auto& ci = feature.clusterInfo();
-      std::tie(_result, localChanges) =
-          ::updateStatusFromCurrent(ci, *config.collection, shard);
-      TRI_IF_FAILURE("UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
-        _result.reset(TRI_ERROR_INTERNAL,
-                      "could not update status from current");
+      {
+        std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+        std::tie(res, localChanges) =
+            ::updateStatusFromCurrent(ci, *config.collection, shard, lock);
       }
-      if (_result.fail()) {
-        setError(*config.collection, _result.errorMessage());
+      TRI_IF_FAILURE("UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
+        res.reset(TRI_ERROR_INTERNAL, "could not update status from current");
+      }
+      if (res.fail()) {
+        setError(*config.collection, res.errorMessage());
         return true;
       }
       if (localChanges && targetPhase != ::UpgradeState::Cleanup) {
         // make sure it's written back out to Current with up-to-date server list
-        ::writeStatusToCurrent(*config.collection, _description);
+        std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+        ::writeStatusToCurrent(*config.collection, _description, lock);
       }
 
       std::unordered_map<::UpgradeState, std::vector<std::string>> servers =
@@ -395,7 +438,7 @@ bool UpgradeCollection::next() {
           bool haveServers = processPhase(servers, ::UpgradeState::ToDo,
                                           ::UpgradeState::Prepare, *config.collection);
           // if everything was already prepared, proceed to finalize
-          if (!haveServers && _result.ok()) {
+          if (!haveServers && !::haveError(*config.collection)) {
             haveServers = processPhase(servers, ::UpgradeState::Prepare,
                                        targetPhase, *config.collection);
           }
@@ -433,6 +476,7 @@ bool UpgradeCollection::next() {
       error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("630fc", ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+      setState(FAILED);
     }
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -441,18 +485,20 @@ bool UpgradeCollection::next() {
     LOG_TOPIC("79447", WARN, Logger::MAINTENANCE)
         << "UpgradeCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
+    setState(FAILED);
   }
 
   return hasMore(targetPhase);
 }
 
 bool UpgradeCollection::hasMore(::UpgradeState targetPhase) const {
-  if (_result.fail() || (_futures.empty() && targetPhase == ::UpgradeState::Cleanup)) {
+  if (_result.fail() || (_futures.empty() && targetPhase == ::UpgradeState::Cleanup) ||
+      feature().isShuttingDown()) {
     return false;
   }
 
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-  return ++_iteration < 100;
+  wait();
+  return true;
 }
 
 futures::Future<Result> UpgradeCollection::sendRequest(LogicalCollection& collection,
@@ -481,7 +527,7 @@ futures::Future<Result> UpgradeCollection::sendRequest(LogicalCollection& collec
 
 std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
     std::string const& server, LogicalCollection::UpgradeStatus::State phase) {
-  return [self = shared_from_this(), this, server, phase](network::Response&& res) -> Result {
+  return [self = shared_from_this(), server, phase](network::Response&& res) -> Result {
     Result result;
     int commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
@@ -494,32 +540,34 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
     }
 
     try {
-      ::Config config(_description);
+      ::Config config(self->_description);
       if (config.collection) {
         if (result.fail()) {
-          setError(*config.collection, result.errorMessage());
           return result;
         }
 
         // okay, we executed this operation successfully, let everyone know
         {
-          WRITE_LOCKER(lock, config.collection->upgradeStatusLock());
-          arangodb::LogicalCollection::UpgradeStatus& status =
-              config.collection->upgradeStatus();
-          status.set(server, phase);
+          std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+          if (!self->_inRollback || phase == ::UpgradeState::Rollback ||
+              phase == ::UpgradeState::Cleanup) {
+            arangodb::LogicalCollection::UpgradeStatus& status =
+                config.collection->upgradeStatus();
+            status.set(server, phase);
+            ::writeStatusToCurrent(*config.collection, self->_description, lock);
+          }
         }
-        ::writeStatusToCurrent(*config.collection, _description);
       } else {
         std::stringstream error;
-        error << "failed to lookup local collection " << _description.get(SHARD)
-              << "in database " + _description.get(DATABASE);
+        error << "failed to lookup local collection " << self->_description.get(SHARD)
+              << "in database " + self->_description.get(DATABASE);
         LOG_TOPIC("720fc", ERR, Logger::MAINTENANCE) << error.str();
         result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       }
     } catch (std::exception const& e) {
       std::stringstream error;
 
-      error << "action " << _description << " failed with exception " << e.what();
+      error << "action " << self->_description << " failed with exception " << e.what();
       LOG_TOPIC("7a443", WARN, Logger::MAINTENANCE)
           << "UpgradeCollection: " << error.str();
       result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -542,24 +590,41 @@ bool UpgradeCollection::processPhase(
       if (f == _futures.end() && searchPhase != targetPhase) {
         mustSendRequest = true;
       } else {
-        if (f->second.second.hasValue()) {
-          Result r = f->second.second.get();
-          if (r.ok()) {
-            if (f->second.first == targetPhase) {
-              // this future is from this phase, mark the server done
-              --serverCount;
+        auto& [phase, future] = f->second;
+        if (future.isReady()) {
+          if (future.hasValue()) {
+            Result r = future.get();
+            if (r.ok()) {
+              if (phase == targetPhase) {
+                // this future is from this phase, mark the server done
+                --serverCount;
+              } else {
+                // this future is from a previous phase, go ahead and mark to
+                // send so we don't have a missed update
+                mustSendRequest = true;
+              }
             } else {
-              // this future is from a previous phase, go ahead and mark to send
-              // so we don't have a missed update
-              mustSendRequest = true;
+              std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
+              if (!_inRollback || phase == ::UpgradeState::Rollback ||
+                  phase == ::UpgradeState::Cleanup) {
+                setError(collection, r.errorMessage(), lock);
+              }
             }
             _futures.erase(f);
-          } else {
-            _result.reset(r);
-          }
-        } else if (f->second.second.hasException()) {
-          if (f->second.second.getTry().exception()) {
-            std::rethrow_exception(f->second.second.getTry().exception());
+          } else if (future.hasException()) {
+            decltype(future) theFuture = std::move(future);
+            _futures.erase(f);
+            LOG_TOPIC("b6f4d", WARN, Logger::MAINTENANCE)
+                << "UpgradeCollection '" << _description.get(SHARD) << "': "
+                << "encountered exception while processing request to server '"
+                << server << "'";
+            if (theFuture.getTry().exception()) {
+              setError(
+                  collection,
+                  "encountered exception while processing request to server '" +
+                      server + "'");
+              std::rethrow_exception(theFuture.getTry().exception());
+            }
           }
         }
       }
@@ -608,12 +673,21 @@ bool UpgradeCollection::refreshPlanStatus() {
 }
 
 void UpgradeCollection::setError(LogicalCollection& collection, std::string const& message) {
-  {
-    WRITE_LOCKER(lock, collection.statusLock());
-    LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
-    status.setError(message);
-  }
-  ::writeStatusToCurrent(collection, _description);
+  std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
+  setError(collection, message, lock);
+}
+
+void UpgradeCollection::setError(LogicalCollection& collection, std::string const& message,
+                                 std::unique_lock<std::mutex>& lock) {
+  LOG_TOPIC("b6f4e", WARN, Logger::MAINTENANCE)
+      << "UpgradeCollection '" << _description.get(SHARD) << "': " << message;
+  LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
+  status.setError(message);
+  ::writeStatusToCurrent(collection, _description, lock);
+}
+
+void UpgradeCollection::wait() const {
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 }  // namespace arangodb::maintenance

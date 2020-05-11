@@ -49,13 +49,12 @@ struct RollbackUpgradeCollection : public Job {
   std::string jobPrefix() const;
   velocypack::Slice job() const;
   bool writeTransaction(velocypack::Builder const&, std::string const&);
-  bool registerError(std::string const&);
 
   std::string _database;
   std::string _collection;
   std::string _failedId;
   std::chrono::system_clock::time_point _created;
-  std::string _error;
+  std::chrono::steady_clock::time_point _started;
   bool _smartChild;
 };
 }  // namespace consensus

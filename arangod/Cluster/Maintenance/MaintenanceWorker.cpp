@@ -120,6 +120,8 @@ void MaintenanceWorker::run() {
 
   }  // while
 
+  _curAction.reset();
+
 }  // MaintenanceWorker::run
 
 void MaintenanceWorker::nextState(bool actionMore) {

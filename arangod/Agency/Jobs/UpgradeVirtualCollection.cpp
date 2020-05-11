@@ -194,47 +194,6 @@ void prepareSetUpgradedPropertiesTransaction(arangodb::velocypack::Builder& trx,
   }
 }
 
-void prepareErrorTransaction(arangodb::velocypack::Builder& trx, std::string const& jobId,
-                             std::string const& prefix, std::string const& errorMessage,
-                             arangodb::velocypack::Slice const& oldJob) {
-  using namespace arangodb::velocypack;
-
-  Builder job;
-  {
-    ObjectBuilder guard(&job);
-    for (ObjectIteratorPair pair : ObjectIterator(oldJob)) {
-      if (pair.key.isEqualString("error")) {
-        job.add("error", Value(errorMessage));
-      } else {
-        job.add(pair.key);
-        job.add(pair.value);
-      }
-    }
-  }
-
-  std::string key = prefix + jobId;
-  {
-    ArrayBuilder listofTransactions(&trx);
-    {
-      ObjectBuilder mutations(&trx);
-
-      // update job
-      trx.add(Value(key));
-      trx.add(job.slice());
-    }
-    {
-      ObjectBuilder preconditions(&trx);
-
-      // job exists
-      trx.add(Value(key));
-      {
-        ObjectBuilder collection(&trx);
-        trx.add("oldEmpty", Value(false));
-      }
-    }
-  }
-}
-
 std::vector<std::string> getChildren(arangodb::consensus::Node const& snapshot,
                                      std::string const& jobId) {
   using namespace arangodb::velocypack;
@@ -300,7 +259,6 @@ UpgradeVirtualCollection::UpgradeVirtualCollection(Supervision& supervision,
   auto [tmpCreator, foundCreator] = _snapshot.hasAsString(path + "creator");
   auto [tmpCreated, foundCreated] = _snapshot.hasAsString(path + "timeCreated");
 
-  auto [tmpError, errorFound] = _snapshot.hasAsString(path + "error");
   auto [tmpChildren, childrenFound] = _snapshot.hasAsArray(path + "children");
   auto [tmpTimeout, timeoutFound] = _snapshot.hasAsUInt(path + "timeout");
 
@@ -315,10 +273,6 @@ UpgradeVirtualCollection::UpgradeVirtualCollection(Supervision& supervision,
     LOG_TOPIC("4668d", ERR, Logger::SUPERVISION) << err.str();
     finish("", "", false, err.str());
     _status = FAILED;
-  }
-
-  if (errorFound && !tmpError.empty()) {
-    _error = tmpError;
   }
 
   if (childrenFound && tmpChildren.isArray()) {
@@ -370,7 +324,7 @@ bool UpgradeVirtualCollection::start(bool& aborts) {
       "could not begin upgrade of collection '" + _collection + "'";
 
   TRI_IF_FAILURE("UpgradeVirtualCollection::StartJobTransaction") {
-    registerError(messageIfError);
+    abort(messageIfError);
     return false;
   }
 
@@ -389,10 +343,6 @@ JOB_STATUS UpgradeVirtualCollection::status() {
   if (_status != PENDING) {
     // either not started yet, or already failed/finished
     return _status;
-  }
-
-  if (!_error.empty()) {
-    abort(_error);
   }
 
   std::vector<std::string> children = ::getChildren(_snapshot, _jobId);
@@ -463,25 +413,7 @@ bool UpgradeVirtualCollection::writeTransaction(velocypack::Builder const& trx,
                                                 std::string const& errorMessage) {
   write_ret_t res = singleWriteTransaction(_agent, trx, true);
   if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
-    bool registered = registerError(errorMessage);
-    if (!registered) {
-      abort(errorMessage);
-    }
-    return false;
-  }
-  return true;
-}
-
-bool UpgradeVirtualCollection::registerError(std::string const& errorMessage) {
-  _error = errorMessage;
-  velocypack::Builder trx;
-  velocypack::Slice jobData = job();
-  if (!jobData.isObject()) {
-    return false;
-  }
-  ::prepareErrorTransaction(trx, _jobId, jobPrefix(), errorMessage, jobData);
-  write_ret_t res = singleWriteTransaction(_agent, trx, true);
-  if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
+    abort(errorMessage);
     return false;
   }
   return true;

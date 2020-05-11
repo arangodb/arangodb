@@ -346,6 +346,8 @@ void MaintenanceFeature::beginShutdown() {
 
   _isShuttingDown = true;
   CONDITION_LOCKER(cLock, _actionRegistryCond);
+  WRITE_LOCKER(wLock, _actionRegistryLock);
+  _actionRegistry.clear();
   _actionRegistryCond.broadcast();
 }  // MaintenanceFeature
 

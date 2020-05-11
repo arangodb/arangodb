@@ -349,47 +349,6 @@ void prepareSetTargetPhaseTransaction(arangodb::velocypack::Builder& trx,
   }
 }
 
-void prepareErrorTransaction(arangodb::velocypack::Builder& trx, std::string const& jobId,
-                             std::string const& prefix, std::string const& errorMessage,
-                             arangodb::velocypack::Slice const& oldJob) {
-  using namespace arangodb::velocypack;
-
-  Builder job;
-  {
-    ObjectBuilder guard(&job);
-    for (ObjectIteratorPair pair : ObjectIterator(oldJob)) {
-      if (pair.key.isEqualString("error")) {
-        job.add("error", Value(errorMessage));
-      } else {
-        job.add(pair.key);
-        job.add(pair.value);
-      }
-    }
-  }
-
-  std::string key = prefix + jobId;
-  {
-    ArrayBuilder listofTransactions(&trx);
-    {
-      ObjectBuilder mutations(&trx);
-
-      // update job
-      trx.add(Value(key));
-      trx.add(job.slice());
-    }
-    {
-      ObjectBuilder preconditions(&trx);
-
-      // job exists
-      trx.add(Value(key));
-      {
-        ObjectBuilder collection(&trx);
-        trx.add("oldEmpty", Value(false));
-      }
-    }
-  }
-}
-
 void prepareReleaseTransaction(arangodb::velocypack::Builder& trx,
                                arangodb::consensus::Node const& snapshot,
                                std::string const& database, std::string const& collection,
@@ -480,7 +439,6 @@ RollbackUpgradeCollection::RollbackUpgradeCollection(Supervision& supervision,
   auto [tmpCreator, foundCreator] = _snapshot.hasAsString(path + "creator");
   auto [tmpCreated, foundCreated] = _snapshot.hasAsString(path + "timeCreated");
 
-  auto [tmpError, errorFound] = _snapshot.hasAsString(path + "error");
   auto [tmpChild, childFound] = _snapshot.hasAsBool(path + StaticStrings::IsSmartChild);
 
   if (foundDatabase && foundCollection && foundFailed && foundCreator && foundCreated) {
@@ -497,11 +455,9 @@ RollbackUpgradeCollection::RollbackUpgradeCollection(Supervision& supervision,
     _status = FAILED;
   }
 
-  if (errorFound && !tmpError.empty()) {
-    _error = tmpError;
-  }
-
   _smartChild = childFound && tmpChild;
+
+  _started = std::chrono::steady_clock::now();
 }
 
 RollbackUpgradeCollection::~RollbackUpgradeCollection() = default;
@@ -518,11 +474,6 @@ bool RollbackUpgradeCollection::create(std::shared_ptr<VPackBuilder> envelope) {
 bool RollbackUpgradeCollection::start(bool& aborts) {
   using namespace cluster::paths::aliases;
 
-  if (!_error.empty()) {
-    abort(_error);
-    return false;
-  }
-
   velocypack::Builder pending;
   bool success = ::preparePendingJob(pending, _jobId, _snapshot);
   if (!success) {
@@ -538,7 +489,7 @@ bool RollbackUpgradeCollection::start(bool& aborts) {
       "could not begin to rollback upgrade of collection '" + _collection + "'";
 
   TRI_IF_FAILURE("RollbackUpgradeCollection::StartJobTransaction") {
-    registerError(messageIfError);
+    abort(messageIfError);
     return false;
   }
 
@@ -567,7 +518,7 @@ bool RollbackUpgradeCollection::start(bool& aborts) {
         _collection + "'";
 
     TRI_IF_FAILURE("RollbackUpgradeCollection::SetInitialPhaseTransaction") {
-      registerError(messageIfError);
+      abort(messageIfError);
       return false;
     }
 
@@ -586,17 +537,16 @@ JOB_STATUS RollbackUpgradeCollection::status() {
     return _status;
   }
 
-  if (!_error.empty()) {
-    abort(_error);
-    return FAILED;
-  }
-
   ::UpgradeState targetPhase = ::getTargetPhase(_snapshot, _database, _collection);
   std::string errorMessage;
   auto [allMatch, haveShardError] =
       ::checkAllShards(_snapshot, _database, _collection, targetPhase, errorMessage);
   if (haveShardError) {
-    registerError(errorMessage);
+    if ((std::chrono::steady_clock::now() - _started) > std::chrono::seconds(120)) {
+      // only abort if we've given the DBServers two minutes to clear out old
+      // errors and react to the rollback request
+      abort(errorMessage);
+    }
   } else if (allMatch) {
     // move to next phase, or report finished if done
     if (targetPhase == ::UpgradeState::Rollback) {
@@ -605,7 +555,7 @@ JOB_STATUS RollbackUpgradeCollection::status() {
                                          ::UpgradeState::Cleanup);
       std::string messageIfError = "could not set target phase 'Cleanup'";
       TRI_IF_FAILURE("RollbackUpgradeCollection::SetCleanupTransaction") {
-        registerError(messageIfError);
+        abort(messageIfError);
         return _status;
       }
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
@@ -614,11 +564,13 @@ JOB_STATUS RollbackUpgradeCollection::status() {
       ::prepareReleaseTransaction(trx, _snapshot, _database, _collection, _jobId);
       std::string messageIfError = "could not clean up old data after upgrade";
       TRI_IF_FAILURE("RollbackUpgradeCollection::ReleaseTransaction") {
-        registerError(messageIfError);
+        abort(messageIfError);
         return _status;
       }
       [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
-      finish("", "", _error.empty(), _error);
+      if (ok) {
+        finish("", "", true);
+      }
     }
   }
 
@@ -653,25 +605,7 @@ bool RollbackUpgradeCollection::writeTransaction(velocypack::Builder const& trx,
                                                  std::string const& errorMessage) {
   write_ret_t res = singleWriteTransaction(_agent, trx, true);
   if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
-    bool registered = registerError(errorMessage);
-    if (!registered) {
-      abort(errorMessage);
-    }
-    return false;
-  }
-  return true;
-}
-
-bool RollbackUpgradeCollection::registerError(std::string const& errorMessage) {
-  _error = errorMessage;
-  velocypack::Builder trx;
-  velocypack::Slice jobData = job();
-  if (!jobData.isObject()) {
-    return false;
-  }
-  ::prepareErrorTransaction(trx, _jobId, jobPrefix(), errorMessage, jobData);
-  write_ret_t res = singleWriteTransaction(_agent, trx, true);
-  if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
+    abort(errorMessage);
     return false;
   }
   return true;

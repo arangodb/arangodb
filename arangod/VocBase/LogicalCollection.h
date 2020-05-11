@@ -342,7 +342,7 @@ class LogicalCollection : public LogicalDataSource {
   basics::ReadWriteLock& statusLock();
 
   /// lock protecting the upgrade status
-  basics::ReadWriteLock& upgradeStatusLock();
+  std::mutex& upgradeStatusLock();
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -391,7 +391,7 @@ class LogicalCollection : public LogicalDataSource {
   mutable basics::ReadWriteLock _statusLock;
 
   /// lock protecting the upgrade status
-  mutable basics::ReadWriteLock _upgradeStatusLock;
+  mutable std::mutex _upgradeStatusLock;
 
   /// @brief collection format version
   Version _version;
