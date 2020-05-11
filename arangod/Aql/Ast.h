@@ -396,8 +396,7 @@ class Ast {
   void validateAndOptimize(transaction::Methods&);
 
   /// @brief determines the variables referenced in an expression
-  static void getReferencedVariables(AstNode const*,
-                                     ::arangodb::containers::HashSet<Variable const*>&);
+  static void getReferencedVariables(AstNode const*, VarSet&);
 
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);

@@ -1,6 +1,24 @@
 devel
 -----
 
+* Restored behavior of Foxx API documentation being expanded to show all routes
+  rather than collapsing all sections by default.
+
+* Fix a bad deadlock because transaction cleanup was pushed with too low
+  priority.
+
+* Allow specifying graph names as unquoted string in an AQL graph traversal
+  query, e.g. `FOR ... IN ... GRAPH abc`. Previously, the graph name had
+  to be a bind parameter or a string enclosed in quotes.
+
+* loadPlan and loadCurrent have been fixed to not miss out on increments. 
+
+* ClusterInfo and all data definition changes use the local agency cache.
+
+* Coordinators and DB servers cache the agency's read key value store. 
+
+* Agency offers the new poll API to subscribe to the Raft log stream.
+
 * Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
   edges. The option is turned on by default. This normally helps with
   performance in read-only and read-mostly workloads.
@@ -13,20 +31,28 @@ devel
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
 
+* `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
+
+* Removed old AgencyComm.
+
+* Improve continuation behavior of AQL queries. We post the continuation handler
+  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
+  of LOW.
+
 * Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
   is not another one hiding somewhere.
 
-* Fix spurious bugs in `resilience_move` tests due to replication context of 
+* Fix spurious bugs in `resilience_move` tests due to replication context of
   to-be-dropped collections lingering around until timeout.
 
-* Fix invalid value of `isSystem` attribute for non-system databases.
+* Fixed issue 11243: `db._isSystem()` returns true for a non-system DB.
 
 * Fix REST API `/_admin/cluster/removeServer`.
   This also fixes the removal of servers via the web interface.
 
 * Updated OpenSSL to 1.1.1g.
 
-* Lower the default values for `--rocksdb.block-cache-size` and 
+* Lower the default values for `--rocksdb.block-cache-size` and
   `--rocksdb.total-write-buffer-size` for systems with less than 1 GB of RAM.
   For these systems the default value were presumably too high and needed manual
   adjustment.
@@ -47,6 +73,7 @@ devel
   parameter.
 
 * Added collection property changes into auditing.
+
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
   and no replication factor was specified for a graph. In this case, the new
@@ -95,10 +122,10 @@ devel
 
 * Added compression property to ArangoSearch View storedValues.
 
-* Added overwrite mode "ignore" for document inserts. This mode allows 
+* Added overwrite mode "ignore" for document inserts. This mode allows
   ignoring primary key conflicts on insert when the target document already
   exists.
-  
+
   The following overwrite modes now exist:
 
   * "ignore": if a document with the specified `_key` value exists already,
@@ -124,7 +151,7 @@ devel
       INSERT { _key: ..., .... } INTO collection OPTIONS { overwriteMode: "ignore" }
 
   Again, when the overwrite mode "ignore" is used from AQL, it does not
-  support returning the old document version. Using "RETURN OLD" in 
+  support returning the old document version. Using "RETURN OLD" in
   an INSERT operation that uses the "ignore" overwrite mode will trigger
   a parse error, as there will be no old version to return. "RETURN NEW"
   will only return the document in case it was inserted. In case the

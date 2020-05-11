@@ -116,6 +116,8 @@ class ConstrainedSortExecutor {
   size_t _skippedAfter;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
+  RegIdSetStack _regsToKeep;
+  RegIdSet  _outputRegister = {};
   OutputAqlItemRow _heapOutputRow;
 };
 }  // namespace aql

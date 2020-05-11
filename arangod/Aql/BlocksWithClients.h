@@ -68,7 +68,7 @@ class ClientsExecutorInfos {
 
 class BlocksWithClients {
  public:
-  virtual ~BlocksWithClients() {}
+  virtual ~BlocksWithClients() = default;
 
   /// @brief getSomeForShard
   /// @deprecated

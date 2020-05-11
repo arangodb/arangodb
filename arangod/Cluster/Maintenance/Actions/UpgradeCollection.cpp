@@ -70,7 +70,7 @@ std::size_t getTimeout(arangodb::application_features::ApplicationServer& server
 
   std::size_t timeout = 600;
 
-  arangodb::AgencyReadTransaction trx(arangodb::AgencyCommManager::path("Target/Pending"));
+  arangodb::AgencyReadTransaction trx(arangodb::AgencyCommHelper::path("Target/Pending"));
 
   arangodb::AgencyComm agency(server);
   arangodb::AgencyCommResult result = agency.sendTransactionWithFailover(trx, 60.0);
@@ -78,7 +78,7 @@ std::size_t getTimeout(arangodb::application_features::ApplicationServer& server
     return timeout;
   } else {
     Slice list = result.slice()[0].get(std::vector<std::string>({
-      arangodb::AgencyCommManager::path(), "Target", "Pending"
+      arangodb::AgencyCommHelper::path(), "Target", "Pending"
     }));
     for (ObjectIteratorPair it : ObjectIterator(list)) {
       Slice typeSlice = it.value.get("type");
@@ -104,7 +104,7 @@ bool getSmartChild(arangodb::application_features::ApplicationServer& server,
   bool isSmartChild = false;
 
   arangodb::AgencyReadTransaction trx(
-      arangodb::AgencyCommManager::path("Target/Pending"));
+      arangodb::AgencyCommHelper::path("Target/Pending"));
 
   arangodb::AgencyComm agency(server);
   arangodb::AgencyCommResult result = agency.sendTransactionWithFailover(trx, 60.0);
@@ -112,7 +112,7 @@ bool getSmartChild(arangodb::application_features::ApplicationServer& server,
     return isSmartChild;
   } else {
     Slice list = result.slice()[0].get(std::vector<std::string>(
-        {arangodb::AgencyCommManager::path(), "Target", "Pending"}));
+        {arangodb::AgencyCommHelper::path(), "Target", "Pending"}));
     for (ObjectIteratorPair it : ObjectIterator(list)) {
       Slice typeSlice = it.value.get("type");
       Slice dbSlice = it.value.get(arangodb::maintenance::DATABASE);

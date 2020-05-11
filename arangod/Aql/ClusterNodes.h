@@ -225,14 +225,18 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
                  Variable const* variable, Variable const* alternativeVariable,
-                 bool createKeys, bool allowKeyConversionToObject)
+                 bool createKeys, bool allowKeyConversionToObject, bool fixupGraphInput)
       : ScatterNode(plan, id, type),
         CollectionAccessingNode(collection),
         _variable(variable),
         _alternativeVariable(alternativeVariable),
         _createKeys(createKeys),
         _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false) {}
+        _allowSpecifiedKeys(false),
+        _fixupGraphInput(fixupGraphInput) {
+    // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+    TRI_ASSERT(!_fixupGraphInput || !_createKeys);
+  }
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -254,7 +258,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
     auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
                                               collection(), _variable,
                                               _alternativeVariable, _createKeys,
-                                              _allowKeyConversionToObject);
+                                              _allowKeyConversionToObject,
+                                              _fixupGraphInput);
     c->copyClients(clients());
     CollectionAccessingNode::cloneInto(*c);
 
@@ -262,7 +267,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -300,6 +305,9 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
   /// @brief allow specified keys in input even in the non-default sharding case
   bool _allowSpecifiedKeys;
+
+  /// @brief required to fixup graph input
+  bool _fixupGraphInput;
 };
 
 /// @brief class GatherNode
@@ -358,7 +366,7 @@ class GatherNode final : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief get Variables used here including ASC/DESC
   SortElementVector const& elements() const { return _elements; }
@@ -450,7 +458,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;

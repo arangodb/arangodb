@@ -39,7 +39,7 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
                           RegisterId regId, RegisterId alternativeRegId,
                           bool allowSpecifiedKeys, bool allowKeyConversionToObject,
-                          bool createKeys, ScatterNode::ScatterType type);
+                          bool createKeys, bool fixupGraphInput, ScatterNode::ScatterType type);
 
   auto registerId() const noexcept -> RegisterId;
   auto hasAlternativeRegister() const noexcept -> bool;
@@ -55,6 +55,8 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 
   auto createKey(VPackSlice input) const -> std::string;
 
+  auto needsToFixGraphInput() const -> bool;
+
  private:
   RegisterId _regId;
   RegisterId _alternativeRegId;
@@ -62,6 +64,7 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   bool _createKeys;
   bool _usesDefaultSharding;
   bool _allowSpecifiedKeys;
+  bool _fixupGraphInput;
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
@@ -150,6 +153,8 @@ class DistributeExecutor {
    * @return std::string Identifier used by the client
    */
   auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
+
+  auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
 
  private:
   DistributeExecutorInfos const& _infos;

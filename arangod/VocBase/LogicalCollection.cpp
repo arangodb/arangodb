@@ -157,6 +157,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
+      _isDisjoint(Helper::getBooleanValue(info, StaticStrings::IsDisjoint, false)),
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
       _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
@@ -191,7 +192,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   }
 
   auto res = updateValidators(info.get(StaticStrings::Schema));
-  if(res.fail()){
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -281,7 +282,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
 Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   using namespace std::literals::string_literals;
-  if(validatorSlice.isNone() || validatorSlice.isNull()) {
+  if (validatorSlice.isNone() || validatorSlice.isNull()) {
     return { TRI_ERROR_NO_ERROR };
   } else if (!validatorSlice.isObject()) {
     return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
@@ -292,7 +293,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
 
   // delete validators if empty object is given
-  if(!validatorSlice.isEmptyObject()) {
+  if (!validatorSlice.isEmptyObject()) {
     try {
       auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
       newVec->push_back(std::move(validator));
@@ -602,6 +603,10 @@ void LogicalCollection::setSyncByRevision(bool usesRevisions) {
   _syncByRevision.store(usesRevisions);
 }
 
+bool LogicalCollection::useSyncByRevision() const {
+  return !_isAStub && _syncByRevision.load();
+}
+
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
@@ -862,6 +867,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   }
 
   // Cluster Specific
+  result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
@@ -942,7 +948,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
   auto res = updateValidators(slice.get(StaticStrings::Schema));
-  if(res.fail()){
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -1269,7 +1275,7 @@ VPackSlice LogicalCollection::keyOptions() const {
 
 void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if(vals == nullptr || vals->empty()){
+  if (vals == nullptr || vals->empty()) {
     b.add(VPackSlice::nullSlice());
     return;
   }
@@ -1281,7 +1287,7 @@ Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) co
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
     auto rv = validator->validate(s, VPackSlice::noneSlice(), true, options);
-    if(rv.fail()) {
+    if (rv.fail()) {
       return rv;
     }
   }
@@ -1293,7 +1299,7 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
     auto rv = validator->validate(modifiedDoc, oldDoc, false, options);
-    if(rv.fail()) {
+    if (rv.fail()) {
       return rv;
     }
   }

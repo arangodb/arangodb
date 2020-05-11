@@ -26,8 +26,8 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
-analyzer::analyzer(const analyzer::type_id& type) noexcept
-  : type_(&type) {
+analyzer::analyzer(const type_info& type) noexcept
+  : type_(type.id()) {
 }
 
 NS_END // analysis

@@ -57,7 +57,7 @@ icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length,
 }
 
 icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression,
-                                                 velocypack::Options const* opts,
+                                                 arangodb::velocypack::Options const* opts,
                                                  bool& isEmptyExpression) {
   std::string rx;
 

@@ -49,7 +49,7 @@ const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-
 
 const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
   // no compression, no encryption
-  return irs::column_info{ irs::compression::none::type(), {}, false };
+  return irs::column_info{ irs::type<irs::compression::none>::get(), {}, false };
 };
 
 struct flush_segment_context {
@@ -714,7 +714,9 @@ index_writer::documents_context::document::~document() noexcept {
 }
 
 index_writer::documents_context::~documents_context() noexcept {
-  assert(segment_.ctx().use_count() == segment_use_count_); // failure may indicate a dangling 'document' instance
+  // failure may indicate a dangling 'document' instance
+  assert(segment_.ctx().use_count() >= 0 &&
+         static_cast<uint64_t>(segment_.ctx().use_count()) == segment_use_count_);
 
   if (segment_.ctx()) {
     auto& writer = *segment_.ctx()->writer_;
@@ -1231,6 +1233,7 @@ index_writer::index_writer(
   assert(column_info); // ensured by 'make'
   assert(codec);
   flush_context_.store(&flush_context_pool_[0]);
+
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
     flush_context_pool_[i].dir_ = memory::make_unique<ref_tracking_directory>(dir);
@@ -2024,7 +2027,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
         if (!success) {
           // consolidated segment has docs missing from 'segments'
-          IR_FRMT_DEBUG(
+          IR_FRMT_WARN(
             "Failed to finish merge for segment '%s', due removed documents still present the consolidation candidates",
             pending_segment.segment.meta.name.c_str()
           );

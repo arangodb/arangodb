@@ -110,6 +110,9 @@ struct Collection {
   /// @brief check smartness of the underlying collection
   bool isSmart() const;
 
+  /// @brief check if collection is a disjoint (edge) collection
+  bool isDisjoint() const;
+
   /// @brief check if collection is a satellite collection
   bool isSatellite() const;
 
