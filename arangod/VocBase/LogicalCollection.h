@@ -137,9 +137,11 @@ class LogicalCollection : public LogicalDataSource {
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
+  bool isDisjoint() const { return _isDisjoint; }
   bool isSmart() const { return _isSmart; }
   bool isSmartChild() const { return _isSmartChild; }
 #else
+  bool isDisjoint() const { return false; }
   bool isSmart() const { return false; }
   bool isSmartChild() const { return false; }
 #endif
@@ -372,6 +374,9 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
+  // @brief Flag if this collection is a disjoint smart one. (Enterprise only)
+  // can only be true if _isSmart is also true
+  bool const _isDisjoint;
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool const _isSmart;
   // @brief Flag if this collection is a child of a smart collection (Enterprise only)
