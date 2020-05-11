@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
 #include <unicode/regex.h>
+#include "Cluster/ClusterTypes.h"
 
 struct TRI_vocbase_t;
 
@@ -46,6 +47,12 @@ class ExpressionContext {
   ExpressionContext() = default;
 
   virtual ~ExpressionContext() = default;
+
+
+  // in general we always work with latest revision
+  virtual arangodb::AnalyzersRevision::Revision getAnalyzersRevision() const {
+    return arangodb::AnalyzersRevision::LATEST; 
+  }
 
   /// true if the variable we are referring to is set by
   /// a collection enumeration/index enumeration

@@ -1672,7 +1672,7 @@ std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID 
       break;
     }
 
-    // must load collections outside the lock
+    // must load outside the lock
     loadPlan();
   }
   return nullptr;
