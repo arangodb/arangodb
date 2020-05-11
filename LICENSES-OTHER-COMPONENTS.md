@@ -1,7 +1,7 @@
 - [Other Licenses](#other-licenses)
   * [C/C++ Libraries](#cc-libraries)
   * [Programs](#programs)
-  * [Javascript](#javascript)
+  * [JavaScript](#javascript)
     + [Node core modules](#node-core-modules)
     + [Bundled NPM modules](#bundled-npm-modules)
     + [Backend libraries](#backend-libraries)
