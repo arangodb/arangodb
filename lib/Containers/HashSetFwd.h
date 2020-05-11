@@ -25,6 +25,8 @@
 #ifndef ARANGODB_CONTAINERS_HASH_SET_FWD_H
 #define ARANGODB_CONTAINERS_HASH_SET_FWD_H
 
+#include <functional>
+
 namespace emilib {
 
 template <typename T>
@@ -37,11 +39,6 @@ template <typename KeyT, typename HashT, typename EqT>
 bool operator==(HashSet<KeyT, HashT, EqT> const&, HashSet<KeyT, HashT, EqT> const&);
 
 }  // namespace emilib
-
-namespace std {
-template <class Key>
-struct hash;
-}  // namespace std
 
 // map emilib::HashSet into arangodb namespace
 namespace arangodb {
