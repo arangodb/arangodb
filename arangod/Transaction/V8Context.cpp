@@ -127,7 +127,6 @@ std::shared_ptr<transaction::Context> transaction::V8Context::clone() const {
   // v8 isolates and stuff.
   // This comes with the consequence that one cannot run any JavaScript
   // code in the cloned context!
-#warning TODO: check if this is _really_ working
   auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
   auto state = _sharedTransactionContext->_currentTransaction;
   clone->setState(state);
