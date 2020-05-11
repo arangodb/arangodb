@@ -27,6 +27,7 @@
 
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -253,7 +254,9 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _planVersion(0),
     _currentVersion(0),
     _planLoader(std::thread::id()),
-    _uniqid() {
+    _uniqid(),
+    _planSyncer(server, "Plan", std::bind(&ClusterInfo::loadPlan, this), agencyCallbackRegistry),
+    _curSyncer(server, "Current", std::bind(&ClusterInfo::loadCurrent, this), agencyCallbackRegistry) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -4929,6 +4932,18 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
 }
 
 
+void ClusterInfo::startSyncers() {
+  _planSyncer.start();
+  _curSyncer.start();
+}
+
+
+void ClusterInfo::shutdownSyncers() {
+  _planSyncer.beginShutdown();
+  _curSyncer.beginShutdown();
+}
+
+
 VPackSlice PlanCollectionReader::indexes() {
   VPackSlice res = _collection.get("indexes");
   if (res.isNone()) {
@@ -4943,7 +4958,68 @@ CollectionWatcher::~CollectionWatcher() {
   try {
     _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("42af2", WARN, Logger::CLUSTER) << "caught unexpected exception in CollectionWatcher: " << ex.what();
+    LOG_TOPIC("42af2", WARN, Logger::CLUSTER)
+      << "caught unexpected exception in CollectionWatcher: " << ex.what();
+  }
+}
+
+
+ClusterInfo::SyncerThread::SyncerThread(
+  application_features::ApplicationServer& server, std::string const& section,
+  std::function<void()> f, AgencyCallbackRegistry* cregistry) :
+  arangodb::Thread(server, section + "Syncer"), _news(false), _server(server),
+  _section(section), _f(f), _cr(cregistry) {}
+
+ClusterInfo::SyncerThread::~SyncerThread() {}
+
+bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
+  LOG_DEVEL << currentThreadName() << " notifies of " << _section + "/Version: " << slice.getNumber<uint64_t>();
+  std::lock_guard<std::mutex> lck(_m);
+  _news = true;
+  _cv.notify_one();
+  return _news;
+}
+
+void ClusterInfo::SyncerThread::beginShutdown() {
+  std::lock_guard<std::mutex> lck(_m);
+  _cr->unregisterCallback(_acb);
+  _news = false;
+  _cv.notify_one();
+}
+
+void ClusterInfo::SyncerThread::start() {
+  LOG_TOPIC("38256", DEBUG, Logger::CLUSTER) << "Starting " << currentThreadName();
+  Thread::start();
+}
+
+void ClusterInfo::SyncerThread::run() {
+  LOG_DEVEL << "Running thread " << currentThreadName();
+
+  std::function<bool(VPackSlice const& result)> update = [=](VPackSlice const& result) {
+    if (!result.isNumber()) {
+      LOG_TOPIC("f0d86", ERR, Logger::CLUSTER)
+          << "Plan Version is not a number! " << result.toJson();
+      return false;
+    }
+    return notify(result);
+  };
+
+  auto _acb =
+    std::make_shared<AgencyCallback>(_server, _section + "/Version", update, true, false);
+  bool registered = _cr->registerCallback(_acb);
+  if (!registered) {
+    LOG_TOPIC("70e05", FATAL, arangodb::Logger::CLUSTER)
+      << "Failed to register callback with local registery ";
+    FATAL_ERROR_EXIT();
+  }
+  
+  while(!isStopping()) {
+    std::unique_lock<std::mutex> lk(_m);
+    _cv.wait(lk, [&]{return _news;});
+    if (_news) {
+      _f();
+      _news = false;
+    }
   }
 }
 

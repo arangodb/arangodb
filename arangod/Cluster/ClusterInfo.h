@@ -20,6 +20,7 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_CLUSTER_CLUSTER_INFO_H
@@ -291,6 +292,8 @@ class CollectionInfoCurrent {
 class ClusterInfo  {
 #else
 class ClusterInfo final  {
+  friend class SyncerThread;
+
 #endif
  private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
@@ -302,6 +305,30 @@ class ClusterInfo final  {
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
  private:
+
+  class SyncerThread final : public arangodb::Thread {
+  public:
+    explicit SyncerThread(
+      application_features::ApplicationServer&, std::string const& section,
+      std::function<void()>, AgencyCallbackRegistry*);
+    explicit SyncerThread(SyncerThread const&);
+    ~SyncerThread();
+    void beginShutdown() override;
+    void run() override;
+    void start();
+    bool notify(velocypack::Slice const&);
+
+  private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _news;
+    application_features::ApplicationServer& _server;
+    std::string _section;
+    std::function<void()> _f;    
+    AgencyCallbackRegistry* _cr;
+    std::shared_ptr<AgencyCallback> _acb;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
   /// We are a singleton class, therefore nobody is allowed to create
@@ -353,6 +380,16 @@ class ClusterInfo final  {
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+
+  /**
+   * @brief begin shutting down plan and current syncers
+   */
+  void shutdownSyncers();
+
+  /**
+   * @brief begin shutting down plan and current syncers
+   */
+  void startSyncers();
 
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
@@ -995,6 +1032,12 @@ class ClusterInfo final  {
 
   arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief plan and current update threads
+  //////////////////////////////////////////////////////////////////////////////
+  SyncerThread _planSyncer;
+  SyncerThread _curSyncer;
 
 };
 
