@@ -151,8 +151,8 @@ struct IRESEARCH_API postings_reader {
 
   // parses input stream "in" and populate "attrs" collection
   // with attributes
-  virtual void decode(
-    data_input& in,
+  virtual size_t decode(
+    const byte_type* in,
     const flags& features,
     const attribute_view& attrs,
     term_meta& state

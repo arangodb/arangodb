@@ -5270,8 +5270,8 @@ class postings_reader final: public irs::postings_reader {
     const flags& features
   ) override;
 
-  virtual void decode(
-    data_input& in,
+  virtual size_t decode(
+    const byte_type* in,
     const flags& field,
     const attribute_view& attrs,
     irs::term_meta& state
@@ -5364,41 +5364,44 @@ void postings_reader::prepare(
   }
 }
 
-void postings_reader::decode(
-    data_input& in,
+size_t postings_reader::decode(
+    const byte_type* in,
     const flags& meta,
     const attribute_view& attrs,
-    irs::term_meta& state
-) {
+    irs::term_meta& state) {
 #ifdef IRESEARCH_DEBUG
   auto& term_meta = dynamic_cast<version10::term_meta&>(state);
 #else
   auto& term_meta = static_cast<version10::term_meta&>(state);
 #endif // IRESEARCH_DEBUG
 
-  auto& term_freq = attrs.get<frequency>();
+  auto* term_freq = attrs.get<frequency>().get();
+  const auto* p = in;
 
-  term_meta.docs_count = in.read_vint();
+  term_meta.docs_count = vread<uint32_t>(p);
   if (term_freq) {
-    term_freq->value = term_meta.docs_count + in.read_vint();
+    term_freq->value = term_meta.docs_count + vread<uint32_t>(p);
   }
 
-  term_meta.doc_start += in.read_vlong();
-  if (term_freq && term_freq->value && meta.check<position>()) {
-    term_meta.pos_start += in.read_vlong();
+  term_meta.doc_start += vread<uint64_t>(p);
+  if (term_freq && term_freq->value && meta.check<irs::position>()) {
+    term_meta.pos_start += vread<uint64_t>(p);
 
     term_meta.pos_end = term_freq->value > postings_writer::BLOCK_SIZE
-        ? in.read_vlong()
+        ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
     if (meta.check<payload>() || meta.check<offset>()) {
-      term_meta.pay_start += in.read_vlong();
+      term_meta.pay_start += vread<uint64_t>(p);
     }
   }
 
   if (1U == term_meta.docs_count || term_meta.docs_count > postings_writer::BLOCK_SIZE) {
-    term_meta.e_skip_start = in.read_vlong();
+    term_meta.e_skip_start = vread<uint64_t>(p);
   }
+
+  assert(p >= in);
+  return size_t(std::distance(in, p));
 }
 
 #if defined(_MSC_VER)
