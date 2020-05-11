@@ -289,7 +289,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
     if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
       _analyzersRevision = vocbase.server()
         .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-        .getLatestRevision(vocbase)->getRevision();
+        .getAnalyersRevision(vocbase, true)->getRevision();
     }
   }
 

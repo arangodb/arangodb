@@ -464,8 +464,11 @@ class ClusterInfo final  {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about analyzers revision
+  /// @param databaseID database name
+  /// @param forceLoadPlan always reload plan
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<AnalyzersRevision> getAnalyzersRevision(DatabaseID const& databaseID);
+  std::shared_ptr<AnalyzersRevision> getAnalyzersRevision(DatabaseID const& databaseID,
+                                                          bool forceLoadPlan = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about

@@ -1650,11 +1650,11 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 /// @brief ask about analyzers revision
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID) {
-
+std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
+                                                                     bool forceLoadPlan /* = false */) {
   int tries = 0;
 
-  if (!_planProt.isValid) {
+  if (!_planProt.isValid || forceLoadPlan) {
     loadPlan();
     ++tries;
   }
@@ -3282,11 +3282,26 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
     }
+    if (!restore) {
+      int tries = 0;
+      do {
+        loadPlan();
+        auto loadedRevision = getAnalyzersRevision(databaseID);
+        if (loadedRevision && loadedRevision->getRevision() >= revision) {
+          break; // ok, our cache is actually updated.
+        }
+        if (tries >= 2) {
+          LOG_TOPIC("ca3cb", DEBUG, Logger::CLUSTER)
+            << "Failed to update analyzers cache to revision: '" << revision
+            << "' in database '" << databaseID << "'";
+          break;
+        }
+        ++tries;
+      } while (true);
+
+    }
     break;
   } while (true);
-
-  // Update our cache
-  loadPlan();
 
   return Result(TRI_ERROR_NO_ERROR);
 }

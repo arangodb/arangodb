@@ -306,12 +306,20 @@ class IResearchAnalyzerFeature final
   void invalidate(const TRI_vocbase_t& vocbase);
 
   ///////////////////////////////////////////////////////////////////////////////
-  /// @brief return latest known analyzers revision
+  /// @brief return current known analyzers revision
+  /// @param vocbase to get revision for
+  /// @param forceLoadPlan force request to get latest available revision
   /// @return revision number. always 0 for single server and before plan is loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getLatestRevision(const TRI_vocbase_t& vocbase) const;
+  AnalyzersRevision::Ptr getAnalyersRevision(const TRI_vocbase_t& vocbase, bool forceLoadPlan = false) const;
 
-  AnalyzersRevision::Ptr getLatestRevision(const irs::string_ref& vocbaseName) const;
+  ///////////////////////////////////////////////////////////////////////////////
+/// @brief return current known analyzers revision
+/// @param vocbase name to get revision for
+/// @param forceLoadPlan force request to get latest available revision
+/// @return revision number. always 0 for single server and before plan is loaded
+///////////////////////////////////////////////////////////////////////////////
+  AnalyzersRevision::Ptr getAnalyersRevision(const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
 
   virtual void prepare() override;
   virtual void start() override;

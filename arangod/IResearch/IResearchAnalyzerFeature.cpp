@@ -1424,7 +1424,7 @@ Result IResearchAnalyzerFeature::emplace(
 
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
       auto cleanupResult = cleanupAnalyzersCollection(split.first,
-                                                      getLatestRevision(split.first)->getBuildingRevision());
+                                                      getAnalyersRevision(split.first)->getBuildingRevision());
       if (cleanupResult.fail()) {
         return cleanupResult;
       }
@@ -1440,7 +1440,7 @@ Result IResearchAnalyzerFeature::emplace(
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
     auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features, 
-                               getLatestRevision(split.first)->getBuildingRevision());
+                               getAnalyersRevision(split.first)->getBuildingRevision());
 
     if (!res.ok()) {
       return res;
@@ -1515,17 +1515,35 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     if (!name.first.null()) { // check if analyzer is static
       if (!onlyCached) {
         // load analyzers for database
-        auto const res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(name.first);
+        unsigned tries = 0;
+        do {
+          auto const res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(name.first);
 
-        if (!res.ok()) {
-          LOG_TOPIC("36062", WARN, iresearch::TOPIC)
-            << "failure to load analyzers for database '" << name.first
-            << "' while getting analyzer '" << name
-            << "': " << res.errorNumber() << " " << res.errorMessage();
-          TRI_set_errno(res.errorNumber());
+          if (!res.ok()) {
+            LOG_TOPIC("36062", WARN, iresearch::TOPIC)
+              << "failure to load analyzers for database '" << name.first
+              << "' while getting analyzer '" << name
+              << "': " << res.errorNumber() << " " << res.errorMessage();
+            TRI_set_errno(res.errorNumber());
 
-          return nullptr;
-        }
+            return nullptr;
+          }
+          if (revision == AnalyzersRevision::LATEST) {
+            break;
+          }
+          auto itr = _lastLoad.find(name.first);
+          if (itr != _lastLoad.end() && itr->second >= revision) {
+            break;
+          }
+          if (tries >= 2) {
+            LOG_TOPIC("6a908", WARN, iresearch::TOPIC)
+              << "Failed to update analyzers cache to revision: '" << revision
+              << "' in database '" << name.first << "'";
+            break; // do not return error. Maybe requested analyzer was already present earlier, so we still may succeed
+          }
+          ++tries;
+        } while (true);
+       
       }
     }
 
@@ -1733,7 +1751,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
 
     auto bindBuilder = std::make_shared<VPackBuilder>();
     bindBuilder->openObject();
-    bindBuilder->add("rev", VPackValue(getLatestRevision(*vocbase)->getRevision()));
+    bindBuilder->add("rev", VPackValue(getAnalyersRevision(*vocbase)->getRevision()));
     bindBuilder->close();
 
     auto ctx = arangodb::transaction::StandaloneContext::Create(*vocbase);
@@ -1877,7 +1895,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       };
     }
 
-    AnalyzersRevision::Revision loadingRevision{getLatestRevision(*vocbase)->getRevision()};
+    AnalyzersRevision::Revision loadingRevision{getAnalyersRevision(*vocbase, true)->getRevision()};
 
     if (!engine || engine->inRecovery()) {
       // always load if inRecovery since collection contents might have changed
@@ -1891,7 +1909,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       }
     } else if (itr != _lastLoad.end() // had a previous load
                && itr->second == loadingRevision) { // nothing changed
-      LOG_TOPIC("47cb8", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("47cb8", TRACE, arangodb::iresearch::TOPIC)
         << "Load skipped. Revision:" << itr->second
         << " Current revision:" << loadingRevision;
       return {}; // reload interval not reached
@@ -2204,22 +2222,24 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   return name; // name prefixed with vocbase (or NIL)
 }
 
-AnalyzersRevision::Ptr IResearchAnalyzerFeature::getLatestRevision(const irs::string_ref& vocbaseName) const {
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyersRevision(const irs::string_ref& vocbaseName,
+                                                                     bool forceLoadPlan /* = false */) const {
   TRI_vocbase_t* vocbase{ nullptr };
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   vocbase = dbFeature.useDatabase(vocbaseName.empty() ? irs::string_ref(arangodb::StaticStrings::SystemDatabase) : vocbaseName);
   if (vocbase) {
-    return getLatestRevision(*vocbase);
+    return getAnalyersRevision(*vocbase, forceLoadPlan);
   }
   return AnalyzersRevision::getEmptyRevision();
 }
 
-AnalyzersRevision::Ptr IResearchAnalyzerFeature::getLatestRevision(const TRI_vocbase_t& vocbase) const {
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyersRevision(const TRI_vocbase_t& vocbase,
+                                                                     bool forceLoadPlan /* = false */) const {
   if (ServerState::instance()->isRunningInCluster()) {
     auto const& server = vocbase.server();
     if (server.hasFeature<arangodb::ClusterFeature>()) {
       auto ptr = server.getFeature<arangodb::ClusterFeature>()
-        .clusterInfo().getAnalyzersRevision(vocbase.name());
+        .clusterInfo().getAnalyzersRevision(vocbase.name(), forceLoadPlan);
       // could be null if plan is still not loaded 
       return ptr? ptr : AnalyzersRevision::getEmptyRevision();
     }
@@ -2376,7 +2396,7 @@ Result IResearchAnalyzerFeature::remove(
     }
 
     auto cleanupResult = cleanupAnalyzersCollection(split.first, 
-                                                    getLatestRevision(split.first)->getBuildingRevision());
+                                                    getAnalyersRevision(split.first)->getBuildingRevision());
     if (cleanupResult.fail()) {
       return cleanupResult;
     }
@@ -2435,7 +2455,7 @@ Result IResearchAnalyzerFeature::remove(
       builder.openObject();
       addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
       builder.add(arangodb::StaticStrings::AnalyzersDeletedRevision, 
-                  VPackValue(getLatestRevision(*vocbase)->getBuildingRevision()));
+                  VPackValue(getAnalyersRevision(*vocbase)->getBuildingRevision()));
       builder.close();
 
       auto result = trx.update(arangodb::StaticStrings::AnalyzersCollection,
