@@ -536,8 +536,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     if (isSmart() && !isDisjoint()) {
       traverser =
           std::make_unique<arangodb::traverser::SmartGraphTraverser>(opts, engines());
-      traverser.reset(
-          new arangodb::traverser::SmartGraphTraverser(opts, engines()))
     } else {
 #endif
       traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
