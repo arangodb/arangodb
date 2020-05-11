@@ -26,15 +26,13 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
 #include "Basics/StaticStrings.h"
 
-#include <Containers/HashSet.h>
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/container/flat_set.hpp>
 
 #include <utility>
 
@@ -171,9 +169,8 @@ RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
 }
 
 bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept {
-    return this->_block == other._block && this->_baseIndex == other._baseIndex;
+  return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
-
 
 bool InputAqlItemRow::equates(InputAqlItemRow const& other,
                               velocypack::Options const* const options) const noexcept {

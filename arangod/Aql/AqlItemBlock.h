@@ -148,7 +148,7 @@ class AqlItemBlock {
   /// elsewhere
   void eraseAll();
 
-  void referenceValuesFromRow(size_t currentRow, RegIdSet const& regs, size_t fromRow);
+  void referenceValuesFromRow(size_t currentRow, RegIdFlatSet const& regs, size_t fromRow);
 
   /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
   /// the same value again. Note that once you do this for a single AqlValue

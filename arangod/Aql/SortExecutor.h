@@ -54,7 +54,7 @@ struct SortRegister;
 class SortExecutorInfos {
  public:
   SortExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                    const RegIdSet& registersToClear,
+                    RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
                     velocypack::Options const* options, bool stable);

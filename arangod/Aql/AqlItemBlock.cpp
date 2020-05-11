@@ -947,7 +947,7 @@ void AqlItemBlock::eraseAll() {
 }
 
 void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
-                                          RegIdSet const& regs, size_t fromRow) {
+                                          RegIdFlatSet const& regs, size_t fromRow) {
   TRI_ASSERT(currentRow != fromRow);
 
   for (auto const reg : regs) {

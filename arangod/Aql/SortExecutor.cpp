@@ -73,7 +73,7 @@ class OurLessThan {
 
 SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
                                      RegisterCount nrOutputRegisters,
-                                     RegIdSet const& registersToClear,
+                                     RegIdFlatSet const& registersToClear,
                                      std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
                                      velocypack::Options const* options, bool stable)
