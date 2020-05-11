@@ -868,8 +868,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("regsToKeepStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      TRI_ASSERT(!_regsToKeepStack.empty());
-      for (auto const& stackEntry : _regsToKeepStack) {
+      //TRI_ASSERT(!_regsToKeepStack.empty()); -- can be empty in 3.6
+      for (auto const& stackEntry : getRegsToKeepStack()) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& reg : stackEntry) {
           nodes.add(VPackValue(reg));
