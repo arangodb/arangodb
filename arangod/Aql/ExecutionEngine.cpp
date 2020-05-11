@@ -221,57 +221,49 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
       : engine(engine) {}
+        
+  void after(ExecutionNode* en) override {
+    if (en->getType() == ExecutionNode::TRAVERSAL ||
+        en->getType() == ExecutionNode::SHORTEST_PATH ||
+        en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      // We have to prepare the options before we build the block
+      ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
+    }
 
-  virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
-    bool doEmplace = true;
-    {
-      if (en->getType() == ExecutionNode::TRAVERSAL ||
-          en->getType() == ExecutionNode::SHORTEST_PATH ||
-          en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
-        // We have to prepare the options before we build the block
-        ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
-      }
-      if (!arangodb::ServerState::instance()->isDBServer()) {
-        // do we need to adjust the root node?
-        auto const nodeType = en->getType();
+    if (!arangodb::ServerState::instance()->isDBServer()) {
+      auto const nodeType = en->getType();
 
-        if (nodeType == ExecutionNode::DISTRIBUTE ||
-            nodeType == ExecutionNode::SCATTER ||
-            (nodeType == ExecutionNode::GATHER &&
-             // simon: parallel traversals use a gathernode
-             static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Parallel)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "logic error, got cluster node in local query");
-        }
-      } else {
-        auto const& cached = cache.find(en);
-        if (cached != cache.end()) {
-          // We allow to have SCATTER, REMOTE and DISTRIBUTE multiple times.
-          // But only these.
-          // Chances are if you hit a different node here, that you created a loop.
-          TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
-                     en->getType() == ExecutionNode::SCATTER ||
-                     en->getType() == ExecutionNode::DISTRIBUTE ||
-                     en->getType() == ExecutionNode::MUTEX);
-          block = cached->second;
-          doEmplace = false;
-        }
+      if (nodeType == ExecutionNode::DISTRIBUTE ||
+          nodeType == ExecutionNode::SCATTER ||
+          (nodeType == ExecutionNode::GATHER &&
+           // simon: parallel traversals use a GatherNode
+           static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Parallel)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "logic error, got cluster node in local query");
       }
-
-      if (doEmplace) {
-        block = engine.addBlock(en->createBlock(engine, cache));
-      }
-      
-      if (!en->hasParent()) {
-        // yes. found a new root!
-        root = block;
+    } else {
+      auto const& cached = cache.find(en);
+      if (cached != cache.end()) {
+#warning this assertion doesn't hold true anymore, as in parallel traversals we can encounter different nodes here
+#if 0
+        // We allow to have SCATTER, REMOTE, DISTRIBUTE and MUTEX multiple times.
+        // But only these.
+        // Chances are if you hit a different node here, that you created a loop.
+        TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
+                   en->getType() == ExecutionNode::SCATTER ||
+                   en->getType() == ExecutionNode::DISTRIBUTE ||
+                   en->getType() == ExecutionNode::MUTEX);
+#endif
+        block = cached->second;
+        TRI_ASSERT(block != nullptr);
       }
     }
 
-    TRI_ASSERT(block != nullptr);
-    if (doEmplace) {
+    if (block == nullptr) {
+      block = engine.addBlock(en->createBlock(engine, cache));
+      TRI_ASSERT(block != nullptr);
       // We have visited this node earlier, so we got its dependencies
       // Now add dependencies:
       for (auto const& it : en->getDependencies()) {
@@ -282,6 +274,13 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
       }
 
       cache.try_emplace(en, block);
+    }
+    TRI_ASSERT(block != nullptr);
+      
+    // do we need to adjust the root node?
+    if (!en->hasParent()) {
+      // yes. found a new root!
+      root = block;
     }
   }
 
