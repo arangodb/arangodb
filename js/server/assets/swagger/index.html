@@ -73,7 +73,7 @@
         //#region ArangoDB-specific changes
         // Infer location of swagger.json from `location.href` instead of
         // defaulting to the pet store example.
-        url: location.href.replace("index.html", "swagger.json").replace(/#.*/, ""),
+        url: location.href.replace("index.html", "swagger.json").replace(/#.*/, "").replace(/\?collapsed$/, ""),
         //#endregion
         dom_id: '#swagger-ui',
         deepLinking: true,
