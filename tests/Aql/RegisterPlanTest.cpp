@@ -93,6 +93,10 @@ struct ExecutionNodeMock {
     }
   }
 
+<<<<<<< HEAD
+=======
+  auto setVarsUsedLater(VarSet& v) -> void { _usedLater = v; }
+>>>>>>> origin/devel
   auto setVarsUsedLater(VarSetStack& s) -> void { _usedLaterStack = s; }
 
   auto invalidateVarUsage() -> void {
@@ -125,11 +129,16 @@ struct ExecutionNodeMock {
     return ExecutionNode::getTypeString(_type);
   }
 
+<<<<<<< HEAD
+=======
+  auto setVarsValid(VarSet const& v) -> void { _varsValid = v; }
+>>>>>>> origin/devel
   auto setVarsValid(VarSetStack varsValidStack) -> void {
     _varsValidStack = std::move(varsValidStack);
   }
   auto getVarsValid() const -> VarSet const&;
   auto getVarsValidStack() const -> VarSetStack const&;
+<<<<<<< HEAD
 
   void setRegsToKeep(RegIdSetStack regsToKeep) {
     _regsToKeep = std::move(regsToKeep);
@@ -139,6 +148,8 @@ struct ExecutionNodeMock {
     return _regsToKeep;
   }
 
+=======
+>>>>>>> origin/devel
 
   auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
     if (worker.before(this)) {
@@ -164,12 +175,21 @@ struct ExecutionNodeMock {
     worker.after(this);
 
     return false;
+<<<<<<< HEAD
   }
 
   auto getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
     return _usedLaterStack;
   }
 
+=======
+  }
+
+  auto getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
+    return _usedLaterStack;
+  }
+
+>>>>>>> origin/devel
   std::vector<ExecutionNodeMock>& getSubquery() { return *_subquery; }
 
   void setDependency(ExecutionNodeMock* ptr) { _dependency = ptr; }
@@ -182,10 +202,17 @@ struct ExecutionNodeMock {
   ExecutionNode::NodeType _type;
   VarSet _input;
   VarSet _output;
+<<<<<<< HEAD
   VarSetStack _usedLaterStack;
   VarSetStack _varsValidStack;
   RegIdSetStack _regsToKeep;
   RegIdSet _regsToClear;
+=======
+  VarSet _usedLater;
+  VarSetStack _usedLaterStack;
+  VarSetStack _varsValidStack;
+  VarSet _varsValid{};
+>>>>>>> origin/devel
   bool _varUsageValid{false};
   PlanMiniMock _plan;
   std::vector<ExecutionNodeMock>* _subquery;
@@ -193,7 +220,11 @@ struct ExecutionNodeMock {
 };
 
 auto ExecutionNodeMock::getVarsValid() const -> VarSet const& {
+<<<<<<< HEAD
   return _varsValidStack.back();
+=======
+  return _varsValid;
+>>>>>>> origin/devel
 }
 auto ExecutionNodeMock::getVarsValidStack() const -> VarSetStack const& {
   return _varsValidStack;

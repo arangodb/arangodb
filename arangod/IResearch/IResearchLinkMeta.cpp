@@ -734,8 +734,8 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                 return false;
               }
 
-              auto featureName = getStringRef(subValue);
-              auto* feature = irs::attribute::type_id::get(featureName);
+              const auto featureName = getStringRef(subValue);
+              const auto feature = irs::attributes::get(featureName);
 
               if (!feature) {
                 errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "." + std::string(featureName);
@@ -743,7 +743,7 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
                 return false;
               }
 
-              features.add(*feature);
+              features.add(feature.id());
             }
           }
         }

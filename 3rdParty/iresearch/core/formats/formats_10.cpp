@@ -48,13 +48,14 @@
 #include "store/store_utils.hpp"
 
 #include "search/cost.hpp"
-#include "search/score_doc_iterators.hpp"
+#include "search/score.hpp"
 
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/encryption.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
@@ -293,21 +294,12 @@ class postings_writer_base : public irs::postings_writer {
                pos_limits::invalid(): pos_limits::min()) {
     assert(postings_format_version >= FORMAT_MIN && postings_format_version <= FORMAT_MAX);
     assert(terms_format_version >= TERMS_FORMAT_MIN && terms_format_version <= TERMS_FORMAT_MAX);
-    attrs_.emplace(docs_);
   }
 
  public:
-  // ------------------------------------------
-  // const_attributes_provider
-  // ------------------------------------------
-
-  virtual const irs::attribute_view& attributes() const noexcept override final {
-    return attrs_;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+    return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
-
-  // ------------------------------------------
-  // postings_writer
-  // ------------------------------------------
 
   virtual void begin_field(const irs::flags& field) final {
     features_ = ::features(field);
@@ -450,7 +442,6 @@ class postings_writer_base : public irs::postings_writer {
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
-  irs::attribute_view attrs_;
   version10::term_meta last_state_; // last final term state
   version10::documents docs_;       // bit set of all processed documents
   features features_;               // features supported by current field
@@ -528,7 +519,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
   out.write_vint(BLOCK_SIZE); // write postings block size
 
   // prepare documents bitset
-  docs_.value.reset(state.doc_count);
+  docs_.value.reset(doc_limits::min() + state.doc_count);
 }
 
 void postings_writer_base::encode(
@@ -866,6 +857,28 @@ class postings_writer final: public postings_writer_base {
   }
 
   virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
+
+ private:
+  void refresh(attribute_provider& attrs) noexcept {
+    pos_ = irs::position::empty();
+    offs_ = nullptr;
+    pay_ = nullptr;
+
+    freq_ = irs::get<frequency>(attrs);
+    if (freq_) {
+      auto* pos = irs::get_mutable<irs::position>(&attrs);
+      if (pos) {
+        pos_ = pos;
+        offs_ = irs::get<irs::offset>(*pos_);
+        pay_ = irs::get<irs::payload>(*pos_);
+      }
+    }
+  }
+
+  const frequency* freq_{};
+  irs::position* pos_{};
+  const offset* offs_{};
+  const payload* pay_{};
 }; // postings_writer
 
 #if defined(_MSC_VER)
@@ -878,58 +891,44 @@ class postings_writer final: public postings_writer_base {
 template<typename FormatTraits, bool VolatileAttributes>
 irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::write(irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
-  auto& freq = docs.attributes().get<frequency>();
 
-  auto& pos = freq
-    ? docs.attributes().get<irs::position>()
-    : irs::attribute_view::ref<irs::position>::NIL;
+  if constexpr (VolatileAttributes) {
+    auto* subscription = irs::get<attribute_provider_change>(docs);
+    assert(subscription);
 
-  const offset* offs = nullptr;
-  const payload* pay = nullptr;
-
-  uint32_t* tfreq = nullptr;
+    subscription->subscribe([this](attribute_provider& attrs) {
+      refresh(attrs);
+    });
+  } else {
+    refresh(docs);
+  }
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
-
-  if (freq) {
-    if (pos && !VolatileAttributes) {
-      auto& attrs = pos->attributes();
-      offs = attrs.get<offset>().get();
-      pay = attrs.get<payload>().get();
-    }
-
-    tfreq = &meta->freq;
-  }
 
   begin_term();
 
   while (docs.next()) {
     const auto did = docs.value();
-
     assert(doc_limits::valid(did));
-    begin_doc<FormatTraits>(did, freq.get());
-    docs_.value.set(did - doc_limits::min());
-    if (pos) {
-      if (VolatileAttributes) {
-        auto& attrs = pos->attributes();
-        offs = attrs.get<offset>().get();
-        pay = attrs.get<payload>().get();
-      }
-      while (pos->next()) {
-        assert(pos_limits::valid(pos->value()));
-        add_position<FormatTraits>(pos->value(), offs, pay);
-      }
+
+    begin_doc<FormatTraits>(did, freq_);
+    docs_.value.set(did);
+
+    assert(pos_);
+    while (pos_->next()) {
+      assert(pos_limits::valid(pos_->value()));
+      add_position<FormatTraits>(pos_->value(), offs_, pay_);
     }
 
     ++meta->docs_count;
-    if (tfreq) {
-      (*tfreq) += freq->value;
+    if (freq_) {
+      meta->freq += freq_->value;
     }
 
     end_doc();
   }
 
-  end_term(*meta, tfreq);
+  end_term(*meta, freq_ ? &meta->freq : nullptr);
 
   return make_state(*meta.release());
 }
@@ -980,9 +979,12 @@ struct position_impl<IteratorTraits, true, true>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  void prepare(attribute_view& attrs) {
-    attrs.emplace(offs_);
-    attrs.emplace(pay_);
+  irs::attribute* attribute(irs::type_info::type_id type) noexcept {
+    if (irs::type<payload>::id() == type) {
+      return &pay_;
+    }
+
+    return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
   void prepare(const doc_state& state) {
@@ -1019,7 +1021,7 @@ struct position_impl<IteratorTraits, true, true>
 
   void clear_attributes() noexcept {
     offs_.clear();
-    pay_.clear();
+    pay_.value = bytes_ref::NIL;
   }
 
   void read_block() {
@@ -1119,8 +1121,8 @@ struct position_impl<IteratorTraits, false, true>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  void prepare(attribute_view& attrs) {
-    attrs.emplace(pay_);
+  irs::attribute* attribute(irs::type_info::type_id type) noexcept {
+    return irs::type<payload>::id() == type ? &pay_ : nullptr;
   }
 
   void prepare(const doc_state& state) {
@@ -1153,7 +1155,7 @@ struct position_impl<IteratorTraits, false, true>
   }
 
   void clear_attributes() noexcept {
-    pay_.clear();
+    pay_.value = bytes_ref::NIL;
   }
 
   void read_block() {
@@ -1253,8 +1255,8 @@ struct position_impl<IteratorTraits, true, false>
     : public position_impl<IteratorTraits, false, false> {
   typedef position_impl<IteratorTraits, false, false> base;
 
-  void prepare(attribute_view& attrs) {
-    attrs.emplace(offs_);
+  irs::attribute* attribute(irs::type_info::type_id type) noexcept {
+    return irs::type<offset>::id() == type ? &offs_ : nullptr;
   }
 
   void prepare(const doc_state& state) {
@@ -1356,7 +1358,10 @@ struct position_impl<IteratorTraits, false, false> {
     IteratorTraits::skip_block(in, postings_writer_base::BLOCK_SIZE);
   }
 
-  void prepare(attribute_view&) noexcept { }
+  irs::attribute* attribute(irs::type_info::type_id) noexcept {
+    // implementation has no additional attributes
+    return nullptr;
+  }
 
   void prepare(const doc_state& state) {
     pos_in_ = state.pos_in->reopen(); // reopen thread-safe stream
@@ -1433,6 +1438,11 @@ struct position_impl<IteratorTraits, false, false> {
     buf_pos_ += count;
   }
 
+  struct cookie {
+    uint32_t pend_pos_{};
+    size_t file_pointer_ = std::numeric_limits<size_t>::max();
+  };
+
   uint32_t pos_deltas_[postings_writer_base::BLOCK_SIZE]; // buffer to store position deltas
   const uint32_t* freq_; // lenght of the posting list for a document
   uint32_t* enc_buf_; // auxillary buffer to decode data
@@ -1440,13 +1450,9 @@ struct position_impl<IteratorTraits, false, false> {
   uint64_t tail_start_; // file pointer where the last (vInt encoded) pos delta block is
   size_t tail_length_; // number of positions in the last (vInt encoded) pos delta block
   uint32_t buf_pos_{ postings_writer_base::BLOCK_SIZE }; // current position in pos_deltas_ buffer
+  cookie cookie_;
   index_input::ptr pos_in_;
   features features_;
-
-  struct cookie {
-    uint32_t pend_pos_{};
-    size_t file_pointer_ = std::numeric_limits<size_t>::max();
-  } cookie_;
 }; // position_impl
 
 template<typename IteratorTraits, bool Position = IteratorTraits::position()>
@@ -1455,9 +1461,8 @@ class position final : public irs::position,
  public:
   typedef position_impl<IteratorTraits> impl;
 
-  position()
-    : irs::position(size_t(IteratorTraits::offset()) + size_t(IteratorTraits::payload)) {
-    impl::prepare(attrs_); // prepare attributes
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) override {
+    return impl::attribute(type);
   }
 
   virtual bool next() override {
@@ -1545,8 +1550,8 @@ class position final : public irs::position,
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
 struct position<IteratorTraits, false> : attribute {
-  DECLARE_ATTRIBUTE_TYPE () {
-    return irs::position::type();
+  static constexpr string_ref type_name() noexcept {
+    return irs::position::type_name();
   }
 
   void prepare(doc_state&) { }
@@ -1559,12 +1564,20 @@ struct position<IteratorTraits, false> : attribute {
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
+class doc_iterator final
+    : public frozen_attributes<5, irs::doc_iterator> {
  public:
   DECLARE_SHARED_PTR(doc_iterator);
 
   doc_iterator() noexcept
-    : skip_levels_(1),
+    : attributes{{
+        { type<document>::id(), &doc_ },
+        { type<cost>::id(), &cost_    },
+        { type<score>::id(), &scr_    },
+        { type<frequency>::id(),     IteratorTraits::frequency() ? &freq_ : nullptr  },
+        { type<irs::position>::id(), IteratorTraits::position()  ? &pos_  : nullptr  },
+      }},
+      skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
@@ -1574,7 +1587,7 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
   void prepare(
       const features& field,
-      const attribute_view& attrs,
+      const attribute_provider& attrs,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
@@ -1586,12 +1599,17 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     assert(!IteratorTraits::payload() || IteratorTraits::payload() == features_.payload());
 
     // add mandatory attributes
-    attrs_.emplace(doc_);
     begin_ = end_ = docs_;
 
     // get state attribute
-    assert(attrs.contains<version10::term_meta>());
-    term_state_ = *attrs.get<version10::term_meta>();
+    auto* meta = irs::get<irs::term_meta>(attrs);
+    assert(meta);
+
+#ifdef IRESEARCH_DEBUG
+    term_state_ = dynamic_cast<const version10::term_meta&>(*meta);
+#else
+    term_state_ = static_cast<const version10::term_meta&>(*meta);
+#endif
 
     // init document stream
     if (term_state_.docs_count > 1) {
@@ -1610,13 +1628,11 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
       assert(!doc_in_->eof());
     }
 
-    estimate(term_state_.docs_count); // estimate iterator
-    attrs_.emplace(scr_); // make score accessible from outside
+    cost_.value(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
-      assert(attrs.contains<frequency>());
-      attrs_.emplace(freq_);
-      term_freq_ = attrs.get<frequency>()->value;
+      assert(irs::get<frequency>(attrs));
+      term_freq_ = irs::get<frequency>(attrs)->value;
 
       if constexpr (IteratorTraits::position()) {
         doc_state state;
@@ -1637,7 +1653,6 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
         pos_.prepare(state);
-        attrs_.emplace(pos_);
       }
     }
 
@@ -1834,6 +1849,8 @@ class doc_iterator final : public irs::doc_iterator_base<irs::doc_iterator> {
     doc_freq_ = doc_freqs_;
   }
 
+  irs::cost cost_;
+  irs::score scr_;
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
@@ -3049,7 +3066,7 @@ class writer final : public irs::columnstore_writer {
  private:
   class column final : public irs::columnstore_writer::column_output {
    public:
-    explicit column(writer& ctx, const compression::type_id& type,
+    explicit column(writer& ctx, const irs::type_info& type,
                     const compression::compressor::ptr& compressor,
                     encryption::stream* cipher)
       : ctx_(&ctx),
@@ -3093,7 +3110,7 @@ class writer final : public irs::columnstore_writer {
 
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
-        write_string(out, comp_type_->name());
+        write_string(out, comp_type_.name());
         comp_->flush(out); // flush compression dependent data
       }
       out.write_vint(block_index_.total()); // total number of items
@@ -3199,7 +3216,7 @@ class writer final : public irs::columnstore_writer {
     }
 
     writer* ctx_; // writer context
-    const compression::type_id* comp_type_;
+    irs::type_info comp_type_;
     compression::compressor::ptr comp_; // compressor used for column
     encryption::stream* cipher_;
     uint64_t length_{}; // size of all data blocks in the column
@@ -3272,7 +3289,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
 columnstore_writer::column_t writer::push_column(const column_info& info) {
   encryption::stream* cipher;
-  const compression::type_id* compression;
+  irs::type_info compression;
 
   if (version_ > FORMAT_MIN) {
     compression = info.compression();
@@ -3280,11 +3297,11 @@ columnstore_writer::column_t writer::push_column(const column_info& info) {
   } else {
     // we don't support encryption and custom
     // compression for 'FORMAT_MIN' version
-    compression = compression::lz4::type();
+    compression = type<compression::lz4>::get();
     cipher = nullptr;
   }
 
-  auto compressor = compression::get_compressor(*compression, info.options());
+  auto compressor = compression::get_compressor(compression, info.options());
 
   if (!compressor) {
     compressor = noop_compressor::make();
@@ -3439,7 +3456,7 @@ class sparse_block : util::noncopyable {
 
     void reset(const sparse_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.clear();
+      payload.value = bytes_ref::NIL;
       payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -3616,7 +3633,7 @@ class dense_block : util::noncopyable {
 
     void reset(const dense_block& block, irs::payload& payload) noexcept {
       value_ = block.base_;
-      payload.clear();
+      payload.value = bytes_ref::NIL;
       payload_ = &payload.value;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
@@ -3807,7 +3824,7 @@ class dense_fixed_offset_block : util::noncopyable {
     void reset(const dense_fixed_offset_block& block, irs::payload& payload) noexcept {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
-      payload.clear();
+      payload.value = bytes_ref::NIL;
       payload_ = &payload.value;
       value_ = doc_limits::invalid();
       value_next_ = block.base_key_;
@@ -3949,7 +3966,7 @@ class sparse_mask_block : util::noncopyable {
 
     void reset(const sparse_mask_block& block, irs::payload& payload) noexcept {
       value_ = doc_limits::invalid();
-      payload.clear(); // mask block doesn't have payload
+      payload.value = bytes_ref::NIL; // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -4073,7 +4090,7 @@ class dense_mask_block {
 
     void reset(const dense_mask_block& block, irs::payload& payload) noexcept {
       block_ = &block;
-      payload.clear(); // mask block doesn't have payload
+      payload.value = bytes_ref::NIL; // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
@@ -4350,7 +4367,8 @@ class column
 }; // column
 
 template<typename Column>
-class column_iterator final: public irs::doc_iterator {
+class column_iterator final
+    : public irs::frozen_attributes<4, irs::doc_iterator> {
  public:
   typedef Column column_t;
   typedef typename Column::block_t block_t;
@@ -4359,18 +4377,18 @@ class column_iterator final: public irs::doc_iterator {
   explicit column_iterator(
       const column_t& column,
       const typename column_t::block_ref* begin,
-      const typename column_t::block_ref* end
-  ): attrs_(2), // document+payload
-     begin_(begin),
-     seek_origin_(begin),
-     end_(end),
-     column_(&column) {
-    attrs_.emplace(doc_);
-    attrs_.emplace(payload_);
-  }
-
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
+      const typename column_t::block_ref* end)
+    : attributes{{
+        { irs::type<irs::document>::id(), &doc_    },
+        { irs::type<irs::cost>::id(),     &cost_   },
+        { irs::type<irs::score>::id(),    &score_  },
+        { irs::type<irs::payload>::id(),  &payload_ },
+      }},
+      begin_(begin),
+      seek_origin_(begin),
+      end_(end),
+      column_(&column) {
+    cost_.value(column.size());
   }
 
   virtual doc_id_t value() const noexcept override {
@@ -4413,7 +4431,7 @@ class column_iterator final: public irs::doc_iterator {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload_.clear();
+      payload_.value = bytes_ref::NIL;
       doc_.value = irs::doc_limits::eof();
 
       return false;
@@ -4429,7 +4447,7 @@ class column_iterator final: public irs::doc_iterator {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload_.clear();
+      payload_.value = bytes_ref::NIL;
       doc_.value = irs::doc_limits::eof();
 
       throw;
@@ -4440,10 +4458,11 @@ class column_iterator final: public irs::doc_iterator {
     return true;
   }
 
-  irs::attribute_view attrs_;
   block_iterator_t block_;
   irs::payload payload_;
   irs::document doc_;
+  irs::cost cost_;
+  irs::score score_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -4911,17 +4930,18 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final: public irs::doc_iterator {
+  class column_iterator final :
+      public irs::frozen_attributes<3, irs::doc_iterator> {
    public:
     explicit column_iterator(const column_t& column) noexcept
-      : attrs_(1), // document
+      : attributes{{
+          { irs::type<irs::document>::id(), &value_  },
+          { irs::type<irs::cost>::id(),     &cost_   },
+          { irs::type<irs::score>::id(),    &score_  },
+        }},
         min_(1 + column.min_),
         max_(column.max()) {
-      attrs_.emplace(value_);
-    }
-
-    virtual const irs::attribute_view& attributes() const noexcept override {
-      return attrs_;
+      cost_.value(column.size());
     }
 
     virtual irs::doc_id_t value() const noexcept override {
@@ -4957,8 +4977,9 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     }
 
    private:
-    attribute_view attrs_;
     document value_;
+    irs::cost cost_;
+    irs::score score_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
@@ -5137,7 +5158,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     } else {
       // we don't support encryption and custom
       // compression for 'FORMAT_MIN' version
-      decomp = compression::get_decompressor(compression::lz4::type());
+      decomp = compression::get_decompressor(type<compression::lz4>::get());
       assert(decomp);
     }
 
@@ -5177,15 +5198,13 @@ class postings_reader_base : public irs::postings_reader {
   virtual void prepare(
     index_input& in,
     const reader_state& state,
-    const flags& features
-  ) final;
+    const flags& features) final;
 
   virtual size_t decode(
     const byte_type* in,
     const flags& field,
-    const attribute_view& attrs,
-    irs::term_meta& state
-  ) final;
+    attribute_provider& attrs,
+    irs::term_meta& state) final;
 
  protected:
   index_input::ptr doc_in_;
@@ -5271,7 +5290,7 @@ void postings_reader_base::prepare(
 size_t postings_reader_base::decode(
     const byte_type* in,
     const flags& meta,
-    const attribute_view& attrs,
+    attribute_provider& attrs,
     irs::term_meta& state) {
 #ifdef IRESEARCH_DEBUG
   auto& term_meta = dynamic_cast<version10::term_meta&>(state);
@@ -5279,7 +5298,7 @@ size_t postings_reader_base::decode(
   auto& term_meta = static_cast<version10::term_meta&>(state);
 #endif // IRESEARCH_DEBUG
 
-  auto& term_freq = attrs.get<frequency>();
+  auto* term_freq = irs::get_mutable<frequency>(&attrs);
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
@@ -5322,9 +5341,8 @@ class postings_reader final: public postings_reader_base {
 
   virtual irs::doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_view& attrs,
-    const flags& features
-  ) override;
+    const attribute_provider& attrs,
+    const flags& features) override;
 }; // postings_reader
 
 #if defined(_MSC_VER)
@@ -5336,7 +5354,7 @@ class postings_reader final: public postings_reader_base {
 template<typename FormatTraits, bool OneBasedPositionStorage>
 irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
     const flags& field,
-    const attribute_view& attrs,
+    const attribute_provider& attrs,
     const flags& req) {
 
   // compile field features
@@ -5393,10 +5411,13 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 
 class format10 : public irs::version10::format {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_0";
+  }
+
   DECLARE_FACTORY();
 
-  format10() noexcept : format10(format10::type()) { }
+  format10() noexcept : format10(irs::type<format10>::get()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
@@ -5420,8 +5441,8 @@ class format10 : public irs::version10::format {
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format10(const irs::format::type_id& type) noexcept
-    : irs::version10::format(type) {
+  explicit format10(const irs::type_info& type) noexcept
+    : version10::format(type) {
   }
 }; // format10
 
@@ -5521,7 +5542,6 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format10, "1_0")
 REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5530,10 +5550,13 @@ REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
 class format11 : public format10 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_1";
+  }
+
   DECLARE_FACTORY();
 
-  format11() noexcept : format10(format11::type()) { }
+  format11() noexcept : format10(irs::type<format11>::get()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
 
@@ -5544,7 +5567,7 @@ class format11 : public format10 {
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 
  protected:
-  explicit format11(const irs::format::type_id& type) noexcept
+  explicit format11(const irs::type_info& type) noexcept
     : format10(type) {
   }
 }; // format11
@@ -5583,7 +5606,6 @@ column_meta_writer::ptr format11::get_column_meta_writer() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format11, "1_1");
 REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5592,15 +5614,18 @@ REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
 class format12 : public format11 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_2";
+  }
+
   DECLARE_FACTORY();
 
-  format12() noexcept : format11(format12::type()) { }
+  format12() noexcept : format11(irs::type<format12>::get()) { }
 
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
 
  protected:
-  explicit format12(const irs::format::type_id& type) noexcept
+  explicit format12(const irs::type_info& type) noexcept
     : format11(type) {
   }
 }; // format12
@@ -5618,7 +5643,6 @@ columnstore_writer::ptr format12::get_columnstore_writer() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format12, "1_2");
 REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5627,16 +5651,19 @@ REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
 
 class format13 : public format12 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_3";
+  }
+
   DECLARE_FACTORY();
 
-  format13() noexcept : format12(format13::type()) { }
+  format13() noexcept : format12(irs::type<format13>::get()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
-  explicit format13(const irs::format::type_id& type) noexcept
+  explicit format13(const irs::type_info& type) noexcept
     : format12(type) {
   }
 };
@@ -5663,7 +5690,6 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
 }
 
 
-DEFINE_FORMAT_TYPE_NAMED(::format13, "1_3");
 REGISTER_FORMAT_MODULE(::format13, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
@@ -5696,10 +5722,13 @@ struct format_traits_simd {
 
 class format12simd final : public format12 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_2simd";
+  }
+
   DECLARE_FACTORY();
 
-  format12simd() noexcept : format12(format12simd::type()) { }
+  format12simd() noexcept : format12(irs::type<format12simd>::get()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
@@ -5726,7 +5755,6 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format12simd, "1_2simd");
 REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
 
@@ -5736,10 +5764,13 @@ REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
 class format13simd final : public format13 {
  public:
-  DECLARE_FORMAT_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "1_3simd";
+  }
+
   DECLARE_FACTORY();
 
-  format13simd() noexcept : format13(format13simd::type()) { }
+  format13simd() noexcept : format13(irs::type<format13simd>::get()) { }
 
   virtual irs::postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual irs::postings_reader::ptr get_postings_reader() const override;
@@ -5766,7 +5797,6 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format13simd, "1_3simd");
 REGISTER_FORMAT_MODULE(::format13simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
@@ -5793,9 +5823,14 @@ void init() {
 // --SECTION--                                                           format
 // ----------------------------------------------------------------------------
 
-format::format(const irs::format::type_id& type) noexcept
+format::format(const irs::type_info& type) noexcept
   : irs::format(type) {
 }
 
 NS_END // version10
+
+// use base irs::position type for ancestors
+template<typename IteratorTraits, bool Position>
+struct type<::position<IteratorTraits, Position>> : type<irs::position> { };
+
 NS_END // root

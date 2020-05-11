@@ -59,10 +59,10 @@ struct prepared final : prepared_sort_basic<boost_t> {
       const irs::sub_reader&,
       const irs::term_reader&,
       const irs::byte_type*,
-      const irs::attribute_view& attrs,
+      const irs::attribute_provider& attrs,
       irs::boost_t boost) const override {
 
-    auto* volatile_boost = attrs.get<irs::filter_boost>().get();
+    auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {
       return {
@@ -88,7 +88,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_SORT_TYPE_NAMED(irs::boost_sort, "boostscore");
 DEFINE_FACTORY_DEFAULT(irs::boost_sort);
 
 /*static*/ void boost_sort::init() {
@@ -96,7 +95,7 @@ DEFINE_FACTORY_DEFAULT(irs::boost_sort);
 }
 
 boost_sort::boost_sort() noexcept
-  : sort(boost_sort::type()) {
+  : sort(irs::type<boost_sort>::get()) {
 }
 
 sort::prepared::ptr boost_sort::prepare() const {

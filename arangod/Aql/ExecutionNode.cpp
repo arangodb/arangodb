@@ -397,7 +397,6 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
           "\"varsUsedLater\" needs to be an array");
     }
     auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
-
     varsUsedLater.reserve(varsUsedLaterSlice.length());
     for (VPackSlice it : VPackArrayIterator(varsUsedLaterSlice)) {
       Variable oneVarUsedLater(it);

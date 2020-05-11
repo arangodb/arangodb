@@ -68,7 +68,6 @@ NS_END
 
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(

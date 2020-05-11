@@ -165,6 +165,12 @@ function checkInSync(leader, servers, ignore) {
 
 function checkData(server, allowDirty = false) {
   print("Checking data of ", server);
+  // Async agency cache should have received it's data
+  let trickleDown = request.get({ 
+    url: getUrl(server) + "/_api/cluster/agency-cache", auth: { bearer: jwtRoot },
+    headers: { "X-Arango-Allow-Dirty-Read": allowDirty }, timeout: 3 
+  });
+  require('internal').wait(2.0);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {

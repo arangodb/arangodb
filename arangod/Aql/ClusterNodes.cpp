@@ -294,7 +294,8 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
       _alternativeVariable(nullptr),
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false) {
+      _allowSpecifiedKeys(false),
+      _fixupGraphInput(false) {
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable =
@@ -305,6 +306,9 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
     _alternativeVariable = plan->getAst()->variables()->getVariable(
         base.get("alternativeVarId").getNumericValue<VariableId>());
   }
+  _fixupGraphInput = VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false);
+  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -346,7 +350,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
   auto infos = DistributeExecutorInfos(clients(), collection(), regId, alternativeRegId,
                                        _allowSpecifiedKeys, _allowKeyConversionToObject,
-                                       _createKeys, getScatterType());
+                                       _createKeys, _fixupGraphInput, getScatterType());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
                                                                   std::move(registerInfos),
@@ -367,6 +371,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
   builder.add("createKeys", VPackValue(_createKeys));
   builder.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
+  builder.add("fixupGraphInput", VPackValue(_fixupGraphInput));
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
   builder.add(VPackValue("alternativeVariable"));

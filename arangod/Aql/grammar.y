@@ -1789,6 +1789,10 @@ graph_subject:
       // graph name
       $$ = parser->ast()->createNodeValueString($2.value, $2.length);
     }
+  | T_GRAPH T_STRING {
+      // graph name
+      $$ = parser->ast()->createNodeValueString($2.value, $2.length);
+    }
   ;
 
 graph_direction:

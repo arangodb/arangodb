@@ -181,7 +181,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 #endif
 
   en->setRegsToKeep(regsToKeepStack);
-
   en->_depth = plan->depth;
   en->_registerPlan = plan;
 }
