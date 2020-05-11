@@ -70,8 +70,8 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
     return false;  // do not walk into subquery
   }
 
-  RegIdOrderedSetStack unusedRegisters = RegIdOrderedSetStack{{}};
-  RegIdSetStack regsToKeepStack = RegIdSetStack{{}};
+  RegIdOrderedSetStack unusedRegisters{{}};
+  RegIdSetStack regsToKeepStack{{}};
   std::shared_ptr<RegisterPlanT<T>> plan;
 };
 
