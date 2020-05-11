@@ -1461,6 +1461,60 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
   return nullptr;
 }
 
+std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(DatabaseID const& databaseID,
+                                                                      std::string const& name) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    loadPlan();
+    ++tries;
+  }
+
+  while (true) {  // left by break
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+
+      // look up collection first
+      {
+        // look up database by id
+        auto it = _plannedCollections.find(databaseID);
+
+        if (it != _plannedCollections.end()) {
+          // look up collection by id (or by name)
+          auto it2 = (*it).second.find(name);
+
+          if (it2 != (*it).second.end()) {
+            return (*it2).second;
+          }
+        }
+      }
+
+      // look up views next
+      {
+        // look up database by id
+        auto it = _plannedViews.find(databaseID);
+
+        if (it != _plannedViews.end()) {
+          // look up collection by id (or by name)
+          auto it2 = (*it).second.find(name);
+
+          if (it2 != (*it).second.end()) {
+            return (*it2).second;
+          }
+        }
+      }
+
+    }
+    if (++tries >= 2) {
+      break;
+    }
+
+    // must load collections outside the lock
+    loadPlan();
+  }
+  return nullptr;
+}
+
 std::string ClusterInfo::getCollectionNotFoundMsg(DatabaseID const& databaseID,
                                                   CollectionID const& collectionID) {
   return "Collection not found: " + collectionID + " in database " + databaseID;
