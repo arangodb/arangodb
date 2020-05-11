@@ -2497,7 +2497,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
   }
 
-  ci.loadPlan();
+  //ci.loadPlan();
 
   // Produce list of shared_ptr wrappers
 

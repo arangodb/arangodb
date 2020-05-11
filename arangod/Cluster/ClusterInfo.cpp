@@ -1090,6 +1090,7 @@ void ClusterInfo::loadPlan() {
 
     _plan = std::move(planBuilder);
     _planVersion = newPlanVersion;
+    _planIndex = idx;
 
     if (swapDatabases) {
       _plannedDatabases.swap(newDatabases);
@@ -1112,6 +1113,12 @@ void ClusterInfo::loadPlan() {
     }
 
     std::tie(acb,idx) = agencyCache.get("Plan/Version");
+
+    {
+      std::lock_guard w(_waitPlanLock);
+      triggerWaiting(_waitPlan, idx);
+    }
+
     if (!acb->slice().isNumber()) {
       LOG_TOPIC("d2afe", WARN, Logger::CLUSTER) <<
         "Failed to read plan version from agency cache given " << acb->toJson();
@@ -1119,7 +1126,6 @@ void ClusterInfo::loadPlan() {
     }
 
   } while (acb->slice().getNumber<uint64_t>() > newPlanVersion);
-
 
 }
 
@@ -1277,6 +1283,7 @@ void ClusterInfo::loadCurrent() {
 
     _current = currentBuilder;
     _currentVersion = newCurrentVersion;
+    _currentIndex = idx;
 
     if (swapDatabases) {
       _currentDatabases.swap(newDatabases);
@@ -1293,12 +1300,17 @@ void ClusterInfo::loadCurrent() {
     _currentProt.isValid = true;
 
     std::tie(acb,idx) = agencyCache.get("Current/Version");
+
+    {
+      std::lock_guard w(_waitCurrentLock);
+      triggerWaiting(_waitCurrent, idx);
+    }
+
     if (!acb->slice().isNumber()) {
       LOG_TOPIC("d2efa", WARN, Logger::CLUSTER) <<
         "Failed to read current version from agency cache given " << acb->toJson();
       return;
     }
-
 
   } while (acb->slice().getNumber<uint64_t>() > newCurrentVersion);
 
@@ -2574,7 +2586,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   size_t numberOfShards = 0;
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.read(
+  auto [acb, idx] = agencyCache.read(
     std::vector<std::string>{
       AgencyCommHelper::path(
         "Plan/Collections/" + dbName + "/" + collectionID + "/shards")});
@@ -4406,10 +4418,10 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 //////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::invalidatePlan() {
-  {
+/*  {
     WRITE_LOCKER(writeLocker, _planProt.lock);
     _planProt.isValid = false;
-  }
+    }*/
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -4439,7 +4451,7 @@ void ClusterInfo::invalidateCurrentMappings() {
 //////////////////////////////////////////////////////////////////////////////
 
 void ClusterInfo::invalidateCurrent() {
-  {
+/*  {
     WRITE_LOCKER(writeLocker, _serversProt.lock);
     _serversProt.isValid = false;
   }
@@ -4452,8 +4464,9 @@ void ClusterInfo::invalidateCurrent() {
     _currentProt.isValid = false;
   }
   invalidateCurrentCoordinators();
-  invalidateCurrentMappings();
+  invalidateCurrentMappings();*/
 }
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get current "Plan" structure
@@ -4937,12 +4950,30 @@ void ClusterInfo::startSyncers() {
   _curSyncer.start();
 }
 
-
 void ClusterInfo::shutdownSyncers() {
+  {
+    std::lock_guard g(_waitPlanLock);
+    auto pit = _waitPlan.begin();
+    while (pit != _waitPlan.end()) {
+      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      ++pit;
+    }
+    _waitPlan.clear();
+  }
+
+  {
+    std::lock_guard g(_waitCurrentLock);
+    auto pit = _waitCurrent.begin();
+    while (pit != _waitCurrent.end()) {
+      pit->second.setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      ++pit;
+    }
+    _waitCurrent.clear();
+  }
+
   _planSyncer.beginShutdown();
   _curSyncer.beginShutdown();
 }
-
 
 VPackSlice PlanCollectionReader::indexes() {
   VPackSlice res = _collection.get("indexes");
@@ -4996,7 +5027,7 @@ void ClusterInfo::SyncerThread::run() {
   LOG_DEVEL << "Running thread " << currentThreadName();
 
   std::function<bool(VPackSlice const& result)> update = [=](VPackSlice const& result) {
-    if (!result.isNumber()) {
+   if (!result.isNumber()) {
       LOG_TOPIC("f0d86", ERR, Logger::CLUSTER)
           << "Plan Version is not a number! " << result.toJson();
       return false;
@@ -5014,14 +5045,70 @@ void ClusterInfo::SyncerThread::run() {
   }
   
   while(!isStopping()) {
-    std::unique_lock<std::mutex> lk(_m);
-    _cv.wait(lk, [&]{return _news;});
-    if (_news) {
+    bool news = false;
+    {
+      std::unique_lock<std::mutex> lk(_m);
+      _cv.wait(lk, [&]{return _news;});
+      news = _news;
+    }
+    if (news) {
+      {
+        std::unique_lock<std::mutex> lk(_m);
+        _news = false;
+      }
       _f();
-      _news = false;
     }
   }
 }
+
+futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
+  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);
+  if (index <= _currentIndex) {
+    return futures::makeFuture(arangodb::Result());
+  }
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitCurrentLock);
+  return _waitCurrent.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+}
+
+futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t index) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  if (index <= _planIndex) {
+    return futures::makeFuture(arangodb::Result());
+  }
+  // intentionally don't release _storeLock here until we have inserted the promise
+  std::lock_guard w(_waitPlanLock);
+  return _waitPlan.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
+}
+
+void ClusterInfo::triggerWaiting(
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex) {
+
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto pit = mm.begin();
+  while (pit != mm.end()) {
+    if (pit->first > commitIndex) {
+      break;
+    }
+    auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
+//    if (!this->isStopping()) {
+      bool queued = scheduler->queue(
+        RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
+      if (!queued) {
+        LOG_TOPIC("c6473", WARN, Logger::AGENCY) <<
+          "Failed to schedule logsForTrigger running in main thread";
+        pp->setValue(Result());
+      }
+      /*  } else {
+      pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
+      }*/
+    pit = mm.erase(pit);
+  }
+
+}
+
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
