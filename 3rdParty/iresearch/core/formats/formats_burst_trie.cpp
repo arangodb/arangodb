@@ -662,12 +662,12 @@ class term_iterator final : public irs::seek_term_iterator {
     // ensure final weight correctess
     assert(out.Size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(std::move(out), prefix, this);
+    block_stack_.emplace_back(std::move(out), prefix);
     return &block_stack_.back();
   }
 
   inline block_iterator* push_block(uint64_t start, size_t prefix) {
-    block_stack_.emplace_back(start, prefix, this);
+    block_stack_.emplace_back(start, prefix);
     return &block_stack_.back();
   }
 
