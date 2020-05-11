@@ -1827,7 +1827,11 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'MutexNode':
+        return keyword('MUTEX') + ' /* end async execution */';;
+      case 'AsyncNode':
+        return keyword('ASYNC') + ' /* begin async execution */';
     }
 
     return 'unhandled node type (' + node.type + ')';

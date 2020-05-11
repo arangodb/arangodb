@@ -62,7 +62,6 @@ class ExecutionBlockImpl<MutexExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-
  private:
   std::mutex _mutex;
   bool _isShutdown;
