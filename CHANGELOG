@@ -1,6 +1,9 @@
 devel
 -----
 
+* Restored behavior of Foxx API documentation being expanded to show all routes
+  rather than collapsing all sections by default.
+
 * Fix a bad deadlock because transaction cleanup was pushed with too low
   priority.
 
