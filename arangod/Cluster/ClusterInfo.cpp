@@ -3339,8 +3339,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
     if (!restore) {
       int tries = 0;
       do {
-        loadPlan();
-        auto loadedRevision = getAnalyzersRevision(databaseID);
+        auto loadedRevision = getAnalyzersRevision(databaseID, true);
         if (loadedRevision && loadedRevision->getRevision() >= revision) {
           break; // ok, our cache is actually updated.
         }
