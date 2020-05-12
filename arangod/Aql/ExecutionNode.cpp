@@ -397,7 +397,6 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
           "\"varsUsedLater\" needs to be an array");
     }
     auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
-
     varsUsedLater.reserve(varsUsedLaterSlice.length());
     for (VPackSlice it : VPackArrayIterator(varsUsedLaterSlice)) {
       Variable oneVarUsedLater(it);
@@ -492,6 +491,35 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         varsValid.insert(oneVariable);
       }
     }
+  }
+
+  VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
+  if (!regsToKeepStackSlice.isNone()) {
+    if (!regsToKeepStackSlice.isArray() || regsToKeepStackSlice.length() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL_AQL,
+          "\"regsToKeepStack\" needs to be a non-empty array");
+    }
+
+    _regsToKeepStack.reserve(regsToKeepStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(regsToKeepStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "\"regsToKeepStack\" needs to contain arrays");
+      }
+      auto& regsToKeep = _regsToKeepStack.emplace_back();
+
+      regsToKeep.reserve(stackEntrySlice.length());
+      for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
+        regsToKeep.insert(it.getNumericValue<RegisterId>());
+      }
+    }
+  } else {
+    // otherwise this is lazily computed in getRegsToKeep.
+    // This is 3.6 compatibility and can be uncommented in 3.7
+    //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+    //                               "\"regsToKeepStack\" needs to be an array");
   }
 
   _isInSplicedSubquery =
@@ -836,6 +864,18 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       }
     }
 
+    nodes.add(VPackValue("regsToKeepStack"));
+    {
+      VPackArrayBuilder guard(&nodes);
+      //TRI_ASSERT(!_regsToKeepStack.empty()); -- can be empty in 3.6
+      for (auto const& stackEntry : getRegsToKeepStack()) {
+        VPackArrayBuilder stackEntryGuard(&nodes);
+        for (auto const& reg : stackEntry) {
+          nodes.add(VPackValue(reg));
+        }
+      }
+    }
+
     nodes.add(VPackValue("varsValidStack"));
     {
       VPackArrayBuilder guard(&nodes);
@@ -1028,45 +1068,8 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
-auto ExecutionNode::calcRegsToKeep() const -> RegIdSetStack {
-  RegIdSetStack regsToKeepStack;
-  regsToKeepStack.reserve(getVarsUsedLaterStack().size());
-
-  auto const& varsSetHere = getVariablesSetHere();
-
-  TRI_ASSERT(getVarsUsedLaterStack().size() == getVarsValidStack().size());
-
-  // TODO The lower levels of the stacks inside the same subquery do not differ,
-  //      so we calculate the same thing multiple times.
-  //      Instead, calculate it in the register planning and pass the results.
-
-  for (auto const& [idx, stackEntry] : enumerate(getVarsValidStack())) {
-    auto& regsToKeep = regsToKeepStack.emplace_back();
-    auto const& varsUsedLater = getVarsUsedLaterStack()[idx];
-
-    for (auto const var : stackEntry) {
-      auto reg = variableToRegisterId(var);
-
-      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
-                       varsSetHere.end();
-      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
-                         varsUsedLater.end();
-      if (!isSetHere && isUsedLater) {
-        regsToKeep.emplace(reg);
-      }
-    }
-  }
-
-  return regsToKeepStack;
-}
-
 RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
-  TRI_ASSERT(variable != nullptr);
-  auto it = getRegisterPlan()->varInfo.find(variable->id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId rv = it->second.registerId;
-  TRI_ASSERT(rv < RegisterPlan::MaxRegisterId);
-  return rv;
+  return getRegisterPlan()->variableToRegisterId(variable);
 }
 
 // This is the general case and will not work if e.g. there is no predecessor.
@@ -1075,7 +1078,7 @@ RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters
   auto const nrOutRegs = getNrOutputRegisters();
   auto const nrInRegs = getNrInputRegisters();
 
-  auto const& regsToKeep = calcRegsToKeep();
+  auto const& regsToKeep = getRegsToKeepStack();
   auto const& regsToClear = getRegsToClear();
 
   return RegisterInfos{std::move(readableInputRegisters),
@@ -1090,6 +1093,16 @@ RegisterCount ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   // in case of the SingletonNode, there are no input registers
   return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
+}
+
+auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
+  if (_regsToKeepStack.empty()) {
+    // This is 3.6 compatibility code. It can be removed in 3.8.
+    // The function should then become const noexcept and should return a const& instead
+    return _registerPlan->calcRegsToKeep(_varsUsedLaterStack, _varsValidStack,
+                                         getVariablesSetHere());
+  }
+  return _regsToKeepStack;
 }
 
 RegisterCount ExecutionNode::getNrOutputRegisters() const {
@@ -1280,8 +1293,12 @@ bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
 
 void ExecutionNode::setId(ExecutionNodeId id) { _id = id; }
 
-void ExecutionNode::setRegsToClear(RegIdSet&& toClear) {
+void ExecutionNode::setRegsToClear(RegIdSet toClear) {
   _regsToClear = std::move(toClear);
+}
+
+void ExecutionNode::setRegsToKeep(RegIdSetStack toKeep) {
+  _regsToKeepStack = std::move(toKeep);
 }
 
 RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) const {
@@ -2530,7 +2547,7 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto regsToKeep = calcRegsToKeep();
+  auto regsToKeep = getRegsToKeepStack();
   auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before

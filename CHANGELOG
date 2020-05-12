@@ -1,5 +1,7 @@
 devel
 -----
+* Moved calculation of registers to keep into the register planning. It can be
+  calculated more efficiently there.
 
 * Fix a bad deadlock because transaction cleanup was pushed with too low
   priority.
