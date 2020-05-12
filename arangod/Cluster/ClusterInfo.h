@@ -842,16 +842,6 @@ public:
 
   application_features::ApplicationServer& server() const;
 
- private:
-  void buildIsBuildingSlice(CreateDatabaseInfo const& database,
-                              VPackBuilder& builder);
-
-  void buildFinalSlice(CreateDatabaseInfo const& database,
-                         VPackBuilder& builder);
-
-  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
-  void loadClusterId();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
@@ -865,6 +855,17 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void loadCurrent();
+
+  
+ private:
+  void buildIsBuildingSlice(CreateDatabaseInfo const& database,
+                              VPackBuilder& builder);
+
+  void buildFinalSlice(CreateDatabaseInfo const& database,
+                         VPackBuilder& builder);
+
+  Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
+  void loadClusterId();
 
   void triggerWaiting(
     std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex);

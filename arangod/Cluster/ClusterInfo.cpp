@@ -4994,7 +4994,7 @@ void ClusterInfo::SyncerThread::run() {
   std::function<bool(VPackSlice const& result)> update =
     [=](VPackSlice const& result) {
       if (!result.isNumber()) {
-        LOG_TOPIC("f0d86", ERR, Logger::CLUSTER)
+        LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
           << "Plan Version is not a number! " << result.toJson();
         return false;
       }
@@ -5066,7 +5066,7 @@ void ClusterInfo::triggerWaiting(
       bool queued = scheduler->queue(
         RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
       if (!queued) {
-        LOG_TOPIC("c6473", WARN, Logger::AGENCY) <<
+        LOG_TOPIC("4637c", WARN, Logger::AGENCY) <<
           "Failed to schedule logsForTrigger running in main thread";
         pp->setValue(Result());
       }
