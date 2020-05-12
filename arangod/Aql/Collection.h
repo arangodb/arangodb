@@ -146,6 +146,10 @@ struct Collection {
   std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
   
   /// @brief use the already set collection 
+  /// Whenever getCollection() is called, _collection must be a non-nullptr or an 
+  /// assertion will be triggered. In non-maintainer mode an exception will be thrown.
+  /// that means getCollection() must not be called on non-existing collections or
+  /// views
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
   
  private:
@@ -153,6 +157,10 @@ struct Collection {
   void ensureCollection() const;
 
  private:
+  // _collection will only be populated here in the constructor, and not later.
+  // note that it will only be populated for "real" collections and shards though. 
+  // aql::Collection objects can also be created for views and for non-existing 
+  // collections. In these cases it is not possible to populate _collection, at all.
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;

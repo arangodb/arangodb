@@ -54,6 +54,10 @@ Collection::Collection(std::string const& name,
   TRI_ASSERT(!_name.empty());
   TRI_ASSERT(_vocbase != nullptr);
 
+  // _collection will only be populated here in the constructor, and not later.
+  // note that it will only be populated for "real" collections and shards though. 
+  // aql::Collection objects can also be created for views and for non-existing 
+  // collections. In these cases it is not possible to populate _collection, at all.
   if (hint == Hint::Collection) {
     if (ServerState::instance()->isRunningInCluster()) {
       auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
@@ -73,6 +77,10 @@ Collection::Collection(std::string const& name,
   } else if (hint == Hint::None) {
     // nothing special to do here
   }
+
+  // Whenever getCollection() is called later, _collection must have been set
+  // here to a non-nullptr, or an assertion will be triggered. 
+  // In non-maintainer mode an exception will be thrown.
 }
 
 /// @brief upgrade the access type to exclusive
