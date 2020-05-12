@@ -1863,6 +1863,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
     EXPECT_TRUE(node.shards().empty());
     node.setVarsUsedLater({{&outVariable}});
     node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
@@ -1949,6 +1950,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     node.setVarsUsedLater({{&outVariable}});
     node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
@@ -2024,6 +2026,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
 
     node.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
     node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
@@ -2139,6 +2142,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 
     node.setVarsUsedLater({{&outVariable}});
     node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
@@ -2227,6 +2231,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 
     node.setVarsUsedLater({{&outVariable}});
     node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
@@ -2306,6 +2311,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
 
     node.setVarsUsedLater({{&outNmColPtr, &outNmDocId}});
     node.setVarsValid({{}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
 
     arangodb::velocypack::Builder builder;
@@ -2544,8 +2550,10 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     // "Trust me, I'm an IT professional"
     singleton.setVarsUsedLater({{&outVariable}});
     singleton.setVarsValid({{}});
+    singleton.setRegsToKeep({{}});
     node.setVarsUsedLater({{}});
     node.setVarsValid({{&outVariable}});
+    node.setRegsToKeep({{}});
     node.setVarUsageValid();
     singleton.setVarUsageValid();
 

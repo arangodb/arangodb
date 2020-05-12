@@ -22,13 +22,15 @@ document under the attribute *old* in the result.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}
 If set to *true*, ignore any *_rev* attribute in the selectors. No
-revision check is performed.
+revision check is performed. If set to *false* then revisions are checked.
+The default is *true*.
 
 @RESTDESCRIPTION
 The body of the request is an array consisting of selectors for
 documents. A selector can either be a string with a key or a string
 with a document identifier or an object with a *_key* attribute. This
-API call removes all specified documents from *collection*. If the
+API call removes all specified documents from *collection*.
+If the *ignoreRevs* query parameter is *false* and the
 selector is an object and has a *_rev* attribute, it is a
 precondition that the actual revision of the removed document in the
 collection is the specified one.
@@ -75,38 +77,137 @@ The response body contains an error document in this case.
 
 @EXAMPLES
 
-Using document identifier:
+Using document keys:
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentMulti}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentKeyMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
     var cn = "products";
     db._drop(cn);
     db._create(cn, { waitForSync: true });
-    var document = db.products.save({"hello":"world"});
 
-    var url = "/_api/document/" + document._id;
+  | var documents = db.products.save( [
+  |   { "_key": "1", "type": "tv" },
+  |   { "_key": "2", "type": "cookbook" }
+    ] );
 
-    var response = logCurlRequest('DELETE', url);
+    var url = "/_api/document/" + cn;
+
+    var body = [ "1", "2" ];
+    var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
+    assertEqual(JSON.parse(response.body), documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document identifier:
+Using document identifiers:
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandleMulti}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentIdentifierMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
     var cn = "products";
     db._drop(cn);
     db._create(cn, { waitForSync: true });
-    var document = db.products.save({"hello":"world"});
-    db.products.remove(document._id);
 
-    var url = "/_api/document/" + document._id;
+  | var documents = db.products.save( [
+  |   { "_key": "1", "type": "tv" },
+  |   { "_key": "2", "type": "cookbook" }
+    ] );
 
-    var response = logCurlRequest('DELETE', url);
+    var url = "/_api/document/" + cn;
 
-    assert(response.code === 404);
+    var body = [ "products/1", "products/2" ];
+    var response = logCurlRequest('DELETE', url, body);
+
+    assert(response.code === 200);
+    assertEqual(JSON.parse(response.body), documents);
+
+    logJsonResponse(response);
+  ~ db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
+Using objects with document keys:
+
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentObjectMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
+    var cn = "products";
+    db._drop(cn);
+    db._create(cn, { waitForSync: true });
+
+  | var documents = db.products.save( [
+  |   { "_key": "1", "type": "tv" },
+  |   { "_key": "2", "type": "cookbook" }
+    ] );
+
+    var url = "/_api/document/" + cn;
+
+    var body = [ { "_key": "1" }, { "_key": "2" } ];
+    var response = logCurlRequest('DELETE', url, body);
+
+    assert(response.code === 200);
+    assertEqual(JSON.parse(response.body), documents);
+
+    logJsonResponse(response);
+  ~ db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
+Unknown documents:
+
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownMulti}
+    var cn = "products";
+    db._drop(cn);
+    db._drop("other");
+    db._create(cn, { waitForSync: true });
+    db._create("other", { waitForSync: true });
+
+  | var documents = db.products.save( [
+  |   { "_key": "1", "type": "tv" },
+  |   { "_key": "2", "type": "cookbook" }
+    ] );
+    db.products.remove(documents);
+    db.other.save( { "_key": "2" } );
+
+    var url = "/_api/document/" + cn;
+
+    var body = [ "1", "other/2" ];
+    var response = logCurlRequest('DELETE', url, body);
+    var parsedBody = JSON.parse(response.body);
+
+    assert(response.code === 202);
+  | parsedBody.forEach(function(doc) {
+  |   assert(doc.error === true);
+  |   assert(doc.errorNum === 1202);
+    });
+
+    logJsonResponse(response);
+  ~ db._drop(cn);
+  ~ db._drop("other");
+@END_EXAMPLE_ARANGOSH_RUN
+
+Check revisions:
+
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentRevMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
+    var cn = "products";
+    db._drop(cn);
+    db._create(cn, { waitForSync: true });
+
+  | var documents = db.products.save( [
+  |   { "_key": "1", "type": "tv" },
+  |   { "_key": "2", "type": "cookbook" }
+    ] );
+
+    var url = "/_api/document/" + cn + "?ignoreRevs=false";
+  | var body = [
+  |   { "_key": "1", "_rev": documents[0]._rev },
+  |   { "_key": "2", "_rev": documents[1]._rev }
+    ];
+
+    var response = logCurlRequest('DELETE', url, body);
+
+    assert(response.code === 200);
+    assertEqual(JSON.parse(response.body), documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -114,21 +215,33 @@ Unknown document identifier:
 
 Revision conflict:
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentIfMatchOtherMulti}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentRevConflictMulti}
     var cn = "products";
     db._drop(cn);
-    db._create(cn);
+    db._create(cn, { waitForSync: true });
 
-    var document = db.products.save({"hello":"world"});
-    var document2 = db.products.save({"hello2":"world"});
-    var url = "/_api/document/" + document._id;
-    var headers = {"If-Match":  "\"" + document2._rev + "\""};
+  | var documents = db.products.save( [
+  |   { "_key": "1", "type": "tv" },
+  |   { "_key": "2", "type": "cookbook" }
+    ] );
 
-    var response = logCurlRequest('DELETE', url, "", headers);
+    var url = "/_api/document/" + cn + "?ignoreRevs=false";
+  | var body = [
+  |   { "_key": "1", "_rev": "non-matching revision" },
+  |   { "_key": "2", "_rev": "non-matching revision" }
+    ];
 
-    assert(response.code === 412);
+    var response = logCurlRequest('DELETE', url, body);
+    var parsedBody = JSON.parse(response.body);
+
+    assert(response.code === 202);
+  | parsedBody.forEach(function(doc) {
+  |   assert(doc.error === true);
+  |   assert(doc.errorNum === 1200);
+    });
 
     logJsonResponse(response);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
