@@ -759,7 +759,7 @@ void ClusterFeature::shutdownAgencyCache() {
 
 void ClusterFeature::notify() {
   if (_heartbeatThread != nullptr) {
-    _heartbeatThread->notify(true);
+    _heartbeatThread->notify();
   }
 }
 
