@@ -181,13 +181,23 @@ RestStatus RestAgencyHandler::pollIndex(
             builder.add("code", VPackValue(int(ResponseCode::OK)));
             builder.add(VPackValue("result"));
             VPackObjectBuilder r(&builder);
-            auto const firstIndex = slice.get("firstIndex");
+            uint64_t firstIndex;
+            if (!slice.get("firstIndex").isNumber()) {
+              generateError(
+                rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
+            } else if (firstIndex = slice.get("firstIndex").getNumber<uint64_t>() > start) {
+              generateError(
+                rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
+            }
+            int64_t i = firstIndex.getNumber<uint64_t>() - start;
             builder.add("commitIndex", slice.get("commitIndex"));
-            builder.add("firstIndex", firstIndex);
+            builder.add("firstIndex", logs[i].get("index"));
             VPackSlice logs = slice.get("log");
             builder.add(VPackValue("log"));
             VPackArrayBuilder a(&builder);
-            for (size_t i = start - firstIndex.getNumber<uint64_t>(); i < logs.length(); i++) {
+            for (; i < logs.length(); ++i) {
               builder.add(logs[i]);
             }
           }
