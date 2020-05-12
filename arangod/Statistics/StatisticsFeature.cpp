@@ -149,7 +149,7 @@ StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
 StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Statistics"),
-      _statistics(true),
+      _statistics(false),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
       _descriptions(new stats::Descriptions(server)) {

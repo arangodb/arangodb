@@ -60,21 +60,19 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
  
-  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
-
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
  private:
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
-
-  std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
+  
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
   
   enum class AsyncState {
     Empty,
     InProgress,
-    GotResult
+    GotResult,
+    GotException
   };
 
  private:
@@ -84,6 +82,8 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   std::mutex _mutex;
   SkipResult _returnSkip;
   SharedAqlItemBlockPtr _returnBlock;
+  std::exception_ptr _returnException;
+  
   ExecutionState _returnState = ExecutionState::HASMORE;
   AsyncState _internalState = AsyncState::Empty;
 };

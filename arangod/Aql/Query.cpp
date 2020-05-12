@@ -1384,6 +1384,13 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
        << TRI_microtime() - _startTime << " "
        << "Query::finalizeSnippets: before _trx->commit"
        << " this: " << (uintptr_t)this;
+  
+  for (auto& [eId, engine] : _snippets) {
+    engine->setShutdown(); // no need to pass through shutdown
+
+    engine->sharedState()->invalidate();
+    engine->collectExecutionStats(stats);
+  }
 
   Result finishResult;
   if (_trx->status() == transaction::Status::RUNNING) {
@@ -1406,11 +1413,6 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   stats.requests += _numRequests.load(std::memory_order_relaxed);
   stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
   stats.setExecutionTime(TRI_microtime() - _startTime);
-  
-  for (auto& [eId, engine] : _snippets) {
-    engine->collectExecutionStats(stats);
-    engine->setShutdown(); // no need to pass through shutdown
-  }
   
   _snippets.clear();
   _traversers.clear();
