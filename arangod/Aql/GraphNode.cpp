@@ -722,16 +722,22 @@ void GraphNode::addVertexCollection(aql::Collection* collection) {
 }
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
-  std::vector<aql::Collection const*> rv;
-  rv.reserve(_edgeColls.size() + _vertexColls.size());
+  std::unordered_set<aql::Collection const*> set;
+  set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
-    rv.push_back(collPointer);
+    set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
-    rv.push_back(collPointer);
+    set.emplace(collPointer);
   }
-  return rv;
+
+  std::vector<aql::Collection const*> vector;
+  vector.reserve(set.size());
+  for (auto it = set.begin(); it != set.end(); it++) {
+    vector.push_back(std::move(set.extract(it).value()));
+  }
+  return vector;
 }
 
 bool GraphNode::isSmart() const { return _isSmart; }
