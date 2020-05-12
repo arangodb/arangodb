@@ -254,7 +254,6 @@ function TransactionsSuite () {
       }
     },
 
-
     testUseTransaction: function () {
       let trx;
       try {
@@ -265,7 +264,7 @@ function TransactionsSuite () {
         trx = result.body.result.id;
 
         // use trx on different coord to run a query
-        const query = `FOR doc IN ${cn} RETURN doc`
+        const query = `FOR doc IN ${cn} RETURN doc`;
         result = sendRequest('POST', "/_api/cursor", { query }, false);
         assertFalse(result.body.error);
         assertEqual(10, result.body.result.length);
