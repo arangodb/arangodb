@@ -1,6 +1,13 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #11590: Querying for document by _key returning only a single 
+  seemingly random property on entity ("old", in this case).
+  
+  This fixes single-key document lookups in the cluster for simple by-key
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN doc`
+  in case the document has either an "old" or a "new" attribute. 
+
 * Fix a dead-lock situation in hot-backup case.
 
   If the cluster is under high write load, then a hot-backup is requested, and
