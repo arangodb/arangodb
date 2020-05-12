@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -72,10 +73,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     setFilter(std::make_unique<Expression>(ast, new AstNode(ast, p)));
   }
 
-  p = slice.get("count");
-  if (p.isBool() && p.getBool()) {
-    setCountFlag();
-  }
+  _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);
 }
   
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
