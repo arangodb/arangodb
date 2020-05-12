@@ -199,7 +199,7 @@ bool SingleRemoteModificationExecutor<Modifier>::doSingleRemoteModificationOpera
 
   VPackSlice oldDocument = VPackSlice::nullSlice();
   VPackSlice newDocument = VPackSlice::nullSlice();
-  if (outDocument.isObject()) {
+  if (!isIndex && outDocument.isObject()) {
     if (_info._outputNewRegisterId != ExecutionNode::MaxRegisterId &&
         outDocument.hasKey("new")) {
       newDocument = outDocument.get("new");
