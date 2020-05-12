@@ -299,7 +299,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
           base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
   auto thread_local const isDBServer = ServerState::instance()->isDBServer();
 
   if (!isDBServer) {
@@ -573,6 +574,10 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(VPackValue("edgeOutVariable"));
     edgeOutVariable()->toVelocyPack(nodes);
   }
+
+  // Flags
+  nodes.add("isSmart", VPackValue(_isSmart));
+  nodes.add("isDisjoint", VPackValue(_isDisjoint));
 
   // Temporary AST Nodes for conditions
   TRI_ASSERT(_tmpObjVariable != nullptr);
