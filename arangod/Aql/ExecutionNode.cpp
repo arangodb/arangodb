@@ -1097,7 +1097,7 @@ RegisterCount ExecutionNode::getNrInputRegisters() const {
 
 auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
   if (_regsToKeepStack.empty()) {
-    // This is 3.6 compatibility code. It can be removed in 3.7.
+    // This is 3.6 compatibility code. It can be removed in 3.8.
     // The function should then become const noexcept and should return a const& instead
     return _registerPlan->calcRegsToKeep(_varsUsedLaterStack, _varsValidStack,
                                          getVariablesSetHere());
