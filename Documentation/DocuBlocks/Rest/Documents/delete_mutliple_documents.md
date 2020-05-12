@@ -233,6 +233,7 @@ Revision conflict:
     ];
 
     var response = logCurlRequest('DELETE', url, body);
+    var parsedBody = JSON.parse(response.body);
 
     assert(response.code === 202);
   | parsedBody.forEach(function(doc) {
