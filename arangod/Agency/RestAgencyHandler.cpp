@@ -190,7 +190,7 @@ RestStatus RestAgencyHandler::pollIndex(
                 rest::ResponseCode::SERVER_ERROR,
                 TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
             }
-            uint64_t i = slice.get("firstIndex").getNumber<uint64_t>() - start;
+            uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
             builder.add("commitIndex", slice.get("commitIndex"));
             VPackSlice logs = slice.get("log");
             builder.add("firstIndex", logs[i].get("index"));
