@@ -692,7 +692,7 @@ bool IndexExecutor::needsUniquenessCheck() const noexcept {
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
   if (_infos.getCount()) {
     // when we are counting, we will always return a single row
-    return std::max(input.countShadowRows(), 1);
+    return std::max<size_t>(input.countShadowRows(), 1);
   }
   // Otherwise we do not know.
   return call.getLimit();
