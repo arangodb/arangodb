@@ -2594,6 +2594,16 @@ ExecutionNode* ParallelEndNode::clone(ExecutionPlan* plan, bool withDependencies
                      withDependencies, withProperties);
 }
 
+void ParallelEndNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
+  setVarUsageValid();
+}
+
 /// @brief toVelocyPack, for ParallelEndNode
 void ParallelEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {
