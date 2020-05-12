@@ -95,7 +95,7 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
     // case it is ok that the datasource does not exist, but we need to track
     // the names of datasources used in the query
-    ast.query().collections().add(name, accessType);
+    ast.query().collections().add(name, accessType, aql::Collection::Hint::None);
 
     return LogicalCollection::category();
   }
@@ -112,24 +112,25 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
     nameRef = arangodb::velocypack::StringRef(p, dataSourceName.size());
   }
 
-  // add views to the collection list
-  // to register them with transaction as well
-  ast.query().collections().add(nameRef.toString(), accessType);
-
   if (dataSource->category() == LogicalCollection::category()) {
     // it's a collection!
     // add datasource to query
+    ast.query().collections().add(nameRef.toString(), accessType, aql::Collection::Hint::Collection);
     if (nameRef != name) {
-      ast.query().collections().add(name, accessType);  // Add collection by ID as well
+      ast.query().collections().add(name, accessType, aql::Collection::Hint::Collection);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalView::category()) {
     // it's a view!
+    // add views to the collection list
+    // to register them with transaction as well
+    ast.query().collections().add(nameRef.toString(), accessType, aql::Collection::Hint::None);
+
     ast.query().addDataSource(dataSource);
 
     // Make sure to add all collections now:
     resolver.visitCollections(
         [&ast, accessType](LogicalCollection& col) -> bool {
-          ast.query().collections().add(col.name(), accessType);
+          ast.query().collections().add(col.name(), accessType, aql::Collection::Hint::Collection);
           return true;
         },
         dataSource->id());
@@ -724,7 +725,7 @@ AstNode* Ast::createNodeCollection(arangodb::CollectionNameResolver const& resol
 
   if (category == LogicalCollection::category()) {
     // add collection to query
-    _query.collections().add(nameRef.toString(), accessType);
+    _query.collections().add(nameRef.toString(), accessType, Collection::Hint::Collection);
 
     // call private function after validation
     return createNodeCollectionNoValidation(nameRef, accessType);
@@ -1267,7 +1268,7 @@ AstNode* Ast::createNodeWithCollections(AstNode const* collections,
       LogicalDataSource::Category const* category =
           injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ, false, nameRef);
       if (category == LogicalCollection::category()) {
-        _query.collections().add(name, AccessMode::Type::READ);
+        _query.collections().add(name, AccessMode::Type::READ, Collection::Hint::Collection);
 
         if (ServerState::instance()->isCoordinator()) {
           auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -1728,7 +1729,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
     if (c->type == NODE_TYPE_COLLECTION) {
       std::string const name = c->getString();
       _query.collections().add(name, isExclusive ? AccessMode::Type::EXCLUSIVE
-                                              : AccessMode::Type::WRITE);
+                                              : AccessMode::Type::WRITE, Collection::Hint::Collection);
       if (ServerState::instance()->isCoordinator()) {
         auto& ci = _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -1740,7 +1741,7 @@ void Ast::injectBindParameters(BindParameters& parameters,
 
           for (auto const& n : names) {
             _query.collections().add(n, isExclusive ? AccessMode::Type::EXCLUSIVE
-                                                 : AccessMode::Type::WRITE);
+                                                 : AccessMode::Type::WRITE, Collection::Hint::Collection);
           }
         }
       }
@@ -3799,12 +3800,10 @@ AstNode* Ast::createNodeCollectionNoValidation(arangodb::velocypack::StringRef c
     // We want to tolerate that a collection name is given here
     // which does not exist, if only for some unit tests:
     auto coll = ci.getCollectionNT(_query.vocbase().name(), name.toString());
-    if (coll != nullptr) {
-      if (coll->isSmart()) {
-        // add names of underlying smart-edge collections
-        for (auto const& n : coll->realNames()) {
-          _query.collections().add(n, accessType);
-        }
+    if (coll != nullptr && coll->isSmart()) {
+      // add names of underlying smart-edge collections
+      for (auto const& n : coll->realNames()) {
+        _query.collections().add(n, accessType, Collection::Hint::Collection);
       }
     }
   }
@@ -3827,13 +3826,13 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
     TRI_ASSERT(graph != nullptr);
 
     for (const auto& n : graph->vertexCollections()) {
-      _query.collections().add(n, AccessMode::Type::READ);
+      _query.collections().add(n, AccessMode::Type::READ, Collection::Hint::Collection);
     }
 
     auto const& eColls = graph->edgeCollections();
 
     for (const auto& n : eColls) {
-      _query.collections().add(n, AccessMode::Type::READ);
+      _query.collections().add(n, AccessMode::Type::READ, Collection::Hint::Collection);
     }
 
     if (ServerState::instance()->isCoordinator()) {
@@ -3841,12 +3840,8 @@ void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
 
       for (const auto& n : eColls) {
         auto c = ci.getCollection(_query.vocbase().name(), n);
-        if (c != nullptr) {
-          auto names = c->realNames();
-
-          for (auto const& name : names) {
-            _query.collections().add(name, AccessMode::Type::READ);
-          }
+        for (auto const& name : c->realNames()) {
+          _query.collections().add(name, AccessMode::Type::READ, Collection::Hint::Collection);
         }
       }
     }

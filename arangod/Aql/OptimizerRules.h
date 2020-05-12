@@ -42,7 +42,7 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert = true);
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

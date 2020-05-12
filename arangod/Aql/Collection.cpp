@@ -42,7 +42,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 /// @brief create a collection wrapper
-Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase, AccessMode::Type accessType)
+Collection::Collection(std::string const& name, 
+                       TRI_vocbase_t* vocbase, 
+                       AccessMode::Type accessType,
+                       Hint hint)
     : _collection(nullptr),
       _vocbase(vocbase),
       _name(name),
@@ -50,6 +53,26 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase, AccessMo
       _isReadWrite(false) {
   TRI_ASSERT(!_name.empty());
   TRI_ASSERT(_vocbase != nullptr);
+
+  if (hint == Hint::Collection) {
+    if (ServerState::instance()->isRunningInCluster()) {
+      auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+      _collection = clusterInfo.getCollection(_vocbase->name(), _name);
+    } else {
+      _collection = _vocbase->lookupCollection(_name);
+      //ensureCollection(); // will throw if collection does not exist
+    }
+  } else if (hint == Hint::Shard) {
+    if (ServerState::instance()->isCoordinator()) {
+      auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+      _collection = clusterInfo.getCollection(_vocbase->name(), _name);
+    } else {
+      _collection = _vocbase->lookupCollection(_name);
+      //ensureCollection(); // will throw if collection does not exist
+    }
+  } else if (hint == Hint::None) {
+    // nothing special to do here
+  }
 }
 
 /// @brief upgrade the access type to exclusive
@@ -175,20 +198,6 @@ bool Collection::usesDefaultSharding() const {
   return getCollection()->usesDefaultShardKeys();
 }
 
-void Collection::setCollection(std::shared_ptr<arangodb::LogicalCollection> const& coll) {
-  _collection = coll;
-}
-
-/// @brief either use the set collection or get one from ClusterInfo:
-std::shared_ptr<LogicalCollection> Collection::getCollection() const {
-  if (_collection == nullptr) {
-    TRI_ASSERT(ServerState::instance()->isRunningInCluster());
-    auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    return clusterInfo.getCollection(_vocbase->name(), _name);
-  }
-  return _collection;
-}
-
 /// @brief check smartness of the underlying collection
 bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
@@ -235,13 +244,8 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
    }
   
-  auto coll = this->getCollection();
-  if (!coll) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "aql::Collection object not initialized");
-  }
-  
   auto iid = arangodb::IndexId{arangodb::basics::StringUtils::uint64(idxId)};
-  auto idx = coll->lookupIndex(iid);
+  auto idx = this->getCollection()->lookupIndex(iid);
 
   if (!idx) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
@@ -255,9 +259,6 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(std::string const
 
 std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
   auto coll = this->getCollection();
-  if (!coll) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "aql::Collection object not initialized");
-  }
   
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
@@ -271,4 +272,19 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
                                }),
                 indexes.end());
   return indexes;
+}
+
+/// @brief use the already set collection 
+std::shared_ptr<LogicalCollection> Collection::getCollection() const {
+  ensureCollection();
+  TRI_ASSERT(_collection != nullptr);
+  return _collection;
+}
+
+/// @brief throw if the underlying collection has not been set
+void Collection::ensureCollection() const {
+  if (_collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) + ": " + _name);
+  }
 }

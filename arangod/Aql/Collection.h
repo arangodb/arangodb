@@ -41,11 +41,20 @@ class Index;
 namespace aql {
 
 struct Collection {
+  enum class Hint {
+    // either a view (no collection) or collection is known to not exist
+    None,
+    // cluster-wide collection name
+    Collection,
+    // DB-server local shard
+    Shard,
+  };
+
   Collection() = delete;
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
+  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType, Hint hint);
 
   TRI_vocbase_t* vocbase() const;
 
@@ -101,12 +110,6 @@ struct Collection {
   /// @brief whether or not the collection uses the default sharding
   bool usesDefaultSharding() const;
 
-  /// @brief set the underlying collection
-  void setCollection(std::shared_ptr<arangodb::LogicalCollection> const& coll);
-
-  /// @brief either use the set collection or get one from ClusterInfo:
-  std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
-
   /// @brief check smartness of the underlying collection
   bool isSmart() const;
 
@@ -141,13 +144,20 @@ struct Collection {
   std::shared_ptr<arangodb::Index> indexByIdentifier(std::string const& idxId) const;
   
   std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
+  
+  /// @brief use the already set collection 
+  std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
+  
+ private:
+  /// @brief throw if the underlying collection has not been set
+  void ensureCollection() const;
 
  private:
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;
 
-  std::string _name;
+  std::string const _name;
 
   /// @brief currently handled shard. this is a temporary variable that will
   /// only be filled during plan creation
