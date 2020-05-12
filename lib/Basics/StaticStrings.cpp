@@ -255,6 +255,7 @@ std::string const StaticStrings::UsesRevisionsAsDocumentIds(
 std::string const StaticStrings::Schema("schema");
 std::string const StaticStrings::Version("version");
 std::string const StaticStrings::WriteConcern("writeConcern");
+std::string const StaticStrings::ShardingSingle("single");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
