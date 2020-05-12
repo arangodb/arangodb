@@ -142,7 +142,6 @@ uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
     stats.incrScanned(actuallySkipped);
     _documentProducingFunctionContext.getAndResetNumScanned();
   } else {
-    TRI_ASSERT(!_infos.getCount());
     _cursor->nextDocument(_documentSkipper, toSkip);
     size_t filtered = _documentProducingFunctionContext.getAndResetNumFiltered();
     size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
