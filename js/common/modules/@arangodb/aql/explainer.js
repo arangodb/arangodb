@@ -1361,7 +1361,7 @@ function processQuery(query, explain, planIndex) {
           rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
         }
         if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
-          rc += annotation('/* parallelism: ' + node.options.parallelism + ' */');
+          rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
         }
 
         return rc;
