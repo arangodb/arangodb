@@ -99,7 +99,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
     // items are pushed for each SubqueryStartNode and popped for SubqueryEndNodes.
     // as they come in pairs, the stack should never be empty.
-    TRI_ASSERT(regsToKeepStack.empty());
+    TRI_ASSERT(!regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
 
