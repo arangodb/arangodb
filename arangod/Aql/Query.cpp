@@ -214,7 +214,6 @@ void Query::prepareQuery(SerializationFormat format) {
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
   
-  TRI_ASSERT(!isModificationQuery() || !_ast->containsParallelNode());
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
   
@@ -256,7 +255,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
   
-  TRI_ASSERT(!isModificationQuery() || !_ast->containsParallelNode());
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
@@ -920,9 +918,6 @@ QueryResult Query::explain() {
 
 bool Query::isModificationQuery() const {
   TRI_ASSERT(_ast != nullptr);
-  if (!_ast) {  // TODO: this is called pre init()
-    return false;
-  }
   return _ast->containsModificationNode();
 }
 
@@ -1224,7 +1219,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
   
-  if (_ast->containsParallelNode() && !_ast->willUseV8()) {
+  if (_ast->canApplyParallelism()) {
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
@@ -1326,8 +1321,6 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
 
     plan->findVarUsage();
 
-    TRI_ASSERT(!isModificationQuery() || !_ast->containsParallelNode());
-    
     res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                format, _snippets);
     if (res.fail()) {

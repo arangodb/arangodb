@@ -223,9 +223,9 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
         } else if (name == "parallelism") {
-          if (!ast->willUseV8()) {
+          if (ast->canApplyParallelism()) {
             // parallelism is only used when there is no usage of V8 in the
-            // query.
+            // query and if the query is not a modification query.
             options->setParallelism(Ast::validatedParallelism(value));
           }
         }

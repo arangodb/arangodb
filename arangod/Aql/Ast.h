@@ -120,6 +120,10 @@ class Ast {
   void setContainsParallelNode();
   bool willUseV8() const;
   void setWillUseV8();
+        
+  bool canApplyParallelism() const {
+    return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
+  }
   
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
