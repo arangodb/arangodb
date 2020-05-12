@@ -145,7 +145,7 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
-  auto regsToKeep = calcRegsToKeep();
+  auto regsToKeep = getRegsToKeepStack();
   auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before,
