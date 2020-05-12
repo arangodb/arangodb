@@ -96,7 +96,7 @@ Using document keys:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(response.parsedBody, documents);
+    assertEqual(JSON.parse(response.body), documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -121,7 +121,7 @@ Using document identifiers:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(response.parsedBody, documents);
+    assertEqual(JSON.parse(response.body), documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -146,7 +146,7 @@ Using objects with document keys:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-    assertEqual(response.parsedBody, documents);
+    assertEqual(JSON.parse(response.body), documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -172,13 +172,13 @@ Unknown documents:
 
     var body = [ "1", "other/2" ];
     var response = logCurlRequest('DELETE', url, body);
+    var parsedBody = JSON.parse(response.body);
 
     assert(response.code === 202);
-    assert(response.parsedBody.length === 2);
-    assert(response.parsedBody[0].error === true);
-    assert(response.parsedBody[0].errorNum === 1202);
-    assert(response.parsedBody[1].error === true);
-    assert(response.parsedBody[1].errorNum === 1202);
+  | parsedBody.forEach(function(doc) {
+  |   assert(doc.error === true);
+  |   assert(doc.errorNum === 1202);
+    });
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -207,7 +207,7 @@ Check revisions:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 200);
-  | assertEqual(response.parsedBody, documents);
+    assertEqual(JSON.parse(response.body), documents);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -235,11 +235,10 @@ Revision conflict:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 202);
-    assert(response.parsedBody.length === 2);
-    assert(response.parsedBody[0].error === true);
-    assert(response.parsedBody[0].errorNum === 1200);
-    assert(response.parsedBody[1].error === true);
-    assert(response.parsedBody[1].errorNum === 1200);
+  | parsedBody.forEach(function(doc) {
+  |   assert(doc.error === true);
+  |   assert(doc.errorNum === 1200);
+    });
 
     logJsonResponse(response);
   ~ db._drop(cn);
