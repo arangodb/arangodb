@@ -499,7 +499,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       TRI_ASSERT(snippets.size() > 0);
       TRI_ASSERT(snippets[0].first == 0);
       snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
-      snippets[0].second->globalStats().addAliases(std::move(nodeAliases));
+      snippets[0].second->globalStats().setAliases(std::move(nodeAliases));
     }
     
     return res;
@@ -757,11 +757,18 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
   } else {
     
 #ifdef USE_ENTERPRISE
-    ExecutionEngine::parallelizeTraversals(query, plan);
+    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
+    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
 #endif
    
     // instantiate the engine on a local server
     auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());
+    
+#ifdef USE_ENTERPRISE
+    for (auto const& pair : aliases) {
+      retEngine->_execStats.addAlias(pair.first, pair.second);
+    }
+#endif
 
     SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);
@@ -839,7 +846,7 @@ AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
 ///  @brief collected execution stats
 void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
   for (ExecutionBlock* block : _blocks) {
-    block->collectExecStats(stats);
+    block->collectExecStats(_execStats);
   }
   stats.add(_execStats);
   _execStats.clear();

@@ -51,6 +51,8 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
 //  }
 
   std::lock_guard<std::mutex> guard(_mutex);
+  
+  traceExecuteBegin(stack);
 
   TRI_ASSERT(_dependencies.size() == 1);
 
@@ -58,7 +60,9 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
     _internalState = AsyncState::Empty;
-    return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
+    auto res = std::make_tuple(_returnState, std::move(_returnSkip), std::move(_returnBlock));
+    traceExecuteEnd(res);
+    return res;
   }
   TRI_ASSERT(_internalState == AsyncState::Empty);
 

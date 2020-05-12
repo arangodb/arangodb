@@ -149,7 +149,8 @@ class ExecutionEngine {
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
   
 #ifdef USE_ENTERPRISE
-  static void parallelizeTraversals(aql::Query& query, ExecutionPlan& plan);
+  static void parallelizeTraversals(aql::Query& query, ExecutionPlan& plan,
+                                    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
 #endif
   
 #ifdef ARANGODB_USE_GOOGLE_TESTS

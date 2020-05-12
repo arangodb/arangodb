@@ -38,9 +38,13 @@ ExecutionBlockImpl<MutexExecutor>::ExecutionBlockImpl(
     : ExecutionBlock(engine, node), _isShutdown(false) {}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<MutexExecutor>::execute(AqlCallStack stack) {
+  
   std::unique_lock<std::mutex> guard(_mutex);
+  
+  traceExecuteBegin(stack);
   TRI_ASSERT(_dependencies.size() == 1);
   auto ret = _dependencies[0]->execute(stack);
+  traceExecuteEnd(ret);
   guard.unlock();
   
   return ret;

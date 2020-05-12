@@ -229,7 +229,8 @@ class Query : public QueryContext {
 
   /// @brief cleanup plan and engine for current query can issue WAITING
   ExecutionState cleanupPlanAndEngine(int errorCode, bool sync,
-                                      velocypack::Builder* statsBuilder = nullptr);
+                                      velocypack::Builder* statsBuilder = nullptr,
+                                      bool includePlan = false);
 
  protected:
   
