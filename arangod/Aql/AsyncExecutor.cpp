@@ -45,6 +45,13 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
       _sharedState(engine->sharedState()) {}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack stack) {
+  traceExecuteBegin(stack);
+  auto res = executeWithoutTrace(stack);
+  traceExecuteEnd(res);
+  return res;
+}
+
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack stack) {
   
 //  if (getQuery().killed()) {
 //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -52,17 +59,13 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
 
   std::lock_guard<std::mutex> guard(_mutex);
   
-  traceExecuteBegin(stack);
-
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
     _internalState = AsyncState::Empty;
-    auto res = std::make_tuple(_returnState, std::move(_returnSkip), std::move(_returnBlock));
-    traceExecuteEnd(res);
-    return res;
+    return std::make_tuple(_returnState, std::move(_returnSkip), std::move(_returnBlock));
   }
   TRI_ASSERT(_internalState == AsyncState::Empty);
 
