@@ -70,7 +70,8 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
     return false;  // do not walk into subquery
   }
 
-  RegIdOrderedSetStack unusedRegisters = RegIdOrderedSetStack{{}};
+  RegIdOrderedSetStack unusedRegisters{{}};
+  RegIdSetStack regsToKeepStack{{}};
   std::shared_ptr<RegisterPlanT<T>> plan;
 };
 
@@ -106,7 +107,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   std::shared_ptr<RegisterPlanT> clone();
 
   void registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters);
-  void registerVariable(VariableId v) { std::set<RegisterId> tmp; registerVariable(v, tmp); }; // used by iresearch-tests
+  void registerVariable(VariableId v);  // used by iresearch-tests
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);
@@ -114,6 +115,12 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
+
+  auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+
+  // compatibility function for 3.6. can be removed in 3.8
+  auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
+                      std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
 
  private:
   unsigned int depth;
