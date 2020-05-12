@@ -234,8 +234,9 @@ class StaticStrings {
 
   // graph attribute names
   static std::string const GraphCollection;
-  static std::string const GraphIsSmart;
+  static std::string const IsDisjoint;
   static std::string const GraphIsSatellite;
+  static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -329,7 +330,6 @@ class StaticStrings {
   static std::string const MaintenancePhaseTwoRuntimeMs;
   static std::string const MaintenanceAgencySyncRuntimeMs;
 
-
   static std::string const MaintenanceActionRuntimeMs;
   static std::string const MaintenanceActionAccumRuntimeMs;
   static std::string const MaintenanceActionFailureCounter;
@@ -339,7 +339,6 @@ class StaticStrings {
   static std::string const MaintenancePhaseOneAccumRuntimeMs;
   static std::string const MaintenancePhaseTwoAccumRuntimeMs;
   static std::string const MaintenanceAgencySyncAccumRuntimeMs;
-
 
   static std::string const ActionDuplicateCounter;
   static std::string const ActionRegisteredCounter;

@@ -101,14 +101,14 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   }
 
   _indexes.reserve(indexes.length());
-  
+
   aql::Collections const& collections = plan->getAst()->query().collections();
   auto* coll = collections.get(collection()->name());
   if (!coll) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-        
+
   for (VPackSlice it : VPackArrayIterator(indexes)) {
     std::string iid = it.get("id").copyString();
     _indexes.emplace_back(coll->indexByIdentifier(iid));
@@ -236,18 +236,6 @@ void IndexNode::initIndexCoversProjections() {
   _options.forceProjection = true;
 }
 
-void IndexNode::planNodeRegisters(RegisterPlan& registerPlan) const {
-  if (isLateMaterialized()) {
-    registerPlan.registerVariable(_outNonMaterializedDocId->id);
-    // plan registers for index references
-    for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
-      registerPlan.registerVariable(fieldVar.first->id);
-    }
-  } else {
-    registerPlan.registerVariable(_outVariable->id);
-  }
-}
-
 /// @brief toVelocyPack, for IndexNode
 void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
                                    std::unordered_set<ExecutionNode const*>& seen) const {
@@ -316,7 +304,7 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) cons
     auto ast = _plan->getAst();
     auto array = _plan->getAst()->createNodeArray();
     array->addMember(node);
-    
+
     // Here it does not matter which index we choose for the isSorted/isSparse
     // check, we need them all sorted here.
 
@@ -353,7 +341,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
 
     hasV8Expression |= e->willUseV8();
 
-    ::arangodb::containers::HashSet<Variable const*> innerVars;
+    VarSet innerVars;
     e->variables(innerVars);
 
     nonConstExpressions.emplace_back(
@@ -495,10 +483,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   // the output register for document id
   // These must of course fit in the available registers.
   // There may be unused registers reserved for later blocks.
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
-      aql::make_shared_unordered_set();
-  writableOutputRegisters->reserve(numDocumentRegs + numIndVarsRegisters);
-  writableOutputRegisters->emplace(outRegister);
+  RegIdSet writableOutputRegisters;
+  writableOutputRegisters.reserve(numDocumentRegs + numIndVarsRegisters);
+  writableOutputRegisters.emplace(outRegister);
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndRegs;
@@ -513,13 +500,13 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                    TRI_ASSERT(it != varInfos.cend());
                    RegisterId regId = it->second.registerId;
 
-                   writableOutputRegisters->emplace(regId);
+                   writableOutputRegisters.emplace(regId);
                    return std::make_pair(indVar.second, regId);
                  });
 
-  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
+  TRI_ASSERT(writableOutputRegisters.size() == numDocumentRegs + numIndVarsRegisters);
 
-  auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
+  auto registerInfos = createRegisterInfos({}, std::move(writableOutputRegisters));
 
   auto executorInfos =
       IndexExecutorInfos(outRegister, engine.getQuery(), this->collection(),
@@ -608,7 +595,7 @@ CostEstimate IndexNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IndexNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void IndexNode::getVariablesUsedHere(VarSet& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);

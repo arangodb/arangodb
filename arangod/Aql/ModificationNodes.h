@@ -185,7 +185,7 @@ class RemoveNode : public ModificationNode {
                        bool withProperties) const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -233,7 +233,7 @@ class InsertNode : public ModificationNode {
                        bool withProperties) const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -270,7 +270,7 @@ class UpdateReplaceNode : public ModificationNode {
                           std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     vars.emplace(_inDocVariable);
 
     if (_inKeyVariable != nullptr) {
@@ -404,7 +404,7 @@ class UpsertNode : public ModificationNode {
                        bool withProperties) const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     vars.emplace(_inDocVariable);
     vars.emplace(_insertVariable);
     vars.emplace(_updateVariable);

@@ -154,6 +154,25 @@ class IResearchViewStats {
 ExecutionStats& operator+=(ExecutionStats& executionStats,
                            IResearchViewStats const& iResearchViewStats) noexcept;
 
+struct ColumnIterator {
+  irs::doc_iterator::ptr itr;
+  const irs::payload* value{};
+}; // ColumnIterator
+
+struct FilterCtx final : irs::attribute_provider {
+  explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
+    : _execCtx(ctx) {
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<iresearch::ExpressionExecutionContext>::id() == type
+      ? &_execCtx
+      : nullptr;
+  }
+
+  iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+}; // FilterCtx
+
 template <typename Impl>
 struct IResearchViewExecutorTraits;
 
@@ -362,32 +381,17 @@ class IResearchViewExecutorBase {
   bool next(ReadContext& ctx);
 
  protected:
-  struct FilterCtx final : irs::attribute_provider {
-    explicit FilterCtx(iresearch::ViewExpressionContext& ctx) noexcept
-      : _execCtx(ctx) {
-    }
-
-    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-      return irs::type<iresearch::ExpressionExecutionContext>::id() == type
-        ? &_execCtx
-        : nullptr;
-    }
-
-    iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
-  }; // FilterCtx
-
   transaction::Methods _trx;
   RegexCache _regexCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
-  irs::bytes_ref _pk;  // temporary store for pk buffer before decoding it
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;  // filter context
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
-  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders;  // current stored values readers
+  std::vector<ColumnIterator> _storedValuesReaders;  // current stored values readers
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
@@ -429,7 +433,7 @@ class IResearchViewExecutor
   // unset if readPK returns true.
   bool readPK(LocalDocumentId& documentId);
 
-  irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
+  ColumnIterator _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
@@ -469,8 +473,8 @@ class IResearchViewMergeExecutor
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
-            irs::columnstore_reader::values_reader_f&& pkReader,
-            irs::columnstore_reader::values_reader_f&& sortReader,
+            irs::doc_iterator::ptr&& pkReader,
+            ColumnIterator&& sortReader,
             size_t storedValuesIndex) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
@@ -481,9 +485,8 @@ class IResearchViewMergeExecutor
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
-    irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
-    irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
-    irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
+    ColumnIterator pkReader;    // primary key reader
+    ColumnIterator sortReader;  // sort column reader
     size_t storedValuesIndex;  // first stored values index
   };
 

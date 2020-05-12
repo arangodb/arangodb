@@ -23,70 +23,71 @@
 #ifndef ARANGOD_AQL_VAR_USAGE_FINDER_H
 #define ARANGOD_AQL_VAR_USAGE_FINDER_H 1
 
+#include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 
+#include <Containers/Enumerate.h>
+
+#include <vector>
+#include <unordered_set>
+
 namespace arangodb::aql {
+
+class ExecutionNode;
 
 /// @brief helper struct for findVarUsage
 
 template <class T>
-struct VarUsageFinder final : public WalkerWorker<T> {
-  ::arangodb::containers::HashSet<Variable const*> _usedLater;
-  ::arangodb::containers::HashSet<Variable const*> _valid;
+struct VarUsageFinderT;
+
+using VarUsageFinder = VarUsageFinderT<ExecutionNode>;
+
+template <class T>
+struct VarUsageFinderT final : public WalkerWorker<T> {
+  VarSetStack _usedLaterStack = VarSetStack{{}};
+  VarSetStack _varsValidStack = VarSetStack{{}};
   std::unordered_map<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 
-  VarUsageFinder(VarUsageFinder const&) = delete;
-  VarUsageFinder& operator=(VarUsageFinder const&) = delete;
+  VarUsageFinderT(VarUsageFinderT const&) = delete;
+  VarUsageFinderT& operator=(VarUsageFinderT const&) = delete;
 
-  VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
+  VarUsageFinderT() : _varSetBy(nullptr), _ownsVarSetBy(true) {
     _varSetBy = new std::unordered_map<VariableId, T*>();
   }
 
-  explicit VarUsageFinder(std::unordered_map<VariableId, T*>* varSetBy)
+  explicit VarUsageFinderT(std::unordered_map<VariableId, T*>* varSetBy)
       : _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }
 
-  ~VarUsageFinder() {
+  ~VarUsageFinderT() {
     if (_ownsVarSetBy) {
       TRI_ASSERT(_varSetBy != nullptr);
       delete _varSetBy;
     }
   }
 
-  bool before(T* en) override final {
-    // count the type of node found
-    en->plan()->increaseCounter(en->getType());
+  bool before(T* en) final;
 
-    en->invalidateVarUsage();
-    en->setVarsUsedLater(_usedLater);
-    // Add variables used here to _usedLater:
+  /*
+   * o  set: x, z   valid = x, z  usedLater = (z, x)
+   * |\
+   * | \ clear z
+   * |  o set: y    valid = x, y, z   usedLater = (z, x)
+   * |cx| clear y
+   * |  |
+   * |  o used: x   valid = x, y, z   usedLater = ((), ())
+   * | / clear x
+   * |/
+   * o used: z   valid = x, z  usedLater = (z)
+   * |
+   * o used: z   usedLater = (...)
+   */
 
-    en->getVariablesUsedHere(_usedLater);
+  void after(T* en) override final;
 
-    return false;
-  }
-
-  void after(T* en) override final {
-    // Add variables set here to _valid:
-    for (auto const& v : en->getVariablesSetHere()) {
-      _valid.insert(v);
-      _varSetBy->insert({v->id, en});
-    }
-
-    en->setVarsValid(_valid);
-    en->setVarUsageValid();
-  }
-
-  bool enterSubquery(T*, T* sub) override final {
-    VarUsageFinder subfinder(_varSetBy);
-    subfinder._valid = _valid;  // need a copy for the subquery!
-    sub->walk(subfinder);
-
-    // we've fully processed the subquery
-    return false;
-  }
+  bool enterSubquery(T*, T*) final;
 };
 
 }  // namespace arangodb::aql

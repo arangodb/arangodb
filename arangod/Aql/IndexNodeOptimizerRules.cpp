@@ -124,7 +124,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       if (indexNode->hasFilter()) {
         auto* filter = indexNode->filter();
         TRI_ASSERT(filter);
-        arangodb::containers::HashSet<Variable const*> currentUsedVars;
+        VarSet currentUsedVars;
         Ast::getReferencedVariables(filter->node(), currentUsedVars);
         if (currentUsedVars.find(var) != currentUsedVars.end() &&
             !processCalculationNode(var, index, nullptr, filter, nodesToChange)) {
@@ -170,7 +170,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         // currently only calculation nodes expected to use a loop variable with attributes
         // we successfully replace all references to the loop variable
         if (!stopSearch && valid && type != ExecutionNode::CALCULATION) {
-          arangodb::containers::HashSet<Variable const*> currentUsedVars;
+          VarSet currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(var) != currentUsedVars.end()) {
             valid = false;

@@ -104,9 +104,6 @@ struct AqlValueHintInt {
 
 struct AqlValueHintUInt {
   explicit AqlValueHintUInt(uint64_t v) noexcept;
-#ifdef TRI_OVERLOAD_FUNCS_SIZE_T
-  explicit AqlValueHintUInt(size_t v) noexcept : value(uint64_t(v)) {}
-#endif
   uint64_t const value;
 };
 

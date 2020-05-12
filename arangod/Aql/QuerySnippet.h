@@ -43,6 +43,8 @@ class RemoteNode;
 class ScatterNode;
 class ShardLocking;
 
+using MapNodeToColNameToShards = std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
+
 class QuerySnippet {
  public:
   using Id = size_t;
@@ -82,7 +84,7 @@ class QuerySnippet {
   Id id() const { return _id; }
 
  private:
-  ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> prepareFirstBranch(
+  ResultT<MapNodeToColNameToShards> prepareFirstBranch(
       ServerID const& server,
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       ShardLocking& shardLocking);

@@ -2164,8 +2164,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 }
 
 /// @brief determines the variables referenced in an expression
-void Ast::getReferencedVariables(AstNode const* node,
-                                 ::arangodb::containers::HashSet<Variable const*>& result) {
+void Ast::getReferencedVariables(AstNode const* node, VarSet& result) {
   auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
   };

@@ -387,43 +387,111 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   auto allVars = plan->getAst()->variables();
 
-  VPackSlice varsUsedLater = slice.get("varsUsedLater");
-  if (!varsUsedLater.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "\"varsUsedLater\" needs to be an array");
-  }
+  VPackSlice varsUsedLaterStackSlice = slice.get("varsUsedLaterStack");
 
-  _varsUsedLater.reserve(varsUsedLater.length());
-  for (VPackSlice it : VPackArrayIterator(varsUsedLater)) {
-    Variable oneVarUsedLater(it);
-    Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
-
-    if (oneVariable == nullptr) {
-      std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarUsedLater.id);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+  if (varsUsedLaterStackSlice.isNone()) {
+    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
+    VPackSlice varsUsedLaterSlice = slice.get("varsUsedLater");
+    if (!varsUsedLaterSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+          "\"varsUsedLater\" needs to be an array");
     }
-    _varsUsedLater.insert(oneVariable);
-  }
+    auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
 
-  VPackSlice varsValidList = slice.get("varsValid");
+    varsUsedLater.reserve(varsUsedLaterSlice.length());
+    for (VPackSlice it : VPackArrayIterator(varsUsedLaterSlice)) {
+      Variable oneVarUsedLater(it);
+      Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
-  if (!varsValidList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "\"varsValid\" needs to be an array");
-  }
-
-  _varsValid.reserve(varsValidList.length());
-  for (VPackSlice it : VPackArrayIterator(varsValidList)) {
-    Variable oneVarValid(it);
-    Variable* oneVariable = allVars->getVariable(oneVarValid.id);
-
-    if (oneVariable == nullptr) {
-      std::string errmsg = "varsValid: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarValid.id);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+      if (oneVariable == nullptr) {
+        std::string errmsg = "varsUsedLater: ID not found in all-array: " +
+                             StringUtils::itoa(oneVarUsedLater.id);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+      }
+      varsUsedLater.insert(oneVariable);
     }
-    _varsValid.insert(oneVariable);
+  } else {
+    if (!varsUsedLaterStackSlice.isArray() || varsUsedLaterStackSlice.length() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+          "\"varsUsedLaterStack\" needs to be a non-empty array");
+    }
+
+    _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+            "\"varsUsedLaterStack\" needs to contain arrays");
+      }
+      auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
+
+      varsUsedLater.reserve(stackEntrySlice.length());
+      for (auto it : VPackArrayIterator(stackEntrySlice)) {
+        Variable oneVarUsedLater(it);
+        Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
+
+        if (oneVariable == nullptr) {
+          std::string errmsg = "varsUsedLaterStack: ID not found in all-array: " +
+                               StringUtils::itoa(oneVarUsedLater.id);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+        }
+        varsUsedLater.insert(oneVariable);
+      }
+    }
+  }
+
+  VPackSlice varsValidStackSlice = slice.get("varsValidStack");
+
+  if (varsValidStackSlice.isNone()) {
+    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
+    VPackSlice varsValidSlice = slice.get("varsValid");
+
+    if (!varsValidSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "\"varsValid\" needs to be an array");
+    }
+    auto& varsValid = _varsValidStack.emplace_back();
+
+    varsValid.reserve(varsValidSlice.length());
+    for (VPackSlice it : VPackArrayIterator(varsValidSlice)) {
+      Variable oneVarValid(it);
+      Variable* oneVariable = allVars->getVariable(oneVarValid.id);
+
+      if (oneVariable == nullptr) {
+        std::string errmsg = "varsValid: ID not found in all-array: " +
+                             StringUtils::itoa(oneVarValid.id);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
+      }
+      varsValid.insert(oneVariable);
+    }
+  } else {
+    if (!varsValidStackSlice.isArray() || varsValidStackSlice.length() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL_AQL,
+          "\"varsValidStack\" needs to be a non-empty array");
+    }
+
+    _varsValidStack.reserve(varsValidStackSlice.length());
+    for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
+      if (!stackEntrySlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL_AQL,
+            "\"varsValidStack\" needs to contain arrays");
+      }
+      auto& varsValid = _varsValidStack.emplace_back();
+
+      varsValid.reserve(stackEntrySlice.length());
+      for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
+        Variable oneVarValid(it);
+        Variable* oneVariable = allVars->getVariable(oneVarValid.id);
+
+        if (oneVariable == nullptr) {
+          std::string errmsg = "varsValidStack: ID not found in all-array: " +
+                               StringUtils::itoa(oneVarValid.id);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+        }
+        varsValid.insert(oneVariable);
+      }
+    }
   }
 
   _isInSplicedSubquery =
@@ -491,19 +559,27 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
   if (withProperties) {
     auto allVars = plan.getAst()->variables();
     // Create new structures on the new AST...
-    other._varsUsedLater.reserve(_varsUsedLater.size());
-    for (auto const& orgVar : _varsUsedLater) {
-      auto var = allVars->getVariable(orgVar->id);
-      TRI_ASSERT(var != nullptr);
-      other._varsUsedLater.insert(var);
+    other._varsUsedLaterStack.reserve(_varsUsedLaterStack.size());
+    for (auto const& stackEntry : _varsUsedLaterStack) {
+      auto& otherStackEntry = other._varsUsedLaterStack.emplace_back();
+      otherStackEntry.reserve(stackEntry.size());
+      for (auto const& orgVar : stackEntry) {
+        auto var = allVars->getVariable(orgVar->id);
+        TRI_ASSERT(var != nullptr);
+        otherStackEntry.emplace(var);
+      }
     }
 
-    other._varsValid.reserve(_varsValid.size());
+    other._varsValidStack.reserve(_varsValidStack.size());
 
-    for (auto const& orgVar : _varsValid) {
-      auto var = allVars->getVariable(orgVar->id);
-      TRI_ASSERT(var != nullptr);
-      other._varsValid.insert(var);
+    for (auto const& stackEntry : _varsValidStack) {
+      auto& otherStackEntry = other._varsValidStack.emplace_back();
+      otherStackEntry.reserve(stackEntry.size());
+      for (auto const& orgVar : stackEntry) {
+        auto var = allVars->getVariable(orgVar->id);
+        TRI_ASSERT(var != nullptr);
+        otherStackEntry.emplace(var);
+      }
     }
 
     if (_registerPlan != nullptr) {
@@ -511,8 +587,8 @@ void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
     }
   } else {
     // point to current AST -> don't do deep copies.
-    other._varsUsedLater = _varsUsedLater;
-    other._varsValid = _varsValid;
+    other._varsUsedLaterStack = _varsUsedLaterStack;
+    other._varsValidStack = _varsValidStack;
     other._registerPlan = _registerPlan;
   }
 }
@@ -748,19 +824,27 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       }
     }
 
-    nodes.add(VPackValue("varsUsedLater"));
+    nodes.add(VPackValue("varsUsedLaterStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      for (auto const& oneVar : _varsUsedLater) {
-        oneVar->toVelocyPack(nodes);
+      TRI_ASSERT(!_varsUsedLaterStack.empty());
+      for (auto const& stackEntry : _varsUsedLaterStack) {
+        VPackArrayBuilder stackEntryGuard(&nodes);
+        for (auto const& oneVar : stackEntry) {
+          oneVar->toVelocyPack(nodes);
+        }
       }
     }
 
-    nodes.add(VPackValue("varsValid"));
+    nodes.add(VPackValue("varsValidStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      for (auto const& oneVar : _varsValid) {
-        oneVar->toVelocyPack(nodes);
+      TRI_ASSERT(!_varsValidStack.empty());
+      for (auto const& stackEntry : _varsValidStack) {
+        VPackArrayBuilder stackEntryGuard(&nodes);
+        for (auto const& oneVar : stackEntry) {
+          oneVar->toVelocyPack(nodes);
+        }
       }
     }
 
@@ -795,7 +879,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     }
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
-    ::arangodb::containers::HashSet<Variable const*> variablesUsedHere;
+    VarSet variablesUsedHere;
     ep->getVariablesUsedHere(variablesUsedHere);
     for (auto const& v : variablesUsedHere) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
@@ -832,10 +916,8 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
 
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
-    if (s->getType() == ExecutionNode::NodeType::SUBQUERY) {
-      auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-      sq->getSubquery()->planRegisters(s);
-    }
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+    sq->getSubquery()->planRegisters(s);
   }
   walker.reset();
 }
@@ -946,26 +1028,36 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
-std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
-  std::unordered_set<RegisterId> regsToKeep{};
-  regsToKeep.reserve(getVarsUsedLater().size());
+auto ExecutionNode::calcRegsToKeep() const -> RegIdSetStack {
+  RegIdSetStack regsToKeepStack;
+  regsToKeepStack.reserve(getVarsUsedLaterStack().size());
 
-  auto varsUsedLater = getVarsUsedLater();
-  auto varsSetHere = getVariablesSetHere();
+  auto const& varsSetHere = getVariablesSetHere();
 
-  for (auto const var : getVarsValid()) {
-    auto reg = variableToRegisterId(var);
+  TRI_ASSERT(getVarsUsedLaterStack().size() == getVarsValidStack().size());
 
-    bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
-                     varsSetHere.end();
-    bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
-                       varsUsedLater.end();
-    if (!isSetHere && isUsedLater) {
-      regsToKeep.insert(reg);
+  // TODO The lower levels of the stacks inside the same subquery do not differ,
+  //      so we calculate the same thing multiple times.
+  //      Instead, calculate it in the register planning and pass the results.
+
+  for (auto const& [idx, stackEntry] : enumerate(getVarsValidStack())) {
+    auto& regsToKeep = regsToKeepStack.emplace_back();
+    auto const& varsUsedLater = getVarsUsedLaterStack()[idx];
+
+    for (auto const var : stackEntry) {
+      auto reg = variableToRegisterId(var);
+
+      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                       varsSetHere.end();
+      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                         varsUsedLater.end();
+      if (!isSetHere && isUsedLater) {
+        regsToKeep.emplace(reg);
+      }
     }
   }
 
-  return regsToKeep;
+  return regsToKeepStack;
 }
 
 RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
@@ -978,37 +1070,34 @@ RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
 }
 
 // This is the general case and will not work if e.g. there is no predecessor.
-RegisterInfos ExecutionNode::createRegisterInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const {
-  RegisterId const nrOutRegs = getNrOutputRegisters();
-  RegisterId const nrInRegs = getNrInputRegisters();
+RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters,
+                                                 RegIdSet writableOutputRegisters) const {
+  auto const nrOutRegs = getNrOutputRegisters();
+  auto const nrInRegs = getNrInputRegisters();
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto const& regsToKeep = calcRegsToKeep();
+  auto const& regsToClear = getRegsToClear();
 
   return RegisterInfos{std::move(readableInputRegisters),
                        std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
-                       std::move(regsToClear),
-                       std::move(regsToKeep)};
+                       regsToClear,
+                       regsToKeep};
 }
 
-RegisterId ExecutionNode::getNrInputRegisters() const {
+RegisterCount ExecutionNode::getNrInputRegisters() const {
   ExecutionNode const* previousNode = getFirstDependency();
   // in case of the SingletonNode, there are no input registers
   return previousNode == nullptr ? getNrOutputRegisters() : getRegisterPlan()->nrRegs[previousNode->getDepth()];
 }
 
-RegisterId ExecutionNode::getNrOutputRegisters() const {
+RegisterCount ExecutionNode::getNrOutputRegisters() const {
   if (getType() == ExecutionNode::RETURN) {
     // Special case for RETURN, which usually writes only 1 register.
     // TODO We should be able to remove this when the new register planning is ready!
-    bool const isRoot = plan()->root() == this;
-    bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
-    bool const returnInheritedResults = isRoot && !isDBServer;
-    if (!returnInheritedResults) {
+    auto returnNode = castTo<ReturnNode const*>(this);
+    if (!returnNode->returnInheritedResults()) {
       return 1;
     }
   }
@@ -1116,7 +1205,7 @@ void ExecutionNode::setParent(ExecutionNode* p) {
   _parents.emplace_back(p);
 }
 
-void ExecutionNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>&) const {
+void ExecutionNode::getVariablesUsedHere(VarSet& vars) const {
   // do nothing!
 }
 
@@ -1125,7 +1214,7 @@ std::vector<Variable const*> ExecutionNode::getVariablesSetHere() const {
 }
 
 ::arangodb::containers::HashSet<VariableId> ExecutionNode::getVariableIdsUsedHere() const {
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   getVariablesUsedHere(vars);
 
   ::arangodb::containers::HashSet<VariableId> ids;
@@ -1135,7 +1224,7 @@ std::vector<Variable const*> ExecutionNode::getVariablesSetHere() const {
   return ids;
 }
 
-bool ExecutionNode::setsVariable(const ::arangodb::containers::HashSet<const Variable*>& which) const {
+bool ExecutionNode::setsVariable(VarSet const& which) const {
   for (auto const& v : getVariablesSetHere()) {
     if (which.find(v) != which.end()) {
       return true;
@@ -1144,29 +1233,11 @@ bool ExecutionNode::setsVariable(const ::arangodb::containers::HashSet<const Var
   return false;
 }
 
-void ExecutionNode::setVarsUsedLater(const ::arangodb::containers::HashSet<const Variable*>& v) {
-  _varsUsedLater = v;
-}
-
-const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsUsedLater() const {
-  TRI_ASSERT(_varUsageValid);
-  return _varsUsedLater;
-}
-
-void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*> const& v) {
-  _varsValid = v;
-}
-
-const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsValid() const {
-  TRI_ASSERT(_varUsageValid);
-  return _varsValid;
-}
-
 void ExecutionNode::setVarUsageValid() { _varUsageValid = true; }
 
 void ExecutionNode::invalidateVarUsage() {
-  _varsUsedLater.clear();
-  _varsValid.clear();
+  _varsUsedLaterStack.clear();
+  _varsValidStack.clear();
   _varUsageValid = false;
 }
 
@@ -1189,11 +1260,20 @@ std::shared_ptr<RegisterPlan> ExecutionNode::getRegisterPlan() const {
 int ExecutionNode::getDepth() const { return _depth; }
 
 std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
+  if (getType() == RETURN) {
+    auto* returnNode = castTo<ReturnNode const*>(this);
+    if (!returnNode->returnInheritedResults()) {
+      static const decltype(_regsToClear) emptyRegsToClear;
+      return emptyRegsToClear;
+    }
+  }
+
   return _regsToClear;
 }
 
 bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
-  return (_varsUsedLater.find(variable) != _varsUsedLater.end());
+  TRI_ASSERT(_varUsageValid);
+  return (getVarsUsedLater().find(variable) != getVarsUsedLater().end());
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
@@ -1211,32 +1291,106 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   return RegisterPlan::MaxRegisterId;
 }
 
-bool ExecutionNode::isPassthrough() const {
-  switch (getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::INDEX:
-    case ExecutionNode::ENUMERATE_LIST:
-    case ExecutionNode::COLLECT:
+bool ExecutionNode::isIncreaseDepth() const { return isIncreaseDepth(getType()); }
 
-    case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
+  switch (type) {
+    case ENUMERATE_COLLECTION:
+    case INDEX:
+    case ENUMERATE_LIST:
+    case COLLECT:
 
-    case ExecutionNode::REMOTESINGLE:
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::MATERIALIZE:
-      return false;
+    case TRAVERSAL:
+    case SHORTEST_PATH:
+    case K_SHORTEST_PATHS:
+
+    case REMOTESINGLE:
+    case ENUMERATE_IRESEARCH_VIEW:
+    case MATERIALIZE:
+      return true;
 
     default:
-      return true;
+      return false;
   }
+}
+
+bool ExecutionNode::alwaysCopiesRows(NodeType type) {
+  // TODO This can be improved. And probably should be renamed.
+  //      It is used in the register planning to discern whether we may reuse
+  //      an input register immediately as an output register at this very block.
+  switch (type) {
+    case ENUMERATE_COLLECTION:
+    case ENUMERATE_LIST:
+    case FILTER:
+    case SORT:
+    case COLLECT:
+    case INSERT:
+    case REMOVE:
+    case REPLACE:
+    case UPDATE:
+    case NORESULTS:
+    case DISTRIBUTE:
+    case UPSERT:
+    case TRAVERSAL:
+    case INDEX:
+    case SHORTEST_PATH:
+    case K_SHORTEST_PATHS:
+    case REMOTESINGLE:
+    case ENUMERATE_IRESEARCH_VIEW:
+    case DISTRIBUTE_CONSUMER:
+    case SUBQUERY_START:
+    case SUBQUERY_END:
+    case MATERIALIZE:
+    case RETURN:
+      return true;
+    case CALCULATION:
+    case SUBQUERY:
+    case SINGLETON:
+    case LIMIT:
+      return false;
+    // It should be safe to return false for these, but is it necessary?
+    // Returning true can lead to more efficient register usage.
+    case REMOTE:
+    case SCATTER:
+    case GATHER:
+    case ASYNC:
+    case PARALLEL_START:
+    case PARALLEL_END:
+      return false;
+    case MAX_NODE_TYPE_VALUE:
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  }
+  ADB_UNREACHABLE;
+}
+
+bool ExecutionNode::alwaysCopiesRows() const {
+  return ExecutionNode::alwaysCopiesRows(getType());
+}
+
+void ExecutionNode::setVarsUsedLater(VarSetStack varStack) {
+  _varsUsedLaterStack = std::move(varStack);
+}
+
+void ExecutionNode::setVarsValid(VarSetStack varStack) {
+  _varsValidStack = std::move(varStack);
+}
+
+auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
+  TRI_ASSERT(_varUsageValid);
+  return _varsUsedLaterStack;
+}
+
+auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
+  TRI_ASSERT(_varUsageValid);
+  return _varsValidStack;
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
 
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set(), make_shared_unordered_set());
+  auto registerInfos = createRegisterInfos({}, {});
   IdExecutorInfos infos(false);
 
   auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
@@ -1315,8 +1469,8 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
   }
   auto const produceResult = this->isVarUsedLater(_outVariable) || this->_filter != nullptr;
   auto outputRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set(),
-                                           make_shared_unordered_set({outputRegister}));
+  auto registerInfos = createRegisterInfos({},
+                                           RegIdSet{outputRegister});
   auto executorInfos =
       EnumerateCollectionExecutorInfos(outputRegister, engine.getQuery(), collection(),
                                        _outVariable, produceResult,
@@ -1405,8 +1559,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
   RegisterId outRegister = variableToRegisterId(_outVariable);
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set({inputRegister}),
-                                           make_shared_unordered_set({outRegister}));
+  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister},
+                                           RegIdSet{outRegister});
   auto executorInfos = EnumerateListExecutorInfos(inputRegister, outRegister);
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1490,7 +1644,7 @@ ExecutionNode::NodeType EnumerateListNode::getType() const {
   return ENUMERATE_LIST;
 }
 
-void EnumerateListNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
@@ -1652,7 +1806,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
 
-  ::arangodb::containers::HashSet<Variable const*> inVars;
+  VarSet inVars;
   _expression->variables(inVars);
 
   std::vector<Variable const*> expInVars;
@@ -1660,9 +1814,14 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   std::vector<RegisterId> expInRegs;
   expInRegs.reserve(inVars.size());
 
+  auto inputRegisters = RegIdSet{};
+  inputRegisters.reserve(inVars.size());
+
   for (auto& var : inVars) {
     expInVars.emplace_back(var);
-    expInRegs.emplace_back(variableToRegisterId(var));
+    auto regId = variableToRegisterId(var);
+    expInRegs.emplace_back(regId);
+    inputRegisters.emplace(regId);
   }
 
   bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
@@ -1675,8 +1834,8 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
 
   auto registerInfos =
-      createRegisterInfos(make_shared_unordered_set(expInRegs.begin(), expInRegs.end()),
-                          make_shared_unordered_set({outputRegister}));
+      createRegisterInfos(std::move(inputRegisters),
+                          RegIdSet{outputRegister});
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
@@ -1733,7 +1892,7 @@ Variable const* CalculationNode::outVariable() const { return _outVariable; }
 
 Expression* CalculationNode::expression() const { return _expression.get(); }
 
-void CalculationNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void CalculationNode::getVariablesUsedHere(VarSet& vars) const {
   _expression->variables(vars);
 }
 
@@ -1790,7 +1949,7 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   getVariablesUsedHere(vars);
   for (auto const& v : vars) {
     auto setter = _plan->getVarSetBy(v->id);
@@ -1860,15 +2019,14 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = RegIdSet{};
 
   auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
   TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
   RegisterId outReg = outVar->second.registerId;
-  outputRegisters->emplace(outReg);
+  outputRegisters.emplace(outReg);
 
-  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+  auto registerInfos = createRegisterInfos({}, std::move(outputRegisters));
 
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
@@ -1931,8 +2089,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
 struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  ::arangodb::containers::HashSet<Variable const*> _usedLater;
-  ::arangodb::containers::HashSet<Variable const*> _valid;
+  VarSet _usedLater;
+  VarSet _valid;
 
   SubqueryVarUsageFinder() {}
 
@@ -1971,7 +2129,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void SubqueryNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(finder);
 
@@ -2060,8 +2218,8 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  auto registerInfos = createRegisterInfos(make_shared_unordered_set({inputRegister}),
-                                           make_shared_unordered_set());
+  auto registerInfos = createRegisterInfos({inputRegister},
+                                           {});
 
   auto executorInfos = FilterExecutorInfos(inputRegister);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
@@ -2106,7 +2264,7 @@ FilterNode::FilterNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* 
 
 ExecutionNode::NodeType FilterNode::getType() const { return FILTER; }
 
-void FilterNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void FilterNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
@@ -2141,38 +2299,40 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  bool const isRoot = plan()->root() == this;
-
-  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
-
-  bool const returnInheritedResults = isRoot && !isDBServer;
-
   // This is an important performance improvement:
   // If we have inherited results, we do move the block through
   // and do not modify it in any way.
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
-  if (returnInheritedResults) {
+  if (returnInheritedResults()) {
     auto executorInfos = IdExecutorInfos(_count, inputRegister);
     auto registerInfos = createRegisterInfos({}, {});
     return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
-    TRI_ASSERT(!returnInheritedResults);
+    TRI_ASSERT(!returnInheritedResults());
     // TODO We should be able to remove this special case when the new
     //      register planning is ready.
     // The Return Executor only writes to register 0.
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
-        createRegisterInfos(make_shared_unordered_set({inputRegister}),
-                            make_shared_unordered_set({outputRegister}));
+        createRegisterInfos({inputRegister},
+                            {outputRegister});
     auto executorInfos = ReturnExecutorInfos(inputRegister, _count);
 
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
                                                                 std::move(registerInfos),
                                                                 std::move(executorInfos));
   }
+}
+
+bool ReturnNode::returnInheritedResults() const {
+  bool const isRoot = plan()->root() == this;
+
+  bool const isDBServer = ServerState::instance()->isDBServer();
+
+  return isRoot && !isDBServer;
 }
 
 /// @brief clone ExecutionNode recursively
@@ -2210,7 +2370,7 @@ ExecutionNode::NodeType ReturnNode::getType() const { return RETURN; }
 
 void ReturnNode::setCount() { _count = true; }
 
-void ReturnNode::getVariablesUsedHere(::arangodb::containers::HashSet<const Variable*>& vars) const {
+void ReturnNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
@@ -2351,8 +2511,8 @@ void ParallelStartNode::cloneRegisterPlan(ExecutionNode* dependency) {
   TRI_ASSERT(getFirstDependency() == dependency);
   _registerPlan = dependency->getRegisterPlan();
   _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
 }
 
@@ -2372,12 +2532,12 @@ std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto regsToKeep = calcRegsToKeep();
+  auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before
   TRI_ASSERT(regsToClear.empty());
-  
+
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "Parallel Start is not implemented");
 
 //  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
@@ -2416,8 +2576,8 @@ void ParallelEndNode::cloneRegisterPlan(ExecutionNode* dependency) {
   TRI_ASSERT(getFirstDependency() == dependency);
   _registerPlan = dependency->getRegisterPlan();
   _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLater());
-  setVarsValid(dependency->getVarsValid());
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
   setVarUsageValid();
 }
 
@@ -2499,7 +2659,7 @@ CostEstimate MaterializeNode::estimateCost() const {
   return estimate;
 }
 
-void MaterializeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void MaterializeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inNonMaterializedDocId);
 }
 
@@ -2556,10 +2716,10 @@ std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
 
-  auto const readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
-  auto const writableOutputRegisters = make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
+  auto readableInputRegisters = getReadableInputRegisters(inNmColPtrRegId, inNmDocIdRegId);
+  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
-  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos =
       MaterializerExecutorInfos(inNmColPtrRegId, inNmDocIdRegId,
@@ -2591,7 +2751,7 @@ ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDepende
 }
 
 void MaterializeMultiNode::getVariablesUsedHere(
-    ::arangodb::containers::HashSet<Variable const*>& vars) const {
+    VarSet& vars) const {
   // call base class method
   MaterializeNode::getVariablesUsedHere(vars);
 
@@ -2639,11 +2799,10 @@ std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
   }
   auto const& name = collection()->name();
 
-  auto const readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
-  auto const writableOutputRegisters =
-      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocumentRegId}));
+  auto readableInputRegisters = getReadableInputRegisters(name, inNmDocIdRegId);
+  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
-  auto registerInfos = createRegisterInfos(readableInputRegisters, writableOutputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
 
   auto executorInfos =
       MaterializerExecutorInfos<decltype(name)>(name, inNmDocIdRegId, outDocumentRegId,
