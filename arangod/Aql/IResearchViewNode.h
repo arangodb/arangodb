@@ -32,6 +32,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "types.h"
 #include "utils/bit_utils.hpp"
 
 namespace arangodb {
@@ -165,7 +166,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<aql::Variable const*>& vars) const override final;
+  void getVariablesUsedHere(aql::VarSet& vars) const override final;
 
   /// @brief returns IResearchViewNode options
   Options const& options() const noexcept { return _options; }
@@ -178,8 +179,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
-
   [[nodiscard]] auto getOutputVariables() const -> aql::VariableIdSet final;
 
   /// @brief creates corresponding ExecutionBlock
@@ -187,7 +186,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
 
-  std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
+  aql::RegIdSet calcInputRegs() const;
+
+  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   bool isLateMaterialized() const noexcept {
     return _outNonMaterializedDocId != nullptr && _outNonMaterializedColPtr != nullptr;

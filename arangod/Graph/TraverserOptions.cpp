@@ -730,15 +730,15 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   return cost;
 }
 
-void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& vars,
-                                     std::vector<aql::RegisterId> const&& regs,
+void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
+                                     std::vector<aql::RegisterId> regs,
                                      size_t vertexVarIdx, size_t edgeVarIdx,
                                      size_t pathVarIdx, aql::Expression* expr) {
-  
   _pruneExpression =
-  std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, _regexCache, std::move(vars),
-                                                  std::move(regs), vertexVarIdx,
-                                                  edgeVarIdx, pathVarIdx, expr);
+      std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, _regexCache,
+                                                      std::move(vars),
+                                                      std::move(regs), vertexVarIdx,
+                                                      edgeVarIdx, pathVarIdx, expr);
 }
 
 auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {

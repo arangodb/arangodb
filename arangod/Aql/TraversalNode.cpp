@@ -57,6 +57,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -458,24 +460,24 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet{};
   auto& varInfo = getRegisterPlan()->varInfo;
   RegisterId inputRegister = RegisterPlan::MaxRegisterId;
   if (usesInVariable()) {
     auto it = varInfo.find(inVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters.emplace(it->second.registerId);
     inputRegister = it->second.registerId;
     TRI_ASSERT(getStartVertex().empty());
   }
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = RegIdSet{};
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> outputRegisterMapping;
 
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
   }
@@ -483,7 +485,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
                                       it->second.registerId);
   }
@@ -491,7 +493,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
                                       it->second.registerId);
   }
@@ -531,17 +533,18 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
     waitForSatelliteIfRequired(&engine);
-    if (isSmart()) {
-      traverser.reset(
-          new arangodb::traverser::SmartGraphTraverser(opts, engines()));
+    if (isSmart() && !isDisjoint()) {
+      traverser =
+          std::make_unique<arangodb::traverser::SmartGraphTraverser>(opts, engines());
     } else {
 #endif
-      traverser.reset(new arangodb::traverser::ClusterTraverser(opts, engines(), engine.getQuery().vocbase().name()));
+      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
+          opts, engines(), engine.getQuery().vocbase().name());
 #ifdef USE_ENTERPRISE
     }
 #endif
   } else {
-    traverser.reset(new arangodb::traverser::SingleServerTraverser(opts));
+    traverser = std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
   }
 
   // Optimized condition
@@ -552,11 +555,12 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       auto idIt = varInfo.find(it->id);
       TRI_ASSERT(idIt != varInfo.end());
       filterConditionVariables.emplace_back(std::make_pair(it, idIt->second.registerId));
-      inputRegisters->emplace(idIt->second.registerId);
+      inputRegisters.emplace(idIt->second.registerId);
     }
   }
 
-  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   TRI_ASSERT(traverser != nullptr);
   auto executorInfos = TraversalExecutorInfos(std::move(traverser), outputRegisterMapping,
@@ -753,7 +757,7 @@ void TraversalNode::prepareOptions() {
 
 /// @brief remember the condition to execute for early traversal abortion.
 void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
-  ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
+  VarSet varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 

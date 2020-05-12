@@ -192,6 +192,8 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
 /// @brief check smartness of the underlying collection
 bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
+bool Collection::isDisjoint() const { return getCollection()->isDisjoint(); }
+
 /// @brief check if collection is a satellite collection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
 

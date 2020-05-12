@@ -44,8 +44,8 @@ InAndOutRowExpressionContext::InAndOutRowExpressionContext(
     transaction::Methods& trx,
     QueryContext& context,
     RegexCache& cache,
-    std::vector<Variable const*> const&& vars,
-    std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
+    std::vector<Variable const*> vars,
+    std::vector<RegisterId> regs, size_t vertexVarIdx,
     size_t edgeVarIdx, size_t pathVarIdx)
     : QueryExpressionContext(trx, context, cache),
       _input{CreateInvalidInputRowHint()},
@@ -69,7 +69,7 @@ void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
-bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable) const {  
+bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable) const {
   for (size_t i = 0; i < _vars.size(); ++i) {
     auto const& v = _vars[i];
     if (v->id == variable->id) {

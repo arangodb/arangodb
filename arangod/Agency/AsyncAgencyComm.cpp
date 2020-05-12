@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -207,12 +208,17 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
               }
               return futures::makeFuture(AsyncAgencyCommResult{result.error,
                                                                std::move(resp)});  // otherwise return error as is
+            case Error::Canceled:
+              if (man.server().isStopping()) {
+                return futures::makeFuture(
+                  AsyncAgencyCommResult{result.error, std::move(resp)});
+              }
+              [[fallthrough]];
             case Error::CouldNotConnect:
             case Error::ConnectionClosed:
             case Error::Timeout:
             case Error::ReadError:
             case Error::WriteError:
-            case Error::Canceled:
             case Error::ProtocolError:
             case Error::CloseRequested:
               // retry the request at different endpoint
@@ -325,9 +331,14 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 
               [[fallthrough]];
               /* fallthrough */
+            case Error::Canceled:
+              if (man.server().isStopping()) {
+                return futures::makeFuture(
+                  AsyncAgencyCommResult{result.error, std::move(resp)});
+              }
+              [[fallthrough]];
             case Error::Timeout:
             case Error::ConnectionClosed:
-            case Error::Canceled:
             case Error::ProtocolError:
             case Error::WriteError:
             case Error::ReadError:
@@ -354,12 +365,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
               [[fallthrough]];
 
             case Error::QueueCapacityExceeded:
-              return ::agencyAsyncSend(man, std::move(meta),
-                                       std::move(body).moveBuffer());  // retry always
+                return ::agencyAsyncSend(man, std::move(meta),
+                                         std::move(body).moveBuffer());  // retry always
 
             case Error::VstUnauthorized:
-              return futures::makeFuture(AsyncAgencyCommResult{result.error,
-                                                               std::move(resp)});  // unrecoverable error
+              return futures::makeFuture(
+                AsyncAgencyCommResult{result.error,
+                                      std::move(resp)});  // unrecoverable error
           }
 
           ADB_UNREACHABLE;
@@ -376,6 +388,14 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 }  // namespace
 
 namespace arangodb {
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
+    RequestType type, uint64_t index) const {
+  std::vector<ClientId> clientIds;
+  VPackBuffer<uint8_t> body;
+  return sendWithFailover(method, url + "?index=" + std::to_string(index), timeout, type, clientIds, std::move(body));
+}
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
@@ -486,9 +506,15 @@ AsyncAgencyCommManager::AsyncAgencyCommManager(application_features::Application
 
 const char* AGENCY_URL_READ = "/_api/agency/read";
 const char* AGENCY_URL_WRITE = "/_api/agency/write";
+const char* AGENCY_URL_POLL = "/_api/agency/poll";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) const {
   return sendTransaction(120s, AgencyReadTransaction(path));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::poll(
+  network::Timeout timeout, uint64_t index) const {
+  return sendPollTransaction(timeout, index);
 }
 
 AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(
@@ -542,6 +568,14 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
   std::vector<ClientId> clientIds;
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout,
                           RequestType::READ, clientIds, std::move(body));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendPollTransaction(
+  network::Timeout timeout, uint64_t index) const {
+  std::vector<ClientId> clientIds;
+
+  return sendWithFailover(
+    fuerte::RestVerb::Get, AGENCY_URL_POLL, timeout, RequestType::READ, index);
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(

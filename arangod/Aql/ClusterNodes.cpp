@@ -145,8 +145,8 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
   RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
   RegisterId const nrInRegs = nrOutRegs;
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto regsToKeep = calcRegsToKeep();
+  auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before,
   // i.e. before sending it over the network.
@@ -294,7 +294,8 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
       _alternativeVariable(nullptr),
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false) {
+      _allowSpecifiedKeys(false),
+      _fixupGraphInput(false) {
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable =
@@ -305,6 +306,9 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
     _alternativeVariable = plan->getAst()->variables()->getVariable(
         base.get("alternativeVarId").getNumericValue<VariableId>());
   }
+  _fixupGraphInput = VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false);
+  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
+  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -339,14 +343,14 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
-  auto inAndOutRegs = make_shared_unordered_set({regId});
+  auto inAndOutRegs = RegIdSet{regId};
   if (alternativeRegId != RegisterPlan::MaxRegisterId) {
-    inAndOutRegs->emplace(alternativeRegId);
+    inAndOutRegs.emplace(alternativeRegId);
   }
   auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
   auto infos = DistributeExecutorInfos(clients(), collection(), regId, alternativeRegId,
                                        _allowSpecifiedKeys, _allowKeyConversionToObject,
-                                       _createKeys, getScatterType());
+                                       _createKeys, _fixupGraphInput, getScatterType());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
                                                                   std::move(registerInfos),
@@ -367,6 +371,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
   builder.add("createKeys", VPackValue(_createKeys));
   builder.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
+  builder.add("fixupGraphInput", VPackValue(_fixupGraphInput));
   builder.add(VPackValue("variable"));
   _variable->toVelocyPack(builder);
   builder.add(VPackValue("alternativeVariable"));
@@ -382,7 +387,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }
@@ -593,7 +598,7 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collec
 
 auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
-void GatherNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
+void GatherNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _elements) {
     vars.emplace(p.var);
   }
@@ -646,28 +651,26 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  auto readableInputRegisters = make_shared_unordered_set();
+  auto readableInputRegisters = RegIdSet{};
   if (in < RegisterPlan::MaxRegisterId) {
-    readableInputRegisters->emplace(in);
+    readableInputRegisters.emplace(in);
   }
-  auto writableOutputRegisters = make_shared_unordered_set();
+  auto writableOutputRegisters = RegIdSet{};
   if (out < RegisterPlan::MaxRegisterId) {
-    writableOutputRegisters->emplace(out);
+    writableOutputRegisters.emplace(out);
   }
   if (outputNew < RegisterPlan::MaxRegisterId) {
-    writableOutputRegisters->emplace(outputNew);
+    writableOutputRegisters.emplace(outputNew);
   }
   if (outputOld < RegisterPlan::MaxRegisterId) {
-    writableOutputRegisters->emplace(outputOld);
+    writableOutputRegisters.emplace(outputOld);
   }
 
-  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters), std::move(writableOutputRegisters));
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
 
   auto executorInfos = SingleRemoteModificationInfos(
-      in, outputNew, outputOld, out,
-      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query(), std::move(options),
+      in, outputNew, outputOld, out, _plan->getAst()->query(), std::move(options),
       collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
@@ -779,7 +782,7 @@ std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere() co
   return vec;
 }
 
-void SingleRemoteOperationNode::getVariablesUsedHere(containers::HashSet<const Variable*>& vars) const {
+void SingleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inVariable) {
     vars.emplace(_inVariable);
   }

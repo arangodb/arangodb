@@ -100,7 +100,7 @@ struct aggregated_stats_visitor : util::noncopyable {
       return;
     }
 
-    term_stats.collect(*segment, *field, 0, it->attributes());
+    term_stats.collect(*segment, *field, 0, *it);
     state->scored_states.emplace_back(std::move(cookie), 0, boost);
   }
 
@@ -156,7 +156,7 @@ void visit(
   }
 
   if (terms->next()) {
-    auto& payload = terms->attributes().get<irs::payload>();
+    auto* payload = irs::get<irs::payload>(*terms);
 
     const byte_type* distance{&no_distance};
     if (payload && !payload->value.empty()) {
@@ -257,7 +257,6 @@ NS_ROOT
 // --SECTION--                                   by_edit_distance implementation
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
 
 /*static*/ field_visitor by_edit_distance::visitor(const options_type::filter_options& opts) {

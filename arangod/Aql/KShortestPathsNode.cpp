@@ -288,19 +288,19 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  RegIdSet inputRegisters;
   if (usesStartInVariable()) {
-    inputRegisters->emplace(varToRegUnchecked(startInVariable()));
+    inputRegisters.emplace(varToRegUnchecked(startInVariable()));
   }
   if (usesTargetInVariable()) {
-    inputRegisters->emplace(varToRegUnchecked(targetInVariable()));
+    inputRegisters.emplace(varToRegUnchecked(targetInVariable()));
   }
 
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
   auto outputRegister = varToRegUnchecked(pathOutVariable());
-  auto outputRegisters = make_shared_unordered_set({outputRegister});
+  auto outputRegisters = RegIdSet{outputRegister};
 
-  auto registerInfos = createRegisterInfos(inputRegisters, outputRegisters);
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 

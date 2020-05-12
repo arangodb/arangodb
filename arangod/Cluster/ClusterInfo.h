@@ -98,48 +98,6 @@ private:
   std::atomic<bool> _present;
 };
 
-// Read the collection from Plan; this is an object to have a valid VPack
-// around to read from and to not have to carry around vpack builders.
-// Might want to do the error handling with throw/catch?
-class PlanCollectionReader {
- public:
-  PlanCollectionReader(PlanCollectionReader const&&) = delete;
-  PlanCollectionReader(PlanCollectionReader const&) = delete;
-  explicit PlanCollectionReader(LogicalCollection const& collection) {
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id());
-
-    AgencyComm ac(collection.vocbase().server());
-
-    std::string path =
-        "Plan/Collections/" + databaseName + "/" + collectionID;
-    _read = ac.getValues(path);
-
-    if (!_read.successful()) {
-      _state = Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY,
-                      "Could not retrieve " + path + " from agency");
-      return;
-    }
-
-    _collection = _read.slice()[0].get(std::vector<std::string>(
-        {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
-
-    if (!_collection.isObject()) {
-      _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return;
-    }
-    _state = Result();
-  }
-  VPackSlice indexes();
-  VPackSlice slice() { return _collection; }
-  Result state() { return _state; }
-
- private:
-  AgencyCommResult _read;
-  Result _state;
-  velocypack::Slice _collection;
-};
-
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 
@@ -330,9 +288,9 @@ class CollectionInfoCurrent {
 };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-class ClusterInfo {
+class ClusterInfo  {
 #else
-class ClusterInfo final {
+class ClusterInfo final  {
 #endif
  private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
@@ -471,13 +429,21 @@ class ClusterInfo final {
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
-  /// if the collection is not found afterwards, this method will throw an
-  /// exception
   /// will not throw but return nullptr if the collection isn't found.
   //////////////////////////////////////////////////////////////////////////////
 
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a collection or a view
+  /// If it is not found in the cache, the cache is reloaded once. The second
+  /// argument can be a collection ID or a collection name (both cluster-wide) 
+  /// or a view ID or name.
+  /// will not throw but return nullptr if the collection/view isn't found.
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalDataSource> getCollectionOrViewNT(DatabaseID const&,
+                                                           std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Format error message for TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -1037,6 +1003,7 @@ class ClusterInfo final {
 
   arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
+
 };
 
 }  // end namespace arangodb
