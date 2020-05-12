@@ -312,8 +312,8 @@ private:
       std::function<void()>, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
-    void beginShutdown() override;
-    void run() override;
+    void beginShutdown();
+    void run();
     void start();
     bool notify(velocypack::Slice const&);
 
