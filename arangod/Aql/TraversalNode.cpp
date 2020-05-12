@@ -579,7 +579,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);
-
+  
   traversalCloneHelper(*plan, *c, withProperties);
 
   if (_optionsBuilt) {
@@ -620,7 +620,12 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    c._conditionVariables.emplace(it->clone());
+//#warning TODO: check if not cloning variables breaks anything
+    if (withProperties) {
+      c._conditionVariables.emplace(it->clone());
+    } else {
+      c._conditionVariables.emplace(it);
+    }
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
