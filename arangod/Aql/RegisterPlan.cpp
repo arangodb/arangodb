@@ -87,14 +87,23 @@ void RegisterPlanWalkerT<T>::after(T* en) {
                                        VarSet const& varsValid) {
     auto const& varsSetHere = en->getVariablesSetHere();
 
-    // regsToKeep
+    auto isSetHere = [&](Variable const *var) {
+      return std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+             varsSetHere.end();
+    };
+    auto isUsedLater = [&](Variable const *var) {
+      return std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+             varsUsedLater.end();
+    };
+
+
+    // items are pushed for each SubqueryStartNode and popped for SubqueryEndNodes.
+    // as they come in pairs, the stack should never be empty.
+    TRI_ASSERT(regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
-      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
-                       varsSetHere.end();
-      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
-                         varsUsedLater.end();
-      if (!isSetHere && isUsedLater) {
+
+      if (!isSetHere(var) && isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
         regsToKeepStack.back().emplace(reg);
       }
@@ -374,12 +383,14 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
     for (auto const var : stackEntry) {
       auto reg = variableToRegisterId(var);
 
-      bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
-                       varsSetHere.end();
       bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
                          varsUsedLater.end();
-      if (!isSetHere && isUsedLater) {
-        regsToKeep.emplace(reg);
+      if (isUsedLater) {
+        bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                         varsSetHere.end();
+        if (!isSetHere) {
+          regsToKeep.emplace(reg);
+        }
       }
     }
   }
