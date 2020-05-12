@@ -1,7 +1,8 @@
 devel
 -----
-* Moved calculation of registers to keep into the register planning. It can be
-  calculated more efficiently there.
+
+* Restored behavior of Foxx API documentation being expanded to show all routes
+  rather than collapsing all sections by default.
 
 * Fix a bad deadlock because transaction cleanup was pushed with too low
   priority.
