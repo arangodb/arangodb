@@ -5014,7 +5014,7 @@ void ClusterInfo::SyncerThread::run() {
     bool news = false;
     {
       std::unique_lock<std::mutex> lk(_m);
-      _cv.wait_for(lk, 100ms, [&]{return _news;});
+      _cv.wait(lk);
       news = _news;
     }
     if (news) {
