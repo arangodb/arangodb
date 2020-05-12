@@ -33,6 +33,8 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
 
+#include "Logger/LogMacros.h"
+
 #include <algorithm>
 #include <utility>
 
@@ -45,6 +47,13 @@ ExecutionBlockImpl<AsyncExecutor>::ExecutionBlockImpl(
       _sharedState(engine->sharedState()) {}
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::execute(AqlCallStack stack) {
+  traceExecuteBegin(stack);
+  auto res = executeWithoutTrace(stack);
+  traceExecuteEnd(res);
+  return res;
+}
+
+std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack) {
   
 //  if (getQuery().killed()) {
 //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -52,33 +61,44 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
 
   std::lock_guard<std::mutex> guard(_mutex);
   
-  traceExecuteBegin(stack);
-
   TRI_ASSERT(_dependencies.size() == 1);
 
   if (_internalState == AsyncState::InProgress) {
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
   } else if (_internalState == AsyncState::GotResult) {
-    _internalState = AsyncState::Empty;
-    auto res = std::make_tuple(_returnState, std::move(_returnSkip), std::move(_returnBlock));
-    traceExecuteEnd(res);
-    return res;
+    if (_returnState != ExecutionState::DONE) {
+      // we may not return WAITING if upstream returned DONE
+      _internalState = AsyncState::Empty;
+    }
+    return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
+  } else if (_internalState == AsyncState::GotException) {
+    std::rethrow_exception(_returnException);
+    TRI_ASSERT(false);
+    return {ExecutionState::DONE, SkipResult(), SharedAqlItemBlockPtr()};
   }
   TRI_ASSERT(_internalState == AsyncState::Empty);
+
+  LOG_DEVEL << "going to execute " << _sharedState.get() << " nodeId: " << _exeNode->id();
 
   _internalState = AsyncState::InProgress;
   bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
+    LOG_DEVEL << "exec async " << isAsync << "  " << _sharedState.get() << " nodeId: " << _exeNode->id();
 
-    auto [state, skip, block] = _dependencies[0]->execute(stack);
-    if (isAsync) {
-      guard.lock();
+    try {
+      auto [state, skip, block] = _dependencies[0]->execute(stack);
+      if (isAsync) {
+        guard.lock();
+      }
+      _returnState = state;
+      _returnSkip = std::move(skip);
+      _returnBlock = std::move(block);
+      
+      _internalState = AsyncState::GotResult;
+    } catch(...) {
+      _internalState = AsyncState::GotException;
+      _returnException = std::current_exception();
     }
-    _returnState = state;
-    _returnSkip = std::move(skip);
-    _returnBlock = std::move(block);
-
-    _internalState = AsyncState::GotResult;
   });
 
   if (!queued) {

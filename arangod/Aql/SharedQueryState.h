@@ -25,7 +25,7 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <functional>
+#include <function2.hpp>
 
 namespace arangodb {
 namespace aql {
@@ -95,23 +95,28 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
       _numTasks.fetch_sub(1); // revert
-      try {
-        std::forward<F>(cb)(false);
-      } catch(...) {}
+      std::forward<F>(cb)(false);
       return false;
     }
-    return queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+    bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+      self->_numTasks.fetch_sub(1);
+
       if (self->_valid.load()) {
         try {
           cb(true);
         } catch(...) {}
-        
         std::lock_guard<std::mutex> guard(self->_mutex);
         self->notifyWaiter();
+      } else {  // need to wakeup everybody
+        self->_cv.notify_all();
       }
-      
-      self->_numTasks.fetch_sub(1);
     });
+    
+    if (!queued) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
+    }
+    return queued;
   }
 
  private:
@@ -119,7 +124,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   void notifyWaiter();
   void queueHandler();
   
-  bool queueAsyncTask(std::function<void()> const&);
+  bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
   mutable std::mutex _mutex;

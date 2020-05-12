@@ -36,10 +36,12 @@ SharedQueryState::SharedQueryState()
     _cbVersion(0), _numTasks(0), _valid(true) {}
 
 void SharedQueryState::invalidate() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _wakeupCb = nullptr;
-  _cbVersion++;
-  _valid = false;
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _wakeupCb = nullptr;
+    _cbVersion++;
+    _valid = false;
+  }
   _cv.notify_all();
 }
 
@@ -92,6 +94,7 @@ void SharedQueryState::notifyWaiter() {
     return;
   }
 
+  LOG_DEVEL << "queueing handler";
   queueHandler();
 }
   
@@ -115,6 +118,7 @@ void SharedQueryState::queueHandler() {
     std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
     do {
+      LOG_DEVEL << "wakeup handler " << self.get();
       bool cntn = false;
       try {
         cntn = cb();
@@ -144,16 +148,10 @@ void SharedQueryState::queueHandler() {
   }
 }
 
-bool SharedQueryState::queueAsyncTask(std::function<void()> const& cb) {
-  
-  bool queued = false;
+bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler) {
-    queued = scheduler->queue(RequestLane::CLIENT_AQL, cb);
+    return scheduler->queue(RequestLane::CLIENT_AQL, std::move(cb));
   }
-  if (!queued) {
-    cb();
-    return false;
-  }
-  return true;
+  return false;
 }
