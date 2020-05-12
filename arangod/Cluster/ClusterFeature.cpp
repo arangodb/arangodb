@@ -606,9 +606,8 @@ void ClusterFeature::start() {
   }
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
-  if (role != ServerState::ROLE_COORDINATOR) {
     _clusterInfo->startSyncers();
-  }
+
 
   comm.increment("Current/Version");
 
@@ -758,9 +757,9 @@ void ClusterFeature::shutdownAgencyCache() {
   }
 }
 
-void ClusterFeature::syncDBServerStatusQuo() {
+void ClusterFeature::notify() {
   if (_heartbeatThread != nullptr) {
-    _heartbeatThread->syncDBServerStatusQuo(true);
+    _heartbeatThread->notify(true);
   }
 }
 

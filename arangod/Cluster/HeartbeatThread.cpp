@@ -366,7 +366,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
                 << "Found greater Current/Version in agency.";
           }
         }
-        syncDBServerStatusQuo();
+        notify();
       }
     }
   }
@@ -414,7 +414,7 @@ void HeartbeatThread::runDBServer() {
     }
 
     if (doSync) {
-      syncDBServerStatusQuo(true);
+      notify();
     }
 
     return true;
@@ -441,7 +441,7 @@ void HeartbeatThread::runDBServer() {
     }
 
     if (doSync) {
-      syncDBServerStatusQuo(true);
+      notify();
     }
 
     return true;
@@ -524,7 +524,7 @@ void HeartbeatThread::runDBServer() {
         break;
       }
 
-      syncDBServerStatusQuo();
+      notify();
 
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
@@ -1281,8 +1281,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// latter happens not in the heartbeat thread itself but in a scheduler thread.
 /// Therefore we need to do proper locking.
 ////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {}
 
 void HeartbeatThread::notify() {
   if (_maintenanceThread != nullptr) {

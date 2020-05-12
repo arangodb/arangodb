@@ -77,10 +77,10 @@ ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
   LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
-      << "Job " << _description << " calling syncDBServerStatusQuo";
+      << "Job " << _description << " notifing maintenance";
   auto& server = _feature.server();
   if (server.hasFeature<ClusterFeature>()) {
-    server.getFeature<ClusterFeature>().heartbeatThread()->notify();
+    server.getFeature<ClusterFeature>().notify();
   }
 }
 
