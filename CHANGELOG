@@ -1,5 +1,12 @@
 devel
 -----
+* Add an optimizer rule that enables execution of certain subqueries on a
+  DB Server. For this optimization to work, the subquery must contain exactly
+  one DISTRIBUTE/GATHER pair and only access at most one collection.
+
+  This proves particularly useful for traversals, shortest path, and k-shortest
+  paths queries on disjoint smart graphs where the entire traversal is executed
+  on the DB Server without involvement of a coordinator.
 
 * Restored behavior of Foxx API documentation being expanded to show all routes
   rather than collapsing all sections by default.
