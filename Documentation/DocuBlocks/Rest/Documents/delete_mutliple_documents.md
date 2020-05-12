@@ -212,7 +212,6 @@ Check revisions:
     logJsonResponse(response);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
-@endDocuBlock
 
 Revision conflict:
 
@@ -244,4 +243,5 @@ Revision conflict:
     logJsonResponse(response);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
