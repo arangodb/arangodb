@@ -80,6 +80,7 @@ The response body contains an error document in this case.
 Using document keys:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentKeyMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
     var cn = "products";
     db._drop(cn);
     db._create(cn, { waitForSync: true });
@@ -94,7 +95,7 @@ Using document keys:
     var body = [ "1", "2" ];
     var response = logCurlRequest('DELETE', url, body);
 
-    assert(response.code === 202);
+    assert(response.code === 200);
     assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
@@ -104,6 +105,7 @@ Using document keys:
 Using document identifiers:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentIdentifierMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
     var cn = "products";
     db._drop(cn);
     db._create(cn, { waitForSync: true });
@@ -118,7 +120,7 @@ Using document identifiers:
     var body = [ "products/1", "products/2" ];
     var response = logCurlRequest('DELETE', url, body);
 
-    assert(response.code === 202);
+    assert(response.code === 200);
     assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
@@ -128,6 +130,7 @@ Using document identifiers:
 Using objects with document keys:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentObjectMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
     var cn = "products";
     db._drop(cn);
     db._create(cn, { waitForSync: true });
@@ -142,7 +145,7 @@ Using objects with document keys:
     var body = [ { "_key": "1" }, { "_key": "2" } ];
     var response = logCurlRequest('DELETE', url, body);
 
-    assert(response.code === 202);
+    assert(response.code === 200);
     assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
@@ -171,7 +174,11 @@ Unknown documents:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 202);
-    assert(response[1].code === 404);
+    assert(response.parsedBody.length === 2);
+    assert(response.parsedBody[0].error === true);
+    assert(response.parsedBody[0].errorNum === 1202);
+    assert(response.parsedBody[1].error === true);
+    assert(response.parsedBody[1].errorNum === 1202);
 
     logJsonResponse(response);
   ~ db._drop(cn);
@@ -181,9 +188,10 @@ Unknown documents:
 Check revisions:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentRevMulti}
+  ~ var assertEqual = require("jsunity").jsUnity.assertions.assertEqual;
     var cn = "products";
     db._drop(cn);
-    db._create(cn);
+    db._create(cn, { waitForSync: true });
 
   | var documents = db.products.save( [
   |   { "_key": "1", "type": "tv" },
@@ -192,13 +200,13 @@ Check revisions:
 
     var url = "/_api/document/" + cn + "?ignoreRevs=false";
   | var body = [
-  |   { "_key": "1", "_rev": "\"" + documents[0]._rev + "\"" },
-  |   { "_key": "2", "_rev": "\"" + documents[1]._rev + "\"" }
+  |   { "_key": "1", "_rev": documents[0]._rev },
+  |   { "_key": "2", "_rev": documents[1]._rev }
     ];
 
     var response = logCurlRequest('DELETE', url, body);
 
-    assert(response.code === 202);
+    assert(response.code === 200);
   | assertEqual(response.parsedBody, documents);
 
     logJsonResponse(response);
@@ -211,7 +219,7 @@ Revision conflict:
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentRevConflictMulti}
     var cn = "products";
     db._drop(cn);
-    db._create(cn);
+    db._create(cn, { waitForSync: true });
 
   | var documents = db.products.save( [
   |   { "_key": "1", "type": "tv" },
@@ -227,10 +235,11 @@ Revision conflict:
     var response = logCurlRequest('DELETE', url, body);
 
     assert(response.code === 202);
-  | response.parsedBody.forEach(function(doc) {
-  |   assert(doc.error === true);
-  |   assert(doc.errorNum === 1202);
-    });
+    assert(response.parsedBody.length === 2);
+    assert(response.parsedBody[0].error === true);
+    assert(response.parsedBody[0].errorNum === 1200);
+    assert(response.parsedBody[1].error === true);
+    assert(response.parsedBody[1].errorNum === 1200);
 
     logJsonResponse(response);
   ~ db._drop(cn);
