@@ -962,15 +962,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   walker.reset();
 }
 
-RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
-  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
-  auto const it = varInfo.find(var.id);
-  TRI_ASSERT(it != varInfo.end());
-  RegisterId const reg = it->second.registerId;
-
-  return reg;
-}
-
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
   return _isInSplicedSubquery;
 }

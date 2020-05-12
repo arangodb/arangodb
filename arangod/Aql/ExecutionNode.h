@@ -459,7 +459,6 @@ class ExecutionNode {
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
   [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
-  //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -490,8 +489,6 @@ class ExecutionNode {
   RegisterCount getNrInputRegisters() const;
 
   RegisterCount getNrOutputRegisters() const;
-
-  RegisterId varToRegUnchecked(Variable const& var) const;
 
  protected:
   /// @brief node id

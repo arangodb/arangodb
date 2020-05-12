@@ -1363,7 +1363,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     }
 
     for (auto const& it : vars) {
-      aql::RegisterId reg = varToRegUnchecked(*it);
+      aql::RegisterId reg = variableToRegisterId(it);
       // The filter condition may refer to registers that are written here
       if (reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
