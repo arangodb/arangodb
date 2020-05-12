@@ -189,7 +189,8 @@ Ast::Ast(QueryContext& query)
       _containsTraversal(false),
       _containsBindParameters(false),
       _containsModificationNode(false),
-      _containsParallelNode(false) {
+      _containsParallelNode(false),
+      _willUseV8(false) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -1939,6 +1940,12 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
         // NOOPT will turn all function optimizations off
         ++(ctx->stopOptimizationRequests);
       }
+      if (node->willUseV8()) {
+        setWillUseV8();
+      }
+    } else if (node->type == NODE_TYPE_FCALL_USER) {
+      // user-defined function. will always use V8
+      setWillUseV8();
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
@@ -3954,6 +3961,14 @@ bool Ast::containsParallelNode() const {
 
 void Ast::setContainsParallelNode() {
   _containsParallelNode = true;
+}
+
+bool Ast::willUseV8() const {
+  return _willUseV8;
+}
+
+void Ast::setWillUseV8() {
+  _willUseV8 = true;
 }
 
 AstNode* Ast::createNodeAttributeAccess(AstNode const* node,

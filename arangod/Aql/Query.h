@@ -143,7 +143,6 @@ class Query : public QueryContext {
   /// @brief mark a query as modification query
   void setIsModificationQuery();
   
-  bool isAsyncQuery() const;
   void setIsAsyncQuery();
 
   /// @brief enter a V8 context

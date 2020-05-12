@@ -218,11 +218,6 @@ void Query::prepareQuery(SerializationFormat format) {
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
   
-#warning V8Context needs to implement clone(). TODO: remove this check and comment
-  if (_transactionContext->isV8Context() && _ast->containsParallelNode()) {
-  //  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 context does not support clone yet");
-  }
-    
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
@@ -934,11 +929,6 @@ bool Query::isModificationQuery() const {
 /// @brief mark a query as modification query
 void Query::setIsModificationQuery() { return _ast->setContainsModificationNode(); }
 
-bool Query::isAsyncQuery() const {
-  TRI_ASSERT(_ast);
-  return _ast->containsParallelNode();
-}
-
 void Query::setIsAsyncQuery() {
   TRI_ASSERT(_ast);
   return _ast->setContainsParallelNode();
@@ -1234,7 +1224,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
   
-  if (_ast->containsParallelNode()) {
+  if (_ast->containsParallelNode() && !_ast->willUseV8()) {
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }

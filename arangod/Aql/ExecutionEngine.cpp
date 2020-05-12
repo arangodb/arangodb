@@ -246,8 +246,9 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
     } else {
       auto const& cached = cache.find(en);
       if (cached != cache.end()) {
-#warning this assertion doesn't hold true anymore, as in parallel traversals we can encounter different nodes here
-#if 0
+        // the following assertion doesn't hold true anymore, as in parallel traversals 
+        // we can encounter different node types here.
+        /*
         // We allow to have SCATTER, REMOTE, DISTRIBUTE and MUTEX multiple times.
         // But only these.
         // Chances are if you hit a different node here, that you created a loop.
@@ -255,7 +256,7 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
                    en->getType() == ExecutionNode::SCATTER ||
                    en->getType() == ExecutionNode::DISTRIBUTE ||
                    en->getType() == ExecutionNode::MUTEX);
-#endif
+        */
         block = cached->second;
         TRI_ASSERT(block != nullptr);
       }
@@ -516,8 +517,7 @@ void ExecutionEngine::kill() {
     return;
   }
   
-#warning TODO: maybe kill global DBServers ?
-
+  // TODO: maybe kill global DBServers ?
   VPackBuffer<uint8_t> body;
   std::vector<network::FutureRes> futures;
 

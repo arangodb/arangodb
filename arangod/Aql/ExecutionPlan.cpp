@@ -150,9 +150,10 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
   }
 }
 
-std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& query,
+std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
+  aql::QueryContext& query = ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
@@ -222,7 +223,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
         } else if (name == "parallelism") {
-          options->setParallelism(Ast::validatedParallelism(value));
+          if (!ast->willUseV8()) {
+            // parallelism is only used when there is no usage of V8 in the
+            // query.
+            options->setParallelism(Ast::validatedParallelism(value));
+          }
         }
       }
     }
@@ -1114,7 +1119,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
       createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
-      createTraversalOptions(getAst()->query(), direction, node->getMember(4));
+      createTraversalOptions(getAst(), direction, node->getMember(4));
   
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);

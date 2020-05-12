@@ -118,6 +118,8 @@ class Ast {
   void setContainsModificationNode();
   bool containsParallelNode() const;
   void setContainsParallelNode();
+  bool willUseV8() const;
+  void setWillUseV8();
   
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
@@ -591,7 +593,11 @@ class Ast {
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
   bool _containsModificationNode;
   
+  /// @brief contains a parallel traversal
   bool _containsParallelNode;
+  
+  /// @brief query makes use of V8 function(s)
+  bool _willUseV8;
   
   /// @brief a singleton no-op node instance
   static AstNode const NopNode;
