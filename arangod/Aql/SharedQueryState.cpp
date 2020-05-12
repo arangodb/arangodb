@@ -42,7 +42,12 @@ void SharedQueryState::invalidate() {
     _cbVersion++;
     _valid = false;
   }
-  _cv.notify_all();
+  _cv.notify_all(); // wakeup everyone else
+  
+  if (_numTasks.load() > 0) {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _cv.wait(guard, [&] { return _numTasks.load() == 0; });
+  }
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
@@ -81,11 +86,17 @@ void SharedQueryState::resetNumWakeups() {
 }
 
 /// execute the _continueCallback. must hold _mutex,
-void SharedQueryState::notifyWaiter() {
-  TRI_ASSERT(_valid);
+void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
+  TRI_ASSERT(guard);
+  if (!_valid) {
+    guard.unlock();
+    _cv.notify_all();
+    return;
+  }
+  
   unsigned n = _numWakeups++;
-
   if (!_wakeupCb) {
+    guard.unlock();
     _cv.notify_one();
     return;
   }

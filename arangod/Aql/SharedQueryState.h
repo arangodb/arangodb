@@ -58,14 +58,15 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// continues its execution where it left off.
   template <typename F>
   void executeAndWakeup(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
       _cv.notify_all();
       return;
     }
 
     if (std::forward<F>(cb)()) {
-      notifyWaiter();
+      notifyWaiter(guard);
     }
   }
   
@@ -99,15 +100,17 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
       return false;
     }
     bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
-      self->_numTasks.fetch_sub(1);
-
       if (self->_valid.load()) {
         try {
           cb(true);
         } catch(...) {}
-        std::lock_guard<std::mutex> guard(self->_mutex);
-        self->notifyWaiter();
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        self->notifyWaiter(guard);
       } else {  // need to wakeup everybody
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        guard.unlock();
         self->_cv.notify_all();
       }
     });
@@ -121,7 +124,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  void notifyWaiter();
+  void notifyWaiter(std::unique_lock<std::mutex>& guard);
   void queueHandler();
   
   bool queueAsyncTask(fu2::unique_function<void()>);
