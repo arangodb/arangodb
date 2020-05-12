@@ -185,10 +185,12 @@ RestStatus RestAgencyHandler::pollIndex(
               generateError(
                 rest::ResponseCode::SERVER_ERROR,
                 TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
+              return;
             } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
               generateError(
                 rest::ResponseCode::SERVER_ERROR,
                 TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
+              return;
             }
             uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
             builder.add("commitIndex", slice.get("commitIndex"));
