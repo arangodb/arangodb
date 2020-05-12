@@ -1,5 +1,10 @@
 devel
 -----
+* Moved calculation of registers to keep into the register planning. It can be
+  calculated more efficiently there.
+
+* Restored behavior of Foxx API documentation being expanded to show all routes
+  rather than collapsing all sections by default.
 
 * Add optimization for subqueries for which only the number of results
   matters. The optimization will be triggered for read-only subqueries that 
