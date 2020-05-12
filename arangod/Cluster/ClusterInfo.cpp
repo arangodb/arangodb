@@ -556,20 +556,18 @@ void ClusterInfo::loadPlan() {
     newPlanVersion = 0;
     DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
-    ++_planProt.wantedVersion;  // Indicate that after *NOW* somebody has to
-    // reread from the agency!
-
     auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto tStart = TRI_microtime();
-    auto longPlanWaitLogger = scopeGuard([&tStart]() {
-                                           auto tExit = TRI_microtime();
-                                           if (tExit - tStart > 0.5) {
-                                             LOG_TOPIC("66666", WARN, Logger::CLUSTER) <<
-                                               "Loading the new plan took: " << (tExit - tStart);
-                                           }
-                                         });
+    auto longPlanWaitLogger = scopeGuard(
+      [&tStart]() {
+        auto tExit = TRI_microtime();
+        if (tExit - tStart > 0.5) {
+          LOG_TOPIC("66666", WARN, Logger::CLUSTER) <<
+            "Loading the new plan took: " << (tExit - tStart);
+        }
+      });
 #endif
 
     MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
@@ -595,17 +593,7 @@ void ClusterInfo::loadPlan() {
                                   });
 
     bool planValid = true;  // has the loadPlan compleated without skipping valid objects
-    uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
     // we will set in the end
-
-    LOG_TOPIC("eb0e4", DEBUG, Logger::CLUSTER)
-      << "loadPlan: wantedVersion=" << storedVersion
-      << ", doneVersion=" << _planProt.doneVersion;
-
-    if (_planProt.doneVersion == storedVersion) {
-      // Somebody else did, what we intended to do, so just return
-      return;
-    }
 
     auto [planBuilder, index] = agencyCache.get(prefixPlan);
     auto planSlice = planBuilder->slice();
@@ -1059,9 +1047,6 @@ void ClusterInfo::loadPlan() {
 
         newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
       }
-      LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
-        << "loadPlan done: wantedVersion=" << storedVersion
-        << ", doneVersion=" << _planProt.doneVersion;
     }
 
     if (ServerState::instance()->isCoordinator()) {
@@ -1109,7 +1094,6 @@ void ClusterInfo::loadPlan() {
     }
 
     if (planValid) {
-      _planProt.doneVersion = storedVersion;
       _planProt.isValid = true;
     }
 
@@ -1153,20 +1137,10 @@ void ClusterInfo::loadCurrent() {
     // means small bits of the plan are read twice.
     loadServers();
 
-    ++_currentProt.wantedVersion;  // Indicate that after *NOW* somebody has to
     // reread from the agency!
 
     MUTEX_LOCKER(mutexLocker, _currentProt.mutex);  // only one may work at a time
-    uint64_t storedVersion = _currentProt.wantedVersion;  // this is the version
 
-    // we will set at the end
-    if (_currentProt.doneVersion == storedVersion) {
-      // Somebody else did, what we intended to do, so just return
-      return;
-    }
-
-    LOG_TOPIC("54789", DEBUG, Logger::CLUSTER)
-      << "loadCurrent: wantedVersion: " << _currentProt.wantedVersion;
 
     auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
     auto [currentBuilder, index] = agencyCache.get(prefixCurrent);
@@ -1298,7 +1272,6 @@ void ClusterInfo::loadCurrent() {
       _shardIds.swap(newShardIds);
     }
 
-    _currentProt.doneVersion = storedVersion;
     _currentProt.isValid = true;
 
     std::tie(acb,idx) = agencyCache.get("Current/Version");
@@ -4941,6 +4914,7 @@ void ClusterInfo::startSyncers() {
 }
 
 void ClusterInfo::shutdownSyncers() {
+
   {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
@@ -4994,7 +4968,6 @@ ClusterInfo::SyncerThread::SyncerThread(
 ClusterInfo::SyncerThread::~SyncerThread() {}
 
 bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
-  LOG_DEVEL << currentThreadName() << " notifies of " << _section + "/Version: " << slice.getNumber<uint64_t>();
   std::lock_guard<std::mutex> lck(_m);
   _news = true;
   _cv.notify_one();
@@ -5002,8 +4975,9 @@ bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
+  // set the shutdown state in parent class
+  Thread::beginShutdown();
   std::lock_guard<std::mutex> lck(_m);
-  _cr->unregisterCallback(_acb);
   _news = false;
   _cv.notify_one();
 }
@@ -5014,16 +4988,18 @@ void ClusterInfo::SyncerThread::start() {
 }
 
 void ClusterInfo::SyncerThread::run() {
-  LOG_DEVEL << "Running thread " << currentThreadName();
+  using namespace std::chrono_literals;
 
-  std::function<bool(VPackSlice const& result)> update = [=](VPackSlice const& result) {
-   if (!result.isNumber()) {
-      LOG_TOPIC("f0d86", ERR, Logger::CLUSTER)
+
+  std::function<bool(VPackSlice const& result)> update =
+    [=](VPackSlice const& result) {
+      if (!result.isNumber()) {
+        LOG_TOPIC("f0d86", ERR, Logger::CLUSTER)
           << "Plan Version is not a number! " << result.toJson();
-      return false;
-    }
-    return notify(result);
-  };
+        return false;
+      }
+      return notify(result);
+    };
 
   auto _acb =
     std::make_shared<AgencyCallback>(_server, _section + "/Version", update, true, false);
@@ -5033,12 +5009,12 @@ void ClusterInfo::SyncerThread::run() {
       << "Failed to register callback with local registery ";
     FATAL_ERROR_EXIT();
   }
-  
+
   while(!isStopping()) {
     bool news = false;
     {
       std::unique_lock<std::mutex> lk(_m);
-      _cv.wait(lk, [&]{return _news;});
+      _cv.wait_for(lk, 100ms, [&]{return _news;});
       news = _news;
     }
     if (news) {
@@ -5049,6 +5025,9 @@ void ClusterInfo::SyncerThread::run() {
       _f();
     }
   }
+
+  _cr->unregisterCallback(_acb);
+
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
@@ -5062,10 +5041,12 @@ futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t index) {
+
   READ_LOCKER(readLocker, _planProt.lock);
   if (index <= _planIndex) {
     return futures::makeFuture(arangodb::Result());
   }
+
   // intentionally don't release _storeLock here until we have inserted the promise
   std::lock_guard w(_waitPlanLock);
   return _waitPlan.emplace(index, futures::Promise<arangodb::Result>())->second.getFuture();
@@ -5081,7 +5062,7 @@ void ClusterInfo::triggerWaiting(
       break;
     }
     auto pp = std::make_shared<futures::Promise<Result>>(std::move(pit->second));
-//    if (!this->isStopping()) {
+    if (!_server.isStopping()) {
       bool queued = scheduler->queue(
         RequestLane::CLUSTER_INTERNAL, [pp] { pp->setValue(Result()); });
       if (!queued) {
@@ -5089,9 +5070,9 @@ void ClusterInfo::triggerWaiting(
           "Failed to schedule logsForTrigger running in main thread";
         pp->setValue(Result());
       }
-      /*  } else {
+    } else {
       pp->setValue(Result(TRI_ERROR_SHUTTING_DOWN));
-      }*/
+    }
     pit = mm.erase(pit);
   }
 

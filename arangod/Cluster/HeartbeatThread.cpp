@@ -114,6 +114,9 @@ class HeartbeatBackgroundJobThread : public Thread {
 
  protected:
   void run() override {
+
+    using namespace std::chrono_literals;
+
     while (!_stop) {
       {
         std::unique_lock<std::mutex> guard(_mutex);
@@ -380,6 +383,9 @@ DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runDBServer() {
+
+    using namespace std::chrono_literals;
+
   _maintenanceThread = std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
   if (!_maintenanceThread->start()) {
     // WHAT TO DO NOW?
@@ -452,7 +458,7 @@ void HeartbeatThread::runDBServer() {
     if (!registered) {
       LOG_TOPIC("52ce5", ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(1s);
     }
   }
 
@@ -462,7 +468,7 @@ void HeartbeatThread::runDBServer() {
     if (!registered) {
       LOG_TOPIC("f1df2", ERR, Logger::HEARTBEAT)
           << "Couldn't register current change in agency!";
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+      std::this_thread::sleep_for(1s);
     }
   }
 
@@ -1276,53 +1282,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// Therefore we need to do proper locking.
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
-  MUTEX_LOCKER(mutexLocker, *_statusLock);
-  bool shouldUpdate = false;
-
-  if (_desiredVersions->plan > _currentVersions.plan) {
-    LOG_TOPIC("4e35e", DEBUG, Logger::HEARTBEAT)
-        << "Plan version " << _currentVersions.plan
-        << " is lower than desired version " << _desiredVersions->plan;
-    shouldUpdate = true;
-  }
-  if (_desiredVersions->current > _currentVersions.current) {
-    LOG_TOPIC("351a6", DEBUG, Logger::HEARTBEAT)
-        << "Current version " << _currentVersions.current
-        << " is lower than desired version " << _desiredVersions->current;
-    shouldUpdate = true;
-  }
-
-  // 7.4 seconds is just less than half the 15 seconds agency uses to declare
-  // dead server,
-  //  perform a safety execution of job in case other plan changes somehow
-  //  incomplete or undetected
-  double now = TRI_microtime();
-  if (now > _lastSyncTime + 7.4 || asyncPush) {
-    shouldUpdate = true;
-  }
-
-  if (!shouldUpdate) {
-    return;
-  }
-
-  // First invalidate the caches in ClusterInfo:
-  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
-  if (_desiredVersions->plan > ci.getPlanVersion()) {
-    ci.invalidatePlan();
-  }
-  if (_desiredVersions->current > ci.getCurrentVersion()) {
-    ci.invalidateCurrent();
-  }
-
-  // schedule a job for the change:
-  uint64_t jobNr = ++_backgroundJobsPosted;
-  LOG_TOPIC("0708a", DEBUG, Logger::HEARTBEAT) << "dispatching sync " << jobNr;
-
-  _lastSyncTime = TRI_microtime();
-  //TRI_ASSERT(_maintenanceThread != nullptr);
-  //_maintenanceThread->notify();
-}
+void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {}
 
 void HeartbeatThread::notify() {
   if (_maintenanceThread != nullptr) {

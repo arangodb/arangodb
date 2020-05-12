@@ -27,6 +27,7 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -79,7 +80,7 @@ void ActionBase::notify() {
       << "Job " << _description << " calling syncDBServerStatusQuo";
   auto& server = _feature.server();
   if (server.hasFeature<ClusterFeature>()) {
-    server.getFeature<ClusterFeature>().syncDBServerStatusQuo();
+    server.getFeature<ClusterFeature>().heartbeatThread()->notify();
   }
 }
 

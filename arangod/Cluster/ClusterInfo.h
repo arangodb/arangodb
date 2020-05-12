@@ -323,7 +323,7 @@ private:
     bool _news;
     application_features::ApplicationServer& _server;
     std::string _section;
-    std::function<void()> _f;    
+    std::function<void()> _f;
     AgencyCallbackRegistry* _cr;
     std::shared_ptr<AgencyCallback> _acb;
   };
@@ -1062,7 +1062,7 @@ public:
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
 
-  
+
 };
 
 }  // end namespace arangodb
