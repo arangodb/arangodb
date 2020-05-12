@@ -393,7 +393,7 @@ class ExecutionNode {
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  auto getVarsUsedLater() const noexcept -> VarSet const& { return getVarsUsedLaterStack().back(); }
+  auto getVarsUsedLater() const noexcept -> VarSet const&;
 
   /// @brief Stack of getVarsUsedLater, needed for spliced subqueries. Index 0
   /// corresponds to the outermost spliced subquery, up to either the top level
@@ -414,7 +414,7 @@ class ExecutionNode {
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  auto getVarsValid() const noexcept -> VarSet const& { return getVarsValidStack().back(); }
+  auto getVarsValid() const noexcept -> VarSet const&;
 
   /// @brief Stack of getVarsValid, needed for spliced subqueries. Index 0
   /// corresponds to the outermost spliced subquery, up to either the top level
