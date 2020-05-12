@@ -734,9 +734,8 @@ std::vector<aql::Collection const*> GraphNode::collections() const {
 
   std::vector<aql::Collection const*> vector;
   vector.reserve(set.size());
-  for (auto it = set.begin(); it != set.end(); it++) {
-    vector.push_back(std::move(set.extract(it).value()));
-  }
+  std::move(set.begin(), set.end(), std::back_inserter(vector));
+
   return vector;
 }
 
