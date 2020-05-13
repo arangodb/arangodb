@@ -299,7 +299,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
           base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
   auto thread_local const isDBServer = ServerState::instance()->isDBServer();
 
   if (!isDBServer) {
@@ -574,6 +575,10 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     edgeOutVariable()->toVelocyPack(nodes);
   }
 
+  // Flags
+  nodes.add("isSmart", VPackValue(_isSmart));
+  nodes.add("isDisjoint", VPackValue(_isDisjoint));
+
   // Temporary AST Nodes for conditions
   TRI_ASSERT(_tmpObjVariable != nullptr);
   nodes.add(VPackValue("tmpObjVariable"));
@@ -717,16 +722,21 @@ void GraphNode::addVertexCollection(aql::Collection* collection) {
 }
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
-  std::vector<aql::Collection const*> rv;
-  rv.reserve(_edgeColls.size() + _vertexColls.size());
+  std::unordered_set<aql::Collection const*> set;
+  set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
-    rv.push_back(collPointer);
+    set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
-    rv.push_back(collPointer);
+    set.emplace(collPointer);
   }
-  return rv;
+
+  std::vector<aql::Collection const*> vector;
+  vector.reserve(set.size());
+  std::move(set.begin(), set.end(), std::back_inserter(vector));
+
+  return vector;
 }
 
 bool GraphNode::isSmart() const { return _isSmart; }

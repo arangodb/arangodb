@@ -27,6 +27,9 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Basics/debugging.h"
 
+#include <Basics/debugging.h>
+#include <Containers/HashSetFwd.h>
+
 #include <map>
 #include <memory>
 #include <set>
@@ -35,7 +38,22 @@
 #include <unordered_set>
 #include <vector>
 
+namespace boost {
+namespace container {
+template<class T>
+class new_allocator;
+template <class Key, class Compare, class AllocatorOrContainer>
+class flat_set;
+}
+}  // namespace boost
+
 namespace arangodb {
+
+namespace containers {
+template <class Key, class Compare = std::less<Key>, class AllocatorOrContainer = boost::container::new_allocator<Key> >
+using flat_set = boost::container::flat_set<Key, Compare, AllocatorOrContainer>;
+}
+
 namespace aql {
 struct Collection;
 
@@ -64,12 +82,16 @@ using SnippetList = std::vector<std::pair<QueryId, std::unique_ptr<ExecutionEngi
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
 struct Variable;
-using VarSet = std::unordered_set<Variable const*>;
+// Note: #include <Containers/HashSet.h> to use the following types
+using VarSet = containers::HashSet<Variable const*>;
 using VarSetStack = std::vector<VarSet>;
-
-using RegIdSet = std::unordered_set<RegisterId>;
-using RegIdSetStack = std::vector<std::unordered_set<RegisterId>>;
-using RegIdOrderedSetStack = std::vector<std::set<RegisterId>>;
+using RegIdSet = containers::HashSet<RegisterId>;
+using RegIdSetStack = std::vector<RegIdSet>;
+using RegIdOrderedSet = std::set<RegisterId>;
+using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;
+// Note: #include <boost/container/flat_set.hpp> to use the following types
+using RegIdFlatSet = containers::flat_set<RegisterId>;
+using RegIdFlatSetStack = std::vector<containers::flat_set<RegisterId>>;
 
 }  // namespace aql
 

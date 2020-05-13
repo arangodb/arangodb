@@ -464,13 +464,21 @@ public:
   /// @brief ask about a collection
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a collection name (both cluster-wide).
-  /// if the collection is not found afterwards, this method will throw an
-  /// exception
   /// will not throw but return nullptr if the collection isn't found.
   //////////////////////////////////////////////////////////////////////////////
 
   TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
                                                                   CollectionID const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about a collection or a view
+  /// If it is not found in the cache, the cache is reloaded once. The second
+  /// argument can be a collection ID or a collection name (both cluster-wide) 
+  /// or a view ID or name.
+  /// will not throw but return nullptr if the collection/view isn't found.
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalDataSource> getCollectionOrViewNT(DatabaseID const&,
+                                                           std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Format error message for TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
