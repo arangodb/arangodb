@@ -1,4 +1,4 @@
-/* global describe, it, afterEach */
+/* global describe, it, beforeEach */
 'use strict';
 
 const expect = require('chai').expect;
@@ -52,9 +52,9 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
 }
 
 describe('request statistics', function () {
-  afterEach(function () {
-    // need to wait a bit for pending statistic updates to be processed, so subsequent test
-    // have a stable initialStats value
+  beforeEach(function () {
+    // need to wait a bit for pending statistic updates to be processed,
+    // so the test has a stable initialStats value
     internal.sleep(1);
   });
 
