@@ -9,7 +9,7 @@ if test "x$BISON" = x -o "x$OUTPUT" = x -o "x$INPUT" = x;  then
   exit 1
 fi
 
-BISON_MAJOR_VER=`"${BISON}" --version |grep bison|sed -e "s;.* ;;" -e "s;\..*;;"`
+BISON_MAJOR_VER=`${BISON} --version |grep bison|sed -e "s;.* ;;" -e "s;\..*;;"`
 
 if test "${BISON_MAJOR_VER}" -ge "3"; then 
     BISON_OPTS="--warnings=deprecated,other,error=conflicts-sr,error=conflicts-rr"
@@ -20,15 +20,15 @@ fi
 ## bison
 #############################################################################
 
-"${BISON}" -d -ra ${BISON_OPTS} -o "${OUTPUT}" "${INPUT}"
+${BISON} -d -ra ${BISON_OPTS} -o ${OUTPUT} ${INPUT}
 
 #############################################################################
 ## sanity checks
 #############################################################################
 
-PREFIX="`echo "${OUTPUT}" | sed -e 's:\.cpp$::'`"
+PREFIX=`echo ${OUTPUT} | sed -e 's:\.cpp$::'`
 
-test -f "${PREFIX}".hpp || exit 1
-test -f "${PREFIX}".cpp || exit 1
+test -f ${PREFIX}.hpp || exit 1
+test -f ${PREFIX}.cpp || exit 1
 
-cp "${PREFIX}".hpp "${PREFIX}".h
+cp ${PREFIX}.hpp ${PREFIX}.h
