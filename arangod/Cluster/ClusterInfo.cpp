@@ -188,7 +188,7 @@ class PlanCollectionReader {
   Result _state;
   velocypack::Slice _collection;
 };
-}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
@@ -535,7 +535,6 @@ void ClusterInfo::loadClusterId() {
   if (slice.isString()) {
     _clusterId = slice.copyString();
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -546,13 +545,11 @@ void ClusterInfo::loadClusterId() {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
-
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newPlanVersion;
 
   do {
-
     newPlanVersion = 0;
     DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
 
@@ -3262,7 +3259,6 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
 /// is a timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore) {
-
   TRI_IF_FAILURE("FinishModifyingAnalyzerCoordinator") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -3364,7 +3360,6 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         }
         ++tries;
       } while (true);
-
     }
     break;
   } while (true);
@@ -5373,9 +5368,8 @@ CollectionWatcher::~CollectionWatcher() {
   }
 }
 
-Result AnalyzerModificationTransaction::start()
-{
-  auto const endTime = TRI_microtime() + 10.0; // !!!!
+Result AnalyzerModificationTransaction::start() {
+  auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
   int32_t count = _cleanupTransaction ? 0 : _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
 
   // locking stage
@@ -5396,36 +5390,33 @@ Result AnalyzerModificationTransaction::start()
   if (_cleanupTransaction) {
     _rollbackRevision = true; // we just need to revert our revision
     return {};
-  }
-  else {
+  } else {
     auto res = _clusterInfo->startModifyingAnalyzerCoordinator(_database);
     _rollbackRevision = res.ok();
     return res;
   }
 }
 
-Result AnalyzerModificationTransaction::commit()
-{
+Result AnalyzerModificationTransaction::commit() {
   TRI_ASSERT(_rollbackCounter && _rollbackRevision);
   auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
   _rollbackRevision = res.fail();
   // if succesful revert mark our transaction as completed.
-  // for cleanup - always completed. Will try next time
+  // for cleanup - always this attempt is completed. Will try next time
   if (res.ok() || _cleanupTransaction) {
     revertCounter();
   }
   return res;
 }
 
-Result AnalyzerModificationTransaction::abort()
-{
+Result AnalyzerModificationTransaction::abort() {
   if (!_rollbackCounter) {
     TRI_ASSERT(!_rollbackRevision);
     return Result();
   }
 
   Result res{};
-  if (_rollbackRevision && !_cleanupTransaction) {
+  if (_rollbackRevision && !_cleanupTransaction) { // cleanup transaction has nothing to rollback
     res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
     _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
   }
@@ -5433,14 +5424,12 @@ Result AnalyzerModificationTransaction::abort()
   return res;
 }
 
-void AnalyzerModificationTransaction::revertCounter()
-{
+void AnalyzerModificationTransaction::revertCounter() {
   TRI_ASSERT(_rollbackCounter);
   if (_cleanupTransaction) {
     TRI_ASSERT(_pendingAnalyzerOperationsCount.load() == -1);
     _pendingAnalyzerOperationsCount = 0;
-  }
-  else {
+  } else {
     TRI_ASSERT(_pendingAnalyzerOperationsCount.load() > 0);
     _pendingAnalyzerOperationsCount.fetch_sub(1);
   }

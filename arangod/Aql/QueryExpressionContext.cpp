@@ -67,6 +67,6 @@ bool QueryExpressionContext::killed() const  {
   return _query.killed();
 }
 
-arangodb::AnalyzersRevision::Revision QueryExpressionContext::getAnalyzersRevision() const {
+arangodb::AnalyzersRevision::Revision QueryExpressionContext::analyzersRevision() const {
   return _query.analyzersRevision();
 }

@@ -215,7 +215,7 @@ void Query::prepareQuery(SerializationFormat format) {
   std::unique_ptr<ExecutionPlan> plan = preparePlan();
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
-  
+
   _isAsyncQuery |= plan->contains(ExecutionNode::ASYNC);
   TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
 
@@ -238,7 +238,7 @@ void Query::prepareQuery(SerializationFormat format) {
     }
     registry->registerEngines(_snippets);
   }
-  
+
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
@@ -258,9 +258,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
-  
+
   _isAsyncQuery = _ast->containsParallelNode();
-    
+
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
@@ -324,7 +324,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // return the V8 context if we are in one
   exitV8Context();
-  
+
   return plan;
 }
 
@@ -340,7 +340,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     }
 
     bool useQueryCache = canUseQueryCache();
- 
+
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
         if (useQueryCache) {
@@ -537,11 +537,11 @@ QueryResult Query::executeSync() {
       TRI_ASSERT(state == aql::ExecutionState::DONE);
       return queryResult;
     }
-    
+
     if (!ss) {
       ss = sharedState();
     }
-    
+
     ss->waitForAsyncWakeup();
   } while (true);
 }
@@ -600,7 +600,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
     // will throw if it fails
     prepareQuery(SerializationFormat::SHADOWROWS);
-    
+
     log();
 
     if (useQueryCache && (isModificationQuery()  || !_warnings.empty() ||
@@ -1399,7 +1399,7 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
     }
   }
 
-   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
+  LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
        << TRI_microtime() - _startTime << " "
        << "Query::finalizeSnippets: before cleanupPlanAndEngine"
        << " this: " << (uintptr_t)this;

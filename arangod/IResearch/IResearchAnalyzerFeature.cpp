@@ -504,7 +504,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     if (sysVocbase) {
       pool = analyzers.get(name, trx->vocbase(), *sysVocbase,
                            expressionContext ?
-                             expressionContext->getAnalyzersRevision() :
+                             expressionContext->analyzersRevision() :
                              arangodb::AnalyzersRevision::LATEST); // no context = no query => LATEST is ok
     }
   } else { //do not look for identity, we already have reference)
@@ -2376,7 +2376,6 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& nam
 }
 
 Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name) {
-
   TRI_IF_FAILURE("FinalizeAnalyzerRemove") {
     return Result(TRI_ERROR_DEBUG);
   }

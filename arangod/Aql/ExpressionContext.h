@@ -50,7 +50,7 @@ class ExpressionContext {
 
 
   // in general we always work with latest revision
-  virtual arangodb::AnalyzersRevision::Revision getAnalyzersRevision() const {
+  virtual arangodb::AnalyzersRevision::Revision analyzersRevision() const {
     return arangodb::AnalyzersRevision::LATEST; 
   }
 

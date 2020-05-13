@@ -54,7 +54,7 @@ class QueryExpressionContext : public ExpressionContext {
   transaction::Methods& trx() const override final;
   bool killed() const override final;
   
-  arangodb::AnalyzersRevision::Revision getAnalyzersRevision() const override final;
+  arangodb::AnalyzersRevision::Revision analyzersRevision() const override final;
 
  private:
   transaction::Methods& _trx;
