@@ -188,8 +188,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   aql::RegIdSet calcInputRegs() const;
 
-  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
-
   bool isLateMaterialized() const noexcept {
     return _outNonMaterializedDocId != nullptr && _outNonMaterializedColPtr != nullptr;
   }

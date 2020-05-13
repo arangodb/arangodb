@@ -2737,18 +2737,6 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterialized) {
                                               {});        // no sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
-
-  arangodb::aql::RegisterPlan registerPlan;
-  EXPECT_EQ(1, registerPlan.nrRegs.size());
-  registerPlan.increaseDepth();
-  EXPECT_EQ(2, registerPlan.nrRegs.size());
-  node.planNodeRegisters(registerPlan);
-  EXPECT_EQ(2, registerPlan.nrRegs.size());
-  EXPECT_EQ(2, registerPlan.nrRegs[1]);
-  EXPECT_EQ(2, registerPlan.varInfo.size());
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmColPtr.id));
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmDocId.id));
-  EXPECT_EQ(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
 }
 
 TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
@@ -2782,17 +2770,6 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
                                               std::vector<arangodb::iresearch::Scorer>{ {&scoreVariable, nullptr} });   //sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmColPtr, outNmDocId);
-
-  arangodb::aql::RegisterPlan registerPlan;
-  registerPlan.increaseDepth();
-  node.planNodeRegisters(registerPlan);
-  EXPECT_EQ(2, registerPlan.nrRegs.size());
-  EXPECT_EQ(3, registerPlan.nrRegs[1]);
-  EXPECT_EQ(3, registerPlan.varInfo.size());
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmColPtr.id));
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outNmDocId.id));
-  EXPECT_EQ(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(scoreVariable.id));
 }
 
 TEST_F(IResearchViewNodeTest, registerPlanning) {
@@ -2821,14 +2798,6 @@ TEST_F(IResearchViewNodeTest, registerPlanning) {
                                               nullptr,  // no options
                                               {});        // no sort condition
   node.addDependency(&singleton);
-
-  arangodb::aql::RegisterPlan registerPlan;
-  registerPlan.increaseDepth();
-  node.planNodeRegisters(registerPlan);
-  EXPECT_EQ(2, registerPlan.nrRegs.size());
-  EXPECT_EQ(1, registerPlan.nrRegs[1]);
-  EXPECT_EQ(1, registerPlan.varInfo.size());
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
 }
 
 TEST_F(IResearchViewNodeTest, registerPlanningWithScore) {
@@ -2859,15 +2828,6 @@ TEST_F(IResearchViewNodeTest, registerPlanningWithScore) {
                                               nullptr,  // no options
                                               std::vector<arangodb::iresearch::Scorer>{ {&scoreVariable, nullptr} });        //sort condition
   node.addDependency(&singleton);
-
-  arangodb::aql::RegisterPlan registerPlan;
-  registerPlan.increaseDepth();
-  node.planNodeRegisters(registerPlan);
-  EXPECT_EQ(2, registerPlan.nrRegs.size());
-  EXPECT_EQ(2, registerPlan.nrRegs[1]);
-  EXPECT_EQ(2, registerPlan.varInfo.size());
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(outVariable.id));
-  EXPECT_NE(registerPlan.varInfo.end(), registerPlan.varInfo.find(scoreVariable.id));
 }
 
 class IResearchViewBlockTest
