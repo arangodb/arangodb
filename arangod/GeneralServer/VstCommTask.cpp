@@ -250,6 +250,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       // if we don't call checkAuthentication we need to refresh
       this->_auth->userManager()->refreshUser(this->_authToken.username());
     }
+    stat.SET_REQUEST_TYPE(req->requestType());
 
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
