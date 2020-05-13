@@ -230,7 +230,7 @@ auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skip
     auto target = blockMap.find(key);
     if (target == blockMap.end()) {
       // Impossible, just avoid UB.
-      LOG_TOPIC("7bae6", ERR, Logger::AQL)
+      LOG_TOPIC("c9163", ERR, Logger::AQL)
           << "Tried to distribute data to shard " << key
           << " which is not part of the query. Ignoring.";
       continue;
