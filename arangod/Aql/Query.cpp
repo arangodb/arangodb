@@ -1275,16 +1275,27 @@ ClusterQuery::~ClusterQuery() {
 } 
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
+                                       VPackSlice querySlice,
                                        VPackSlice collections,
                                        VPackSlice variables,
                                        VPackSlice snippets,
-                                       VPackSlice travererSlice,
+                                       VPackSlice traverserSlice,
                                        VPackBuilder& answerBuilder) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                              << "Query::prepareQuerySnippets"
                                              << " this: " << (uintptr_t)this;
   
   init();
+  
+  VPackSlice val = querySlice.get("isModificationQuery");
+  if (val.isBool() && val.getBool()) {
+    _ast->setContainsModificationNode();
+  }
+  val = querySlice.get("isAsyncQuery");
+  if (val.isBool() && val.getBool()) {
+    _ast->setContainsParallelNode();
+  }
+  
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
   
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
@@ -1359,10 +1370,10 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     }
   }
   
-  if (travererSlice.isArray()) {
+  if (traverserSlice.isArray()) {
     // used to be RestAqlHandler::registerTraverserEngines
     answerBuilder.add("traverserEngines", VPackValue(VPackValueType::Array));
-    for (auto const& te : VPackArrayIterator(travererSlice)) {
+    for (auto const& te : VPackArrayIterator(traverserSlice)) {
       
       aql::EngineId eId = TRI_NewTickServer();
       auto engine = traverser::BaseEngine::BuildEngine(_vocbase, *this, te);

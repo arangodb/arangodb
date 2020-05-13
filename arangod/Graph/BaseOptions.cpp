@@ -187,6 +187,7 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _expressionCtx(_trx, other._query, _regexCache),
       _query(other._query),
       _tmpVar(nullptr),
+      _collectionToShard(other._collectionToShard),
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {

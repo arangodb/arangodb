@@ -313,6 +313,7 @@ class ClusterQuery final : public Query {
   }
   
   void prepareClusterQuery(SerializationFormat format,
+                           arangodb::velocypack::Slice querySlice,
                            arangodb::velocypack::Slice collections,
                            arangodb::velocypack::Slice variables,
                            arangodb::velocypack::Slice snippets,
