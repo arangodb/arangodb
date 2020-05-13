@@ -61,7 +61,7 @@ function runSetup () {
   // physically carry out the deletion
   let path = fs.join(appPath, 'UnitTestsRecovery2');
   let tries = 0;
-  while (++tries < 10) {
+  while (++tries < 30) {
     if (!fs.isDirectory(path)) {
       break;
     }

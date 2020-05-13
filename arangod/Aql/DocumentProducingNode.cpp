@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -45,13 +46,15 @@ arangodb::velocypack::StringRef const projectionsKey("projections");
 }
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
-    : _outVariable(outVariable) {
+    : _outVariable(outVariable),
+      _count(false) {
   TRI_ASSERT(_outVariable != nullptr);
 }
 
 DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
-    : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
+    : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
+      _count(false) {
   TRI_ASSERT(_outVariable != nullptr);
 
   VPackSlice p = slice.get(::projectionsKey);
@@ -69,12 +72,15 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     // new AstNode is memory-managed by the Ast
     setFilter(std::make_unique<Expression>(ast, new AstNode(ast, p)));
   }
+
+  _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count", false);
 }
   
 void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
   if (_filter != nullptr) {
     c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan->getAst())));
   }
+  c.copyCountFlag(this);
 }
 
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
@@ -91,11 +97,16 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   if (_filter != nullptr) {
     builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
     _filter->toVelocyPack(builder, flags);
-  } else {
   }
 
-  // is "producesResult" actually read back somewhere?
-  builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+  // "producesResult" is read by AQL explainer. don't remove it!
+  builder.add("count", VPackValue(doCount()));
+  if (doCount()) {
+    TRI_ASSERT(_filter == nullptr);
+    builder.add(::producesResultKey, VPackValue(false));
+  } else {
+    builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+  }
 }
 
 Variable const* DocumentProducingNode::outVariable() const {
@@ -129,4 +140,8 @@ void DocumentProducingNode::projections(std::vector<std::string>&& projections) 
 
 std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePositions() const noexcept {
   return _coveringIndexAttributePositions;
+}
+  
+bool DocumentProducingNode::doCount() const {
+  return _count && (_filter == nullptr); 
 }
