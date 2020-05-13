@@ -252,7 +252,7 @@ class RegisterPlanTest : public ::testing::Test {
 
     std::vector<std::optional<Variable const*>> varsRequiredHere;
 
-    auto total = plan->getTotalNrRegs();
+    auto total = *std::max_element(plan->nrRegs.cbegin(), plan->nrRegs.cend());
     varsRequiredHere.reserve(total);
     for (size_t i = 0; i < total; ++i) {
       varsRequiredHere.emplace_back(std::nullopt);
@@ -353,7 +353,7 @@ TEST_F(RegisterPlanTest, walker_should_plan_registers) {
       ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {&vars[0]}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 1);
+  EXPECT_EQ(plan->nrRegs.back(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertPlanKeepsAllVariables(plan, myList);
 }
@@ -367,7 +367,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_append_variables_if_all_are_needed
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[0], &vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 2);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertPlanKeepsAllVariables(plan, myList);
@@ -382,7 +382,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_if_possible) {
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 1);
+  EXPECT_EQ(plan->nrRegs.back(), 1);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 0);
   assertPlanKeepsAllVariables(plan, myList);
@@ -397,7 +397,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_not_reuse_register_if_block_is_pas
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[1]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 2);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertPlanKeepsAllVariables(plan, myList);
@@ -415,7 +415,7 @@ TEST_F(RegisterPlanTest, planRegisters_should_reuse_register_after_passthrough) 
       ExecutionNodeMock{ExecutionNode::RETURN, {&vars[4]}, {}}};
   auto plan = walk(myList);
   ASSERT_NE(plan, nullptr);
-  EXPECT_EQ(plan->getTotalNrRegs(), 2);
+  EXPECT_EQ(plan->nrRegs.back(), 2);
   assertVariableInRegister(plan, vars[0], 0);
   assertVariableInRegister(plan, vars[1], 1);
   assertVariableInRegister(plan, vars[2], 0);
@@ -607,6 +607,26 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery) {
     // RETURN
     EXPECT_EQ((VarSetStack{{mark, debra, tobias, paul}}), subquery[3].getVarsValidStack());
   }
+}
+
+TEST_F(RegisterPlanTest, variable_usage_with_subquery_using_many_registers) {
+  auto&& [vars, ptrs] = generateVars<6>();
+  auto [mark, debra, mary, jesse, paul, tobias] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {mark}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {tobias}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, tobias}, {paul}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, paul}, {debra}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {debra}, {mary}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {mark, mary}, {jesse}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {jesse}, {}}};
+  getVarUsage(nodes);
+  auto plan = walk(nodes);
+  assertVariableInRegister(plan, *mark, 0);
+  assertVariableInRegister(plan, *mary, 1);
+  assertVariableInRegister(plan, *jesse, 2);
 }
 
 }  // namespace aql

@@ -56,7 +56,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   if (en->isIncreaseDepth()) {
     // isIncreaseDepth => mayReuseRegisterImmediately
     TRI_ASSERT(mayReuseRegisterImmediately);
-    plan->increaseDepth();
+    plan->addSection();
   }
 
   if (en->getType() == ExecutionNode::SUBQUERY) {
@@ -151,6 +151,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
+      previousSubqueryNrRegs.emplace(plan->nrRegs.back());
       auto topUnused = unusedRegisters.back();
       unusedRegisters.emplace_back(std::move(topUnused));
 
@@ -166,6 +167,14 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     case ExecutionNode::SUBQUERY_END: {
       unusedRegisters.pop_back();
       regsToKeepStack.pop_back();
+      // This must have added a section, otherwise we would decrease the
+      // number of registers available inside the subquery.
+      TRI_ASSERT(en->isIncreaseDepth());
+      // We must plan the registers after this, so newly added registers are
+      // based upon this nrRegs.
+      TRI_ASSERT(mayReuseRegisterImmediately);
+      plan->nrRegs.back() = previousSubqueryNrRegs.top();
+      previousSubqueryNrRegs.pop();
     } break;
     default: {
       auto regsToClear = calculateRegistersToClear(en);
@@ -190,12 +199,12 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 #endif
 
   en->setRegsToKeep(regsToKeepStack);
-  en->_depth = plan->depth;
+  en->_depth = plan->currentSection;
   en->_registerPlan = plan;
 }
 
 template <typename T>
-RegisterPlanT<T>::RegisterPlanT() : depth(0), totalNrRegs(0) {
+RegisterPlanT<T>::RegisterPlanT() : currentSection(0) {
   nrRegs.reserve(8);
   nrRegs.emplace_back(0);
 }
@@ -206,24 +215,22 @@ RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
     : varInfo(v.varInfo),
       nrRegs(v.nrRegs),
       subQueryNodes(),
-      depth(newdepth + 1),
-      totalNrRegs(v.nrRegs[newdepth]) {
-  if (depth + 1 < 8) {
+      currentSection(newdepth + 1) {
+  if (currentSection + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
   }
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
-  nrRegs.resize(depth);
-  RegisterId registerId = nrRegs.back();
-  nrRegs.emplace_back(registerId);
+  nrRegs.resize(currentSection);
+  auto regCount = nrRegs.back();
+  nrRegs.emplace_back(regCount);
 }
 
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
-    : depth(depth),
-      totalNrRegs(slice.get("totalNrRegs").getNumericValue<unsigned int>()) {
+    : currentSection(depth) {
   VPackSlice varInfoList = slice.get("varInfoList");
   if (!varInfoList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -263,8 +270,7 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   auto other = std::make_shared<RegisterPlanT>();
 
   other->nrRegs = nrRegs;
-  other->depth = depth;
-  other->totalNrRegs = totalNrRegs;
+  other->currentSection = currentSection;
   other->varInfo = varInfo;
 
   // No need to clone subQueryNodes because this was only used during
@@ -274,19 +280,20 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
 }
 
 template <typename T>
-void RegisterPlanT<T>::increaseDepth() {
-  depth++;
+void RegisterPlanT<T>::addSection() {
+  currentSection++;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
-  RegisterId registerId = nrRegs.back();
-  nrRegs.emplace_back(registerId);
+  auto regCount = nrRegs.back();
+  nrRegs.emplace_back(regCount);
 }
 
 template <typename T>
 RegisterId RegisterPlanT<T>::addRegister() {
-  nrRegs[depth]++;
-  return totalNrRegs++;
+  nrRegs[currentSection]++;
+
+  return static_cast<RegisterId>(nrRegs[currentSection]);
 }
 
 template <typename T>
@@ -302,7 +309,7 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
   }
 
   bool inserted;
-  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(depth, regId));
+  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(currentSection, regId));
   TRI_ASSERT(inserted);
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -353,17 +360,14 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue("nrRegsHere"));
   { VPackArrayBuilder guard(&builder); }
 
-  builder.add("totalNrRegs", VPackValue(totalNrRegs));
+  // totalNrRegs is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add("totalNrRegs", VPackSlice::noneSlice());
 }
 
 template <typename T>
 void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
   subQueryNodes.emplace_back(subquery);
-}
-
-template <typename T>
-auto RegisterPlanT<T>::getTotalNrRegs() -> unsigned int {
-  return totalNrRegs;
 }
 
 template <typename T>
@@ -396,12 +400,6 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
   }
 
   return regsToKeepStack;
-}
-
-template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v) {
-  std::set<RegisterId> tmp;
-  registerVariable(v, tmp);
 }
 
 template <typename T>
