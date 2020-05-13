@@ -192,8 +192,6 @@ class CollectNode : public ExecutionNode {
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
-
   static void calculateAccessibleUserVariables(ExecutionNode const& node,
                                                std::vector<Variable const*>& userVariables);
 

@@ -199,7 +199,6 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -384,12 +383,10 @@ class GatherNode final : public ExecutionNode {
   bool isSortingGather() const noexcept;
 
   void setParallelism(Parallelism value);
-  
+
   Parallelism parallelism() const noexcept {
     return _parallelism;
   }
-  
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the underlying database
@@ -467,8 +464,6 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   // whether we replaced an index node

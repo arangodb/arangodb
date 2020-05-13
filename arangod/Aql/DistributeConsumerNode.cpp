@@ -86,5 +86,3 @@ void DistributeConsumerNode::cloneRegisterPlan(ScatterNode* dependency) {
   }
   setVarUsageValid();
 }
-
-auto DistributeConsumerNode::getOutputVariables() const -> VariableIdSet { return {}; }

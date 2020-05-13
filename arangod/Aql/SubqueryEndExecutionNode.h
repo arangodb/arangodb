@@ -73,8 +73,6 @@ class SubqueryEndNode : public ExecutionNode {
   void replaceOutVariable(Variable const* var);
   bool isModificationNode() const override;
 
-  VariableIdSet getOutputVariables() const final;
-
  private:
   Variable const* _inVariable;
   Variable const* _outVariable;

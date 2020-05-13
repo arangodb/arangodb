@@ -78,16 +78,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * is different from the input row.
    */
   auto const planRegistersForCurrentNode = [&](T* en) -> void {
-    auto const varsSetHere = en->getVariablesSetHere();
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto const outputVariables = en->getOutputVariables();
-    for (auto const var : varsSetHere) {
-      TRI_ASSERT(outputVariables.find(var->id) != outputVariables.end());
-    }
-    TRI_ASSERT(varsSetHere.size() == outputVariables.size());
-#endif
-
+    auto const& varsSetHere = en->getVariablesSetHere();
     for (Variable const* v : varsSetHere) {
       TRI_ASSERT(v != nullptr);
       plan->registerVariable(v, unusedRegisters.back());
@@ -407,12 +398,6 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
   }
 
   return regsToKeepStack;
-}
-
-template <typename T>
-void RegisterPlanT<T>::registerVariable(Variable const* v) {
-  std::set<RegisterId> tmp;
-  registerVariable(v, tmp);
 }
 
 template <typename T>

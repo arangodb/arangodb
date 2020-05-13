@@ -458,7 +458,6 @@ class ExecutionNode {
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
-  [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -572,8 +571,6 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
-
-  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -622,8 +619,6 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
-
-  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 
  private:
   /// @brief whether or not we want random iteration
@@ -676,8 +671,6 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief return out variable
   Variable const* outVariable() const;
 
-  [[nodiscard]] VariableIdSet getOutputVariables() const final;
-
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
@@ -724,8 +717,6 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the limit value
   size_t limit() const;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the offset
@@ -784,8 +775,6 @@ class CalculationNode : public ExecutionNode {
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;
 
   bool isDeterministic() override final;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief output variable to write to
@@ -854,8 +843,6 @@ class SubqueryNode : public ExecutionNode {
   bool isConst();
   bool mayAccessCollections();
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
-
  private:
   /// @brief we need to have an expression and where to write the result
   ExecutionNode* _subquery;
@@ -898,8 +885,6 @@ class FilterNode : public ExecutionNode {
   void getVariablesUsedHere(VarSet& vars) const override final;
 
   Variable const* inVariable() const;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief input variable to read from
@@ -965,8 +950,6 @@ class ReturnNode : public ExecutionNode {
 
   void inVariable(Variable const* v);
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
-
   bool returnInheritedResults() const;
 
  private:
@@ -1004,8 +987,6 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
 /// @brief class ParallelStartNode
@@ -1038,8 +1019,6 @@ class ParallelStartNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   void cloneRegisterPlan(ExecutionNode* dependency);
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
 /// @brief class ParallelEndNode
@@ -1072,8 +1051,6 @@ class ParallelEndNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   void cloneRegisterPlan(ExecutionNode* dependency);
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
 namespace materialize {
@@ -1117,8 +1094,6 @@ class MaterializeNode : public ExecutionNode {
   template <typename T>
   auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
       -> RegIdSet;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  protected:
   /// @brief input variable non-materialized document ids
