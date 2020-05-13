@@ -47,6 +47,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
@@ -323,6 +324,7 @@ class IResearchAnalyzerFeature final
 
   virtual void prepare() override;
   virtual void start() override;
+  virtual void beginShutdown() override;
   virtual void stop() override;
 
  private:
@@ -380,6 +382,11 @@ class IResearchAnalyzerFeature final
   /// @note on success will modify the '_key' of the pool
   //////////////////////////////////////////////////////////////////////////////
   Result storeAnalyzer(AnalyzerPool& pool);
+
+  /// @brief dangling analyzer revisions collector
+  std::function<void(bool)> _gcfunc;
+  std::mutex _workItemMutex;
+  Scheduler::WorkHandle _workItem;
 
 };
 

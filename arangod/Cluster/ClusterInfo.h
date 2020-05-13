@@ -287,6 +287,54 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
+
+class AnalyzerModificationTransaction {
+public:
+  AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup)
+    : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
+    TRI_ASSERT(_clusterInfo);
+  }
+
+  AnalyzerModificationTransaction(AnalyzerModificationTransaction const&) = delete;
+  AnalyzerModificationTransaction& operator=(AnalyzerModificationTransaction const&) = delete;
+
+  ~AnalyzerModificationTransaction() {
+    abort();
+  }
+
+  static int32_t getPendingCount() noexcept {
+    return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  }
+
+  Result start();
+  Result commit();
+  Result abort();
+private:
+
+  void revertCounter();
+
+  // our cluster info
+  ClusterInfo* _clusterInfo;
+
+  // database for operation
+  // need to copy as may be temp value provided to constructor
+  DatabaseID  _database;
+
+  // rollback operations counter
+  bool _rollbackCounter{ false };
+
+  // rollback revision in Plan
+  bool _rollbackRevision{ false };
+
+  // cleanup or normal analyzer insert/remove
+  bool _cleanupTransaction;
+
+  // pending operation sount. Positive number means some operations are ongoing
+  // zero means system idle
+  // negative value means recovery is ongoing
+  static std::atomic<int32_t> _pendingAnalyzerOperationsCount;
+};
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 class ClusterInfo  {
 #else
@@ -603,7 +651,7 @@ class ClusterInfo final  {
   /// @brief start creating or deleting an analyzer in coordinator,
   /// the return value is an ArangoDB error code
   /// and the errorMsg is set accordingly. One possible error
-  /// is a timeout, a timeout of 0.0 means no timeout.
+  /// is a timeout.
   //////////////////////////////////////////////////////////////////////////////
 
   Result startModifyingAnalyzerCoordinator(DatabaseID const& databaseID);
@@ -612,10 +660,17 @@ class ClusterInfo final  {
   /// @brief finish creating or deleting an analyzer in coordinator,
   /// the return value is an ArangoDB error code
   /// and the errorMsg is set accordingly. One possible error
-  /// is a timeout, a timeout of 0.0 means no timeout.
+  /// is a timeout.
   //////////////////////////////////////////////////////////////////////////////
 
   Result finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Creates cleanup transaction for first found dangling operation
+  /// @return created transaction or nullptr if no cleanup needed
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unique_ptr<AnalyzerModificationTransaction> createAnalyzersCleanupTrans();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
@@ -1041,47 +1096,6 @@ class ClusterInfo final  {
   std::vector<std::string> _failedServers;
 
 };
-
-class AnalyzerModificationTransaction { //!!!! mark as NoCopy
-public:
-  AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup)
-    : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
-    TRI_ASSERT(_clusterInfo);
-  }
-
-  ~AnalyzerModificationTransaction() {
-    abort();
-  }
-
-  Result start();
-  Result commit();
-  Result abort();
-private:
-
-  void revertCounter();
-
-  // our cluster info
-  ClusterInfo* _clusterInfo;
-
-  // database for operation
-  // need to copy as may be temp value provided to constructor
-  DatabaseID  _database;
-
-  // rollback operations counter
-  bool _rollbackCounter{ false };
-
-  // rollback revision in Plan
-  bool _rollbackRevision{ false };
-
-  // cleanup or normal analyzer insert/remove
-  bool _cleanupTransaction;
-
-  // pending operation sount. Positive number means some operations are ongoing
-  // zero means system idle
-  // negative value means recovery is ongoing
-  static std::atomic<int32_t> _pendingAnalyzerOperationsCount;
-};
-
 }  // end namespace arangodb
 
 #endif

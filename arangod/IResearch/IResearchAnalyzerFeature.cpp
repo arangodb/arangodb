@@ -48,6 +48,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/FunctionUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -977,6 +979,30 @@ bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
+
+// Auto-repair of dangling AnalyzersRevisions
+void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc) {
+  bool queued = false;
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    std::tie(queued, workItem) =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              auto off = std::chrono::seconds(5);
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                                       off, gcfunc);
+            },
+            arangodb::iresearch::TOPIC,
+            "queue analyzers garbage collection");
+  }
+  if (!queued) {
+    LOG_TOPIC("f8b3e", FATAL, arangodb::iresearch::TOPIC)
+        << "Failed to queue analyzers garbage collection, for 5 minutes, "
+           "exiting.";
+    FATAL_ERROR_EXIT();
+  }
+}
 } // namespace
 
 namespace arangodb {
@@ -1205,6 +1231,25 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   startsAfter<AqlFeature>();
   startsAfter<aql::OptimizerRulesFeature>();
   startsAfter<QueryRegistryFeature>();
+  startsAfter<SchedulerFeature>();
+
+  _gcfunc = [this](bool canceled) {
+    if (canceled) {
+      return;
+    }
+
+    auto cleanupTrans =
+      this->server().getFeature<ClusterFeature>().clusterInfo().createAnalyzersCleanupTrans();
+    if (cleanupTrans) {
+      if (cleanupTrans->start().ok()) {
+        cleanupTrans->commit();
+      }
+    }
+
+    if (!this->server().isStopping()) {
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+    }
+  };
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse(
@@ -2536,6 +2581,15 @@ void IResearchAnalyzerFeature::start() {
   if (server().hasFeature<aql::AqlFunctionFeature>()) {
     addFunctions(server().getFeature<aql::AqlFunctionFeature>());
   }
+
+  if (server().hasFeature<ClusterFeature>() && ServerState::instance()->isCoordinator()) {
+    queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+  }
+}
+
+void IResearchAnalyzerFeature::beginShutdown() {
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
 }
 
 void IResearchAnalyzerFeature::stop() {

@@ -3367,6 +3367,24 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
   return Result(TRI_ERROR_NO_ERROR);
 }
 
+std::unique_ptr<AnalyzerModificationTransaction> ClusterInfo::createAnalyzersCleanupTrans() {
+  if (AnalyzerModificationTransaction::getPendingCount() == 0) { // rough check, don`t care about sync much
+    READ_LOCKER(readLocker, _planProt.lock);
+    for (auto& it : _dbAnalyzersRevision) {
+      if (it.second->getRebootID() == ServerState::instance()->getRebootId() &&
+          it.second->getServerID() == ServerState::instance()->getId()) {
+        // this maybe dangling
+        if (AnalyzerModificationTransaction::getPendingCount() == 0) { // still nobody active
+          return std::make_unique<AnalyzerModificationTransaction>(it.first, this, true);
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  return nullptr;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set collection status in coordinator
 ////////////////////////////////////////////////////////////////////////////////
