@@ -52,14 +52,30 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
 }
 
 describe('request statistics', function () {
+
+  // Initial statistics counter - this is initialized as part of
+  // beforeEach when we try to establish that statistics have stabilized.
+  let initialStats;
+
   beforeEach(function () {
-    // need to wait a bit for pending statistic updates to be processed,
-    // so the test has a stable initialStats value
-    internal.sleep(1);
+    // We need to make sure all pending statistic updates have been processed,
+    // so the tests have a stable initialStats value. To this end, we perform an
+    // OPTIONS request (as these are rather rare) and wait for max. 30sec that
+    // the requestsOptions counter has been increased.
+    const initialRequestOptions = getStatistics().http.requestsOptions;
+    arango.OPTIONS("/_dummy", "dummy");
+    for (let i = 0; i < 60; ++i) {
+      internal.sleep(0.5);
+      const stats = getStatistics();
+      if (stats.http.requestsOptions > initialRequestOptions) {
+        initialStats = stats;
+        return;
+      }
+    }
+    throw "Failed to verify stable statistics counters - aborting";
   });
 
   it('should be updated by GET requests', function () {
-    const initialStats = getStatistics();
     performGETRequest();
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed
     const finalStats = getStatistics();
@@ -91,7 +107,6 @@ describe('request statistics', function () {
   });
 
   it('should be updated by POST requests', function () {
-    const initialStats = getStatistics();
     performPOSTRequest();
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed...
     const finalStats = getStatistics();
@@ -122,7 +137,6 @@ describe('request statistics', function () {
   });
 
   it('should be updated by DELETE requests', function () {
-    const initialStats = getStatistics();
     performDELETERequest();
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed...
     const finalStats = getStatistics();
