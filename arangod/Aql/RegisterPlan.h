@@ -111,8 +111,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   std::shared_ptr<RegisterPlanT> clone();
 
   void registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters);
-  /// @brief was previously named `increaseDepth`
-  void addSection();
+  void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);
 
@@ -126,7 +125,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
 
  private:
-  unsigned int currentSection;
+  unsigned int depth;
 };
 
 template <typename T>

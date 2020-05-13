@@ -280,7 +280,7 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
 }
 
 template <typename T>
-void RegisterPlanT<T>::addSection() {
+void RegisterPlanT<T>::increaseDepth() {
   currentSection++;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
@@ -291,9 +291,7 @@ void RegisterPlanT<T>::addSection() {
 
 template <typename T>
 RegisterId RegisterPlanT<T>::addRegister() {
-  nrRegs[currentSection]++;
-
-  return static_cast<RegisterId>(nrRegs[currentSection]);
+  return static_cast<RegisterId>(nrRegs[depth]++);
 }
 
 template <typename T>

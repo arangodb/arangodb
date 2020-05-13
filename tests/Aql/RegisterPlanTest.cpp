@@ -50,7 +50,7 @@ struct PlanMiniMock {
   auto increaseCounter(ExecutionNode::NodeType type) {
     // This is no longer true for subqueries because reasons, i.e. subqueries
     // are planned multiple times
-    // TODO: refactor subquery planing?
+    // TODO: refactor subquery planning?
     // EXPECT_FALSE(_called) << "Only count every node once per run";
     EXPECT_EQ(_expectedType, type) << "Count the correct type";
   }
