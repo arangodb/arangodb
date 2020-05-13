@@ -243,6 +243,15 @@ void RestAqlHandler::setupClusterQuery() {
   auto ctx = createTransactionContext();
   auto query = std::make_unique<ClusterQuery>(ctx, std::move(options));
   
+  VPackSlice val = querySlice.get("isModificationQuery");
+  if (val.isBool() && val.getBool()) {
+    query->ast()->setContainsModificationNode();
+  }
+  val = querySlice.get("isAsyncQuery");
+  if (val.isBool() && val.getBool()) {
+    query->ast()->setContainsParallelNode();
+  }
+  
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
   answerBuilder.openObject();

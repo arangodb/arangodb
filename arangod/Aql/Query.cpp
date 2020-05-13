@@ -921,14 +921,6 @@ bool Query::isModificationQuery() const {
   return _ast->containsModificationNode();
 }
 
-/// @brief mark a query as modification query
-void Query::setIsModificationQuery() { return _ast->setContainsModificationNode(); }
-
-void Query::setIsAsyncQuery() {
-  TRI_ASSERT(_ast);
-  return _ast->setContainsParallelNode();
-}
-
 /// @brief enter a V8 context
 void Query::enterV8Context() {
   if (!_contextOwnedByExterior) {

@@ -310,6 +310,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
+    
+    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
+    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());
