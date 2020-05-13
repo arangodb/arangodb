@@ -615,7 +615,9 @@ void ClusterFeature::start() {
 }
 
 void ClusterFeature::beginShutdown() {
-  _clusterInfo->shutdownSyncers();
+  if (_enableCluster) {
+    _clusterInfo->shutdownSyncers();
+  }
   _agencyCache->beginShutdown();
 }
 
