@@ -319,18 +319,16 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   QueryContext const& _query;
 
   InternalState _state;
+  
+  ExecState _execState;
 
   SkipResult _skipped{};
 
   DataRange _lastRange;
 
-  ExecState _execState;
-
   AqlCallType _upstreamRequest;
 
   std::optional<AqlCallType> _defaultUpstreamRequest{std::nullopt};
-
-  bool _hasMemoizedCall{false};
 
   AqlCall _clientRequest;
 
@@ -338,6 +336,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   typename Executor::Stats _blockStats;
 
   AqlCallStack _stackBeforeWaiting;
+  
+  bool _hasMemoizedCall{false};
 
   // Only used in passthrough variant.
   // We track if we have reference the range's block

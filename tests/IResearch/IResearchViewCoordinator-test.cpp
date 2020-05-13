@@ -5778,10 +5778,10 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     node.addDependency(&singleton);
 
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
-    singleton.setVarsUsedLater({{&outVariable}});
+    singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarsValid({{}});
     node.setVarsUsedLater({{}});
-    node.setVarsValid({{&outVariable}});
+    node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
     singleton.planRegisters(nullptr);
