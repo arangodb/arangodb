@@ -185,7 +185,7 @@ IndexExecutorInfos::IndexExecutorInfos(
     std::vector<size_t> const& coveringIndexAttributePositions, 
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
-    bool hasV8Expression, AstNode const* condition,
+    bool hasV8Expression, bool count, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options, IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
@@ -207,7 +207,8 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(false),
       _produceResult(produceResult),
-      _hasV8Expression(hasV8Expression) {
+      _hasV8Expression(hasV8Expression),
+      _count(count) {
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -312,6 +313,8 @@ bool IndexExecutorInfos::hasMultipleExpansions() const noexcept {
   return _hasMultipleExpansions;
 }
 
+bool IndexExecutorInfos::getCount() const noexcept { return _count; }
+
 IndexIteratorOptions IndexExecutorInfos::getOptions() const { return _options; }
 
 bool IndexExecutorInfos::isAscending() const noexcept {
@@ -349,14 +352,15 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
       _cursor(_trx.indexScanForCondition(
           index, condition, infos.getOutVariable(), infos.getOptions())),
       _context(context),
-      _type(infos.isLateMaterialized()
-                ? Type::LateMaterialized
-                : !infos.getProduceResult()
-                      ? Type::NoResult
-                      : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
-                                !infos.getCoveringIndexAttributePositions().empty()
-                            ? Type::Covering
-                            : Type::Document) {
+      _type(infos.getCount() ? Type::Count :
+                infos.isLateMaterialized()
+                    ? Type::LateMaterialized
+                    : !infos.getProduceResult()
+                          ? Type::NoResult
+                          : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
+                                    !infos.getCoveringIndexAttributePositions().empty()
+                                ? Type::Covering
+                                : Type::Document) {
   switch (_type) {
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
@@ -368,6 +372,8 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
           checkUniqueness
               ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs())
               : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndVars(), _infos.getOutNonMaterializedIndRegs());
+      break;
+    case Type::Count:
       break;
     default:
       _documentProducer = checkUniqueness
@@ -418,11 +424,61 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
     case Type::Document:
       TRI_ASSERT(_documentProducer != nullptr);
       return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
+    case Type::Count: {
+      uint64_t counter = 0;
+      _cursor->skipAll(counter);
+      InputAqlItemRow const& input = _context.getInputRow();
+      RegisterId registerId = _context.getOutputRegister();
+      TRI_ASSERT(!output.isFull());
+      AqlValue v((AqlValueHintUInt(counter)));
+      AqlValueGuard guard{v, true};
+      output.moveValueInto(registerId, input, guard);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
+      return false;
+    }
   }
   // The switch above is covering all values and this code
   // cannot be reached
   ADB_UNREACHABLE;
   return false;
+}
+
+size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
+  TRI_ASSERT(_type != Type::Count);
+  
+  if (!hasMore()) {
+    return 0;
+  }
+
+  uint64_t skipped = 0;
+  if (_infos.getFilter() != nullptr) {
+    switch (_type) {
+      case Type::Covering:
+      case Type::LateMaterialized:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextCovering(_documentSkipper, toSkip);
+        break;
+      case Type::NoResult:
+      case Type::Document:
+      case Type::Count:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextDocument(_documentSkipper, toSkip);
+        break;
+    }
+    skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
+  } else {
+    _cursor->skip(toSkip, skipped);
+  }
+
+  TRI_ASSERT(skipped <= toSkip);
+  TRI_ASSERT(skipped == toSkip || !hasMore());
+
+  return static_cast<size_t>(skipped);
+}
+
+bool IndexExecutor::CursorReader::isCovering() const {
+  return _type == Type::Covering;
 }
 
 void IndexExecutor::CursorReader::reset() {
@@ -477,41 +533,6 @@ void IndexExecutor::initializeCursor() {
   // should not be in a half-skipped state
   TRI_ASSERT(_skipped == 0);
   _skipped = 0;
-}
-
-size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
-  if (!hasMore()) {
-    return 0;
-  }
-
-  uint64_t skipped = 0;
-  if (_infos.getFilter() != nullptr) {
-    switch (_type) {
-      case Type::Covering:
-      case Type::LateMaterialized:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextCovering(_documentSkipper, toSkip);
-        break;
-      case Type::NoResult:
-      case Type::Document:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextDocument(_documentSkipper, toSkip);
-        break;
-        ;
-    }
-    skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
-  } else {
-    _cursor->skip(toSkip, skipped);
-  }
-
-  TRI_ASSERT(skipped <= toSkip);
-  TRI_ASSERT(skipped == toSkip || !hasMore());
-
-  return static_cast<size_t>(skipped);
-}
-
-bool IndexExecutor::CursorReader::isCovering() const {
-  return _type == Type::Covering;
 }
 
 void IndexExecutor::initIndexes(InputAqlItemRow& input) {
@@ -628,9 +649,8 @@ bool IndexExecutor::advanceCursor() {
         TRI_ASSERT(_infos.getCondition()->numMembers() > infoIndex);
         conditionNode = _infos.getCondition()->getMember(infoIndex);
       }
-      _cursors.emplace_back(
-          CursorReader{_trx, _infos, conditionNode, _infos.getIndexes()[infoIndex],
-                       _documentProducingFunctionContext, needsUniquenessCheck()});
+      _cursors.emplace_back(_trx, _infos, conditionNode, _infos.getIndexes()[infoIndex],
+                            _documentProducingFunctionContext, needsUniquenessCheck());
     } else {
       // Next index exists, need a reset.
       getCursor().reset();
@@ -666,6 +686,16 @@ IndexExecutor::CursorReader& IndexExecutor::getCursor() {
 
 bool IndexExecutor::needsUniquenessCheck() const noexcept {
   return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
+}
+
+[[nodiscard]] auto IndexExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (_infos.getCount()) {
+    // when we are counting, we will always return a single row
+    return std::max<size_t>(input.countShadowRows(), 1);
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
 }
 
 auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)

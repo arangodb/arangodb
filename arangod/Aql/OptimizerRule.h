@@ -304,6 +304,10 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // operation
+    optimizeCountRule,
+
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
