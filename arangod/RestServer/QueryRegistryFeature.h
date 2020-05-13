@@ -52,6 +52,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   }
   bool failOnWarning() const { return _failOnWarning; }
   bool smartJoins() const { return _smartJoins; }
+  bool parallelizeTraversals() const { return _parallelizeTraversals; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
@@ -62,6 +63,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
   bool _smartJoins;
+  bool _parallelizeTraversals;
   uint64_t _queryMemoryLimit;
   uint64_t _maxQueryPlans;
   uint64_t _queryCacheMaxResultsCount;

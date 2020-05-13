@@ -47,7 +47,6 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
