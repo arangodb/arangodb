@@ -5,8 +5,8 @@ v3.5.6 (XXXX-XX-XX)
   seemingly random property on entity ("old", in this case).
 
   This fixes single-key document lookups in the cluster for simple by-key
-  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN doc`
-  in case the document has either an "old" or a "new" attribute.
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN
+  doc`in case the document has either an "old" or a "new" attribute.
 
 
 v3.5.5.1 (2020-05-08)
