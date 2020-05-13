@@ -28,6 +28,9 @@
 
 #include "Aql/types.h"
 
+#include <Containers/HashSet.h>
+#include <boost/container/flat_set.hpp>
+
 #include <memory>
 #include <unordered_set>
 
@@ -61,11 +64,13 @@ class RegisterInfos {
    *   RegisterId register = it->second.registerId;
    */
 
-  RegisterInfos(std::unordered_set<RegisterId> readableInputRegisters,
-                std::unordered_set<RegisterId> writeableOutputRegisters,
+  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
                 RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                RegIdSet registersToClear,
-                RegIdSetStack registersToKeep);
+                RegIdSet const& registersToClear, RegIdSetStack const& registersToKeep);
+
+  RegisterInfos(RegIdSet readableInputRegisters, RegIdSet writeableOutputRegisters,
+                RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+                RegIdFlatSet registersToClear, RegIdFlatSetStack registersToKeep);
 
   RegisterInfos(RegisterInfos&&) = default;
   RegisterInfos(RegisterInfos const&) = default;
@@ -107,9 +112,9 @@ class RegisterInfos {
    */
   RegisterCount numberOfOutputRegisters() const;
 
-  RegIdSetStack const& registersToKeep() const;
+  RegIdFlatSetStack const& registersToKeep() const;
 
-  RegIdSet const& registersToClear() const;
+  RegIdFlatSet const& registersToClear() const;
 
  protected:
   RegIdSet _inRegs;
@@ -119,9 +124,9 @@ class RegisterInfos {
 
   RegisterCount _numOutRegs;
 
-  RegIdSetStack _registersToKeep;
+  RegIdFlatSetStack _registersToKeep;
 
-  RegIdSet _registersToClear;
+  RegIdFlatSet _registersToClear;
 };
 
 }  // namespace aql

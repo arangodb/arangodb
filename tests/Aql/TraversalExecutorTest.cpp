@@ -293,7 +293,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
         traverser(traverserPtr.get()),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         noFixed(""),
-        registerInfos({inReg}, {outReg}, 1, 2, {}, {{0}}),
+        registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables)
 
   {}
@@ -471,7 +471,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
         traverser(traverserPtr.get()),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         fixed("v/1"),
-        registerInfos({}, {1}, 1, 2, {}, {{0}}),
+        registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
         executorInfos(std::move(traverserPtr), registerMapping, fixed,
                       RegisterPlan::MaxRegisterId, filterConditionVariables) {}
 };

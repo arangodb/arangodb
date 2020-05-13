@@ -33,6 +33,7 @@
 
 #include "FetcherTestHelper.h"
 
+#include <Containers/HashSet.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -50,7 +51,7 @@ class AllRowsFetcherTest : public ::testing::Test {
   VPackBuilder input;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  RegIdSet inputRegisters;
+  RegIdSet inputRegisters{};
   DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, inputRegisters, 1};
 };
 

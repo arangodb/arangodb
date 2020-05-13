@@ -1,9 +1,12 @@
 #include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+
+#include <Containers/HashSet.h>
 #include <Logger/LogMacros.h>
 
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 // TODO Subqueries have their own SubqueryVarUsageFinder, which is called in
 //      getVariablesUsedHere(), and do a recursive walk to get the variables.
@@ -16,6 +19,20 @@ using namespace arangodb::aql;
 //      subqueries. After that walk downwards, and process subqueries downwards
 //      when hitting them.
 
+namespace {
+
+/// @brief Merge everything from source into target. (emilib::HashSet does not
+///        have a merge() method, nor extract()).
+///        This behaves like
+///          target.merge(source);
+///        .
+auto mergeInto(VarSet& target, VarSet const& source) {
+  for (auto varPtr : source) {
+    target.emplace(varPtr);
+  }
+}
+}
+
 template <class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
@@ -25,7 +42,7 @@ bool VarUsageFinderT<T>::before(T* en) {
   en->setVarsUsedLater(_usedLaterStack);
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_END: {
-      _usedLaterStack.emplace_back(std::unordered_set<Variable const*>{});
+      _usedLaterStack.emplace_back(VarSet{});
       break;
     }
 
@@ -33,7 +50,11 @@ bool VarUsageFinderT<T>::before(T* en) {
       auto top = std::move(_usedLaterStack.back());
       _usedLaterStack.pop_back();
       TRI_ASSERT(!_usedLaterStack.empty());
-      _usedLaterStack.back().merge(top);
+      // mergeInto is a replacement for merge(), as in
+      //   _usedLaterStack.back().merge(top);
+      // with similar behaviour, because emilib::HashSet does not have a merge
+      // method.
+      mergeInto(_usedLaterStack.back(), top);
       break;
     }
 

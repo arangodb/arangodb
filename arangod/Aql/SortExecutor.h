@@ -54,7 +54,7 @@ struct SortRegister;
 class SortExecutorInfos {
  public:
   SortExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-                    RegIdSet registersToClear,
+                    RegIdFlatSet const& registersToClear,
                     std::vector<SortRegister> sortRegisters, std::size_t limit,
                     AqlItemBlockManager& manager,
                     velocypack::Options const* options, bool stable);
@@ -68,7 +68,7 @@ class SortExecutorInfos {
 
   [[nodiscard]] RegisterCount numberOfOutputRegisters() const;
 
-  [[nodiscard]] RegIdSet const& registersToClear() const;
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const;
 
   [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
 
@@ -83,7 +83,7 @@ class SortExecutorInfos {
  private:
   RegisterCount _numInRegs;
   RegisterCount _numOutRegs;
-  RegIdSet _registersToClear;
+  RegIdFlatSet _registersToClear;
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   velocypack::Options const* _vpackOptions;
