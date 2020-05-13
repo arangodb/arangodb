@@ -64,7 +64,7 @@ describe('request statistics', function () {
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed
     const finalStats = getStatistics();
 
-    checkCommonStatisticsChanges(initialStats, finalStats)
+    checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByTwo = [
       "http.requestsGet", // the first statistics request is also counted
@@ -96,7 +96,7 @@ describe('request statistics', function () {
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed...
     const finalStats = getStatistics();
 
-    checkCommonStatisticsChanges(initialStats, finalStats)
+    checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
       "http.requestsGet", // the first statistics request is also counted
@@ -127,7 +127,7 @@ describe('request statistics', function () {
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed...
     const finalStats = getStatistics();
 
-    checkCommonStatisticsChanges(initialStats, finalStats)
+    checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
       "http.requestsGet", // the first statistics request is also counted
