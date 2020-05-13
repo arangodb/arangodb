@@ -391,7 +391,7 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
   registerRule("remove-distribute-nodes", removeDistributeNodesRule,
-               OptimizerRule::removeSatelliteJoinsRule,
+               OptimizerRule::removeDistributeNodesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
