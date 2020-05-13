@@ -2917,6 +2917,8 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
 
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  } else {
+    loadPlan();  // this is only for the unittests, where no planSyncer thread runs
   }
 
   Result result;
@@ -2988,6 +2990,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+  } else {
+    loadPlan();   // this is only for the unittests, where no planSyncer thread runs
   }
   return {};
 }
@@ -3055,6 +3059,8 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   if (res.successful()) {
     if (res.slice().get("results").length()) {
       waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    } else {
+      loadPlan();   // this is only for the unittests, where no planSyncer thread runs
     }
     return Result();
   }
