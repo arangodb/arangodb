@@ -47,12 +47,10 @@ The following conditions need to hold true, we need to add c++ tests for this.
 using namespace arangodb;
 using namespace arangodb::aql;
 
-OutputAqlItemRow::OutputAqlItemRow(
-    SharedAqlItemBlockPtr block,
-    RegIdSet const& outputRegisters,
-    RegIdSetStack const& registersToKeep,
-    RegIdSet const& registersToClear,
-    AqlCall clientCall, CopyRowBehavior copyRowBehavior)
+OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& outputRegisters,
+                                   const RegIdFlatSetStack& registersToKeep,
+                                   const RegIdFlatSet& registersToClear,
+                                   AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
       _lastBaseIndex(0),

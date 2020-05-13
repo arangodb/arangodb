@@ -453,7 +453,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     "      \"id\" : 6,"
     "      \"name\" : \"5\""
     "    }"
-    "  ]"
+    "  ],"
+    "  \"regsToKeepStack\" : [[]]"
     "}"
   );
 

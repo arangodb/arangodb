@@ -31,6 +31,8 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
+#include <Containers/HashSet.h>
+
 #include <memory>
 
 namespace arangodb::aql {
@@ -51,11 +53,9 @@ class OutputAqlItemRow {
   // TODO Implement this behavior via a template parameter instead?
   enum class CopyRowBehavior { CopyInputRows, DoNotCopyInputRows };
 
-  OutputAqlItemRow(SharedAqlItemBlockPtr block,
-                   RegIdSet const& outputRegisters,
-                   RegIdSetStack const& registersToKeep,
-                   RegIdSet const& registersToClear,
-                   AqlCall clientCall = AqlCall{},
+  OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& outputRegisters,
+                   RegIdFlatSetStack const& registersToKeep,
+                   RegIdFlatSet const& registersToClear, AqlCall clientCall = AqlCall{},
                    CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;
@@ -216,15 +216,15 @@ class OutputAqlItemRow {
   void didSkip(size_t n);
 
  private:
-  [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
+  [[nodiscard]] RegIdSet const& outputRegisters() const {
     return _outputRegisters;
   }
 
-  [[nodiscard]] RegIdSetStack const& registersToKeep() const {
+  [[nodiscard]] RegIdFlatSetStack const& registersToKeep() const {
     return _registersToKeep;
   }
 
-  [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const {
     return _registersToClear;
   }
 
@@ -332,15 +332,15 @@ class OutputAqlItemRow {
   size_t _numValuesWritten;
 
   /**
-   * @brief Call recieved by the client to produce this outputblock
+   * @brief Call received by the client to produce this outputblock
    *        It is used for accounting of produced rows and number
    *        of rows requested by client.
    */
   AqlCall _call;
 
   RegIdSet const& _outputRegisters;
-  RegIdSetStack const& _registersToKeep;
-  RegIdSet const& _registersToClear;
+  RegIdFlatSetStack const& _registersToKeep;
+  RegIdFlatSet const& _registersToClear;
 };
 }  // namespace arangodb::aql
 
