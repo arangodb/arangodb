@@ -999,7 +999,7 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
             "queue analyzers garbage collection");
   }
   if (!queued) {
-    LOG_TOPIC("f8b3e", FATAL, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("f25ad", FATAL, arangodb::iresearch::TOPIC)
         << "Failed to queue analyzers garbage collection, for 5 minutes, "
            "exiting.";
     FATAL_ERROR_EXIT();
