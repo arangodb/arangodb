@@ -130,7 +130,7 @@ class MutexExecutor {
  private:
   MutexExecutorInfos const& _infos;
   std::mutex _mutex;
-  size_t _numClient = 0;
+  size_t _numClient;
 };
 
 /**
