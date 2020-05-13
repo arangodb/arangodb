@@ -96,8 +96,11 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
       
       _internalState = AsyncState::GotResult;
     } catch(...) {
-      _internalState = AsyncState::GotException;
+      if (isAsync) {
+        guard.lock();
+      }
       _returnException = std::current_exception();
+      _internalState = AsyncState::GotException;
     }
   });
 
