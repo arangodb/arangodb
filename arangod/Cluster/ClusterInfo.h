@@ -38,6 +38,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
@@ -293,7 +294,7 @@ class CollectionInfoCurrent {
 class ClusterInfo  {
 #else
 class ClusterInfo final  {
-  friend class SyncerThread;
+  //friend class SyncerThread;
 
 #endif
 private:
