@@ -116,7 +116,6 @@ class Ast {
   /// @brief whether or not query contains any modification operations
   bool containsModificationNode() const;
   void setContainsModificationNode();
-  bool containsParallelNode() const;
   void setContainsParallelNode();
   bool willUseV8() const;
   void setWillUseV8();

@@ -105,7 +105,6 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
     return;
   }
 
-  LOG_DEVEL << "queueing handler";
   queueHandler();
 }
   
@@ -129,7 +128,6 @@ void SharedQueryState::queueHandler() {
     std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
     do {
-      LOG_DEVEL << "wakeup handler " << self.get();
       bool cntn = false;
       try {
         cntn = cb();

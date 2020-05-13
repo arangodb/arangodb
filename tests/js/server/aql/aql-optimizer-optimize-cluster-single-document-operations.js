@@ -161,6 +161,46 @@ function optimizerClusterSingleDocumentTestSuite () {
       db._drop(cn3);
     },
 
+    testFetchDocumentWithOldAttribute : function() {
+      let doc = c1.save({ _key: "oldDoc", old: "abc" });
+      
+      const queries = [
+        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._id", cn1 + "/oldDoc" ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._key", "oldDoc" ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._rev", doc._rev ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one.old", "abc" ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one", { _key: "oldDoc", _rev: doc._rev, old: "abc", _id: cn1 + "/oldDoc" } ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query[0], { "@cn1" : cn1 });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
+
+        result = AQL_EXECUTE(query[0], { "@cn1" : cn1 }).json;
+        assertEqual(query[1], result[0]);
+      });
+    },
+    
+    testFetchDocumentWithNewAttribute : function() {
+      let doc = c1.save({ _key: "newDoc", "new": "abc" });
+      
+      const queries = [
+        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._id", cn1 + "/newDoc" ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._key", "newDoc" ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._rev", doc._rev ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one.`new`", "abc" ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one", { _key: "newDoc", _rev: doc._rev, "new": "abc", _id: cn1 + "/newDoc" } ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query[0], { "@cn1" : cn1 });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
+
+        result = AQL_EXECUTE(query[0], { "@cn1" : cn1 }).json;
+        assertEqual(query[1], result[0]);
+      });
+    },
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test plans that should result
     ////////////////////////////////////////////////////////////////////////////////

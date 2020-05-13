@@ -78,12 +78,9 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
   }
   TRI_ASSERT(_internalState == AsyncState::Empty);
 
-  LOG_DEVEL << "going to execute " << _sharedState.get() << " nodeId: " << _exeNode->id();
-
   _internalState = AsyncState::InProgress;
   bool queued = _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
     std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
-    LOG_DEVEL << "exec async " << isAsync << "  " << _sharedState.get() << " nodeId: " << _exeNode->id();
 
     try {
       auto [state, skip, block] = _dependencies[0]->execute(stack);
