@@ -60,6 +60,24 @@ std::tuple <query_t, index_t> const AgencyCache::get(
 }
 
 // Get Builder from readDB mainly /Plan /Current
+query_t const AgencyCache::dump() const {
+  auto ret = std::make_shared<VPackBuilder>();
+  { VPackObjectBuilder o(ret.get());
+    std::lock_guard g(_storeLock);
+    ret->add("index", VPackValue(_commitIndex));
+    ret->add(VPackValue("cache"));
+    auto query = std::make_shared<arangodb::velocypack::Builder>();
+    {
+      VPackArrayBuilder outer(query.get());
+      VPackArrayBuilder inner(query.get());
+      query->add(VPackValue("/"));
+    }
+    _readDB.read(query, ret);
+  }
+  return ret;
+}
+
+// Get Builder from readDB mainly /Plan /Current
 std::tuple <query_t, index_t> const AgencyCache::read(
   std::vector<std::string> const& paths) const {
   auto result = std::make_shared<arangodb::velocypack::Builder>();
