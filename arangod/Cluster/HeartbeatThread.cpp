@@ -370,10 +370,6 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       }
     }
   }
-  // Check Plan/Version and Current/Version in case a callback did not get
-  // through:
-  _planAgencyCallback->refetchAndUpdate(true, false);
-  _currentAgencyCallback->refetchAndUpdate(true, false);
 }
 
 DBServerAgencySync& HeartbeatThread::agencySync() { return _agencySync; }
@@ -447,31 +443,6 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
-  _planAgencyCallback =
-    std::make_shared<AgencyCallback>(_server, "Plan/Version", updatePlan, true, false);
-  _currentAgencyCallback =
-      std::make_shared<AgencyCallback>(_server, "Current/Version", updateCurrent, true, false);
-
-  bool registered = false;
-  while (!registered && !isStopping()) {
-    registered = _agencyCallbackRegistry->registerCallback(_planAgencyCallback);
-    if (!registered) {
-      LOG_TOPIC("52ce5", ERR, Logger::HEARTBEAT)
-          << "Couldn't register plan change in agency!";
-      std::this_thread::sleep_for(1s);
-    }
-  }
-
-  registered = false;
-  while (!registered && !isStopping()) {
-    registered = _agencyCallbackRegistry->registerCallback(_currentAgencyCallback);
-    if (!registered) {
-      LOG_TOPIC("f1df2", ERR, Logger::HEARTBEAT)
-          << "Couldn't register current change in agency!";
-      std::this_thread::sleep_for(1s);
-    }
-  }
-
   // The following helps to synchronize between a background read
   // operation run in a scheduler thread and a the heartbeat
   // thread. If it is zero, the heartbeat schedules another
@@ -542,9 +513,6 @@ void HeartbeatThread::runDBServer() {
     LOG_TOPIC("f5628", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
   }
 
-  // TODO should these be defered?
-  _agencyCallbackRegistry->unregisterCallback(_currentAgencyCallback);
-  _agencyCallbackRegistry->unregisterCallback(_planAgencyCallback);
 }
 
 void HeartbeatThread::getNewsFromAgencyForCoordinator() {

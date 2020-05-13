@@ -5026,9 +5026,6 @@ void ClusterInfo::SyncerThread::beginShutdown() {
     _news = false;
     _cv.notify_one();
   }
-  while (_state != ThreadState::STOPPED) {
-    std::this_thread::sleep_for(100ms);
-  }
 }
 
 void ClusterInfo::SyncerThread::start() {
