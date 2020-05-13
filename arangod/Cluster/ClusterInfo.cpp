@@ -3185,6 +3185,17 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
   AnalyzersRevision::Revision revision;
   auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
 
+
+  /// analyzersTransaction = startModifying();
+  /// analyerstTransaction.commit(); / abort();
+
+  //auto guard = std::make_unique<arangodb::scopeGuard>([])
+  //bool lockOk = false;
+  //TRI_DEFER(if (!lockOk) {
+  //    _pendingAnalyzerOperationsCount--;
+  //});
+
+
   // do until precondition success or timeout
   do {
     {
@@ -3310,7 +3321,10 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
 
     // Only if not precondition failed
     if (!res.successful()) {
-      if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      // if preconditions failed -> somebody already finished our revision record.
+      // That means agency maintanence already reverted our operation - we must abandon this operation.
+      // So it differs from what we do in startModifying.
+      if (res.httpCode() != static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
         if (TRI_microtime() > endTime) {
           // Dump agency plan
           logAgencyDump();
