@@ -1262,11 +1262,11 @@ std::shared_ptr<RegisterPlan> ExecutionNode::getRegisterPlan() const {
 
 int ExecutionNode::getDepth() const { return _depth; }
 
-std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
+RegIdSet const& ExecutionNode::getRegsToClear() const {
   if (getType() == RETURN) {
     auto* returnNode = castTo<ReturnNode const*>(this);
     if (!returnNode->returnInheritedResults()) {
-      static const decltype(_regsToClear) emptyRegsToClear;
+      static const decltype(_regsToClear) emptyRegsToClear{};
       return emptyRegsToClear;
     }
   }
@@ -2224,8 +2224,7 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  auto registerInfos = createRegisterInfos({inputRegister},
-                                           {});
+  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
 
   auto executorInfos = FilterExecutorInfos(inputRegister);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
@@ -2323,8 +2322,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
-        createRegisterInfos({inputRegister},
-                            {outputRegister});
+        createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outputRegister});
     auto executorInfos = ReturnExecutorInfos(inputRegister, _count);
 
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,

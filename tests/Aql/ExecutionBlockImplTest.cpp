@@ -309,7 +309,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     auto writableOutputRegisters = RegIdSet{0};
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
-        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, {}, {{}}},
+        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, RegIdFlatSet{}, RegIdFlatSetStack{{}}},
         IdExecutorInfos{false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
@@ -322,12 +322,15 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
                                                       RegisterId nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
-    RegIdSet registersToClear{};
+    auto registersToClear = RegIdFlatSet{};
+    auto regsToKeepProto = RegIdFlatSet{};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
+      regsToKeepProto.emplace(r - 1);
     }
-    RegIdSetStack registersToKeep{readableIn, readableIn, readableIn, readableIn};
+    RegIdFlatSetStack registersToKeep{regsToKeepProto, regsToKeepProto,
+                                      regsToKeepProto, regsToKeepProto};
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
         fakedQuery->rootEngine(), generateNodeDummy(),
