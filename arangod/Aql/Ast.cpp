@@ -1863,11 +1863,7 @@ size_t Ast::validatedParallelism(AstNode const* value) {
   if (value->isIntValue()) {
     int64_t p = value->getIntValue();
     if (p > 0) {
-#ifdef USE_ENTERPRISE
       return static_cast<size_t>(p);
-#else 
-      return 1;
-#endif
     }
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "parallelism: invalid value");
@@ -3955,12 +3951,10 @@ void Ast::setContainsModificationNode() {
   _containsModificationNode = true;
 }
 
-bool Ast::containsParallelNode() const {
-  return _containsParallelNode;
-}
-
 void Ast::setContainsParallelNode() {
+#ifdef USE_ENTERPRISE
   _containsParallelNode = true;
+#endif
 }
 
 bool Ast::willUseV8() const {

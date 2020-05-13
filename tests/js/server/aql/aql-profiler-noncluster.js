@@ -306,6 +306,7 @@ function ahuacatlProfilerTestSuite () {
     /// @brief test TraversalBlock: traverse ~half a tree
     ////////////////////////////////////////////////////////////////////////////////
 
+    /* TODO: enable this test once we have parallelism ready 
     testTraversalBlockParallel: function () {
       const col = db._createDocumentCollection(colName);
       const edgeCol = db._createEdgeCollection(edgeColName);
@@ -343,7 +344,7 @@ function ahuacatlProfilerTestSuite () {
         {query, genNodeList, prepare, bind}
       );
     },
-
+    */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test EnumerateViewBlock1
