@@ -47,7 +47,7 @@ This option supersedes *overwrite* and offers the following modes:
   insert operation will return success in this case. This mode does not
   support returning the old document version using `RETURN OLD`. When using
   `RETURN NEW`, *null* will be returned in case the document already existed.
-  `"replace"`: if a document with the specified *_key* value exists already,
+- `"replace"`: if a document with the specified *_key* value exists already,
   it will be overwritten with the specified document value. This mode will
   also be used when no overwrite mode is specified but the *overwrite*
   flag is set to *true*.

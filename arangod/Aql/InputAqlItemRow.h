@@ -122,8 +122,7 @@ class InputAqlItemRow {
    * @brief Clone a new ItemBlock from this row
    */
   SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
-                                     std::unordered_set<RegisterId> const& registers,
-                                     size_t newNrRegs) const;
+                                     RegIdFlatSet const& registers, size_t newNrRegs) const;
 
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
