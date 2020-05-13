@@ -733,7 +733,9 @@ std::vector<aql::Collection const*> GraphNode::collections() const {
   }
 
   std::vector<aql::Collection const*> vector;
+  vector.reserve(set.size());
   std::move(set.begin(), set.end(), std::back_inserter(vector));
+
   return vector;
 }
 

@@ -8,6 +8,13 @@ devel
   paths queries on disjoint smart graphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
 
+* Fixed issue #11590: Querying for document by _key returning only a single
+  seemingly random property on entity ("old", in this case).
+
+  This fixes single-key document lookups in the cluster for simple by-key
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN
+  doc` in case the document has either an "old" or a "new" attribute.
+
 * Moved calculation of registers to keep into the register planning. It can be
   calculated more efficiently there.
 
