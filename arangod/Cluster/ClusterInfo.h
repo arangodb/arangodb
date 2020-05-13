@@ -1042,6 +1042,46 @@ class ClusterInfo final  {
 
 };
 
+class AnalyzerModificationTransaction { //!!!! mark as NoCopy
+public:
+  AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup)
+    : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
+    TRI_ASSERT(_clusterInfo);
+  }
+
+  ~AnalyzerModificationTransaction() {
+    abort();
+  }
+
+  Result start();
+  Result commit();
+  Result abort();
+private:
+
+  void revertCounter();
+
+  // our cluster info
+  ClusterInfo* _clusterInfo;
+
+  // database for operation
+  // need to copy as may be temp value provided to constructor
+  DatabaseID  _database;
+
+  // rollback operations counter
+  bool _rollbackCounter{ false };
+
+  // rollback revision in Plan
+  bool _rollbackRevision{ false };
+
+  // cleanup or normal analyzer insert/remove
+  bool _cleanupTransaction;
+
+  // pending operation sount. Positive number means some operations are ongoing
+  // zero means system idle
+  // negative value means recovery is ongoing
+  static std::atomic<int32_t> _pendingAnalyzerOperationsCount;
+};
+
 }  // end namespace arangodb
 
 #endif
