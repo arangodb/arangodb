@@ -3,6 +3,18 @@ devel
 
 * Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
 
+* Made several improvements to AQL's internal register planning. This will
+  improve query performance in several cases; mainly of large queries with many
+  variables, and of spliced subqueries. This also fixes the github issues #10853
+  and #11358 which reported performance degradation caused by subquery splicing.
+
+* Fixed issue #11590: Querying for document by _key returning only a single
+  seemingly random property on entity ("old", in this case).
+
+  This fixes single-key document lookups in the cluster for simple by-key
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN
+  doc` in case the document has either an "old" or a "new" attribute.
+
 * Restored behavior of Foxx API documentation being expanded to show all routes
   rather than collapsing all sections by default.
 
