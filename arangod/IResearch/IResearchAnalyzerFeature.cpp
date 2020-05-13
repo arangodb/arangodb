@@ -2613,6 +2613,12 @@ void IResearchAnalyzerFeature::stop() {
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
+  {
+    // reset again, as there may be a race between beginShutdown and
+    // the execution of the deferred _workItem
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
+  }
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
