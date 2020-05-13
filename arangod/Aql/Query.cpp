@@ -289,10 +289,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
-  if (plan == nullptr) { // oops
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "failed to create query execution engine");
-  }
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -831,12 +827,6 @@ QueryResult Query::explain() {
     std::unique_ptr<ExecutionPlan> plan =
         ExecutionPlan::instantiateFromAst(parser.ast());
 
-    if (plan == nullptr) {
-      // oops
-      return QueryResult(
-          Result(TRI_ERROR_INTERNAL, "unable to create plan from AST"));
-    }
-
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
@@ -1327,11 +1317,6 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
-    if (plan == nullptr) {  // oops
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "could not create plan from vpack");
-    }
-
     plan->findVarUsage();
 
     res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
