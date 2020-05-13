@@ -1811,7 +1811,6 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   if (name == StaticStrings::SystemDatabase) {
     return Result(TRI_ERROR_FORBIDDEN);
   }
-
   AgencyComm ac(_server);
 
   double const realTimeout = getTimeout(timeout);
@@ -1854,16 +1853,13 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+          return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-
-    return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
+      return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
   }
   if (res.slice().get("results").length()) {
     waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-  // Load our own caches:
-  loadPlan();
 
   // Now wait stuff in Current to disappear and thus be complete:
   {
@@ -1872,27 +1868,26 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     while (true) {
       if (dbServerResult->load(std::memory_order_acquire) >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
-        res = ac.removeValues(where, true);
-
+        AgencyOperation delCurrentCollection(where, AgencySimpleOperationType::DELETE_OP);
+        AgencyOperation incrementCurrentVersion(
+          "Current/Version", AgencySimpleOperationType::INCREMENT_OP);
+        AgencyWriteTransaction cx({delCurrentCollection, incrementCurrentVersion});
+        res = ac.sendTransactionWithFailover(cx);
         if (res.successful()) {
-          if (res.slice().get("results").length()) {
-            waitForCurrent(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-          }
           return Result(TRI_ERROR_NO_ERROR);
         }
-
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT);
       }
 
       if (TRI_microtime() > endTime) {
         logAgencyDump();
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+              return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
       if (_server.isStopping()) {
-        return Result(TRI_ERROR_SHUTTING_DOWN);
+              return Result(TRI_ERROR_SHUTTING_DOWN);
       }
     }
   }
@@ -2612,13 +2607,9 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION);
   }
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (res.slice().get("results").length()) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-
-  // Update our own cache:
-  loadPlan();
 
   if (numberOfShards == 0) {
     loadCurrent();
@@ -2634,10 +2625,15 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
-        ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
-
-        loadCurrent();
-
+        AgencyOperation delCurrentCollection("Current/Collections/" + dbName + "/" + collectionID,
+                                             AgencySimpleOperationType::DELETE_OP);
+        AgencyOperation incrementCurrentVersion(
+          "Current/Version", AgencySimpleOperationType::INCREMENT_OP);
+        AgencyWriteTransaction cx({delCurrentCollection, incrementCurrentVersion});
+        res = ac.sendTransactionWithFailover(cx);
+        if (res.slice().get("results").length()) {
+          waitForCurrent(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+        }
         events::DropCollection(dbName, collectionID, *dbServerResult);
         return Result(*dbServerResult);
       }
@@ -2713,11 +2709,9 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
-    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
     if (res.slice().get("results").length()) {
-      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
-    loadPlan();
     return Result();
   }
 
@@ -2833,11 +2827,8 @@ Result ClusterInfo::createViewCoordinator(  // create view
   }
 
   if (res.slice().get("results").length() > 0) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-
-  // Update our cache:
-  loadPlan();
 
   events::CreateView(databaseName, name, TRI_ERROR_NO_ERROR);
   return Result(TRI_ERROR_NO_ERROR);
@@ -2864,13 +2855,9 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
 
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (res.slice().get("results").length()) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-
-  // Update our own cache
-  loadPlan();
 
   Result result;
 
@@ -2939,12 +2926,9 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage()};
   }
 
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (res.slice().get("results").length()) {
-    cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
-
-  loadPlan();
   return {};
 }
 
@@ -3009,11 +2993,9 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
 
   if (res.successful()) {
-    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
     if (res.slice().get("results").length()) {
-      cache.waitFor(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+      waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
-    loadPlan();
     return Result();
   }
 
@@ -3262,9 +3244,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
   if (result.successful()) {
-    auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
     if (result.slice().get("results").length()) {
-      cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+      waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
     }
   }
 
@@ -3368,13 +3349,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               << "Could not remove isBuilding flag in new index "
               << indexId.id() << ", this will be repaired automatically.";
         } else {
-          auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
           if (result.slice().get("results").length()) {
-            cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+            waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
           }
         }
-
-        loadPlan();
 
         if (!collectionWatcher.isPresent()) {
           return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
@@ -3411,11 +3389,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
           AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
 
           if (update.successful()) {
-            auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
             if (update.slice().get("results").length()) {
-              cache.waitFor(update.slice().get("results")[0].getNumber<uint64_t>()).get();
+              waitForPlan(update.slice().get("results")[0].getNumber<uint64_t>()).get();
             }
-            loadPlan();
 
             if (tmpRes < 0) {                 // timeout
               return Result(                  // result
@@ -3635,13 +3611,10 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
         std::string(" Failed to execute ") + trx.toJson() +
             " ResultCode: " + std::to_string(result.errorCode()));
   }
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (result.slice().get("results").length()) {
-    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
 
-  // load our own cache:
-  loadPlan();
   if (numberOfShards == 0) {  // smart "dummy" collection has no shards
     TRI_ASSERT(collection.get(StaticStrings::IsSmart).getBool());
     loadCurrent();
@@ -4570,9 +4543,8 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
                                 std::to_string(r.errorCode()));
     return result;
   }
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
   if (r.slice().get("results").length()) {
-    cache.waitFor(r.slice().get("results")[0].getNumber<uint64_t>()).get();
+    waitForPlan(r.slice().get("results")[0].getNumber<uint64_t>()).get();
   }
 
   return arangodb::Result();
