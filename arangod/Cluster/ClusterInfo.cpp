@@ -4962,11 +4962,19 @@ bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
 }
 
 void ClusterInfo::SyncerThread::beginShutdown() {
+
+  using namespace std::chrono_literals;
+  
   // set the shutdown state in parent class
   Thread::beginShutdown();
-  std::lock_guard<std::mutex> lck(_m);
-  _news = false;
-  _cv.notify_one();
+  {
+    std::lock_guard<std::mutex> lck(_m);
+    _news = false;
+    _cv.notify_one();
+  }
+  while (_state != ThreadState::STOPPED) {
+    std::this_thread::sleep_for(100ms);
+  }
 }
 
 void ClusterInfo::SyncerThread::start() {
@@ -4976,7 +4984,6 @@ void ClusterInfo::SyncerThread::start() {
 
 void ClusterInfo::SyncerThread::run() {
   using namespace std::chrono_literals;
-
 
   std::function<bool(VPackSlice const& result)> update =
     [=](VPackSlice const& result) {

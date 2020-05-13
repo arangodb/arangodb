@@ -606,8 +606,7 @@ void ClusterFeature::start() {
   }
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5, endpoints);
-    _clusterInfo->startSyncers();
-
+  _clusterInfo->startSyncers();
 
   comm.increment("Current/Version");
 
