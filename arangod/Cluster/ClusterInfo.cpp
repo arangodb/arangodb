@@ -255,9 +255,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _planVersion(0),
     _currentVersion(0),
     _planLoader(std::thread::id()),
-    _uniqid(),
-    _planSyncer(server, "Plan", std::bind(&ClusterInfo::loadPlan, this), agencyCallbackRegistry),
-    _curSyncer(server, "Current", std::bind(&ClusterInfo::loadCurrent, this), agencyCallbackRegistry) {
+    _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -1102,7 +1100,11 @@ void ClusterInfo::loadPlan() {
     {
       std::lock_guard w(_waitPlanLock);
       triggerWaiting(_waitPlan, idx);
-      _server.getFeature<ClusterFeature>().heartbeatThread()->notify();
+      auto heartbeatThread = _server.getFeature<ClusterFeature>().heartbeatThread();
+      if (heartbeatThread) {
+        // In the unittests, there is no heartbeatthread, and we do not need to notify
+        heartbeatThread->notify();
+      }
     }
 
     if (!acb->slice().isNumber()) {
@@ -1279,7 +1281,11 @@ void ClusterInfo::loadCurrent() {
     {
       std::lock_guard w(_waitCurrentLock);
       triggerWaiting(_waitCurrent, idx);
-      _server.getFeature<ClusterFeature>().heartbeatThread()->notify();
+      auto heartbeatThread = _server.getFeature<ClusterFeature>().heartbeatThread();
+      if (heartbeatThread) {
+        // In the unittests, there is no heartbeatthread, and we do not need to notify
+        heartbeatThread->notify();
+      }
     }
 
     if (!acb->slice().isNumber()) {
@@ -4909,8 +4915,10 @@ std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() co
 
 
 void ClusterInfo::startSyncers() {
-  _planSyncer.start();
-  _curSyncer.start();
+  _planSyncer = std::make_unique<SyncerThread>(_server, "Plan", std::bind(&ClusterInfo::loadPlan, this), _agencyCallbackRegistry);
+  _planSyncer->start();
+  _curSyncer = std::make_unique<SyncerThread>(_server, "Current", std::bind(&ClusterInfo::loadCurrent, this), _agencyCallbackRegistry);
+  _curSyncer->start();
 }
 
 void ClusterInfo::shutdownSyncers() {
@@ -4935,8 +4943,8 @@ void ClusterInfo::shutdownSyncers() {
     _waitCurrent.clear();
   }
 
-  _planSyncer.beginShutdown();
-  _curSyncer.beginShutdown();
+  _planSyncer->beginShutdown();
+  _curSyncer->beginShutdown();
 }
 
 VPackSlice PlanCollectionReader::indexes() {
