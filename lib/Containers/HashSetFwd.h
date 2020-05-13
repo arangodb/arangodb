@@ -22,28 +22,35 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONTAINERS_HASH_SET_H
-#define ARANGODB_CONTAINERS_HASH_SET_H 1
+#ifndef ARANGODB_CONTAINERS_HASH_SET_FWD_H
+#define ARANGODB_CONTAINERS_HASH_SET_FWD_H
 
-// Include implementation and forward-declarations in our namespace:
-
-#include "Containers/HashSetFwd.h"
-#include "Containers/details/HashSetImpl.h"
-
-#include <algorithm>
+#include <functional>
 
 namespace emilib {
 
-template <typename KeyT, typename HashT, typename EqT>
-bool operator==(HashSet<KeyT, HashT, EqT> const& left, HashSet<KeyT, HashT, EqT> const& right) {
-  if (left.size() != right.size()) {
-    return false;
-  }
+template <typename T>
+struct HashSetEqualTo;
 
-  return std::all_of(left.begin(), left.end(),
-                     [&right](auto const& it) { return right.contains(it); });
-}
+template <typename KeyT, typename HashT, typename EqT>
+class HashSet;
+
+template <typename KeyT, typename HashT, typename EqT>
+bool operator==(HashSet<KeyT, HashT, EqT> const&, HashSet<KeyT, HashT, EqT> const&);
 
 }  // namespace emilib
 
-#endif
+// map emilib::HashSet into arangodb namespace
+namespace arangodb {
+namespace containers {
+
+template <typename T>
+using HashSetEqualTo = emilib::HashSetEqualTo<T>;
+
+template <typename KeyT, typename HashT = std::hash<KeyT>, typename EqT = HashSetEqualTo<KeyT>>
+using HashSet = emilib::HashSet<KeyT, HashT, EqT>;
+
+}  // namespace containers
+}  // namespace arangodb
+
+#endif  // ARANGODB_CONTAINERS_HASH_SET_FWD_H

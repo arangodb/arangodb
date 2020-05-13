@@ -32,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/container/flat_set.hpp>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -65,7 +66,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
                                           SharedAqlItemBlockPtr const& inputBlock,
                                           SharedAqlItemBlockPtr& outputBlock) {
     auto numRegisters = inputBlock->getNrRegs();
-    outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
+    outputBlock = itemBlockManager.requestBlock(targetNumberOfRows, numRegisters);
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{};
     int64_t maxShadowRowDepth = 0;
@@ -76,15 +77,15 @@ class AqlShadowItemRowTest : public ::testing::Test {
       }
     }
 
-    auto protoRegSet = RegIdSet{};
+    auto protoRegSet = RegIdFlatSet{};
     for (RegisterId r = 0; r < numRegisters; ++r) {
       protoRegSet.emplace(r);
     }
 
-    RegIdSetStack registersToKeep;
+    RegIdFlatSetStack registersToKeep;
     std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
 
-    auto registersToClear = RegIdSet{};
+    auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
@@ -130,15 +131,15 @@ class AqlShadowItemRowTest : public ::testing::Test {
       }
     }
 
-    auto protoRegSet = RegIdSet{};
+    auto protoRegSet = RegIdFlatSet{};
     for (RegisterId r = 0; r < numRegisters; ++r) {
       protoRegSet.emplace(r);
     }
 
-    RegIdSetStack registersToKeep;
+    RegIdFlatSetStack registersToKeep;
     std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
 
-    auto registersToClear = RegIdSet{};
+    auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 

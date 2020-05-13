@@ -141,6 +141,11 @@ void clusterLiftConstantsForDisjointGraphNodes(Optimizer* opt,
                                                OptimizerRule const& rule);
 #endif
 
+#ifdef USE_ENTERPRISE
+void clusterPushSubqueryToDBServer(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                   OptimizerRule const& rule);
+#endif
+
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -277,6 +282,9 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief move filters into EnumerateCollection nodes
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
+
+/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized count operation
+void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);

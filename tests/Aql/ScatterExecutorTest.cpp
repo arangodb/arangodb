@@ -102,7 +102,7 @@ class SharedScatterExecutionBlockTest {
   }
 
   auto generateRegisterInfos() const -> RegisterInfos {
-    return RegisterInfos{{0}, {}, 1, 1, {}, {{0}}};
+    return RegisterInfos{RegIdSet{0}, {}, 1, 1, {}, {RegIdSet{0}}};
   }
 
   auto generateExecutorInfos() const -> ScatterExecutorInfos {
