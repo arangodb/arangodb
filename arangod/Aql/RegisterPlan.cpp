@@ -56,7 +56,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   if (en->isIncreaseDepth()) {
     // isIncreaseDepth => mayReuseRegisterImmediately
     TRI_ASSERT(mayReuseRegisterImmediately);
-    plan->addSection();
+    plan->increaseDepth();
   }
 
   if (en->getType() == ExecutionNode::SUBQUERY) {
@@ -199,12 +199,12 @@ void RegisterPlanWalkerT<T>::after(T* en) {
 #endif
 
   en->setRegsToKeep(regsToKeepStack);
-  en->_depth = plan->currentSection;
+  en->_depth = plan->depth;
   en->_registerPlan = plan;
 }
 
 template <typename T>
-RegisterPlanT<T>::RegisterPlanT() : currentSection(0) {
+RegisterPlanT<T>::RegisterPlanT() : depth(0) {
   nrRegs.reserve(8);
   nrRegs.emplace_back(0);
 }
@@ -215,22 +215,22 @@ RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
     : varInfo(v.varInfo),
       nrRegs(v.nrRegs),
       subQueryNodes(),
-      currentSection(newdepth + 1) {
-  if (currentSection + 1 < 8) {
+      depth(newdepth + 1) {
+  if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
   }
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
-  nrRegs.resize(currentSection);
+  nrRegs.resize(depth);
   auto regCount = nrRegs.back();
   nrRegs.emplace_back(regCount);
 }
 
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
-    : currentSection(depth) {
+    : depth(depth) {
   VPackSlice varInfoList = slice.get("varInfoList");
   if (!varInfoList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -270,7 +270,7 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   auto other = std::make_shared<RegisterPlanT>();
 
   other->nrRegs = nrRegs;
-  other->currentSection = currentSection;
+  other->depth = depth;
   other->varInfo = varInfo;
 
   // No need to clone subQueryNodes because this was only used during
@@ -281,7 +281,7 @@ auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
 
 template <typename T>
 void RegisterPlanT<T>::increaseDepth() {
-  currentSection++;
+  depth++;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
@@ -307,7 +307,7 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
   }
 
   bool inserted;
-  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(currentSection, regId));
+  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(depth, regId));
   TRI_ASSERT(inserted);
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

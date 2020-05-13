@@ -142,8 +142,8 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-  RegisterId const nrInRegs = nrOutRegs;
+  auto const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  auto const nrInRegs = nrOutRegs;
 
   auto regsToKeep = getRegsToKeepStack();
   auto regsToClear = getRegsToClear();
