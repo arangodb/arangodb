@@ -113,8 +113,7 @@ class FailedServerTest
   Node agency;
   write_ret_t fakeWriteResult;
   trans_ret_t fakeTransResult;
-  arangodb::application_features::ApplicationServer server;
-  arangodb::consensus::Supervision supervision;
+  Mock<arangodb::consensus::Supervision> mockSupervision;
 
   FailedServerTest()
       : jobId("1"),
@@ -122,9 +121,7 @@ class FailedServerTest
         agency(createRootNode()),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        fakeTransResult(true, "", 1, 0, transBuilder),
-        server{nullptr, nullptr},
-        supervision{server} {
+        fakeTransResult(true, "", 1, 0, transBuilder) {
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
   }
@@ -158,7 +155,7 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
   auto builder = agency.toBuilder();
-  FailedServer(supervision, agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
+  FailedServer(mockSupervision.get(), agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
       .create();
   Verify(Method(mockAgent, write));
 }
@@ -222,7 +219,7 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(supervision, agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
+  FailedServer(mockSupervision.get(), agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
       .create();
 
   Verify(Method(mockAgent, write));
@@ -287,7 +284,7 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(supervision, agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
+  FailedServer(mockSupervision.get(), agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER)
       .create();
 }
 
@@ -346,7 +343,8 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  FailedServer(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 
   Verify(Method(mockAgent, write));
 }
@@ -410,7 +408,8 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  FailedServer(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  FailedServer(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 
   Verify(Method(mockAgent, write));
 }

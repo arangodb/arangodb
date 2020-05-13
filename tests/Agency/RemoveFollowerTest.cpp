@@ -116,17 +116,14 @@ class RemoveFollowerTest : public ::testing::Test {
   std::string jobId;
   write_ret_t fakeWriteResult;
   trans_ret_t fakeTransResult;
-  arangodb::application_features::ApplicationServer server;
-  arangodb::consensus::Supervision supervision;
+  Mock<arangodb::consensus::Supervision> mockSupervision;
 
   RemoveFollowerTest()
       : baseStructure(createRootNode()),
         jobId("1"),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()),
-        server{nullptr, nullptr},
-        supervision{server} {
+        fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()) {
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     baseStructure.toBuilder(builder);
   }
@@ -163,8 +160,8 @@ TEST_F(RemoveFollowerTest, creating_a_job_should_create_a_job_in_todo) {
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto removeFollower = RemoveFollower(supervision, baseStructure, &agent, jobId,
-                                       "unittest", DATABASE, COLLECTION, SHARD);
+  auto removeFollower = RemoveFollower(mockSupervision.get(), baseStructure, &agent,
+                                       jobId, "unittest", DATABASE, COLLECTION, SHARD);
 
   removeFollower.create();
 }
@@ -221,7 +218,8 @@ TEST_F(RemoveFollowerTest, collection_still_exists_if_missing_job_is_finished_mo
 
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 }
 
 TEST_F(RemoveFollowerTest,
@@ -272,7 +270,8 @@ TEST_F(RemoveFollowerTest,
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 }
 
 TEST_F(RemoveFollowerTest, condition_still_holds_for_the_mentioned_collections_move_to_finished) {
@@ -329,7 +328,8 @@ TEST_F(RemoveFollowerTest, condition_still_holds_for_the_mentioned_collections_m
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 }
 
 TEST_F(RemoveFollowerTest,
@@ -388,7 +388,8 @@ TEST_F(RemoveFollowerTest,
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 }
 
 TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
@@ -435,7 +436,8 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
 }
@@ -472,9 +474,6 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
-  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
-  arangodb::consensus::Supervision supervision{server};
-
   // The reason for using so much DBServers is to make it nearly impossible
   // for the test to pass by accident. Trying with lower numbers
   // (say remove 5 out of 10) seemed to indicate that the implementation
@@ -487,6 +486,7 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   // Thus I increased the agency to 100 DBServers with a replicationFactor
   // of 50.
 
+  Mock<arangodb::consensus::Supervision> mockSupervision;
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     EXPECT_EQ(typeName(q->slice()), "array");
@@ -609,7 +609,8 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  RemoveFollower(supervision, agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
+  RemoveFollower(mockSupervision.get(), agency("arango"), &agent, JOB_STATUS::TODO, jobId)
+      .start(aborts);
 
   EXPECT_NO_THROW(Verify(Method(mockAgent, write)));
 }

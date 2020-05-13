@@ -25,6 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <thread>
 
 #include "gtest/gtest.h"
 
@@ -105,15 +106,12 @@ class ActiveFailoverTest : public ::testing::Test,
   Builder base;
   std::string jobId;
   write_ret_t fakeWriteResult;
-  arangodb::application_features::ApplicationServer server;
-  arangodb::consensus::Supervision supervision;
+  Mock<arangodb::consensus::Supervision> mockSupervision;
 
   ActiveFailoverTest()
       : jobId{"1"},
         fakeWriteResult{true, "", std::vector<apply_ret_t>{APPLIED},
-                        std::vector<index_t>{1}},
-        server{nullptr, nullptr},
-        supervision{server} {
+                        std::vector<index_t>{1}} {
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     base = createBuilder(agency);
     jobId = "1";
@@ -151,7 +149,8 @@ TEST_F(ActiveFailoverTest, creating_a_job_should_create_a_job_in_todo) {
 
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(base);
-  ActiveFailover job(supervision, snapshot(PREFIX), &agent, jobId, "tests", LEADER);
+  ActiveFailover job(mockSupervision.get(), snapshot(PREFIX), &agent, jobId,
+                     "tests", LEADER);
 
   ASSERT_TRUE(job.create());
   Verify(Method(mockAgent, write));
@@ -193,7 +192,8 @@ TEST_F(ActiveFailoverTest, the_state_is_already_good_and_failservers_is_still_in
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(mod);
-  ActiveFailover job(supervision, snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(mockSupervision.get(), snapshot(PREFIX), &agent, jobId,
+                     "unittest", LEADER);
 
   ASSERT_FALSE(job.create());
   ASSERT_EQ(job.status(), JOB_STATUS::NOTFOUND);
@@ -236,7 +236,8 @@ TEST_F(ActiveFailoverTest, server_is_healthy_again_job_finishes) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(mod);  // snapshort contains GOOD leader
 
-  ActiveFailover job(supervision, snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(mockSupervision.get(), snapshot(PREFIX), &agent, jobId,
+                     "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);
@@ -292,7 +293,8 @@ TEST_F(ActiveFailoverTest, current_leader_is_different_from_server_in_job) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(mod);  // snapshort contains different leader
 
-  ActiveFailover job(supervision, snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(mockSupervision.get(), snapshot(PREFIX), &agent, jobId,
+                     "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);
@@ -350,7 +352,8 @@ TEST_F(ActiveFailoverTest, no_in_sync_follower_found_job_retries) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(base);
 
-  ActiveFailover job(supervision, snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(mockSupervision.get(), snapshot(PREFIX), &agent, jobId,
+                     "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);
@@ -408,7 +411,8 @@ TEST_F(ActiveFailoverTest, follower_with_best_tick_value_used) {
   auto& agent = mockAgent.get();
   Node snapshot = createNodeFromBuilder(base);
 
-  ActiveFailover job(supervision, snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ActiveFailover job(mockSupervision.get(), snapshot(PREFIX), &agent, jobId,
+                     "unittest", LEADER);
   ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
   ASSERT_EQ(job.status(), JOB_STATUS::TODO);
   Verify(Method(mockAgent, write)).Exactly(1);

@@ -138,16 +138,13 @@ class MoveShardTest : public ::testing::Test,
   Node baseStructure;
   write_ret_t fakeWriteResult;
   std::string const jobId;
-  arangodb::application_features::ApplicationServer server;
-  arangodb::consensus::Supervision supervision;
+  Mock<arangodb::consensus::Supervision> mockSupervision;
 
   MoveShardTest()
       : baseStructure(createRootNode()),
         fakeWriteResult(true, "", std::vector<apply_ret_t>{APPLIED},
                         std::vector<index_t>{1}),
-        jobId("1"),
-        server{nullptr, nullptr},
-        supervision{server} {}
+        jobId("1") {}
 };
 
 TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
@@ -186,7 +183,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -228,7 +225,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_servers_are_planned_followers) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -264,7 +261,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, finish));
 
@@ -313,7 +310,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_is_not_in_plan) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -368,7 +365,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -408,7 +405,7 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -447,7 +444,7 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_server_is_locked) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -494,7 +491,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_target_server_was_cleaned_out) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -540,7 +537,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_target_server_is_failed) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -586,7 +583,7 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
 }
 
@@ -629,7 +626,7 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_shard_distributes_its_shards_li
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -735,7 +732,7 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -797,7 +794,7 @@ TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -937,7 +934,7 @@ TEST_F(MoveShardTest, when_moving_a_shard_that_is_a_distributeshardslike_leader_
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -991,7 +988,7 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_it_should_be_aborted_to_prevent_a_de
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -1056,7 +1053,7 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -1115,7 +1112,7 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_leader_case_it_should_be_aborted_to_
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -1166,7 +1163,7 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_while_moving_finish_the_job)
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, finish));
 
@@ -1221,7 +1218,7 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_before_the_job_could_be_star
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, finish));
 
@@ -1285,7 +1282,7 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_planned_shard_situation_has_
   // should not write anything because we are not yet in sync
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -1369,7 +1366,7 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
   });
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1496,7 +1493,7 @@ TEST_F(MoveShardTest, the_job_should_not_finish_itself_when_only_parts_of_distri
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -1697,7 +1694,7 @@ TEST_F(MoveShardTest, the_job_should_finish_when_all_distributeshardslike_shards
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1748,7 +1745,7 @@ TEST_F(MoveShardTest, a_moveshard_job_that_just_made_it_to_todo_can_simply_be_ab
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, TODO, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, TODO, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -1836,7 +1833,7 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -1956,7 +1953,7 @@ TEST_F(MoveShardTest, after_the_new_leader_has_synchronized_the_new_leader_shoul
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -2024,7 +2021,7 @@ TEST_F(MoveShardTest, when_the_old_leader_is_not_yet_ready_for_resign_nothing_sh
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
 }
 
@@ -2121,7 +2118,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -2200,7 +2197,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
   EXPECT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent,write));
 }
@@ -2316,7 +2313,7 @@ TEST_F(MoveShardTest, if_we_are_ready_to_resign_the_old_server_then_finally_move
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -2421,7 +2418,7 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -2431,7 +2428,8 @@ TEST_F(MoveShardTest, calling_an_unknown_job_should_be_possible_without_throwing
   AgentInterface& agent = mockAgent.get();
   Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
 
-  EXPECT_NO_THROW(MoveShard(supervision, agency, &agent, PENDING, "666"));
+  EXPECT_NO_THROW(
+      MoveShard(mockSupervision.get(), agency, &agent, PENDING, "666"));
 }
 
 TEST_F(MoveShardTest, it_should_be_possible_to_create_a_new_moveshard_job) {
@@ -2459,8 +2457,9 @@ TEST_F(MoveShardTest, it_should_be_possible_to_create_a_new_moveshard_job) {
 
   Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
 
-  auto moveShard = MoveShard(supervision, agency, &agent, jobId, "hans", DATABASE,
-                             COLLECTION, SHARD, SHARD_LEADER, SHARD_FOLLOWER1, true);
+  auto moveShard =
+      MoveShard(mockSupervision.get(), agency, &agent, jobId, "hans", DATABASE,
+                COLLECTION, SHARD, SHARD_LEADER, SHARD_FOLLOWER1, true);
   moveShard.create(nullptr);
   Verify(Method(mockAgent, write));
 }
@@ -2471,8 +2470,9 @@ TEST_F(MoveShardTest, it_should_be_possible_to_create_a_new_moveshard_job_within
 
   Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
 
-  auto moveShard = MoveShard(supervision, agency, &agent, jobId, "hans", DATABASE,
-                             COLLECTION, SHARD, SHARD_LEADER, SHARD_FOLLOWER1, true);
+  auto moveShard =
+      MoveShard(mockSupervision.get(), agency, &agent, jobId, "hans", DATABASE,
+                COLLECTION, SHARD, SHARD_LEADER, SHARD_FOLLOWER1, true);
 
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
@@ -2489,8 +2489,9 @@ TEST_F(MoveShardTest, whenever_someone_tries_to_create_a_useless_job_it_should_b
 
   Node agency = createAgencyFromBuilder(baseStructure.toBuilder());
 
-  auto moveShard = MoveShard(supervision, agency, &agent, jobId, "hans", DATABASE,
-                             COLLECTION, SHARD, SHARD_LEADER, SHARD_LEADER, true);
+  auto moveShard =
+      MoveShard(mockSupervision.get(), agency, &agent, jobId, "hans", DATABASE,
+                COLLECTION, SHARD, SHARD_LEADER, SHARD_LEADER, true);
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   moveShard.create(builder);
@@ -2587,7 +2588,7 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
@@ -2649,7 +2650,7 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
@@ -2712,7 +2713,7 @@ TEST_F(MoveShardTest, if_aborting_failed_due_to_a_precondition_report_it_properl
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
@@ -2775,7 +2776,7 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, FINISHED, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, FINISHED, jobId);
   auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
@@ -2830,7 +2831,7 @@ TEST_F(MoveShardTest, if_the_job_fails_while_trying_to_switch_over_leadership_it
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -2888,7 +2889,7 @@ TEST_F(MoveShardTest, if_the_job_timeouts_while_the_new_leader_is_trying_to_take
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   Mock<Job> spy(moveShard);
   Fake(Method(spy, abort));
 
@@ -3011,7 +3012,7 @@ TEST_F(MoveShardTest, when_promoting_the_new_leader_the_old_one_should_become_a_
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
 
-  auto moveShard = MoveShard(supervision, agency, &agent, PENDING, jobId);
+  auto moveShard = MoveShard(mockSupervision.get(), agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
   Verify(Method(mockAgent, write));
 }
