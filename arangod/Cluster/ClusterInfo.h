@@ -1055,8 +1055,8 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief plan and current update threads
   //////////////////////////////////////////////////////////////////////////////
-  SyncerThread _planSyncer;
-  SyncerThread _curSyncer;
+  std::unique_ptr<SyncerThread> _planSyncer;
+  std::unique_ptr<SyncerThread> _curSyncer;
 
   mutable std::mutex _waitPlanLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
