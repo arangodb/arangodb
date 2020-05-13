@@ -47,10 +47,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Auth/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
+#include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
+#include "Scheduler/SchedulerFeature.h"
 
 namespace iresearch {
 namespace text_format {
@@ -387,7 +388,6 @@ class IResearchAnalyzerFeature final
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
-
 };
 
 }  // namespace iresearch

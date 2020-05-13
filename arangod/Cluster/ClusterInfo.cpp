@@ -3262,6 +3262,11 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
 /// is a timeout.
 ////////////////////////////////////////////////////////////////////////////////
 Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore) {
+
+  TRI_IF_FAILURE("FinishModifyingAnalyzerCoordinator") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
   VPackBuilder serverIDBuilder;
   serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
 

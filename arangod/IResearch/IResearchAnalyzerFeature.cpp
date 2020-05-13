@@ -2376,6 +2376,11 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& nam
 }
 
 Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name) {
+
+  TRI_IF_FAILURE("FinalizeAnalyzerRemove") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
   try {
     auto split = splitAnalyzerName(name);
     auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
@@ -2504,6 +2509,9 @@ Result IResearchAnalyzerFeature::remove(
       }
       _analyzers.erase(itr);
     } else {
+      TRI_IF_FAILURE("UpdateAnalyzerForRemove") {
+        return Result(TRI_ERROR_DEBUG);
+      }
       auto& dbFeature = server().getFeature<DatabaseFeature>();
 
       auto* vocbase = dbFeature.useDatabase(split.first);
