@@ -1621,24 +1621,24 @@ aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
 void IResearchViewNode::planNodeRegisters(aql::RegisterPlan& registerPlan) const {
   // plan registers for output scores
   for (auto const& scorer : _scorers) {
-    registerPlan.registerVariable(scorer.var->id);
+    registerPlan.registerVariable(scorer.var);
   }
 
   if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
-      registerPlan.registerVariable(_outNonMaterializedColPtr->id);
-      registerPlan.registerVariable(_outNonMaterializedDocId->id);
+      registerPlan.registerVariable(_outNonMaterializedColPtr);
+      registerPlan.registerVariable(_outNonMaterializedDocId);
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if noMaterialization()
       registerPlan.addRegister();
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {
-        registerPlan.registerVariable(fieldVar.var->id);
+        registerPlan.registerVariable(fieldVar.var);
       }
     }
   } else {  // plan register for document-id only block
-    registerPlan.registerVariable(_outVariable->id);
+    registerPlan.registerVariable(_outVariable);
   }
 }
 
