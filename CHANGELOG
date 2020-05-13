@@ -18,6 +18,33 @@ devel
 * Restored behavior of Foxx API documentation being expanded to show all routes
   rather than collapsing all sections by default.
 
+* Add optimization for subqueries for which only the number of results
+  matters. The optimization will be triggered for read-only subqueries that 
+  use a full collection scan or an index scan, without any additional filtering
+  (early pruning or document post-filtering) and without LIMIT.
+
+  It will help in the following situation:
+
+      FOR doc IN ...
+        LET count = COUNT(
+          FOR sub IN subCollection 
+            FILTER sub._from == doc._id 
+            RETURN sub
+        )
+        ...
+
+  The restrictions are that the subquery result must only be used with the 
+  COUNT/LENGTH function and not for anything else. The subquery itself must
+  be read-only (no data-modification subquery), not use nested FOR loops nor
+  LIMIT, nor a FILTER condition or calculation that requires accessing the 
+  document data. Accessing index data is supported for filtering, but not
+  for further calculations.
+
+  If the optimization is triggered, it will show up in the query execution
+  plan under the name `optimize-count`.
+
+* Integrated libiresearch log topic properly into ArangoDB logging system.
+
 * Fix a bad deadlock because transaction cleanup was pushed with too low
   priority.
 
@@ -39,8 +66,6 @@ devel
 
 * Fixed a bug in Maintenance which could prevent collection creation from
   working (made CreateCollection action idempotent).
-
-* Integrated libiresearch log topic properly into ArangoDB logging system
 
 * Fix potential undefined behavior in some operations issued to the REST
   handler at `/_api/collection` in cluster mode.
@@ -87,7 +112,6 @@ devel
   parameter.
 
 * Added collection property changes into auditing.
-
 
 * Fix creation of example graphs when `--cluster.min-replication-factor` is set
   and no replication factor was specified for a graph. In this case, the new

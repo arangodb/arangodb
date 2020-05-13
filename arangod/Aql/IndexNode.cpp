@@ -513,7 +513,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                          _outVariable, isProduceResult(), this->_filter.get(),
                          this->projections(), this->coveringIndexAttributePositions(),
                          std::move(nonConstExpressions), std::move(inVars),
-                         std::move(inRegs), hasV8Expression, _condition->root(),
+                         std::move(inRegs), hasV8Expression, doCount(), _condition->root(),
                          this->getIndexes(), _plan->getAst(), this->options(),
                          _outNonMaterializedIndVars, std::move(outNonMaterializedIndRegs));
 
@@ -587,6 +587,11 @@ CostEstimate IndexNode::estimateCost() const {
 
     totalItems += costs.estimatedItems;
     totalCost += costs.estimatedCosts;
+  }
+
+  if (doCount()) {
+    // if "count" mode is set, always hard-code the number of results to 1
+    totalItems = 1;
   }
 
   estimate.estimatedNrItems *= totalItems;

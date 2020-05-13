@@ -86,6 +86,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
   std::vector<std::string> const projections;
   std::vector<size_t> const coveringIndexAttributePositions;
   bool random;
+  bool count;
 
   RegisterInfos registerInfos;
   EnumerateCollectionExecutorInfos executorInfos;
@@ -106,9 +107,10 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
+        count(false),
         registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{}, {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, coveringIndexAttributePositions, random),
+                      nullptr, projections, coveringIndexAttributePositions, random, count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -273,6 +275,7 @@ class EnumerateCollectionExecutorTestProduce
   std::vector<size_t> const coveringIndexAttributePositions;
   Collection aqlCollection;
   bool random;
+  bool count;
 
   RegisterInfos registerInfos;
   EnumerateCollectionExecutorInfos executorInfos;
@@ -288,10 +291,11 @@ class EnumerateCollectionExecutorTestProduce
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
+        count(false),
         registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
                       RegIdFlatSetStack{{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
-                      projections, coveringIndexAttributePositions, random) {}
+                      projections, coveringIndexAttributePositions, random, count) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
                          RegisterId nrOutputRegister = 1, RegIdFlatSet regToClear = {},
@@ -312,7 +316,7 @@ class EnumerateCollectionExecutorTestProduce
         &aqlCollection, &outVariable,
         varUsedLater,   nullptr,
         projections,    coveringIndexAttributePositions,
-        random};
+        random, count};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }
