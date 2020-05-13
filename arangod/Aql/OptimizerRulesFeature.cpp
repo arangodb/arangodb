@@ -408,6 +408,10 @@ void OptimizerRulesFeature::addRules() {
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  
+  registerRule("optimize-count", optimizeCountRule,
+               OptimizerRule::optimizeCountRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   registerRule("parallelize-gather", parallelizeGatherRule, OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
@@ -417,6 +421,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::decayUnnecessarySortedGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
+
+#ifdef USE_ENTERPRISE
+  registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
+               OptimizerRule::clusterPushSubqueryToDBServer,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+#endif
 
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
