@@ -113,7 +113,7 @@ index_t AgencyCache::index() const {
 }
 
 
-void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& toCall) {
+void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& uniq, std::vector<uint64_t>& toCall) {
 
   if (!slice.isObject()) {
     LOG_TOPIC("31514", DEBUG, Logger::CLUSTER) <<
@@ -134,14 +134,18 @@ void AgencyCache::handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uin
     auto const& cbkey = cb.first;
     auto it = std::lower_bound(keys.begin(), keys.end(), cbkey);
     if (it != keys.end() && it->compare(0, cbkey.size(), cbkey) == 0) {
-      toCall.emplace(cb.second);
+      if (uniq.emplace(cb.second).second) {
+        toCall.push_back(cb.second);
+      }
     }
   }
   // Find keys, which are a prefix of a callback:
   for (auto const& k : keys) {
     auto it = _callbacks.lower_bound(k);
     while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
-      toCall.emplace(it->second);
+      if (uniq.emplace(it->second).second) {
+        toCall.push_back(it->second);
+      }
       ++it;
     }
   }
@@ -178,9 +182,11 @@ void AgencyCache::run() {
   //       apply logs to local cache
   //   else
   //     wait ever longer until success
-  std::unordered_set<uint64_t> toCall;
+  std::vector<uint64_t> toCall;
+  std::unordered_set<uint64_t> uniq;
   while (!this->isStopping()) {
 
+    uniq.clear();
     toCall.clear();
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
 
@@ -233,7 +239,7 @@ void AgencyCache::run() {
                   }
                   {
                     std::lock_guard g(_callbacksLock);
-                    handleCallbacksNoLock(i.get("query"), toCall);
+                    handleCallbacksNoLock(i.get("query"), uniq, toCall);
                   }
                 }
                 {
@@ -413,18 +419,18 @@ void AgencyCache::invokeCallbackNoLock(uint64_t id, std::string const& key) cons
   }
 }
 
-void AgencyCache::invokeCallbacks(std::unordered_set<uint64_t> const& toCall) const {
+void AgencyCache::invokeCallbacks(std::vector<uint64_t> const& toCall) const {
   for (auto i : toCall) {
     invokeCallbackNoLock(i);
   }
 }
 
 void AgencyCache::invokeAllCallbacks() const {
-  std::unordered_set<uint64_t> toCall;
+  std::vector<uint64_t> toCall;
   {
     std::lock_guard g(_callbacksLock);
     for (auto i : _callbacks) {
-      toCall.emplace(i.second);
+      toCall.push_back(i.second);
     }
   }
   invokeCallbacks(toCall);

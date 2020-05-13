@@ -294,9 +294,8 @@ class CollectionInfoCurrent {
 class ClusterInfo  {
 #else
 class ClusterInfo final  {
-  //friend class SyncerThread;
-
 #endif
+
 private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
@@ -306,7 +305,11 @@ private:
   typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>> DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   class SyncerThread final : public arangodb::Thread {
+#else
+  class SyncerThread : public arangodb::Thread {
+#endif
   public:
     explicit SyncerThread(
       application_features::ApplicationServer&, std::string const& section,
