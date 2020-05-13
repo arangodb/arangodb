@@ -23,11 +23,13 @@ namespace {
 
 /// @brief Merge everything from source into target. (emilib::HashSet does not
 ///        have a merge() method, nor extract()).
-auto mergeHashSets(VarSet& target, VarSet&& source) {
+///        This behaves like
+///          target.merge(source);
+///        .
+auto mergeInto(VarSet& target, VarSet const& source) {
   for (auto varPtr : source) {
     target.emplace(varPtr);
   }
-  source.clear();
 }
 }
 
@@ -48,7 +50,11 @@ bool VarUsageFinderT<T>::before(T* en) {
       auto top = std::move(_usedLaterStack.back());
       _usedLaterStack.pop_back();
       TRI_ASSERT(!_usedLaterStack.empty());
-      mergeHashSets(_usedLaterStack.back(), std::move(top));
+      // mergeInto is a replacement for merge(), as in
+      //   _usedLaterStack.back().merge(top);
+      // with similar behaviour, because emilib::HashSet does not have a merge
+      // method.
+      mergeInto(_usedLaterStack.back(), top);
       break;
     }
 
