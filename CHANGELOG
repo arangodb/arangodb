@@ -8,6 +8,9 @@ devel
   paths queries on disjoint smart graphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
 
+* Moved calculation of registers to keep into the register planning. It can be
+  calculated more efficiently there.
+
 * Restored behavior of Foxx API documentation being expanded to show all routes
   rather than collapsing all sections by default.
 
