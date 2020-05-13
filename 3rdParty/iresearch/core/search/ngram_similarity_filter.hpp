@@ -23,29 +23,50 @@
 #ifndef IRESEARCH_NGRAM_SIMILARITY_FILTER_H
 #define IRESEARCH_NGRAM_SIMILARITY_FILTER_H
 
-#include "filter.hpp"
+#include "search/filter.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
 
+class by_ngram_similarity;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_ngram_similarity_options
+/// @brief options for ngram similarity filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_ngram_similarity_options {
+  using filter_type = by_ngram_similarity;
+
+  std::vector<bstring> ngrams;
+  float_t threshold{1.f};
+
+  bool operator==(const by_ngram_similarity_options& rhs) const noexcept {
+    return ngrams == rhs.ngrams && threshold == rhs.threshold;
+  }
+
+  size_t hash() const noexcept {
+    size_t hash = std::hash<decltype(threshold)>()(threshold);
+    for (const auto& ngram : ngrams) {
+      hash = hash_combine(hash, hash_utils::hash(ngram));
+    }
+    return hash;
+  }
+}; // by_ngram_similarity_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_ngram_similarity
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_ngram_similarity : public filter {
+class IRESEARCH_API by_ngram_similarity
+    : public filter_base<by_ngram_similarity_options> {
  public:
-  typedef bstring term_t;
-  typedef std::vector<term_t> terms_t;
-  typedef terms_t::iterator iterator;
-  typedef terms_t::const_iterator const_iterator;
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_ngram_similarity";
+  }
 
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
   // returns set of features required for filter 
   static const flags& features();
-
-  by_ngram_similarity();
 
   using filter::prepare;
 
@@ -53,68 +74,9 @@ class IRESEARCH_API by_ngram_similarity : public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
-
-  virtual size_t hash() const noexcept override;
-
-  float_t threshold() const noexcept { return threshold_; }
-
-  by_ngram_similarity& threshold(float_t d) noexcept {
-    assert(d >= 0.);
-    assert(d <= 1.);
-    threshold_ = std::max(0.f, std::min(1.f, d));
-    return *this;
-  }
-  
-  by_ngram_similarity& field(std::string fld) noexcept {
-    fld_ = std::move(fld); 
-    return *this;
-  }
-   
-  const std::string& field() const noexcept { return fld_; }
-
-  by_ngram_similarity& push_back(const bstring& term) {
-    ngrams_.emplace_back(term);
-    return *this;
-  }
-
-  by_ngram_similarity& push_back(bstring&& term) {
-    ngrams_.push_back(std::move(term));
-    return *this;
-  }
-
-  by_ngram_similarity& push_back(const bytes_ref& term) {
-    ngrams_.emplace_back(term);
-    return *this;
-  }
-
-  by_ngram_similarity& push_back(const string_ref& term) {
-    ngrams_.emplace_back(ref_cast<byte_type>(term));
-    return *this;
-  }
-
-  iterator begin() noexcept { return ngrams_.begin(); }
-  iterator end() noexcept { return ngrams_.end(); }
-
-  const_iterator begin() const noexcept { return ngrams_.begin(); }
-  const_iterator end() const noexcept { return ngrams_.end(); }
-
-  bool empty() const noexcept { return ngrams_.empty(); }
-  size_t size() const noexcept { return ngrams_.size(); }
-  void clear() noexcept { ngrams_.clear(); }
-
- protected:
-  virtual bool equals(const filter& rhs) const noexcept override;
-
- private: 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  terms_t ngrams_;
-  std::string fld_;
-  float_t threshold_{1.f};
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-
+    const attribute_provider* ctx) const override;
 }; // by_ngram_similarity
+
 NS_END // ROOT
 
 #endif // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

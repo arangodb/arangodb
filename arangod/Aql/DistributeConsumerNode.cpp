@@ -63,11 +63,12 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
              getRegisterPlan()->nrRegs[getDepth()]);
-  IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()], calcRegsToKeep(),
-                        getRegsToClear(), false, 0, _distributeId,
-                        _isResponsibleForInitializeCursor);
+  auto registerInfos =
+      createRegisterInfos({}, {});
+  auto executorInfos =
+      IdExecutorInfos(false, 0, _distributeId, _isResponsibleForInitializeCursor);
   return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
-      &engine, this, std::move(infos));
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 void DistributeConsumerNode::cloneRegisterPlan(ScatterNode* dependency) {
@@ -76,12 +77,14 @@ void DistributeConsumerNode::cloneRegisterPlan(ScatterNode* dependency) {
   _registerPlan = dependency->getRegisterPlan();
   _depth = dependency->getDepth();
   {
-    auto const& later = dependency->getVarsUsedLater();
+    auto const& later = dependency->getVarsUsedLaterStack();
     setVarsUsedLater(later);
   }
   {
-    auto const& valid = dependency->getVarsValid();
+    auto const& valid = dependency->getVarsValidStack();
     setVarsValid(valid);
   }
   setVarUsageValid();
 }
+
+auto DistributeConsumerNode::getOutputVariables() const -> VariableIdSet { return {}; }

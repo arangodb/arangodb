@@ -581,7 +581,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     if (pos > 0 && pos < value.size() &&
         value.compare(pos, std::string::npos, " begin") == 0) {
       if (!ServerState::instance()->isDBServer()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+                                       "cannot start a managed transaction here");
       }
       std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
@@ -610,7 +611,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+    return std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
 
   TRI_voc_tid_t tid = 0;
@@ -627,9 +628,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!transaction::isLeaderTransactionId(tid) ||
-        !ServerState::instance()->isDBServer()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+    if (!transaction::isLeaderTransactionId(tid) || !ServerState::instance()->isDBServer()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+                                     "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);

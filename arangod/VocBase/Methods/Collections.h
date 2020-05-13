@@ -52,19 +52,18 @@ struct Collections {
     Context(Context const&) = delete;
     Context& operator=(Context const&) = delete;
 
-    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
-    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll, transaction::Methods* trx);
+    explicit Context(std::shared_ptr<LogicalCollection> coll);
+    Context(std::shared_ptr<LogicalCollection> coll, transaction::Methods* trx);
 
     ~Context();
 
     transaction::Methods* trx(AccessMode::Type const& type, bool embeddable,
                               bool forceLoadCollection);
-    TRI_vocbase_t& vocbase() const;
-    LogicalCollection* coll() const;
+    //TRI_vocbase_t& vocbase() const;
+    std::shared_ptr<LogicalCollection> coll() const;
 
    private:
-    TRI_vocbase_t& _vocbase;
-    LogicalCollection& _coll;
+    std::shared_ptr<LogicalCollection> _coll;
     transaction::Methods* _trx;
     bool const _responsibleForTrx;
   };
@@ -123,6 +122,9 @@ struct Collections {
 
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
                                         LogicalCollection const& coll);
+
+  static futures::Future<Result> upgrade(TRI_vocbase_t& vocbase,
+                                         LogicalCollection const& coll);
 
   static futures::Future<OperationResult> revisionId(Context& ctxt);
 

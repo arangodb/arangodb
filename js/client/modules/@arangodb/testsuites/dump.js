@@ -426,7 +426,7 @@ function dump (options) {
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCleanup: 'cleanup-nothing.js',
-    dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
     foxxTest: 'check-foxx.js'
@@ -440,7 +440,7 @@ function dumpMultiple (options) {
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCleanup: 'cleanup-multiple.js',
-    dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph-multiple.js'
   };
@@ -523,7 +523,7 @@ function dumpEncrypted (options) {
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCleanup: 'cleanup-nothing.js',
-    dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     foxxTest: 'check-foxx.js'
   };
@@ -569,13 +569,6 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
-  if (options.storageEngine === "mmfiles") {
-    return {
-      'hotbackup for mmfiles not yet implemented': {
-        status: true,
-      }
-    };
-  }
   if (!require("internal").isEnterprise()) {
     return {
       'hotbackup is only enterprise': {
@@ -585,9 +578,9 @@ function hotBackup (options) {
   }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
-    dumpCheck: 'dump-' + options.storageEngine + c.cluster + '.js',
-    dumpModify: 'dump-' + options.storageEngine + '-modify.js',
-    dumpRecheck: 'dump-' + options.storageEngine + '-modified.js',
+    dumpCheck: 'dump' + c.cluster + '.js',
+    dumpModify: 'dump-modify.js',
+    dumpRecheck: 'dump-modified.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     // do we need this? dumpCheckGraph: 'check-graph.js',
     // todo foxxTest: 'check-foxx.js'

@@ -222,7 +222,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     }
     std::string name = coll->name();
     name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
-    name.append(std::to_string(idx->id()));
+    name.append(std::to_string(idx->id().id()));
     if (idx->hasSelectivityEstimate() || idx->unique()) {
       builder.add(name, VPackValue(idx->selectivityEstimate()));
     }

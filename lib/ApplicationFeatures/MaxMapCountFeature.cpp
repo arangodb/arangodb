@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
@@ -75,7 +76,7 @@ uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
 #ifdef __linux__
   uint64_t expected = 65530;  // Linux kernel default
 
-  uint64_t nproc = TRI_numberProcessors();
+  uint64_t nproc = NumberOfCores::getValue();
 
   // we expect at most 8 times the number of cores as the effective number of
   // threads, and we want to allow at least 8000 mmaps per thread

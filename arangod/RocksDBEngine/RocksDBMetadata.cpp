@@ -231,6 +231,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
                                       VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
                                       std::string& output) {
+  TRI_ASSERT(!coll.isAStub());
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   TRI_ASSERT(appliedSeq > 0);
 
@@ -324,11 +325,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   // Step 4. store the revision tree
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
-    if (coll.syncByRevision()) {
+    if (coll.useSyncByRevision()) {
       output.clear();
       rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
       appliedSeq = std::min(appliedSeq, seq);
-
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
 
@@ -343,6 +343,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
         }
       }
     } else {
+      output.clear();
+      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      appliedSeq = std::min(appliedSeq, seq);
+      TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());
       rocksdb::Status s = batch.Delete(cf, key.string());
       if (!s.ok() && !s.IsNotFound()) {
@@ -351,6 +355,9 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
         return res.reset(rocksutils::convertStatus(s));
       }
     }
+  } else {
+    rocksdb::SequenceNumber seq = rcoll->lastSerializedRevisionTree(maxCommitSeq);
+    appliedSeq = std::min(appliedSeq, seq);
   }
 
   return res;
@@ -358,6 +365,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
 /// @brief deserialize collection metadata, only called on startup
 Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
+  TRI_ASSERT(!coll.isAStub());
+
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. load the counter
@@ -420,7 +429,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     } else if (s.IsNotFound()) {  // expected with nosync recovery tests
       LOG_TOPIC("ecdbb", WARN, Logger::ENGINES)
           << "recalculating index estimate for index "
-          << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
+          << "type '" << idx->typeName() << "' with id '" << idx->id().id() << "'";
       idx->recalculateEstimates();
       continue;
     }
@@ -443,7 +452,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   }
 
   // Step 4. load the revision tree
-  if (coll.syncByRevision()) {
+  if (coll.useSyncByRevision()) {
     key.constructRevisionTreeValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {

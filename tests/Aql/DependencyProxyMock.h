@@ -43,6 +43,7 @@ template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                               ::arangodb::aql::RegIdSet const& inputRegisters,
                                ::arangodb::aql::RegisterId nrRegisters);
 
  public:
@@ -51,8 +52,6 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(
       size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
   inline size_t numberDependencies() const override { return 1; }
-
-  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
       arangodb::aql::AqlCallStack& stack) override;
@@ -90,6 +89,7 @@ class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   MultiDependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                           ::arangodb::aql::RegIdSet const& inputRegisters,
                            ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
 
  public:
@@ -106,9 +106,6 @@ class MultiDependencyProxyMock
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
-  std::pair<arangodb::aql::ExecutionState, size_t> skipSomeForDependency(size_t dependency,
-                                                                         size_t atMost) override;
-
   inline size_t numberDependencies() const override {
     return _dependencyMocks.size();
   }
@@ -117,14 +114,14 @@ class MultiDependencyProxyMock
   // additional test methods
   DependencyProxyMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
     TRI_ASSERT(dependency < _dependencyMocks.size());
-    return _dependencyMocks[dependency];
+    return *_dependencyMocks[dependency];
   }
   bool allBlocksFetched() const;
 
   size_t numFetchBlockCalls() const;
 
  private:
-  std::vector<DependencyProxyMock<passBlocksThrough>> _dependencyMocks;
+  std::vector<std::unique_ptr<DependencyProxyMock<passBlocksThrough>>> _dependencyMocks;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 

@@ -26,8 +26,8 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlCall.h"
+#include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -87,25 +87,26 @@ class CalculationExecutorTest
   Expression expr;
   RegisterId outRegID;
   RegisterId inRegID;
-  CalculationExecutorInfos infos;
+  RegisterInfos registerInfos;
+  CalculationExecutorInfos executorInfos;
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        ast(fakedQuery.get()),
+        ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
-        var("a", 0),
+        var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
         plan(&ast),
-        expr(&plan, &ast, node),
+        expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        infos(outRegID /*out reg*/, RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
-              std::unordered_set<RegisterId>{} /*to clear*/,
-              std::unordered_set<RegisterId>{} /*to keep*/,
-              *fakedQuery.get() /*query*/, expr /*expression*/,
-              std::vector<Variable const*>{&var} /*expression input variables*/,
-              std::vector<RegisterId>{inRegID} /*expression input registers*/) {}
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
+                      RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
+        executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
+                      std::vector<Variable const*>{&var} /*expression input variables*/,
+                      std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}
 
   auto getSplit() -> CalculationExecutorSplitType {
     auto [split] = GetParam();
@@ -113,8 +114,7 @@ class CalculationExecutorTest
   }
 
   auto buildInfos() -> CalculationExecutorInfos {
-    return CalculationExecutorInfos{0,    1,      1,  {}, {}, *fakedQuery.get(),
-                                    expr, {&var}, {0}};
+    return CalculationExecutorInfos{0, *fakedQuery.get(), expr, {&var}, {0}};
   }
 };
 
@@ -129,12 +129,12 @@ INSTANTIATE_TEST_CASE_P(CalculationExecutor, CalculationExecutorTest,
                                           splitStep<1>, splitStep<2>));
 
 TEST_P(CalculationExecutorTest, reference_empty_input) {
-  //   auto infos = buildInfos();
   AqlCall call{};
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -149,8 +149,9 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
   AqlCall call{};
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -174,8 +175,9 @@ TEST_P(CalculationExecutorTest, referece_some_input_skip) {
   call.offset = 4;
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -196,8 +198,9 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
   call.hardLimit = 4;
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -220,8 +223,9 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
   call.fullCount = true;
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -242,8 +246,9 @@ TEST_P(CalculationExecutorTest, condition_some_input) {
   AqlCall call{};
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -267,8 +272,9 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
   call.offset = 4;
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -289,8 +295,9 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
   call.hardLimit = 4;
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -313,8 +320,9 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
   call.fullCount = true;
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -333,12 +341,12 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
 
 // Could be fixed and enabled if one enabled the V8 engine
 TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
-  // auto infos = buildInfos();
   AqlCall call{};
   ExecutionStats stats{};
 
-  ExecutorTestHelper<2, 2>(*fakedQuery)
-      .setExecBlock<CalculationExecutor<CalculationType::V8Condition>>(std::move(infos))
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(std::move(registerInfos),
+                                                                      std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},

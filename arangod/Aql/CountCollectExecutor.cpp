@@ -26,8 +26,8 @@
 #include "CountCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 
 #include <utility>
@@ -35,17 +35,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-CountCollectExecutorInfos::CountCollectExecutorInfos(
-    RegisterId collectRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                    make_shared_unordered_set({collectRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _collectRegister(collectRegister) {}
+CountCollectExecutorInfos::CountCollectExecutorInfos(RegisterId collectRegister)
+    : _collectRegister(collectRegister) {}
 
 RegisterId CountCollectExecutorInfos::getOutputRegisterId() const {
   return _collectRegister;
@@ -103,9 +94,18 @@ auto CountCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aql
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-std::pair<ExecutionState, size_t> CountCollectExecutor::expectedNumberOfRows(size_t) const {
-  TRI_ASSERT(false);
-  return {ExecutionState::HASMORE, 1};
+auto CountCollectExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                                   AqlCall const& call) const
+    noexcept -> size_t {
+  auto subqueries = input.countShadowRows();
+  if (subqueries > 0) {
+    // We will return 1 row for every subquery execution.
+    // We do overallocate here if we have nested subqueries
+    return subqueries;
+  }
+  // No subqueries, we are at the end of the execution.
+  // We either return 1, or the callLimit.
+  return std::min<size_t>(1, call.getLimit());
 }
 
 const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {

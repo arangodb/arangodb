@@ -71,12 +71,11 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
-                                                    TRI_server_id_t clientId)
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId)
     : _id{TRI_NewTickServer()},
       _syncerId{syncerId},
-    // buggy clients may not send the serverId
-      _clientId{clientId != 0 ? clientId : _id},
+      // buggy clients may not send the serverId
+      _clientId{clientId.isSet() ? clientId : ServerId(_id)},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
@@ -130,6 +129,20 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   if (_iterators.empty() && found) {
     _isDeleted = true;  // setDeleted also gets the lock
   }
+}
+
+/// invalidate all iterators with that collection
+bool RocksDBReplicationContext::removeCollection(LogicalCollection& collection) {
+  MUTEX_LOCKER(locker, _contextLock);
+
+  for (auto const& it : _iterators) {
+    if (it.second->logical != nullptr &&
+        it.second->logical->id() == collection.id()) {
+      _isDeleted = true;  // setDeleted also gets the lock
+      return true;
+    }
+  }
+  return false;
 }
 
 /// remove matching iterator
@@ -817,17 +830,18 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
   
-  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
+  _cTypeHandler = transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  TRI_vocbase_col_status_e ignore;
-  int res = vocbase.useCollection(logical.get(), ignore);
-  if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  try {
+    vocbase.useCollection(logical->id(), true);
+  } catch (...) {
+    vocbase.release();
+    throw;
   }
 
   LOG_TOPIC("71236", TRACE, Logger::REPLICATION)
@@ -849,7 +863,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     _sortedIterator = sorted;
 
     if (sorted) {
-      auto index = logical->getPhysical()->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+      auto index = logical->getPhysical()->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
       TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());

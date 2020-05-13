@@ -279,6 +279,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET, "edge collection already set");
   REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST, "malformed orphan list");
   REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_IS_INITIAL, "initial collection is not allowed to be removed manually");
+  REG_ERROR(ERROR_GRAPH_NO_INITIAL_COLLECTION, "no valid initial collection found");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
@@ -286,8 +288,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(ERROR_WAS_ERLAUBE, "was erlaube?!");
-  REG_ERROR(ERROR_COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
-  REG_ERROR(ERROR_COMMUNICATOR_DISABLED, "Communication was disabled");
   REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");
   REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
   REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");
@@ -322,6 +322,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
   REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
   REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
+  REG_ERROR(ERROR_INVALID_DISJOINT_SMART_EDGE, "non disjoint edge found");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");

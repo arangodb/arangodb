@@ -62,6 +62,10 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
  protected:
   void finishConnect() override;
 
+  /// The following is called when the connection is permanently failed. It is
+  /// used to shut down any activity in a way that avoids sleeping barbers
+  void terminateActivity() override;
+
   // Thread-Safe: activate the writer loop (if off and items are queud)
   void startWriting() override;
 

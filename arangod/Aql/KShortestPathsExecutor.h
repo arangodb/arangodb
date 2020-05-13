@@ -26,12 +26,11 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
+#include "Graph/KShortestPathsFinder.h"
 
 #include <velocypack/Builder.h>
-
-using namespace arangodb::velocypack;
 
 namespace arangodb {
 
@@ -55,7 +54,7 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
-class KShortestPathsExecutorInfos : public ExecutorInfos {
+class KShortestPathsExecutorInfos {
  public:
   struct InputVertex {
     enum class Type { CONSTANT, REGISTER };
@@ -71,19 +70,15 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
         : type(Type::REGISTER), reg(reg), value("") {}
   };
 
-  KShortestPathsExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                              std::unordered_set<RegisterId> registersToClear,
-                              std::unordered_set<RegisterId> registersToKeep,
+  KShortestPathsExecutorInfos(RegisterId outputRegister,
                               std::unique_ptr<graph::KShortestPathsFinder>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
   KShortestPathsExecutorInfos() = delete;
 
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&);
+  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) noexcept = default;
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
-  ~KShortestPathsExecutorInfos();
+  ~KShortestPathsExecutorInfos() = default;
 
   [[nodiscard]] auto finder() const -> arangodb::graph::KShortestPathsFinder&;
 
@@ -126,12 +121,12 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
   std::unique_ptr<arangodb::graph::KShortestPathsFinder> _finder;
 
   /// @brief Information about the source vertex
-  InputVertex const _source;
+  InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex const _target;
+  InputVertex _target;
 
-  RegisterId const _outputRegister;
+  RegisterId _outputRegister;
 };
 
 /**
@@ -166,8 +161,6 @@ class KShortestPathsExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, Stats>;
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -188,7 +181,7 @@ class KShortestPathsExecutor {
   [[nodiscard]] auto getVertexId(bool isTarget, arangodb::velocypack::Slice& id) -> bool;
 
   [[nodiscard]] auto getVertexId(KShortestPathsExecutorInfos::InputVertex const& vertex,
-                                 InputAqlItemRow& row, Builder& builder, Slice& id) -> bool;
+                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice& id) -> bool;
 
  private:
   Infos& _infos;

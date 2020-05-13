@@ -17,7 +17,6 @@ set(CLUSTER_ENGINE_SOURCES
   ClusterEngine/ClusterTransactionCollection.cpp
   ClusterEngine/ClusterTransactionState.cpp
   ClusterEngine/ClusterV8Functions.cpp
-  ClusterEngine/MMFilesMethods.cpp
   ClusterEngine/RocksDBMethods.cpp
 )
 set(CLUSTER_ENGINE_SOURCES ${CLUSTER_ENGINE_SOURCES} PARENT_SCOPE)

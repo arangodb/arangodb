@@ -22,6 +22,7 @@
 
 #include "AqlCall.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -279,6 +280,16 @@ auto AqlCall::toString() const -> std::string {
   auto stream = std::stringstream{};
   stream << *this;
   return stream.str();
+}
+
+auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
+  if (getOffset() > other.getOffset()) {
+    return false;
+  }
+  if (getLimit() > other.getLimit()) {
+    return false;
+  }
+  return needsFullCount() == other.needsFullCount();
 }
 
 auto aql::operator<<(std::ostream& out, AqlCall::Limit const& limit) -> std::ostream& {

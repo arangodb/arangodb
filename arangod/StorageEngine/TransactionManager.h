@@ -41,26 +41,12 @@ class TransactionManager {
   TransactionManager() {}
   virtual ~TransactionManager() = default;
 
-  // register a list of failed transactions
-  virtual void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) = 0;
-
-  // unregister a list of failed transactions
-  virtual void unregisterFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) = 0;
-
-  // return the set of failed transactions
-  virtual std::unordered_set<TRI_voc_tid_t> getFailedTransactions() = 0;
-
   // register a transaction
   virtual void registerTransaction(TRI_voc_tid_t transactionId,
-                                   std::unique_ptr<TransactionData> data,
                                    bool isReadOnlyTransaction) = 0;
 
   // unregister a transaction
-  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) = 0;
-
-  // iterate all the active transactions
-  virtual void iterateActiveTransactions(
-      std::function<void(TRI_voc_tid_t, TransactionData const*)> const& callback) = 0;
+  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool isReadOnlyTransaction) = 0;
 
   virtual uint64_t getActiveTransactionCount() = 0;
 

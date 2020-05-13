@@ -69,8 +69,8 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
     guid.append(name);
   } else {
     TRI_ASSERT(id); // ensured by ensureId(...)
-    char buf[sizeof(TRI_server_id_t) * 2 + 1];
-    auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId(), buf);
+    char buf[sizeof(arangodb::ServerId) * 2 + 1];
+    auto len = TRI_StringUInt64HexInPlace(arangodb::ServerIdFeature::getId().id(), buf);
     guid.append("h");
     guid.append(buf, len);
     TRI_ASSERT(guid.size() > 3);

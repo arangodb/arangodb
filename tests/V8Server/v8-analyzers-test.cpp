@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Mocks/Servers.h"  // this must be first because windows
+
 #include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 // #include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
@@ -37,7 +39,6 @@
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -48,7 +49,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -80,12 +80,17 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
-  EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
-    _attrs.emplace(_attr);
+  static constexpr irs::string_ref type_name() noexcept {
+    return "v8-analyzer-empty";
   }
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {
+  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::frequency>::id()) {
+      return &_attr;
+    }
+
+    return nullptr;
   }
   static ptr make(irs::string_ref const&) {
     PTR_NAMED(EmptyAnalyzer, ptr);
@@ -114,12 +119,11 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
  private:
-  irs::attribute_view _attrs;
   irs::frequency _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "v8-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -186,12 +190,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
@@ -211,7 +215,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = &vocbase;
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
-  
+
   auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate.get());
   auto fn_name = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
   auto fn_type = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
@@ -448,7 +452,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ASSERT_TRUE(analyzers
                     .emplace(result, name, "v8-analyzer-empty",
                              VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
-                             irs::flags{irs::frequency::type()})
+                             irs::flags{irs::type<irs::frequency>::get()})
                     .ok());
   }
 
@@ -456,12 +460,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
@@ -874,12 +878,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
@@ -1258,12 +1262,12 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
@@ -1576,12 +1580,12 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
-  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
+  
 
   TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server()));
   TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));

@@ -102,7 +102,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many element in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -124,7 +124,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return false;
   }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -148,7 +148,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Reset the cursor
-  void reset() override {
+  void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     _done = false;
@@ -187,7 +187,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     // we need to have a pointer to a slice for the upper bound
     // so we need to assign the slice to an instance variable here
-    if (reverse) {
+    if constexpr (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
     } else {
@@ -197,7 +197,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     TRI_ASSERT(options.prefix_same_as_start);
     _iterator = mthds->NewIterator(options, index->columnFamily());
-    if (reverse) {
+    if constexpr (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
@@ -208,7 +208,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next limit many elements in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -237,7 +237,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return true;
   }
 
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -269,7 +269,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return true;
   }
 
-  void skip(uint64_t count, uint64_t& skipped) override {
+  void skipImpl(uint64_t count, uint64_t& skipped) override {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (!_iterator->Valid() || outOfRange()) {
@@ -292,10 +292,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   /// @brief Reset the cursor
-  void reset() override {
+  void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
-    if (reverse) {
+    if constexpr (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
@@ -317,7 +317,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // so we really need to run the full-featured (read: expensive)
     // comparator
 
-    if (reverse) {
+    if constexpr (reverse) {
       return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
       return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
@@ -325,7 +325,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   inline bool advance() {
-    if (reverse) {
+    if constexpr (reverse) {
       _iterator->Prev();
     } else {
       _iterator->Next();
@@ -352,7 +352,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 }
 
 /// @brief create the index
-RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
+RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(),
                    /*useCache*/ false),
@@ -372,7 +372,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollect
   }
   TRI_ASSERT(!_fields.empty());
 
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
 
   fillPaths(_paths, _expanding);
 }
@@ -450,13 +450,13 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
       // - Key: 7 + 8-byte object ID of index + VPack array with index
       // value(s) + separator (NUL) byte
       // - Value: primary key
-      key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+      key.constructUniqueVPackIndexValue(objectId(), leased.slice());
     } else {
       // Non-unique VPack index values are stored as follows:
       // - Key: 6 + 8-byte object ID of index + VPack array with index
       // value(s) + revisionID
       // - Value: empty
-      key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
+      key.constructVPackIndexValue(objectId(), leased.slice(), documentId);
       hashes.push_back(leased.slice().normalizedHash());
     }
   } else {
@@ -497,7 +497,7 @@ void RocksDBVPackIndex::addIndexValue(
     // - Key: 7 + 8-byte object ID of index + VPack array with index value(s)
     // - Value: primary key
     RocksDBKey key;
-    key.constructUniqueVPackIndexValue(_objectId, leased.slice());
+    key.constructUniqueVPackIndexValue(objectId(), leased.slice());
     elements.emplace_back(std::move(key));
   } else {
     // Non-unique VPack index values are stored as follows:
@@ -505,7 +505,7 @@ void RocksDBVPackIndex::addIndexValue(
     // + primary key
     // - Value: empty
     RocksDBKey key;
-    key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
+    key.constructVPackIndexValue(objectId(), leased.slice(), documentId);
     elements.emplace_back(std::move(key));
     hashes.push_back(leased.slice().normalizedHash());
   }
@@ -751,15 +751,22 @@ namespace {
                        std::vector<arangodb::basics::AttributeName>::const_iterator begin,
                        std::vector<arangodb::basics::AttributeName>::const_iterator end) {
     for (; begin != end; ++begin) {
+      // check if, after fetching the subattribute, we are point to a non-object.
+      // e.g. if the index is on field ["a.b"], the first iteration of this loop
+      // will look for subattribute "a" in the original document. this will always
+      // work. however, when looking for "b", we have to make sure that "a" was
+      // an object. otherwise we must not call Slice::get() on it. In case one of
+      // the subattributes we found so far is not an object, we fall back to the
+      // regular comparison
+      if (!first.isObject() || !second.isObject()) {
+        break;
+      }
+
       // fetch subattribute
       first = first.get(begin->name);
+      first = first.resolveExternal();
       second = second.get(begin->name);
-      if (first.isExternal()) {
-        first = first.resolveExternal();
-      }
-      if (second.isExternal()) {
-        second = second.resolveExternal();
-      }
+      second = second.resolveExternal();
 
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {
@@ -1011,8 +1018,8 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
   }
 
   RocksDBKeyBounds bounds =
-      _unique ? RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftBorder, rightBorder)
-              : RocksDBKeyBounds::VPackIndex(_objectId, leftBorder, rightBorder);
+      _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), leftBorder, rightBorder)
+              : RocksDBKeyBounds::VPackIndex(objectId(), leftBorder, rightBorder);
 
   if (reverse) {
     // reverse version

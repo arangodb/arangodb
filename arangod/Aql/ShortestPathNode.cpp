@@ -44,6 +44,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -97,7 +99,7 @@ static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNod
 }
 }  // namespace
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                                    AstNode const* direction, AstNode const* start,
                                    AstNode const* target, AstNode const* graph,
                                    std::unique_ptr<BaseOptions> options)
@@ -142,15 +144,15 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t
 
 /// @brief Internal constructor to clone the node.
 ShortestPathNode::ShortestPathNode(
-    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-    std::vector<std::unique_ptr<Collection>> const& edgeColls,
-    std::vector<std::unique_ptr<Collection>> const& vertexColls,
-    TRI_edge_direction_e defaultDirection,
-    std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
-    std::string const& startVertexId, Variable const* inTargetVariable,
-    std::string const& targetVertexId, std::unique_ptr<BaseOptions> options)
+    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    std::vector<Collection*> const& edgeColls,
+    std::vector<Collection*> const& vertexColls,
+    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    Variable const* inStartVariable, std::string const& startVertexId,
+    Variable const* inTargetVariable, std::string const& targetVertexId,
+    std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
-                directions, std::move(options)),
+                directions, std::move(options), graph),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
@@ -213,6 +215,12 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
+void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
+  TRI_ASSERT(_inStartVariable == nullptr);
+  _inStartVariable = inVariable;
+  _startVertexId = "";
+}
+
 void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                           std::unordered_set<ExecutionNode const*>& seen) const {
   GraphNode::toVelocyPackHelper(nodes, flags, seen);  // call base class method
@@ -249,35 +257,37 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet();
   auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
     auto it = varInfo.find(startInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters.emplace(it->second.registerId);
   }
   if (usesTargetInVariable()) {
     auto it = varInfo.find(targetInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters.emplace(it->second.registerId);
   }
 
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = RegIdSet{};
   std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
                                       it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
   }
+
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -286,20 +296,21 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   std::unique_ptr<ShortestPathFinder> finder;
   if (opts->useWeight()) {
-    finder.reset(new graph::AttributeWeightShortestPathFinder(*opts));
+    finder = std::make_unique<graph::AttributeWeightShortestPathFinder>(*opts);
   } else {
-    finder.reset(new graph::ConstantWeightShortestPathFinder(*opts));
+    finder = std::make_unique<graph::ConstantWeightShortestPathFinder>(*opts);
   }
 
+#ifdef USE_ENTERPRISE
+  waitForSatelliteIfRequired(&engine);
+#endif
+
   TRI_ASSERT(finder != nullptr);
-  ShortestPathExecutorInfos infos(inputRegisters, outputRegisters,
-                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                  getRegisterPlan()->nrRegs[getDepth()],
-                                  getRegsToClear(), calcRegsToKeep(),
-                                  std::move(finder), std::move(outputRegisterMapping),
-                                  std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(&engine, this,
-                                                                    std::move(infos));
+  auto executorInfos =
+      ShortestPathExecutorInfos(std::move(finder), std::move(outputRegisterMapping),
+                                std::move(sourceInput), std::move(targetInput));
+  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -308,10 +319,10 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
   auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls,
-                                              _vertexColls, _defaultDirection,
-                                              _directions, _inStartVariable,
-                                              _startVertexId, _inTargetVariable,
-                                              _targetVertexId, std::move(tmp));
+                                              _vertexColls, _defaultDirection, _directions,
+                                              _inStartVariable, _startVertexId,
+                                              _inTargetVariable, _targetVertexId,
+                                              std::move(tmp), _graphObj);
   shortestPathCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
@@ -400,7 +411,7 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
   return opts;
 }
 
-// This constructor is only used from SatelliteTraversalNode, and GraphNode
+// This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& other)
     : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),

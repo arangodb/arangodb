@@ -39,17 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, velocypack::Options const* const options,
-    RegisterId inReg, RegisterId outReg, bool isModificationSubquery)
-    : ExecutorInfos(std::move(readableInputRegisters),
-                    std::move(writeableOutputRegisters), nrInputRegisters,
-                    nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _vpackOptions(options),
+SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* const options,
+                                                   RegisterId inReg, RegisterId outReg,
+                                                   bool isModificationSubquery)
+    : _vpackOptions(options),
       _outReg(outReg),
       _inReg(inReg),
       _isModificationSubquery(isModificationSubquery) {}
@@ -76,15 +69,10 @@ bool SubqueryEndExecutorInfos::isModificationSubquery() const noexcept {
   return _isModificationSubquery;
 }
 
-SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
-    : _fetcher(fetcher), _infos(infos), _accumulator(_infos.vpackOptions()) {}
+SubqueryEndExecutor::SubqueryEndExecutor(Fetcher&, SubqueryEndExecutorInfos& infos)
+    : _infos(infos), _accumulator(_infos.vpackOptions()) {}
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
-
-std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -94,7 +82,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state{ExecutorState::HASMORE};
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
     std::tie(state, inputRow) = input.nextDataRow();
@@ -118,7 +106,7 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
     std::tie(state, inputRow) = input.nextDataRow();
@@ -142,8 +130,18 @@ auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
-  _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-  _builder = std::make_unique<VPackBuilder>(*_buffer);
+  if (_buffer == nullptr) {
+    // no Buffer present
+    _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    // we need to recreate the builder even if the old one still exists.
+    // this is because the Builder points to the Buffer
+    _builder = std::make_unique<VPackBuilder>(*_buffer);
+  } else {
+    // Buffer still present. we can get away with reusing and clearing 
+    // the existing Builder, which points to the Buffer
+    TRI_ASSERT(_builder != nullptr);
+    _builder->clear();
+  }
   TRI_ASSERT(_builder != nullptr);
   _builder->openArray();
   _numValues = 0;
@@ -192,10 +190,10 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
   return _numValues;
 }
 
-// We write at most the number of rows that we get from above (potentially much less if we accumulate a lot)
-std::pair<ExecutionState, size_t> SubqueryEndExecutor::expectedNumberOfRows(size_t atMost) const {
-  ExecutionState state{ExecutionState::HASMORE};
-  size_t expected = 0;
-  std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
-  return {state, expected};
+// We do not write any output for inbound dataRows
+// We will only write output for shadowRows. This is accounted for in ExecutionBlockImpl
+[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const&,
+                                                                AqlCall const&) const
+    noexcept -> size_t {
+  return 0;
 }

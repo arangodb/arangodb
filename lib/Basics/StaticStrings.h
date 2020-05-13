@@ -66,10 +66,9 @@ class StaticStrings {
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
-  static std::string const ReplaceExisting;
   static std::string const Prefix;
-  static std::string const OverWrite;
-  static std::string const OverWriteMode;
+  static std::string const Overwrite;
+  static std::string const OverwriteMode;
   static std::string const PreserveRevisionIds;
 
   // replication headers
@@ -208,30 +207,36 @@ class StaticStrings {
   static std::string const EncodingDeflate;
 
   // collection attributes
-  static std::string const NumberOfShards;
+  static std::string const CacheEnabled;
+  static std::string const DistributeShardsLike;
+  static std::string const DoCompact;
+  static std::string const IndexBuckets;
+  static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
-  static std::string const DistributeShardsLike;
-  static std::string const CacheEnabled;
-  static std::string const IndexBuckets;
   static std::string const JournalSize;
-  static std::string const DoCompact;
-  static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
   static std::string const MinRevision;
+  static std::string const NumberOfShards;
+  static std::string const ObjectId;
+  static std::string const ReplicationFactor;
+  static std::string const Satellite;
   static std::string const ShardKeys;
+  static std::string const Sharding;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
-  static std::string const Sharding;
-  static std::string const Satellite;
+  static std::string const SyncByRevision;
+  static std::string const TempObjectId;
   static std::string const UsesRevisionsAsDocumentIds;
-  static std::string const Validation;
+  static std::string const Schema;
+  static std::string const Version;
   static std::string const WriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
-  static std::string const GraphIsSmart;
+  static std::string const IsDisjoint;
   static std::string const GraphIsSatellite;
+  static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -304,30 +309,18 @@ class StaticStrings {
   static std::string const AqlRemoteState;
   static std::string const AqlRemoteStateDone;
   static std::string const AqlRemoteStateHasmore;
+  static std::string const AqlCallListSpecific;
+  static std::string const AqlCallListDefault;
 
   // validation
-  static std::string const ValidatorLevelNone;
-  static std::string const ValidatorLevelNew;
-  static std::string const ValidatorLevelModerate;
-  static std::string const ValidatorLevelStrict;
+  static std::string const ValidationLevelNone;
+  static std::string const ValidationLevelNew;
+  static std::string const ValidationLevelModerate;
+  static std::string const ValidationLevelStrict;
 
-  static std::string const ValidatorParameterMessage;
-  static std::string const ValidatorParameterLevel;
-  static std::string const ValidatorParameterType;
-  static std::string const ValidatorParameterRule;
-  static std::string const ValidatorParameterSpecialProperties;
-
-  static std::string const ValidatorTypeJsonSchema;
-  static std::string const ValidatorTypeAQL;
-  static std::string const ValidatorTypeBool;
-
-  static std::string const ValidatorPropertyAll;
-  static std::string const ValidatorPropertyNone;
-  static std::string const ValidatorPropertyKey;
-  static std::string const ValidatorPropertyId;
-  static std::string const ValidatorPropertyRev;
-  static std::string const ValidatorPropertyFrom;
-  static std::string const ValidatorPropertyTo;
+  static std::string const ValidationParameterMessage;
+  static std::string const ValidationParameterLevel;
+  static std::string const ValidationParameterRule;
 
   // metrics prometheus labels
   static std::string const HeartbeatSendTimeMs;
@@ -336,7 +329,6 @@ class StaticStrings {
   static std::string const MaintenancePhaseOneRuntimeMs;
   static std::string const MaintenancePhaseTwoRuntimeMs;
   static std::string const MaintenanceAgencySyncRuntimeMs;
-
 
   static std::string const MaintenanceActionRuntimeMs;
   static std::string const MaintenanceActionAccumRuntimeMs;
@@ -347,7 +339,6 @@ class StaticStrings {
   static std::string const MaintenancePhaseOneAccumRuntimeMs;
   static std::string const MaintenancePhaseTwoAccumRuntimeMs;
   static std::string const MaintenanceAgencySyncAccumRuntimeMs;
-
 
   static std::string const ActionDuplicateCounter;
   static std::string const ActionRegisteredCounter;

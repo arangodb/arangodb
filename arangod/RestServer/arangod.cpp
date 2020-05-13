@@ -97,7 +97,6 @@
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -126,12 +125,12 @@
 
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 #ifdef _WIN32
 #include <iostream>
 #endif
+
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -233,7 +232,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<StorageEngineFeature>();
     server.addFeature<SystemDatabaseFeature>();
     server.addFeature<TempFeature>(name);
-    server.addFeature<TraverserEngineRegistryFeature>();
     server.addFeature<TtlFeature>();
     server.addFeature<UpgradeFeature>(&ret, nonServerFeatures);
     server.addFeature<V8DealerFeature>();
@@ -266,7 +264,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     // storage engines
     server.addFeature<ClusterEngine>();
-    server.addFeature<MMFilesEngine>();
     server.addFeature<RocksDBEngine>();
 
     try {

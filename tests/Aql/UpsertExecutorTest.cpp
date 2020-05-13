@@ -359,7 +359,7 @@ class UpsertExecutorIntegrationTest
     }
     AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
   }
-  
+
   void TearDown() override {
     ExecutionBlock::setDefaultBatchSize(ExecutionBlock::ProductionDefaultBatchSize);
   }

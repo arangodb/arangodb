@@ -58,7 +58,6 @@ class AqlItemBlockInputRange {
   bool hasShadowRow() const noexcept;
 
   arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRowAndState() const;
 
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
@@ -71,6 +70,22 @@ class AqlItemBlockInputRange {
   [[nodiscard]] auto skipAll() noexcept -> std::size_t;
 
   [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many datarows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countDataRows() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many shadowRows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
+
+  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;

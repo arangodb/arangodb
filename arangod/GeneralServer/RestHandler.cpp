@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -220,6 +221,11 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
+      if (it.first == "http/1.1") {
+        // never forward this header, as the HTTP response code was already set
+        // via "resetResponse" above
+        continue;
+      }
       _response->setHeader(it.first, it.second);
     }
     _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
@@ -398,6 +404,7 @@ bool RestHandler::wakeupHandler() {
 }
 
 void RestHandler::executeEngine(bool isContinue) {
+  DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
 

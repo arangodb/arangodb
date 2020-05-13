@@ -257,6 +257,11 @@ void VstConnection<ST>::startWriting() {
   });
 }
 
+template <SocketType ST>
+void VstConnection<ST>::terminateActivity() {
+  // TODO: fill in the necessary stuff to fix bugs in this class
+}
+
 // writes data from task queue to network using asio_ns::async_write
 template <SocketType ST>
 void VstConnection<ST>::asyncWriteNextRequest() {

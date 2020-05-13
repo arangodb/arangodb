@@ -344,7 +344,3 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_TRUE(files.empty()); // current segment should have been removed too
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

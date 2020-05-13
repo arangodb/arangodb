@@ -241,9 +241,7 @@ function optimizerRuleIndexesTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-use-index-for-sort"] } });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        if (db._engine().name === 'rocksdb') {
-          assertNotEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
-        }
+        assertNotEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
         assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = AQL_EXECUTE(query[0], null, { optimizer: { rules: ["-use-index-for-sort"] } }).json.length;
         assertEqual(query[1], result, query);

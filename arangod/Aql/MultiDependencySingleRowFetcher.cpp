@@ -61,23 +61,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher
   return res;
 }
 
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipSomeForDependency(
-    size_t const dependency, size_t const atMost) {
-  TRI_ASSERT(!_dependencyInfos.empty());
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-  TRI_ASSERT(depInfo._upstreamState != ExecutionState::DONE);
-
-  // There are still some blocks left that ask their parent even after they got
-  // DONE the last time, and I don't currently have time to track them down.
-  // Thus the following assert is commented out.
-  // TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-  auto res = _dependencyProxy->skipSomeForDependency(dependency, atMost);
-  depInfo._upstreamState = res.first;
-
-  return res;
-}
-
 std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fetchShadowRow(size_t const atMost) {
   // If any dependency is in an invalid state, but not done, refetch it
   for (size_t dependency = 0; dependency < _dependencyInfos.size(); ++dependency) {
@@ -111,6 +94,14 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
   bool allDone = true;
   bool allShadow = true;
   auto row = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  auto rowHasNonEmptyValue = [](ShadowAqlItemRow const& row) -> bool {
+    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  };
   for (auto const& dep : _dependencyInfos) {
     if (!indexIsValid(dep)) {
       allShadow = false;
@@ -124,9 +115,13 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
         row = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
       } else {
         TRI_ASSERT(row.isInitialized());
-        // All shadow rows must be equal!
-        auto const options = _dependencyProxy->velocypackOptions();
-        TRI_ASSERT(row.equates(ShadowAqlItemRow{dep._currentBlock, dep._rowIndex}, options));
+        // TODO We could memorize that `row` has a value, in which case we won't
+        //      need to check `curRow` for values, except for assertions.
+        auto curRow = ShadowAqlItemRow{dep._currentBlock, dep._rowIndex};
+        if (rowHasNonEmptyValue(curRow)) {
+          TRI_ASSERT(!rowHasNonEmptyValue(row));
+          row = curRow;
+        }
       }
     }
   }
@@ -159,7 +154,7 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
 MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher()
     : _dependencyProxy(nullptr) {}
 
-RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
+RegisterCount MultiDependencySingleRowFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 
@@ -242,43 +237,6 @@ std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetc
   }
 
   return {rowState, row};
-}
-
-std::pair<ExecutionState, size_t> MultiDependencySingleRowFetcher::skipRowsForDependency(
-    size_t const dependency, size_t const atMost) {
-  TRI_ASSERT(dependency < _dependencyInfos.size());
-  auto& depInfo = _dependencyInfos[dependency];
-
-  TRI_ASSERT((!indexIsValid(depInfo) || !isAtShadowRow(depInfo) ||
-              ShadowAqlItemRow{depInfo._currentBlock, depInfo._rowIndex}.isRelevant()));
-
-  size_t skip = 0;
-  while (indexIsValid(depInfo) && !isAtShadowRow(depInfo) && skip < atMost) {
-    ++skip;
-    ++depInfo._rowIndex;
-  }
-
-  if (skip > 0) {
-    ExecutionState const state =
-        noMoreDataRows(depInfo) ? ExecutionState::DONE : ExecutionState::HASMORE;
-    return {state, skip};
-  }
-
-  TRI_ASSERT(!indexIsValid(depInfo) || isAtShadowRow(depInfo));
-  TRI_ASSERT(skip == 0);
-
-  if (noMoreDataRows(depInfo) || isDone(depInfo)) {
-    return {ExecutionState::DONE, 0};
-  }
-
-  TRI_ASSERT(!indexIsValid(depInfo));
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = skipSomeForDependency(dependency, atMost);
-  if (state == ExecutionState::HASMORE && skipped < atMost) {
-    state = ExecutionState::DONE;
-  }
-  return {state, skipped};
 }
 
 bool MultiDependencySingleRowFetcher::indexIsValid(

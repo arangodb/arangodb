@@ -33,6 +33,8 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -46,7 +48,6 @@
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -87,8 +88,6 @@ struct GraphTestSetup
     features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
                               system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
-                          false);  // must be before AqlFeature
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
     features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
@@ -128,23 +127,11 @@ struct GraphTestSetup
 
 struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
-  std::vector<arangodb::aql::Query*> queries;
-  std::vector<arangodb::graph::ShortestPathOptions*> spos;
-
+  
   MockGraphDatabase(application_features::ApplicationServer& server, std::string name)
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server, name, 1)) {}
 
-  ~MockGraphDatabase() {
-    for (auto& q : queries) {
-      if (q->trx() != nullptr) {
-        q->trx()->abort();
-      }
-      delete q;
-    }
-    for (auto& o : spos) {
-      delete o;
-    }
-  }
+  ~MockGraphDatabase() {}
 
   // Create a collection with name <name> and <n> vertices
   // with ids 0..n-1
@@ -242,24 +229,24 @@ struct MockGraphDatabase {
     EXPECT_TRUE(insertedDocs.size() == edgedef.size());
   }
 
-  arangodb::aql::Query* getQuery(std::string qry) {
+  std::unique_ptr<arangodb::aql::Query> getQuery(std::string qry, std::vector<std::string> collections) {
     auto queryString = arangodb::aql::QueryString(qry);
 
-    arangodb::aql::Query* query =
-        new arangodb::aql::Query(false, vocbase, queryString, nullptr,
-                                 arangodb::velocypack::Parser::fromJson("{}"),
-                                 arangodb::aql::PART_MAIN);
-    query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
-
-    queries.emplace_back(query);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    auto query =
+      std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr,
+                                 arangodb::velocypack::Parser::fromJson("{}"));
+    for (auto const& c : collections) {
+      query->collections().add(c, AccessMode::Type::READ);
+    }
+    query->prepareQuery(SerializationFormat::SHADOWROWS);
 
     return query;
   }
 
-  arangodb::graph::ShortestPathOptions* getShortestPathOptions(arangodb::aql::Query* query) {
-    arangodb::graph::ShortestPathOptions* spo;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> getShortestPathOptions(arangodb::aql::Query* query) {
 
-    auto plan = query->plan();
+    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     auto ast = plan->getAst();
 
     auto _toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -287,12 +274,12 @@ struct MockGraphDatabase {
           ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
       _fromCondition->addMember(cond);
     }
-    spo = new ShortestPathOptions(query);
+        
+    auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString, _fromCondition->clone(ast));
     spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString, _toCondition->clone(ast));
 
-    spos.emplace_back(spo);
     return spo;
   }
 };  // namespace graph

@@ -26,11 +26,11 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Aql/InsertModifier.h"
@@ -88,15 +88,8 @@ AqlValue const& ModifierOutput::getNewValue() const {
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
-                                                                      Infos& infos)
-    : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {
-  // In MMFiles we need to make sure that the data is not moved in memory or collected
-  // for this collection as soon as we start writing to it.
-  // This pin makes sure that no memory is moved pointers we get from a collection stay
-  // correct until we release this pin
-  _infos._trx->pinData(this->_infos._aqlCollection->id());
-}
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
+    : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
@@ -157,18 +150,9 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
 }
 
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-
-  return {ExecutionState::DONE, ModificationStats{}};
-}
-
-template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
-  TRI_ASSERT(_infos._trx);
   AqlCall upstreamCall{};
   if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
                 !std::is_same_v<FetcherType, AllRowsFetcher>) {
@@ -202,7 +186,7 @@ template <typename FetcherType, typename ModifierType>
     upstreamState = input.upstreamState();
   }
   if (_modifier.nrOfOperations() > 0) {
-    _modifier.transact();
+    _modifier.transact(_trx);
 
     if (_infos._doCount) {
       stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
@@ -259,7 +243,7 @@ template <typename FetcherType, typename ModifierType>
     }
 
     if (_modifier.nrOfOperations() > 0) {
-      _modifier.transact();
+      _modifier.transact(_trx);
 
       if (_infos._doCount) {
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());

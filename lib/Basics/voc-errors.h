@@ -1361,7 +1361,7 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    
 
 /// 1922: ERROR_GRAPH_CREATE_MISSING_NAME
 /// "missing graph name"
-/// a graph name is required to create a graph.
+/// a graph name is required to create or drop a graph.
 constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               = 1922;
 
 /// 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
@@ -1470,6 +1470,19 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      
 /// collection, it cannot be used here.
 constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
 
+/// 1945: ERROR_GRAPH_COLLECTION_IS_INITIAL
+/// "initial collection is not allowed to be removed manually"
+/// the collection is used as the initial collection of this graph and is not
+/// allowed to be removed manually.
+constexpr int TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL                             = 1945;
+
+/// 1946: ERROR_GRAPH_NO_INITIAL_COLLECTION
+/// "no valid initial collection found"
+/// during the graph creation process no collection could be selected as the
+/// needed initial collection. Happens if a distributeShardsLike or
+/// replicationFactor mismatch was found.
+constexpr int TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                             = 1946;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
@@ -1504,16 +1517,6 @@ constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            
 /// "was erlaube?!"
 /// Will be raised if was erlaube?!
 constexpr int TRI_ERROR_WAS_ERLAUBE                                             = 2019;
-
-/// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
-/// "Request aborted"
-/// Request was aborted.
-constexpr int TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED                            = 2100;
-
-/// 2101: ERROR_COMMUNICATOR_DISABLED
-/// "Communication was disabled"
-/// Communication was disabled.
-constexpr int TRI_ERROR_COMMUNICATOR_DISABLED                                   = 2101;
 
 /// 2200: ERROR_INTERNAL_AQL
 /// "General internal AQL error"
@@ -1691,6 +1694,12 @@ constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 
 /// Will be raised if there is an attempt to update the value of the
 /// smartJoinAttribute.
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
+
+/// 4010: ERROR_INVALID_DISJOINT_SMART_EDGE
+/// "non disjoint edge found"
+/// Will be raised if there is an attempt to create an edge between separated
+/// graph components.
+constexpr int TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = 4010;
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"

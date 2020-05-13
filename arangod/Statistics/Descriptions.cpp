@@ -418,7 +418,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   auto& dealer = _server.getFeature<V8DealerFeature>();
 
   ServerStatistics const& info = _server.getFeature<MetricsFeature>().serverStatistics();
-  b.add("uptime", VPackValue(info._uptime));
+  b.add("uptime", VPackValue(info.uptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
   b.add("transactions", VPackValue(VPackValueType::Object));

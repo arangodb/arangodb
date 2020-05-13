@@ -35,10 +35,10 @@
 #include "Aql/AqlItemBlockHelper.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/Stats.h"
@@ -63,7 +63,7 @@ namespace aql {
 class TokenTranslator : public TraverserCache {
  public:
   TokenTranslator(Query* query, BaseOptions* opts)
-      : TraverserCache(query, opts),
+      : TraverserCache(*query, opts),
         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() = default;
@@ -130,6 +130,8 @@ class FakePathFinder : public ShortestPathFinder {
 
   ~FakePathFinder() = default;
 
+  void clear() override{};
+
   void addPath(std::vector<std::string>&& path) {
     _paths.emplace_back(std::move(path));
   }
@@ -183,14 +185,14 @@ class FakePathFinder : public ShortestPathFinder {
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {
-  TestShortestPathOptions(Query* query) : ShortestPathOptions(query) {
+  TestShortestPathOptions(Query* query) :
+    ShortestPathOptions(*query) {
     std::unique_ptr<TraverserCache> cache = std::make_unique<TokenTranslator>(query, this);
     injectTestCache(std::move(cache));
   }
 };
 
 using Vertex = ShortestPathExecutorInfos::InputVertex;
-using RegisterSet = std::unordered_set<RegisterId>;
 using RegisterMapping =
     std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash>;
 using Path = std::vector<std::string>;
@@ -200,14 +202,14 @@ enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 
 // TODO: this needs a << operator
 struct ShortestPathTestParameters {
-  static RegisterSet _makeOutputRegisters(ShortestPathOutput in) {
+  static RegIdSet _makeOutputRegisters(ShortestPathOutput in) {
     switch (in) {
       case ShortestPathOutput::VERTEX_ONLY:
-        return RegisterSet{std::initializer_list<RegisterId>{2}};
+        return RegIdSet{std::initializer_list<RegisterId>{2}};
       case ShortestPathOutput::VERTEX_AND_EDGE:
-        return RegisterSet{std::initializer_list<RegisterId>{2, 3}};
+        return RegIdSet{std::initializer_list<RegisterId>{2, 3}};
     }
-    return RegisterSet{};
+    return RegIdSet{};
   }
   static RegisterMapping _makeRegisterMapping(ShortestPathOutput in) {
     switch (in) {
@@ -235,8 +237,8 @@ struct ShortestPathTestParameters {
 
   Vertex _source;
   Vertex _target;
-  RegisterSet _inputRegisters;
-  RegisterSet _outputRegisters;
+  RegIdSet _inputRegisters;
+  RegIdSet _outputRegisters;
   RegisterMapping _registerMapping;
   MatrixBuilder<2> _inputMatrix;
   MatrixBuilder<2> _inputMatrixCopy;
@@ -259,16 +261,17 @@ class ShortestPathExecutorTest
   TestShortestPathOptions options;
   TokenTranslator& translator;
 
+  RegisterInfos registerInfos;
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
-  ShortestPathExecutorInfos infos;
+  ShortestPathExecutorInfos executorInfos;
 
   FakePathFinder& finder;
 
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
 
-  std::shared_ptr<Builder> fakeUnusedBlock;
+  std::shared_ptr<arangodb::velocypack::Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
   ShortestPathExecutor testee;
@@ -280,17 +283,17 @@ class ShortestPathExecutorTest
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        infos(std::make_shared<RegisterSet>(parameters._inputRegisters),
-              std::make_shared<RegisterSet>(parameters._outputRegisters), 2, 4,
-              {}, {0, 1}, std::make_unique<FakePathFinder>(options, translator),
-              std::move(parameters._registerMapping),
-              std::move(parameters._source), std::move(parameters._target)),
-        finder(static_cast<FakePathFinder&>(infos.finder())),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
+                      2, 4, {}, {RegIdSet{0, 1}}),
+        executorInfos(std::make_unique<FakePathFinder>(options, translator),
+                      std::move(parameters._registerMapping),
+                      std::move(parameters._source), std::move(parameters._target)),
+        finder(static_cast<FakePathFinder&>(executorInfos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
         input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
-        testee(fetcher, infos) {
+        testee(fetcher, executorInfos) {
     for (auto&& p : parameters._paths) {
       finder.addPath(std::move(p));
     }
@@ -319,20 +322,20 @@ class ShortestPathExecutorTest
       auto source = std::string{};
       auto target = std::string{};
 
-      if (infos.useRegisterForSourceInput()) {
-        AqlValue value = block->getValue(blockIndex, infos.getSourceInputRegister());
+      if (executorInfos.useRegisterForSourceInput()) {
+        AqlValue value = block->getValue(blockIndex, executorInfos.getSourceInputRegister());
         ASSERT_TRUE(value.isString());
         source = value.slice().copyString();
       } else {
-        source = infos.getSourceInputValue();
+        source = executorInfos.getSourceInputValue();
       }
 
-      if (infos.useRegisterForTargetInput()) {
-        AqlValue value = block->getValue(blockIndex, infos.getTargetInputRegister());
+      if (executorInfos.useRegisterForTargetInput()) {
+        AqlValue value = block->getValue(blockIndex, executorInfos.getTargetInputRegister());
         ASSERT_TRUE(value.isString());
         target = value.slice().copyString();
       } else {
-        target = infos.getTargetInputValue();
+        target = executorInfos.getTargetInputValue();
       }
       ASSERT_EQ(source, input.first);
       ASSERT_EQ(target, input.second);
@@ -345,8 +348,8 @@ class ShortestPathExecutorTest
                       size_t skippedInitial, size_t skippedFullCount) {
     auto pathsQueriedBetween = finder.getCalledWith();
 
-    FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
-    TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
+    FakePathFinder& finder = static_cast<FakePathFinder&>(executorInfos.finder());
+    TokenTranslator& translator = *(static_cast<TokenTranslator*>(executorInfos.cache()));
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
@@ -371,10 +374,9 @@ class ShortestPathExecutorTest
       if (block != nullptr) {
         ASSERT_NE(block, nullptr);
         for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
-          if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+          if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
             AqlValue value =
-                block->getValue(blockIndex,
-                                infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
             EXPECT_TRUE(value.isObject());
             EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                             value.slice(),
@@ -382,10 +384,9 @@ class ShortestPathExecutorTest
                                 expectedRowsFound[expectedRowsIndex])),
                             false) == 0);
           }
-          if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+          if (executorInfos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
             AqlValue value =
-                block->getValue(blockIndex,
-                                infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
+                block->getValue(blockIndex, executorInfos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
 
             if (expectedPathStarts.find(expectedRowsIndex) != expectedPathStarts.end()) {
               EXPECT_TRUE(value.isNull(false));
@@ -438,8 +439,9 @@ class ShortestPathExecutorTest
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
 
-      OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                              infos.registersToKeep(), infos.registersToClear());
+      OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                              registerInfos.registersToKeep(),
+                              registerInfos.registersToClear());
       output.setCall(std::move(ourCall));
 
       std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);

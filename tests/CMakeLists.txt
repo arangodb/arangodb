@@ -25,6 +25,9 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
   Aql/AllRowsFetcherTest.cpp
+  Aql/BlockCollector.cpp
+  Aql/AqlCallListTest.cpp
+  Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -34,6 +37,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/InRangeFunctionTest.cpp
   Aql/JaccardFunctionTest.cpp
   Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
@@ -49,17 +53,18 @@ set(ARANGODB_TESTS_SOURCES
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
   Aql/IndexNodeTest.cpp
+  Aql/InputRangeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/KShortestPathsExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MockTypedNode.cpp
-  Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NgramMatchFunctionTest.cpp
   Aql/NgramSimilarityFunctionTest.cpp
   Aql/NgramPosSimilarityFunctionTest.cpp
   Aql/NoResultsExecutorTest.cpp
   Aql/QueryHelper.cpp
+  Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp
   Aql/ReplaceExecutorTest.cpp
@@ -74,7 +79,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortLimit-test.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
-  Aql/SubqueryExecutorTest.cpp
   Aql/SubqueryEndExecutorTest.cpp
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
@@ -101,7 +105,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/string-test.cpp
   Basics/string-utf8-normalize-test.cpp
   Basics/string-utf8-test.cpp
-  Basics/structure-size-test.cpp
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
@@ -132,12 +135,9 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
-  Containers/associative-multi-pointer-test.cpp
-  Containers/associative-multi-pointer-nohashcache-test.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
-  Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -153,7 +153,6 @@ set(ARANGODB_TESTS_SOURCES
   HotBackup/HotBackupCoordinatorTest.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
-  IResearch/AgencyCommManagerMock.cpp
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
@@ -216,6 +215,7 @@ set(ARANGODB_TESTS_SOURCES
   ${RCFILE}
   Metrics/MetricsTest.cpp
   Metrics/MetricsFeatureTest.cpp
+  Mocks/IResearchLinkMock.cpp
   Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
@@ -276,7 +276,6 @@ endif()
 target_link_libraries(arangodbtests
   arango_agency
   arango_cluster_engine
-  arango_mmfiles
   arango_rocksdb
   arango_v8server
   arangoserver

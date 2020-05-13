@@ -24,11 +24,14 @@
 #define ARANGOD_AQL_AQL_CALL_H 1
 
 #include "Aql/ExecutionBlock.h"
+#include "Basics/Common.h"
 #include "Basics/overload.h"
 #include "Cluster/ResultT.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <iosfwd>
+#include <tuple>
 #include <variant>
 
 namespace arangodb::velocypack {
@@ -51,13 +54,16 @@ struct AqlCall {
 
   AqlCall() = default;
   // Replacements for struct initialization
+  // cppcheck-suppress *
   explicit constexpr AqlCall(size_t offset, Limit softLimit = Infinity{},
                              Limit hardLimit = Infinity{}, bool fullCount = false)
       : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
 
   enum class LimitType { SOFT, HARD };
+  // cppcheck-suppress *
   constexpr AqlCall(size_t offset, bool fullCount, Infinity)
       : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
+  // cppcheck-suppress *
   constexpr AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
       : offset{offset},
         softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
@@ -192,6 +198,8 @@ struct AqlCall {
   bool shouldSkip() const {
     return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
+
+  auto requestLessDataThan(AqlCall const& other) const noexcept -> bool;
 };
 
 constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {

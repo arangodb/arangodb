@@ -33,7 +33,7 @@ NS_ROOT
 /// @class all_query
 /// @brief compiled all_filter that returns all documents
 ////////////////////////////////////////////////////////////////////////////////
-class all_query: public filter::prepared {
+class all_query final : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, boost_t boost)
     : filter::prepared(boost),
@@ -43,8 +43,7 @@ class all_query: public filter::prepared {
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& order,
-      const attribute_view& /*ctx*/
-  ) const override {
+      const attribute_provider* /*ctx*/) const override {
     return doc_iterator::make<all_iterator>(
       rdr, stats_.c_str(), order, rdr.docs_count(), boost()
     );
@@ -54,19 +53,17 @@ class all_query: public filter::prepared {
   bstring stats_;
 };
 
-DEFINE_FILTER_TYPE(irs::all)
 DEFINE_FACTORY_DEFAULT(irs::all)
 
 all::all() noexcept
-  : filter(all::type()) {
+  : filter(irs::type<all>::get()) {
 }
 
 filter::prepared::ptr all::prepare(
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& /*ctx*/
-) const {
+    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
@@ -80,7 +77,3 @@ filter::prepared::ptr all::prepare(
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

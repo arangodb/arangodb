@@ -25,7 +25,7 @@
 
 #include "gtest/gtest.h"
 
-#include "ExecutorTestHelper.h"
+#include "AqlExecutorTestCase.h"
 
 #include "fakeit.hpp"
 
@@ -66,19 +66,27 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     return split;
   }
 
-  auto makeInfos() -> SortExecutorInfos {
+  auto makeRegisterInfos() -> RegisterInfos {
     SortElement sl{&sortVar, true};
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
-    return SortExecutorInfos(std::move(sortRegisters),
+    return RegisterInfos(RegIdSet{sortReg.reg}, {}, 1, 1, {}, {RegIdSet{0}});
+  }
+
+  auto makeExecutorInfos() -> SortExecutorInfos {
+    SortElement sl{&sortVar, true};
+    SortRegister sortReg{0, sl};
+    std::vector<SortRegister> sortRegisters;
+    sortRegisters.emplace_back(std::move(sortReg));
+    return SortExecutorInfos(1, 1, {}, std::move(sortRegisters),
                              /*limit (ignored for default sort)*/ 0, manager(),
-                             1, 1, {}, {0}, vpackOptions, false);
+                             vpackOptions, false);
   }
 
  private:
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-  Variable sortVar{"mySortVar", 0};
+  Variable sortVar{"mySortVar", 0, false};
 };
 
 template <size_t... vs>
@@ -93,8 +101,8 @@ INSTANTIATE_TEST_CASE_P(SortExecutorTest, SortExecutorTest,
 TEST_P(SortExecutorTest, does_sort_all) {
   AqlCall call{};          // unlimited produce
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {{1}, {2}, {3}, {4}, {5}})
@@ -107,8 +115,8 @@ TEST_P(SortExecutorTest, does_sort_all) {
 TEST_P(SortExecutorTest, no_input) {
   AqlCall call{};          // unlimited produce
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({})
       .expectOutput({0}, {})
@@ -121,8 +129,8 @@ TEST_P(SortExecutorTest, no_input) {
 TEST_P(SortExecutorTest, skip) {
   AqlCall call{2};
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {{3}, {4}, {5}})
@@ -135,8 +143,8 @@ TEST_P(SortExecutorTest, skip) {
 TEST_P(SortExecutorTest, hard_limit) {
   AqlCall call{0, false, 2, AqlCall::LimitType::HARD};
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {{1}, {2}})
@@ -149,8 +157,8 @@ TEST_P(SortExecutorTest, hard_limit) {
 TEST_P(SortExecutorTest, soft_limit) {
   AqlCall call{0, false, 2, AqlCall::LimitType::SOFT};
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {{1}, {2}})
@@ -163,8 +171,8 @@ TEST_P(SortExecutorTest, soft_limit) {
 TEST_P(SortExecutorTest, fullcount) {
   AqlCall call{0, true, 2, AqlCall::LimitType::HARD};
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {{1}, {2}})
@@ -177,8 +185,8 @@ TEST_P(SortExecutorTest, fullcount) {
 TEST_P(SortExecutorTest, skip_produce_fullcount) {
   AqlCall call{2, true, 2, AqlCall::LimitType::HARD};
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {{3}, {4}})
@@ -191,8 +199,8 @@ TEST_P(SortExecutorTest, skip_produce_fullcount) {
 TEST_P(SortExecutorTest, skip_too_much) {
   AqlCall call{10, false};
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper(*fakedQuery)
-      .setExecBlock<SortExecutor>(makeInfos(), ExecutionNode::SORT)
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
       .setInputSplitType(getSplit())
       .setInputValue({{5}, {3}, {1}, {2}, {4}})
       .expectOutput({0}, {})

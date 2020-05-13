@@ -22,17 +22,17 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
 #include "AqlHelper.h"
 #include "AqlItemBlockHelper.h"
-#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/LimitExecutor.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
@@ -73,57 +73,10 @@ namespace arangodb::tests::aql {
  * to cover both the case where the last upstream non-empty result returns with
  * HASMORE, or immediately with DONE.
  */
-class LimitExecutorTest
-    : public ::testing::TestWithParam<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> {
- public:
-  // Creating a server instance costs a lot of time, so do it only once.
-  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
-  static void SetUpTestCase() {
-    server = std::make_unique<decltype(server)::element_type>();
-    // Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
-  }
-  static void TearDownTestCase() {
-    // Logger::QUERIES.setLogLevel(LogLevel::INFO);
-    server.reset();
-  }
 
- protected:
-  static std::unique_ptr<mocks::MockAqlServer> server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{};
-
-  ExecutionState state;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  SharedAqlItemBlockPtr block;
-  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
-
-  // Should never be called, and can be removed as soon as the LimitExecutor's
-  // Fetcher argument&member are removed.
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> dummyFetcher;
-
-  LimitExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{0})),
-        dummyFetcher(itemBlockManager, 1, false, nullptr) {
-    fakedQuery = server->createFakeQuery();
-  }
-
-  auto buildBlockRange(size_t const begin, size_t const end) -> SharedAqlItemBlockPtr {
-    auto builder = MatrixBuilder<1>{};
-    builder.reserve(end - begin);
-    for (size_t i = begin; i < end; ++i) {
-      builder.emplace_back(RowBuilder<1>{i});
-    }
-    return buildBlock<1>(itemBlockManager, std::move(builder));
-  }
-};
-
-std::unique_ptr<mocks::MockAqlServer> LimitExecutorTest::server{nullptr};
+using LimitParamType =
+    std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>;
+class LimitExecutorTest : public AqlExecutorTestCaseWithParam<LimitParamType, false> {};
 
 auto const testingFullCount = ::testing::Bool();
 using InputLengths = std::vector<size_t>;
@@ -365,14 +318,15 @@ TEST_P(LimitExecutorTest, testSuite) {
         return std::make_tuple(skipped, output, stats, state);
       });
 
-  auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
+  auto registerInfos = RegisterInfos{{}, {}, 1, 1, {}, {RegIdSet{0}}};
+  auto executorInfos = LimitExecutorInfos{offset, limit, fullCount};
 
   auto expectedStats = ExecutionStats{};
   expectedStats += expectedLimitStats;
 
-  // fakedQuery->queryOptions().profile = PROFILE_LEVEL_TRACE_2;
-  ExecutorTestHelper<>{*fakedQuery}
-      .setExecBlock<LimitExecutor>(std::move(infos), ExecutionNode::LIMIT)
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<LimitExecutor>(std::move(registerInfos),
+                                  std::move(executorInfos), ExecutionNode::LIMIT)
       .setInputFromRowNum(numInputRows)
       .setInputSplitType(inputLengths)
       .setCall(clientCall)

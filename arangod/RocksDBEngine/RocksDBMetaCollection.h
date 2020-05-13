@@ -43,22 +43,14 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual ~RocksDBMetaCollection() = default;
   
   std::string const& path() const override final;
-  void setPath(std::string const& path) override final {}
-  arangodb::Result persistProperties() override final {
-    // only code path calling this causes these properties to be
-    // already written in RocksDBEngine::changeCollection()
-    return Result();
-  }
-  void open(bool /*ignoreErrors*/) override final {
-    TRI_ASSERT(_objectId != 0);
-  }
 
   void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final;
 
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override final { return 0; }
-  uint64_t objectId() const { return _objectId; }
-  
+  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t tempObjectId() const { return _tempObjectId.load(); }
+
   RocksDBMetadata& meta() { return _meta; }
   
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override final;
@@ -84,6 +76,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
 
   bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
+  rocksdb::SequenceNumber lastSerializedRevisionTree(rocksdb::SequenceNumber maxCommitSeq);
   rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
                                                 rocksdb::SequenceNumber commitSeq);
 
@@ -110,8 +103,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
+  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
+
  public:
-  
   /// return bounds for all documents
   virtual RocksDBKeyBounds bounds() const = 0;
   
@@ -120,21 +114,24 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
-  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
+  void applyUpdates(rocksdb::SequenceNumber commitSeq);
 
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata
-  uint64_t const _objectId;  /// rocksdb-specific object id for collection
   /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
+
+ private:
+  std::atomic<uint64_t> _objectId;  /// rocksdb-specific object id for collection
+  std::atomic<uint64_t> _tempObjectId;  /// rocksdb-specific object id for collection
 
   /// @revision tree management for replication
   std::unique_ptr<containers::RevisionTree> _revisionTree;
   std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
-  std::atomic<rocksdb::SequenceNumber> _revisionTreeSerializedSeq;
+  rocksdb::SequenceNumber _revisionTreeSerializedSeq;
   std::chrono::steady_clock::time_point _revisionTreeSerializedTime;
   mutable std::mutex _revisionTreeLock;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;

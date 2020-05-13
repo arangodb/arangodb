@@ -169,10 +169,16 @@ irs::sort::ptr make_json(const irs::string_ref& args) {
 
 REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
 
-struct byte_ref_iterator
-  : public std::iterator<std::input_iterator_tag, irs::byte_type, void, void, void> {
+struct byte_ref_iterator {
+  using iterator_category = std::input_iterator_tag;
+  using value_type = irs::byte_type;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
+
   const irs::byte_type* end_;
   const irs::byte_type* pos_;
+
   byte_ref_iterator(const irs::bytes_ref& in)
     : end_(in.c_str() + in.size()), pos_(in.c_str()) {
   }
@@ -194,16 +200,20 @@ struct field_collector final: public irs::sort::field_collector {
   uint64_t total_term_freq = 0; // number of terms for processed field
 
   virtual void collect(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field
-  ) override {
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
 
-    auto& freq = field.attributes().get<irs::frequency>();
+    auto* freq = irs::get<irs::frequency>(field);
 
     if (freq) {
       total_term_freq += freq->value;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_field = 0;
+    total_term_freq = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -229,15 +239,18 @@ struct term_collector final: public irs::sort::term_collector {
   uint64_t docs_with_term = 0; // number of documents containing the matched term
 
   virtual void collect(
-    const irs::sub_reader& /*segment*/,
-    const irs::term_reader& /*field*/,
-    const irs::attribute_view& term_attrs
-  ) override {
-    auto& meta = term_attrs.get<irs::term_meta>();
+      const irs::sub_reader& /*segment*/,
+      const irs::term_reader& /*field*/,
+      const irs::attribute_provider& term_attrs) override {
+    auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
       docs_with_term += meta->docs_count;
     }
+  }
+
+  virtual void reset() noexcept override {
+    docs_with_term = 0;
   }
 
   virtual void collect(const irs::bytes_ref& in) override {
@@ -394,9 +407,12 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
   }
 
   virtual const flags& features() const override {
+
+
     static const irs::flags FEATURES[] = {
-      irs::flags({ irs::frequency::type() }), // without normalization
-      irs::flags({ irs::frequency::type(), irs::norm::type() }), // with normalization
+
+      irs::flags({ type<frequency>::get() }), // without normalization
+      irs::flags({ type<frequency>::get(), type<norm>::get() }), // with normalization
     };
 
     return FEATURES[b_ != 0.f];
@@ -410,22 +426,21 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* query_stats,
-      const attribute_view& doc_attrs,
-      boost_t boost
-  ) const override {
-    auto& freq = doc_attrs.get<frequency>();
+      const attribute_provider& doc_attrs,
+      boost_t boost) const override {
+    auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
       return { nullptr, nullptr };
     }
 
     auto& stats = stats_cast(query_stats);
-    auto& filter_boost = doc_attrs.get<irs::filter_boost>();
+    auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
     if (b_ != 0.f) {
       irs::norm norm;
 
-      auto& doc = doc_attrs.get<document>();
+      auto* doc = irs::get<document>(doc_attrs);
 
       if (!doc) {
         // we need 'document' attribute to be exposed
@@ -435,7 +450,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       if (norm.reset(segment, field.meta().norm, *doc)) {
         if (filter_boost) {
           return {
-            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm), filter_boost.get()),
+            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq, std::move(norm), filter_boost),
             [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
             auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
             assert(state.filter_boost_);
@@ -448,7 +463,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
           };
         } else {
           return {
-            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
+            memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq, std::move(norm)),
             [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
               auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
 
@@ -463,7 +478,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
     // BM15
     if (filter_boost) {
       return {
-        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get(), filter_boost.get()),
+        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq, filter_boost),
         [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
         auto& state = *static_cast<const bm25::score_ctx*>(ctx);
         assert(state.filter_boost_);
@@ -473,7 +488,7 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
       };
     } else {
       return {
-        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
+        memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq),
         [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
           auto& state = *static_cast<const bm25::score_ctx*>(ctx);
 
@@ -495,14 +510,13 @@ class sort final : public irs::prepared_sort_basic<bm25::score_t, bm25::stats> {
 
 NS_END // bm25
 
-DEFINE_SORT_TYPE_NAMED(irs::bm25_sort, "bm25")
 DEFINE_FACTORY_DEFAULT(irs::bm25_sort)
 
 bm25_sort::bm25_sort(
     float_t k /*= 1.2f*/,
     float_t b /*= 0.75f*/
 ) noexcept
-  : sort(bm25_sort::type()),
+  : sort(irs::type<bm25_sort>::get()),
     k_(k),
     b_(b) {
 }
@@ -516,7 +530,3 @@ sort::prepared::ptr bm25_sort::prepare() const {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

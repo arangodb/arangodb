@@ -160,8 +160,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
             << "  --database.auto-upgrade true";
         LOG_TOPIC("13414", ERR, Logger::STARTUP)
             << "option to upgrade the data in the database directory.";
-        LOG_TOPIC("24bd1", ERR, Logger::STARTUP)	
-            << "---------------------------------------------------------------"	
+        LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
+            << "---------------------------------------------------------------"
                "-------'";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
       }
@@ -235,10 +235,6 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask(upgradeFeature, "persistLocalDocumentIds", "convert collection data from old format",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
   addTask(upgradeFeature, "renameReplicationApplierStateFiles",
           "rename replication applier state files",
           /*system*/ Flags::DATABASE_ALL,

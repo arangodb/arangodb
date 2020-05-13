@@ -53,33 +53,15 @@ static bool isValidId(VPackSlice id) {
   arangodb::velocypack::StringRef tester(id);
   return tester.find('/') != std::string::npos;
 }
-static RegisterId selectOutputRegister(
-    std::shared_ptr<std::unordered_set<RegisterId> const> const& outputRegisters) {
-  TRI_ASSERT(outputRegisters != nullptr);
-  TRI_ASSERT(outputRegisters->size() == 1);
-  RegisterId reg = *(outputRegisters->begin());
-  TRI_ASSERT(reg != RegisterPlan::MaxRegisterId);
-  return reg;
-}
 }  // namespace
 
 KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unique_ptr<graph::KShortestPathsFinder>&& finder, InputVertex&& source,
-    InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _finder(std::move(finder)),
+    RegisterId outputRegister, std::unique_ptr<graph::KShortestPathsFinder>&& finder,
+    InputVertex&& source, InputVertex&& target)
+    : _finder(std::move(finder)),
       _source(std::move(source)),
       _target(std::move(target)),
-      _outputRegister(::selectOutputRegister(_outRegs)) {}
-
-KShortestPathsExecutorInfos::KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
-KShortestPathsExecutorInfos::~KShortestPathsExecutorInfos() = default;
+      _outputRegister(outputRegister) {}
 
 arangodb::graph::KShortestPathsFinder& KShortestPathsExecutorInfos::finder() const {
   TRI_ASSERT(_finder);
@@ -146,18 +128,16 @@ KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
   if (!_infos.useRegisterForTargetInput()) {
     _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
+  // Make sure the finder is in a defined state, because we could
+  // get any old junk here, because infos are not recreated in between
+  // initializeCursor calls.
+  _finder.clear();
 }
 
 // Shutdown query
 auto KShortestPathsExecutor::shutdown(int errorCode) -> std::pair<ExecutionState, Result> {
   _finder.destroyEngines();
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-auto KShortestPathsExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::pair<ExecutionState, NoStats> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
@@ -211,6 +191,7 @@ auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
 
 auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
   TRI_ASSERT(_finder.isDone());
+  _finder.clear();
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
@@ -263,7 +244,7 @@ auto KShortestPathsExecutor::getVertexId(KShortestPathsExecutorInfos::InputVerte
         id = in.slice();
         // Validation
         if (!::isValidId(id)) {
-          _finder.options().query()->registerWarning(
+          _finder.options().query().warnings().registerWarning(
               TRI_ERROR_BAD_PARAMETER,
               "Invalid input for Shortest Path: "
               "Only id strings or objects with "
@@ -272,7 +253,7 @@ auto KShortestPathsExecutor::getVertexId(KShortestPathsExecutorInfos::InputVerte
         }
         return true;
       } else {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "
@@ -283,7 +264,7 @@ auto KShortestPathsExecutor::getVertexId(KShortestPathsExecutorInfos::InputVerte
     case KShortestPathsExecutorInfos::InputVertex::Type::CONSTANT: {
       id = builder.slice();
       if (!::isValidId(id)) {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "

@@ -33,7 +33,6 @@
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -52,17 +51,10 @@ static bool isValidId(VPackSlice id) {
 }  // namespace
 
 ShortestPathExecutorInfos::ShortestPathExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _finder(std::move(finder)),
+    : _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
       _source(std::move(source)),
       _target(std::move(target)) {}
@@ -156,6 +148,9 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
   if (!_infos.useRegisterForTargetInput()) {
     _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
+  // Make sure the finder does not contain any leftovers in case of
+  // the executor being reconstructed.
+  _finder.clear();
 }
 
 // Shutdown query
@@ -209,6 +204,7 @@ auto ShortestPathExecutor::doSkipPath(AqlCall& call) -> size_t {
 auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
   // We only want to call fetchPath if we don't have a path currently available
   TRI_ASSERT(pathLengthAvailable() == 0);
+  _finder.clear();
   _path->clear();
   _posInPath = 0;
 
@@ -235,11 +231,6 @@ auto ShortestPathExecutor::pathLengthAvailable() -> size_t {
   // Subtraction must not undeflow
   TRI_ASSERT(_posInPath <= _path->length());
   return _path->length() - _posInPath;
-}
-
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
@@ -316,7 +307,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
         id = in.slice();
         // Validation
         if (!::isValidId(id)) {
-          _finder.options().query()->registerWarning(
+          _finder.options().query().warnings().registerWarning(
               TRI_ERROR_BAD_PARAMETER,
               "Invalid input for Shortest Path: "
               "Only id strings or objects with "
@@ -325,7 +316,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
         }
         return true;
       } else {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "
@@ -336,7 +327,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
     case ShortestPathExecutorInfos::InputVertex::Type::CONSTANT: {
       id = builder.slice();
       if (!::isValidId(id)) {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "
