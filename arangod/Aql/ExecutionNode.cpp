@@ -1272,11 +1272,11 @@ std::shared_ptr<RegisterPlan> ExecutionNode::getRegisterPlan() const {
 
 int ExecutionNode::getDepth() const { return _depth; }
 
-std::unordered_set<RegisterId> const& ExecutionNode::getRegsToClear() const {
+RegIdSet const& ExecutionNode::getRegsToClear() const {
   if (getType() == RETURN) {
     auto* returnNode = castTo<ReturnNode const*>(this);
     if (!returnNode->returnInheritedResults()) {
-      static const decltype(_regsToClear) emptyRegsToClear;
+      static const decltype(_regsToClear) emptyRegsToClear{};
       return emptyRegsToClear;
     }
   }
@@ -1492,7 +1492,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
                                        _outVariable, produceResult,
                                        this->_filter.get(), this->projections(),
                                        this->coveringIndexAttributePositions(),
-                                       this->_random);
+                                       this->_random, this->doCount());
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
@@ -1538,12 +1538,18 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems *= collection()->count(&trx, transaction::CountType::TryCache);
+  auto const estimatedNrItems = collection()->count(&trx, transaction::CountType::TryCache);
+  if (!doCount()) {
+    // if "count" mode is active, the estimated number of items from above must not
+    // be multiplied with the number of items in this collection
+    estimate.estimatedNrItems *= estimatedNrItems; 
+  }
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   // we also penalize each EnumerateCollectionNode slightly (and do not
   // do the same for IndexNodes) so IndexNodes will be preferred
-  estimate.estimatedCost += estimate.estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
+  estimate.estimatedCost += estimatedNrItems * (_random ? 1.005 : 1.0) + 1.0;
+  
   return estimate;
 }
 
@@ -2234,8 +2240,7 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  auto registerInfos = createRegisterInfos({inputRegister},
-                                           {});
+  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
 
   auto executorInfos = FilterExecutorInfos(inputRegister);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
@@ -2333,8 +2338,7 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     constexpr auto outputRegister = RegisterId{0};
 
     auto registerInfos =
-        createRegisterInfos({inputRegister},
-                            {outputRegister});
+        createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outputRegister});
     auto executorInfos = ReturnExecutorInfos(inputRegister, _count);
 
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,

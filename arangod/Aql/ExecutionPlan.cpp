@@ -2121,13 +2121,11 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type, bool enterSubqueries) {
   // consult our nodes-of-type counters array
-  if (!contains(type)) {
-    // node type not present in plan, do nothing
-    return;
+  if (contains(type)) {
+    // node type present in plan
+    NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
+    root()->walk(finder);
   }
-
-  NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
-  root()->walk(finder);
 }
 
 /// @brief find nodes of certain types

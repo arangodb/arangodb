@@ -134,8 +134,8 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
 
 namespace {
 
-auto initRegsToKeep(RegisterCount size) -> RegIdSetStack {
-  auto regsToKeepStack = RegIdSetStack{};
+auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
+  auto regsToKeepStack = RegIdFlatSetStack{};
   auto& regsToKeep = regsToKeepStack.emplace_back();
   for (RegisterId i = 0; i < size; i++) {
     regsToKeep.emplace(i);
@@ -156,8 +156,7 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.vpackOptions(),
                                                      _infos.sortRegisters())),
       _regsToKeep(initRegsToKeep(_infos.numberOfOutputRegisters())),
-      _heapOutputRow{_heapBuffer, _outputRegister, _regsToKeep,
-                     _infos.registersToClear()} {
+      _heapOutputRow{_heapBuffer, _outputRegister, _regsToKeep, _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);
   _rows.reserve(infos.limit());
   _cmpHeap->setBuffer(_heapBuffer.get());

@@ -75,7 +75,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{{0},{0},{0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0},RegIdSet{0},RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -87,7 +87,7 @@ class SplicedSubqueryIntegrationTest
     auto inputRegisterSet = RegIdSet{0};
     auto outputRegisterSet = RegIdSet{};
 
-    auto toKeepRegisterSet = RegIdSetStack{{0}, {0}, {0}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{0}, RegIdSet{0}, RegIdSet{0}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -103,7 +103,7 @@ class SplicedSubqueryIntegrationTest
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
-    auto toKeepRegisterSet = RegIdSetStack{{inputRegisterSet}, {inputRegisterSet}, {inputRegisterSet}};
+    auto toKeepRegisterSet = RegIdSetStack{RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet}, RegIdSet{inputRegisterSet}};
 
     auto nrInputRegisters = static_cast<RegisterCount>(inputRegisterSet.size());
     auto nrOutputRegisters =
@@ -122,12 +122,12 @@ class SplicedSubqueryIntegrationTest
   auto makeDoNothingRegisterInfos() -> RegisterInfos {
     auto numRegs = size_t{1};
 
-    RegIdSet prototype;
+    RegIdSet prototype{};
     for (RegisterId r = 0; r < numRegs; ++r) {
       prototype.emplace(r);
     }
 
-    return RegisterInfos({0}, {1}, 1, 2, {}, {prototype, prototype, prototype});
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, {prototype, prototype, prototype});
   }
 
   auto makeDoNothingExecutorInfos() -> LambdaExe::Infos {
@@ -136,12 +136,12 @@ class SplicedSubqueryIntegrationTest
 
   auto makeAssertRegisterInfos() -> RegisterInfos {
     auto numRegs = size_t{1};
-    RegIdSet  prototype;
+    RegIdSet  prototype{};
     for (RegisterId r = 0; r < numRegs; ++r) {
       prototype.emplace(r);
     }
 
-    return RegisterInfos({0}, {1}, 1, 2, {}, {{prototype}, {prototype}});
+    return RegisterInfos(RegIdSet{0}, RegIdSet{1}, 1, 2, {}, {{prototype}, {prototype}});
   }
 
   auto makeAssertExecutorInfos() -> LambdaExe::Infos {

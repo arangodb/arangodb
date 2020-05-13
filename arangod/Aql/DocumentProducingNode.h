@@ -74,6 +74,15 @@ class DocumentProducingNode {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
 
+  void setCountFlag() { _count = true; }
+
+  void copyCountFlag(DocumentProducingNode const* other) {
+    _count = other->_count;
+  }
+  
+  /// @brief wheter or not the node can be used for counting
+  bool doCount() const;
+
  protected:
   Variable const* _outVariable;
 
@@ -90,6 +99,8 @@ class DocumentProducingNode {
   
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;
+
+  bool _count;
 };
 
 }  // namespace aql

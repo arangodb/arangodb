@@ -213,7 +213,7 @@ class MultiDependencySingleRowFetcherTest
   std::vector<std::unique_ptr<ExecutionBlock>> _blocks;
   // The dependencies, they are referenced by _proxy, modifing this will modify the proxy
   std::vector<ExecutionBlock*> _dependencies{};
-  RegIdSet inputRegister = {0};
+  RegIdSet inputRegister = RegIdSet{0};
   DependencyProxy<BlockPassthrough::Disable> _proxy{_dependencies, itemBlockManager,
                                                     inputRegister,
                                                     1, nullptr};
