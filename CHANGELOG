@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
+
 * Restored behavior of Foxx API documentation being expanded to show all routes
   rather than collapsing all sections by default.
 
