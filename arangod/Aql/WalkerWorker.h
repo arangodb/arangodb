@@ -27,10 +27,7 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Containers/HashSet.h"
-#endif
 
 namespace arangodb {
 namespace aql {
@@ -56,8 +53,6 @@ class WalkerWorkerBase {
   virtual void leaveSubquery(T* /*super*/, T* /*sub*/) {}
 
   virtual bool done(T* en) { return false; }
-
-  virtual void reset() {}
 };
 
 /// @brief functionality to walk an execution plan recursively.
@@ -83,7 +78,7 @@ class WalkerWorker : public WalkerWorkerBase<T> {
 #endif
   }
 
-  void reset() override {
+  void reset() {
     // this is a no-op in non-failure mode
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _done.clear();
@@ -107,7 +102,7 @@ class UniqueWalkerWorker : public WalkerWorkerBase<T> {
     return !_done.emplace(en).second;
   }
 
-  void reset() override {
+  void reset() {
     _done.clear();
   }
 
