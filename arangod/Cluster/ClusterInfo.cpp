@@ -593,7 +593,8 @@ void ClusterInfo::loadPlan() {
     bool planValid = true;  // has the loadPlan compleated without skipping valid objects
     // we will set in the end
 
-    auto [planBuilder, index] = agencyCache.get(prefixPlan);
+    std::shared_ptr<arangodb::velocypack::Builder> planBuilder;
+    std::tie(planBuilder, idx) = agencyCache.get(prefixPlan);
     auto planSlice = planBuilder->slice();
 
     if (!planSlice.isObject()) {
@@ -1075,6 +1076,8 @@ void ClusterInfo::loadPlan() {
     _plan = std::move(planBuilder);
     _planVersion = newPlanVersion;
     _planIndex = idx;
+    LOG_DEVEL << "Updating ClusterInfo plan: version=" << newPlanVersion
+              << " index=" << idx;
 
     if (swapDatabases) {
       _plannedDatabases.swap(newDatabases);
@@ -1145,7 +1148,8 @@ void ClusterInfo::loadCurrent() {
 
 
     auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-    auto [currentBuilder, index] = agencyCache.get(prefixCurrent);
+    std::shared_ptr<arangodb::velocypack::Builder> currentBuilder;
+    std::tie(currentBuilder, idx) = agencyCache.get(prefixCurrent);
     auto currentSlice = currentBuilder->slice();
 
     if (!currentSlice.isObject()) {
@@ -1262,6 +1266,8 @@ void ClusterInfo::loadCurrent() {
     _current = currentBuilder;
     _currentVersion = newCurrentVersion;
     _currentIndex = idx;
+    LOG_DEVEL << "Updating current in ClusterInfo: version=" << newCurrentVersion
+              << " index=" << idx;
 
     if (swapDatabases) {
       _currentDatabases.swap(newDatabases);
