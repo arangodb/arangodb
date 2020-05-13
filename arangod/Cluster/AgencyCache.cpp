@@ -236,15 +236,12 @@ void AgencyCache::run() {
                   {
                     std::lock_guard g(_storeLock);
                     _readDB.applyTransaction(i); // apply logs
+                    _commitIndex = i.get("index").getNumber<uint64_t>();
                   }
                   {
                     std::lock_guard g(_callbacksLock);
                     handleCallbacksNoLock(i.get("query"), uniq, toCall);
                   }
-                }
-                {
-                  std::lock_guard g(_storeLock);
-                  _commitIndex = commitIndex;
                 }
               }
             } else {
