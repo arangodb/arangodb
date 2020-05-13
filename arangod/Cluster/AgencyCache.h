@@ -58,6 +58,9 @@ public:
   void beginShutdown() override;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  consensus::query_t const dump() const;
+
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
   std::tuple <consensus::query_t, consensus::index_t> const get(
     std::string const& path = std::string("/")) const;
 

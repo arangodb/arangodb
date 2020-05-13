@@ -1076,8 +1076,6 @@ void ClusterInfo::loadPlan() {
     _plan = std::move(planBuilder);
     _planVersion = newPlanVersion;
     _planIndex = idx;
-    LOG_DEVEL << "Updating ClusterInfo plan: version=" << newPlanVersion
-              << " index=" << idx;
 
     if (swapDatabases) {
       _plannedDatabases.swap(newDatabases);
@@ -1266,8 +1264,6 @@ void ClusterInfo::loadCurrent() {
     _current = currentBuilder;
     _currentVersion = newCurrentVersion;
     _currentIndex = idx;
-    LOG_DEVEL << "Updating current in ClusterInfo: version=" << newCurrentVersion
-              << " index=" << idx;
 
     if (swapDatabases) {
       _currentDatabases.swap(newDatabases);
@@ -3416,7 +3412,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               << indexId.id() << ", this will be repaired automatically.";
         } else {
           if (result.slice().get("results").length()) {
-            LOG_DEVEL << result.slice().toJson();
             waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
           }
         }
