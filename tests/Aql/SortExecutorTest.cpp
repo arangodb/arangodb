@@ -71,7 +71,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
-    return RegisterInfos({sortReg.reg}, {}, 1, 1, {}, {{0}});
+    return RegisterInfos(RegIdSet{sortReg.reg}, {}, 1, 1, {}, {RegIdSet{0}});
   }
 
   auto makeExecutorInfos() -> SortExecutorInfos {
