@@ -66,7 +66,7 @@ class IndexExecutorInfos {
                      std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
                      std::vector<Variable const*>&& expInVars,
                      std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
-                     AstNode const* condition,
+                     bool count, AstNode const* condition,
                      std::vector<transaction::Methods::IndexHandle> indexes,
                      Ast* ast, IndexIteratorOptions options,
                      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -90,6 +90,7 @@ class IndexExecutorInfos {
   RegisterId getOutputRegisterId() const noexcept;
   std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() const noexcept;
   bool hasMultipleExpansions() const noexcept;
+  bool getCount() const noexcept;
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions getOptions() const;
@@ -163,6 +164,8 @@ class IndexExecutorInfos {
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   bool _hasV8Expression;
+
+  bool _count;
 };
 
 /**
@@ -189,7 +192,7 @@ class IndexExecutor {
     CursorReader(CursorReader&& other) noexcept;
 
    private:
-    enum Type { NoResult, Covering, Document, LateMaterialized };
+    enum Type { NoResult, Covering, Document, LateMaterialized, Count };
 
     transaction::Methods& _trx;
     IndexExecutorInfos const& _infos;
@@ -223,6 +226,12 @@ class IndexExecutor {
   IndexExecutor(IndexExecutor const&) = delete;
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
+  
+  /**
+   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
   auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
