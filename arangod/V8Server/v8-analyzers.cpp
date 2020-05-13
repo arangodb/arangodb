@@ -81,33 +81,34 @@ v8::Handle<v8::Object> WrapAnalyzer(
   return scope.Escape<v8::Object>(result);
 }
 
-void StartPlanModyfing(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID) {
+[[nodiscard]]
+std::unique_ptr<arangodb::AnalyzerModificationTransaction> StartPlanModyfing(v8::Isolate* isolate,
+                                                                             TRI_v8_global_t* v8g, 
+                                                                             irs::string_ref const& databaseID) {
   if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
     TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
     auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    auto const res = engine.startModifyingAnalyzerCoordinator(databaseID);
-    if (res.fail()) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    return std::make_unique< arangodb::AnalyzerModificationTransaction>(databaseID, &engine, false);
   }
+  return nullptr;
 }
 
-void FinishPlanModifying(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID, bool restore) {
-  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
-    TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
-    auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    auto const res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
-    if (res.fail()) {
-      if (!restore) {
-        TRI_V8_THROW_EXCEPTION(res);
-      } else {
-        // do not mask upstream error. Just log our here
-        LOG_TOPIC("8a2a3", WARN, arangodb::Logger::CLUSTER) << "Failed to restore analyzers revision for database "
-          << databaseID << " error:" << res;
-      }
-    }
-  }
-}
+//void FinishPlanModifying(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID, bool restore) {
+//  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
+//    TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
+//    auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+//    auto const res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
+//    if (res.fail()) {
+//      if (!restore) {
+//        TRI_V8_THROW_EXCEPTION(res);
+//      } else {
+//        // do not mask upstream error. Just log our here
+//        LOG_TOPIC("8a2a3", WARN, arangodb::Logger::CLUSTER) << "Failed to restore analyzers revision for database "
+//          << databaseID << " error:" << res;
+//      }
+//    }
+//  }
+//}
 
 void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -338,8 +339,6 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     name = nameBuf;
   }
 
-  auto const databaseID = arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first;
-
   auto type = TRI_ObjectToString(isolate, args[1]);
 
   VPackSlice propertiesSlice = VPackSlice::emptyObjectSlice();
@@ -403,11 +402,14 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
-  StartPlanModyfing(isolate, v8g, databaseID);
-  bool restore = true;
-  TRI_DEFER( if (restore) {
-    FinishPlanModifying(isolate, v8g, databaseID, true);
-  });
+  auto trans = StartPlanModyfing(isolate, v8g, 
+                                 arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first);
+  if (trans) {
+    auto startRes = trans->start();
+    if (!startRes.ok()) {
+      TRI_V8_THROW_EXCEPTION(startRes);
+    }
+  }
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -428,8 +430,12 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    FinishPlanModifying(isolate, v8g, databaseID, false);
-    restore = false;
+    if (trans) {
+      auto commitRes = trans->commit();
+      if (!commitRes.ok()) {
+        TRI_V8_THROW_EXCEPTION(commitRes);
+      }
+    }
 
     TRI_V8_RETURN(v8Result);
   } catch (arangodb::basics::Exception const& ex) {
@@ -659,8 +665,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     name = nameBuf;
   }
 
-  auto const databaseID = arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first;
-
   bool force = false;
 
   if (args.Length() > 1) {
@@ -682,11 +686,14 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
-  StartPlanModyfing(isolate, v8g, databaseID);
-  bool restore = true;
-  TRI_DEFER( if (restore) {
-      FinishPlanModifying(isolate, v8g, databaseID, true);
-  });
+  auto trans = StartPlanModyfing(isolate, v8g, 
+                                 arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first);
+  if (trans) {
+    auto startRes = trans->start();
+    if (startRes.fail()) {
+      TRI_V8_THROW_EXCEPTION(startRes);
+    }
+  }
 
   try {
     auto res = analyzers.remove(name, force);
@@ -695,8 +702,12 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    FinishPlanModifying(isolate, v8g, databaseID, false);
-    restore = false;
+    if (trans) {
+      auto commitRes = trans->commit();
+      if (commitRes.fail()) {
+        TRI_V8_THROW_EXCEPTION(commitRes);
+      }
+    }
     auto finalizeResult  = analyzers.finalizeRemove(name);
     if (finalizeResult.fail()) {
       // note the failure here. But change itself is already committed so report success
@@ -704,7 +715,6 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
         << " Failed to perform analyzer " << name << " removal finazlizing in cluster. Code: "
         << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
     }
-    
 
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {

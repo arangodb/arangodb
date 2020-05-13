@@ -34,6 +34,20 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
+namespace {
+[[nodiscard]]
+std::unique_ptr<arangodb::AnalyzerModificationTransaction> startPlanModyfing(arangodb::application_features::ApplicationServer& server, 
+                                                                   irs::string_ref const& databaseID) {
+  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
+    TRI_ASSERT(server.hasFeature<arangodb::ClusterFeature>());
+    auto& engine = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    return std::make_unique<arangodb::AnalyzerModificationTransaction>(databaseID, &engine, false);
+  }
+  return nullptr;
+}
+
+}
+
 namespace arangodb {
 namespace iresearch {
 
@@ -107,8 +121,6 @@ void RestAnalyzerHandler::createAnalyzer( // create
     nameBuf = IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase); // normalize
     name = nameBuf;
   }
-
-  auto const databaseID = IResearchAnalyzerFeature::splitAnalyzerName(name).first;
 
   irs::string_ref type;
   auto typeSlice = body.get(StaticStrings::AnalyzerTypeField);
@@ -197,13 +209,15 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  if (!startPlanModyfing(databaseID)) {
-    return;
+  auto trans = startPlanModyfing(server(), 
+                                 IResearchAnalyzerFeature::splitAnalyzerName(name).first);
+  if (trans) {
+    auto startRes = trans->start();
+    if (startRes.fail()) {
+      generateError(startRes);
+      return;
+    }
   }
-  bool restore = true;
-  TRI_DEFER( if (restore) {
-      finishPlanModifying(databaseID, true);
-  });
 
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
@@ -227,10 +241,12 @@ void RestAnalyzerHandler::createAnalyzer( // create
 
   pool->toVelocyPack(builder, false);
 
-  if (finishPlanModifying(databaseID, false)) {
-    restore = false;
-  } else {
-    return;
+  if (trans) {
+    auto commitRes = trans->commit();
+    if (commitRes.fail()) {
+      generateError(commitRes);
+      return;
+    }
   }
 
   generateResult(
@@ -430,8 +446,6 @@ void RestAnalyzerHandler::removeAnalyzer(
       sysVocbase ? IResearchAnalyzerFeature::normalize(name, _vocbase, *sysVocbase)
                  : std::string(name);
 
-  auto const databaseID = IResearchAnalyzerFeature::splitAnalyzerName(normalizedName).first;
-
   if (!IResearchAnalyzerFeature::canUse(normalizedName, auth::Level::RW)) {
     generateError(arangodb::Result( 
       TRI_ERROR_FORBIDDEN, 
@@ -440,13 +454,15 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  if (!startPlanModyfing(databaseID)) {
-    return;
+  auto trans = startPlanModyfing(server(),
+                                 IResearchAnalyzerFeature::splitAnalyzerName(normalizedName).first);
+  if (trans) {
+    auto startRes = trans->start();
+    if (startRes.fail()) {
+      generateError(startRes);
+      return;
+    }
   }
-  bool restore = true;
-  TRI_DEFER(if (restore) {
-    finishPlanModifying(databaseID, true);
-  });
 
   auto res = analyzers.remove(normalizedName, force);
   if (!res.ok()) {
@@ -454,8 +470,9 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  if (finishPlanModifying(databaseID, false)) {
-    restore = false;
+  Result commitRes = trans ? trans->commit() : Result();
+
+  if (commitRes.ok()) {
     auto finalizeResult = analyzers.finalizeRemove(normalizedName);
     if (finalizeResult.fail()) {
       // note the failure here. But change itself is already committed so report success
@@ -464,6 +481,7 @@ void RestAnalyzerHandler::removeAnalyzer(
         << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
     }
   } else {
+    generateError(commitRes);
     return;
   }
 
@@ -475,40 +493,6 @@ void RestAnalyzerHandler::removeAnalyzer(
   // generate result + 'error' field + 'code' field
   // 2nd param must be Builder and not Slice
   generateOk(arangodb::rest::ResponseCode::OK, builder);
-}
-
-bool RestAnalyzerHandler::startPlanModyfing(irs::string_ref const& databaseID) {
-  if (ServerState::instance()->isCoordinator() && !databaseID.empty()) {
-    TRI_ASSERT(server().hasFeature<ClusterFeature>());
-    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
-    auto res = engine.startModifyingAnalyzerCoordinator(databaseID);
-    if (res.fail()) {
-      generateError(res);
-
-      return false;
-    }
-  }
-  return true;
-}
-
-bool RestAnalyzerHandler::finishPlanModifying(irs::string_ref const& databaseID, bool restore) {
-  if (ServerState::instance()->isCoordinator() && !databaseID.empty()) {
-    TRI_ASSERT(server().hasFeature<ClusterFeature>());
-    auto& engine = server().getFeature<ClusterFeature>().clusterInfo();
-    auto res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
-    if (res.fail()) {
-      if (!restore) {
-        generateError(res);
-      } else {
-        // if we are restoring we have more important error from operation execution
-        // do no mask. Just log our error here
-        LOG_TOPIC("80e64", WARN, Logger::CLUSTER) << "Failed to restore analyzers revision for database "
-          << databaseID << " error:" << res;
-      }
-      return false;
-    }
-  }
-  return true;
 }
 
 } // iresearch

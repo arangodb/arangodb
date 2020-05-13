@@ -3185,17 +3185,6 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
   AnalyzersRevision::Revision revision;
   auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
 
-
-  /// analyzersTransaction = startModifying();
-  /// analyerstTransaction.commit(); / abort();
-
-  //auto guard = std::make_unique<arangodb::scopeGuard>([])
-  //bool lockOk = false;
-  //TRI_DEFER(if (!lockOk) {
-  //    _pendingAnalyzerOperationsCount--;
-  //});
-
-
   // do until precondition success or timeout
   do {
     {
@@ -3204,8 +3193,11 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
       READ_LOCKER(readLocker, _planProt.lock);
       auto const it = _dbAnalyzersRevision.find(databaseID);
       if (it == _dbAnalyzersRevision.cend()) {
-        return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                      "start modifying analyzer: unknown database name '" + databaseID + "'");
+        if (TRI_microtime() > endTime) {
+          return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                        "start modifying analyzer: unknown database name '" + databaseID + "'");
+        }
+        continue;
       }
       revision = it->second->getRevision();
     }
@@ -3341,6 +3333,8 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         }
 
         continue;
+      } else {
+        break; // failed precondition means our revert is indirectly successful!
       }
 
       return Result(
@@ -5355,6 +5349,82 @@ CollectionWatcher::~CollectionWatcher() {
     LOG_TOPIC("42af2", WARN, Logger::CLUSTER) << "caught unexpected exception in CollectionWatcher: " << ex.what();
   }
 }
+
+Result AnalyzerModificationTransaction::start()
+{
+  auto const endTime = TRI_microtime() + 10.0; // !!!!
+  int32_t count = _cleanupTransaction ? 0 : _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+
+  // locking stage
+  while (true) {
+    if (_pendingAnalyzerOperationsCount.compare_exchange_weak(count,
+      _cleanupTransaction ? -1 : count + 1,
+      std::memory_order_acquire)) {
+      break;
+    }
+    if (TRI_microtime() > endTime) {
+      return Result(
+        TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+        "start modifying analyzer for database " + _database + ": failed to acquire operation counter");
+    }
+  }
+  _rollbackCounter = true; // from now on we must release our counter
+
+  if (_cleanupTransaction) {
+    _rollbackRevision = true; // we just need to revert our revision
+    return {};
+  }
+  else {
+    auto res = _clusterInfo->startModifyingAnalyzerCoordinator(_database);
+    _rollbackRevision = res.ok();
+    return res;
+  }
+}
+
+Result AnalyzerModificationTransaction::commit()
+{
+  TRI_ASSERT(_rollbackCounter && _rollbackRevision);
+  auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
+  _rollbackRevision = res.fail();
+  // if succesful revert mark our transaction as completed.
+  // for cleanup - always completed. Will try next time
+  if (res.ok() || _cleanupTransaction) {
+    revertCounter();
+  }
+  return res;
+}
+
+Result AnalyzerModificationTransaction::abort()
+{
+  if (!_rollbackCounter) {
+    TRI_ASSERT(!_rollbackRevision);
+    return Result();
+  }
+
+  Result res{};
+  if (_rollbackRevision && !_cleanupTransaction) {
+    res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
+    _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
+  }
+  revertCounter();
+  return res;
+}
+
+void AnalyzerModificationTransaction::revertCounter()
+{
+  TRI_ASSERT(_rollbackCounter);
+  if (_cleanupTransaction) {
+    TRI_ASSERT(_pendingAnalyzerOperationsCount.load() == -1);
+    _pendingAnalyzerOperationsCount = 0;
+  }
+  else {
+    TRI_ASSERT(_pendingAnalyzerOperationsCount.load() > 0);
+    _pendingAnalyzerOperationsCount.fetch_sub(1);
+  }
+  _rollbackCounter = false;
+}
+
+std::atomic<int32_t>  arangodb::AnalyzerModificationTransaction::_pendingAnalyzerOperationsCount;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

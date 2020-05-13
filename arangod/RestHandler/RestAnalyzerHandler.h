@@ -62,8 +62,6 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
     std::string const& requestedName, 
     bool force
   );
-  bool startPlanModyfing(irs::string_ref const& databaseID);
-  bool finishPlanModifying(irs::string_ref const& databaseID, bool restore);
 };
 
 } // iresearch
