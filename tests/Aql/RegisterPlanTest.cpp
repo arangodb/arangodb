@@ -135,9 +135,7 @@ struct ExecutionNodeMock {
     _regsToKeep = std::move(regsToKeep);
   }
 
-  auto getRegsToKeep() -> RegIdSetStack const& {
-    return _regsToKeep;
-  }
+  auto getRegsToKeep() -> RegIdSetStack const& { return _regsToKeep; }
 
   auto walk(WalkerWorker<ExecutionNodeMock>& worker) -> bool {
     if (worker.before(this)) {
@@ -624,9 +622,98 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery_using_many_registers) {
       ExecutionNodeMock{ExecutionNode::RETURN, {jesse}, {}}};
   getVarUsage(nodes);
   auto plan = walk(nodes);
-  assertVariableInRegister(plan, *mark, 0);
-  assertVariableInRegister(plan, *mary, 1);
-  assertVariableInRegister(plan, *jesse, 2);
+  {
+    SCOPED_TRACE("while checking mark");
+    assertVariableInRegister(plan, *mark, 0);
+  }
+  {
+    SCOPED_TRACE("while checking tobias");
+    assertVariableInRegister(plan, *tobias, 1);
+  }
+  {
+    SCOPED_TRACE("while checking paul");
+    assertVariableInRegister(plan, *paul, 2);
+  }
+  {
+    SCOPED_TRACE("while checking debra");
+    assertVariableInRegister(plan, *debra, 1);
+  }
+  {
+    SCOPED_TRACE("while checking mary");
+    assertVariableInRegister(plan, *mary, 1);
+  }
+  {
+    SCOPED_TRACE("while checking jesse");
+    assertVariableInRegister(plan, *jesse, 2);
+  }
+}
+
+TEST_F(RegisterPlanTest, multiple_spliced_subqueries) {
+  auto&& [vars, ptrs] = generateVars<10>();
+  auto [maria, andrew, douglas, christopher, patricia, betty, doris, christine,
+        wanda, ronald] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {maria}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {maria}, {andrew}},
+
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {douglas}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {douglas, andrew}, {christopher}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {christopher}, {patricia}},
+
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {maria, patricia}, {betty}},
+
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_START, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {doris}},
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {doris}, {christine}},
+      ExecutionNodeMock{ExecutionNode::SUBQUERY_END, {christine}, {wanda}},
+
+      ExecutionNodeMock{ExecutionNode::CALCULATION, {betty, wanda}, {ronald}},
+
+      ExecutionNodeMock{ExecutionNode::RETURN, {ronald}, {}}};
+  getVarUsage(nodes);
+  auto plan = walk(nodes);
+  {
+    SCOPED_TRACE("while checking maria");
+    assertVariableInRegister(plan, *maria, 0);
+  }
+  {
+    SCOPED_TRACE("while checking andrew");
+    assertVariableInRegister(plan, *andrew, 1);
+  }
+  {
+    SCOPED_TRACE("while checking douglas");
+    assertVariableInRegister(plan, *douglas, 0);
+  }
+  {
+    SCOPED_TRACE("while checking christopher");
+    assertVariableInRegister(plan, *christopher, 2);
+  }
+  {
+    SCOPED_TRACE("while checking patricia");
+    assertVariableInRegister(plan, *patricia, 1);
+  }
+  {
+    SCOPED_TRACE("while checking betty");
+    assertVariableInRegister(plan, *betty, 2);
+  }
+  {
+    SCOPED_TRACE("while checking doris");
+    assertVariableInRegister(plan, *doris, 0);
+  }
+  {
+    SCOPED_TRACE("while checking christine");
+    assertVariableInRegister(plan, *christine, 1);
+  }
+  {
+    SCOPED_TRACE("while checking wanda");
+    assertVariableInRegister(plan, *wanda, 0);
+  }
+  {
+    SCOPED_TRACE("while checking ronald");
+    assertVariableInRegister(plan, *ronald, 1);
+  }
 }
 
 }  // namespace aql
