@@ -292,7 +292,7 @@ RegisterId RegisterPlanT<T>::addRegister() {
 }
 
 template <typename T>
-void RegisterPlanT<T>::registerVariable(const Variable* v, std::set<RegisterId>& unusedRegisters) {
+void RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
 
   if (unusedRegisters.empty()) {
