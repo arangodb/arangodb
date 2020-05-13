@@ -3344,6 +3344,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               << indexId.id() << ", this will be repaired automatically.";
         } else {
           if (result.slice().get("results").length()) {
+            LOG_DEVEL << result.slice().toJson();
             waitForPlan(result.slice().get("results")[0].getNumber<uint64_t>()).get();
           }
         }
@@ -4986,7 +4987,9 @@ void ClusterInfo::SyncerThread::run() {
     bool news = false;
     {
       std::unique_lock<std::mutex> lk(_m);
-      _cv.wait(lk);
+      if (!_news) {
+        _cv.wait(lk);
+      }
       news = _news;
     }
     if (news) {
