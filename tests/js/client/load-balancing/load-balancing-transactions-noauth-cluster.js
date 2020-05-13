@@ -262,7 +262,7 @@ function TransactionsSuite () {
         assertEqual(result.status, 201);
         assertFalse(result.body.result.id === undefined);
         trx = result.body.result.id;
-
+        
         // use trx on different coord to run a query
         const query = `FOR doc IN ${cn} RETURN doc`;
         result = sendRequest('POST', "/_api/cursor", { query }, false);
@@ -272,6 +272,50 @@ function TransactionsSuite () {
         sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, true);
       }
     },
+    
+    testUseTransactionWithGharial: function () {
+      let trx;
+      try {
+        const graphDef = {
+          "name" : "myGraph",
+          "edgeDefinitions" : [
+            {
+              "collection": "edges",
+              "from": [
+                "startVertices"
+              ],
+              "to": [
+                "endVertices"
+              ]
+            }
+          ]
+        };
+        let result = sendRequest('POST', "/_api/gharial", graphDef, true);
+        assertEqual(result.status, 202);
+
+        const obj = { collections: { read: "startVertices" } };
+        result = sendRequest('POST', "/_api/transaction/begin", obj, true);
+        assertEqual(result.status, 201);
+        assertFalse(result.body.result.id === undefined);
+        trx = result.body.result.id;
+
+        const doc = { value: true };
+        result = sendRequest('POST', "/_api/gharial/myGraph/vertex/startVertices", doc, true);
+        assertEqual(result.status, 202);
+        assertFalse(result.body.vertex._key === undefined);
+        const key = result.body.vertex._key;
+
+
+        // get it via a different coordinator
+        result = sendRequest('GET', `/_api/gharial/myGraph/vertex/startVertices/${key}`, {}, false);
+        assertEqual(result.status, 200);
+        assertEqual(result.body.vertex._key, key);
+        assertTrue(result.body.vertex.value);
+      } finally {
+        sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx), {}, true);
+        sendRequest('DELETE', '/_api/gharial/myGraph?dropCollections=true', {}, true);
+      }
+    }
 
   };
 }
