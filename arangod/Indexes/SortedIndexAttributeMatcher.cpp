@@ -285,14 +285,14 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     costs.supportsCondition = true;
 
     if (itemsInIndex > 0) {
-      costs.estimatedItems = static_cast<size_t>(estimatedItems * values);
+      estimatedItems = static_cast<double>(estimatedItems * values);
 
       // check if the index has a selectivity estimate ready
       if (idx->hasSelectivityEstimate() &&
           attributesCoveredByEquality == idx->fields().size()) {
         double estimate = idx->selectivityEstimate();
         if (estimate > 0.0) {
-          costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+          estimatedItems = static_cast<double>(1.0 / estimate * values);
         }
       } else if (attributesCoveredByEquality > 0) {
         TRI_ASSERT(attributesCovered > 0);
@@ -332,7 +332,7 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
             double estimate = other->selectivityEstimate();
             if (estimate > 0.0) {
               // reuse the estimate from the other index
-              costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+              estimatedItems = static_cast<double>(1.0 / estimate * values);
               break;
             }
           }
@@ -340,13 +340,13 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       }
 
       // costs.estimatedItems is always set here, make it at least 1
-      costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
+      costs.estimatedItems = std::max(size_t(1), static_cast<size_t>(estimatedItems));
       
       // seek cost is O(log(n))
       costs.estimatedCosts = std::max(double(1.0),
                                       std::log2(double(itemsInIndex)) * values);
       // add per-document processing cost
-      costs.estimatedCosts += costs.estimatedItems * 0.05;
+      costs.estimatedCosts += estimatedItems * 0.05;
       // slightly prefer indexes that cover more attributes
       costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
     
