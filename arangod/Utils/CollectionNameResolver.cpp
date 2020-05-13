@@ -71,24 +71,17 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(std::st
 //////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
-  if (name.empty()) {
-    return 0;
-  }
+  if (!name.empty()) {
+    if (name[0] >= '0' && name[0] <= '9') {
+      // name is a numeric id
+      return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
+    }
 
-  if (name[0] >= '0' && name[0] <= '9') {
-    // name is a numeric id
-    return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
-  }
+    auto ds = _vocbase.lookupDataSource(name);
 
-  auto collection = _vocbase.lookupCollection(name);
-
-  if (collection != nullptr) {
-    return collection->id();
-  }
-
-  auto view = _vocbase.lookupView(name);
-  if (view) {
-    return view->id();
+    if (ds != nullptr) {
+      return ds->id();
+    }
   }
 
   return 0;
@@ -124,22 +117,16 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
 
   try {
     // We have to look up the collection info:
-    if (!_vocbase.server().hasFeature<ClusterFeature>()) {
-      return 0;
+    if (_vocbase.server().hasFeature<ClusterFeature>()) {
+      auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+      auto const info = ci.getCollectionOrViewNT(_vocbase.name(), name);
+
+      if (info != nullptr) {
+        return info->id();
+      }
     }
-    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-
-    auto const cinfo = ci.getCollectionNT(_vocbase.name(), name);
-
-    if (cinfo != nullptr) {
-      return cinfo->id();
-    }
-
-    auto const vinfo = ci.getView(_vocbase.name(), name);
-
-    if (vinfo) {
-      return vinfo->id();
-    }
+    // fallthrough to returning 0
   } catch (...) {
   }
 
@@ -318,16 +305,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::st
     }
     auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-    ptr = ci.getCollectionNT(_vocbase.name(), nameOrId);
-
-    if (ptr == nullptr) {
-      try {
-        ptr = ci.getView(_vocbase.name(), nameOrId);
-      } catch (...) {
-        LOG_TOPIC("426e6", ERR, arangodb::Logger::FIXME)
-            << "caught exception while resolving cluster data-source: " << nameOrId;
-      }
-    }
+    ptr = ci.getCollectionOrViewNT(_vocbase.name(), nameOrId);
   }
 
   if (ptr) {

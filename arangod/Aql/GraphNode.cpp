@@ -101,7 +101,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _defaultDirection(parseDirection(direction)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(false),
+      _isDisjoint(false) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
@@ -123,6 +124,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = true;
+      _isDisjoint = true;
       std::string distributeShardsLike;
       for (size_t i = 0; i < edgeCollectionCount; ++i) {
         auto col = graph->getMember(i);
@@ -131,14 +133,19 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         }
         std::string n = col->getString();
         auto c = ci.getCollection(_vocbase->name(), n);
+        if (c->isSmart() && !c->isDisjoint()) {
+          _isDisjoint = false;
+        }
         if (!c->isSmart() || c->distributeShardsLike().empty()) {
           _isSmart = false;
+          _isDisjoint = false;
           break;
         }
         if (distributeShardsLike.empty()) {
           distributeShardsLike = c->distributeShardsLike();
         } else if (distributeShardsLike != c->distributeShardsLike()) {
           _isSmart = false;
+          _isDisjoint = false;
           break;
         }
       }
@@ -232,21 +239,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     // like a common collection:
     auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = true;
-      std::string distributeShardsLike;
-      for (auto const& n : eColls) {
-        auto c = ci.getCollection(_vocbase->name(), n);
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
-          _isSmart = false;
-          break;
-        }
-        if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
-          _isSmart = false;
-          break;
-        }
-      }
+      _isSmart = _graphObj->isSmart();
+      _isDisjoint = _graphObj->isDisjoint();
     }
 
     for (const auto& n : eColls) {
@@ -305,7 +299,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(
           base.get("defaultDirection")))),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isSmart", false)),
+      _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(base, "isDisjoint", false)) {
   auto thread_local const isDBServer = ServerState::instance()->isDBServer();
 
   if (!isDBServer) {
@@ -457,7 +452,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* voc
       _directions(std::move(directions)),
       _options(std::move(options)),
       _optionsBuilt(false),
-      _isSmart(false) {
+      _isSmart(false),
+      _isDisjoint(false) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
 
@@ -490,6 +486,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
+      _isDisjoint(other.isDisjoint()),
       _collectionToShard(other._collectionToShard) {
   setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
@@ -577,6 +574,10 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(VPackValue("edgeOutVariable"));
     edgeOutVariable()->toVelocyPack(nodes);
   }
+
+  // Flags
+  nodes.add("isSmart", VPackValue(_isSmart));
+  nodes.add("isDisjoint", VPackValue(_isDisjoint));
 
   // Temporary AST Nodes for conditions
   TRI_ASSERT(_tmpObjVariable != nullptr);
@@ -721,19 +722,26 @@ void GraphNode::addVertexCollection(aql::Collection* collection) {
 }
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
-  std::vector<aql::Collection const*> rv;
-  rv.reserve(_edgeColls.size() + _vertexColls.size());
+  std::unordered_set<aql::Collection const*> set;
+  set.reserve(_edgeColls.size() + _vertexColls.size());
 
   for (auto const& collPointer : _edgeColls) {
-    rv.push_back(collPointer);
+    set.emplace(collPointer);
   }
   for (auto const& collPointer : _vertexColls) {
-    rv.push_back(collPointer);
+    set.emplace(collPointer);
   }
-  return rv;
+
+  std::vector<aql::Collection const*> vector;
+  vector.reserve(set.size());
+  std::move(set.begin(), set.end(), std::back_inserter(vector));
+
+  return vector;
 }
 
 bool GraphNode::isSmart() const { return _isSmart; }
+
+bool GraphNode::isDisjoint() const { return _isDisjoint; }
 
 TRI_vocbase_t* GraphNode::vocbase() const { return _vocbase; }
 

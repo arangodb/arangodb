@@ -63,9 +63,6 @@ class SkipResult;
  *   - preFetchNumberOfRows()
  *     => Will do the same as fetchAllRows, but NOT give out the data, it will only hold it internally.
  *     => On response it will inform the caller on exactly how many Rows will be returned until the next ShadowRow appears.
- *   - fetchBlockForModificationExecutor()
- *     => Fetches all blocks from upstream up to the next shadow row. Then it will only return these Blocks one by one.
- *     => This is relevant for ModificationExecutors to guarantee that all Input is read before a write is executed.
  *   - upstreamState()
  *     => Returns the last state of the dependencyProxy.
  *   - fetchShadowRow()
@@ -179,9 +176,6 @@ class AllRowsFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
 
   // only for ModificationNodes
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForModificationExecutor(std::size_t);
-
-  // only for ModificationNodes
   ExecutionState upstreamState();
 
   // NOLINTNEXTLINE google-default-arguments
@@ -206,7 +200,7 @@ class AllRowsFetcher {
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
+  RegisterCount getNrInputRegisters() const;
 
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()

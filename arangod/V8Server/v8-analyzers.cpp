@@ -105,11 +105,11 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     for (auto& feature: analyzer->features()) {
       if (feature) { // valid
-        if (feature->name().null()) {
+        if (feature().name().null()) {
           result->Set(context, i++, v8::Null(isolate)).FromMaybe(false);
         } else {
           result->Set(context,  // set value
-                      i++, TRI_V8_STD_STRING(isolate, std::string(feature->name()))).FromMaybe(false); // args
+                      i++, TRI_V8_STD_STRING(isolate, std::string(feature().name()))).FromMaybe(false); // args
         }
       }
     }
@@ -349,14 +349,13 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_TYPE_ERROR("<feature> must be a string");
       }
 
-      auto* feature = // feature
-        irs::attribute::type_id::get(TRI_ObjectToString(isolate, subValue), false);
+      const auto feature = irs::attributes::get(TRI_ObjectToString(isolate, subValue), false);
 
       if (!feature) {
         TRI_V8_THROW_TYPE_ERROR("<feature> not supported");
       }
 
-      features.add(*feature);
+      features.add(feature.id());
     }
   }
 

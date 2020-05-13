@@ -45,13 +45,12 @@ using namespace arangodb::tests::aql;
 
 namespace {
 RegisterInfos MakeBaseInfos(RegisterId numRegs) {
-  auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{});
-  std::unordered_set<RegisterId> toKeep;
+  RegIdSet prototype{};
   for (RegisterId r = 0; r < numRegs; ++r) {
-    toKeep.emplace(r);
+    prototype.emplace(r);
   }
-  return RegisterInfos(emptyRegisterList, emptyRegisterList, numRegs, numRegs, {}, toKeep);
+  return RegisterInfos({}, {}, numRegs, numRegs, {},
+                       {{prototype}, {prototype}, {prototype}});
 }
 }  // namespace
 

@@ -30,7 +30,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-NoResultsExecutor::NoResultsExecutor(Fetcher&, RegisterInfos&) {}
+NoResultsExecutor::NoResultsExecutor(Fetcher&, Infos&) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
 auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const

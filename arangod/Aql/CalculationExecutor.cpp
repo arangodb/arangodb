@@ -90,7 +90,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.

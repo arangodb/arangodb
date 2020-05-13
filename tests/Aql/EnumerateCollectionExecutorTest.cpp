@@ -81,13 +81,12 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   Variable outVariable;
   bool varUsedLater;
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
   ExecutionEngine* engine;
   Collection aqlCollection;
   std::vector<std::string> const projections;
   std::vector<size_t> const coveringIndexAttributePositions;
   bool random;
+  bool count;
 
   RegisterInfos registerInfos;
   EnumerateCollectionExecutorInfos executorInfos;
@@ -108,10 +107,10 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         engine(fakedQuery->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({0}),
-                      1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep),
+        count(false),
+        registerInfos({}, RegIdSet{0}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{}, {{}}),
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable, varUsedLater,
-                      nullptr, projections, coveringIndexAttributePositions, random),
+                      nullptr, projections, coveringIndexAttributePositions, random, count),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     try {
       collection = vocbase.createCollection(json->slice());
@@ -276,6 +275,7 @@ class EnumerateCollectionExecutorTestProduce
   std::vector<size_t> const coveringIndexAttributePositions;
   Collection aqlCollection;
   bool random;
+  bool count;
 
   RegisterInfos registerInfos;
   EnumerateCollectionExecutorInfos executorInfos;
@@ -291,20 +291,21 @@ class EnumerateCollectionExecutorTestProduce
         engine(fakedQuery.get()->rootEngine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         random(false),
-        registerInfos(make_shared_unordered_set(), make_shared_unordered_set({1}),
-                      1 /*nrIn*/, 1 /*nrOut*/, {}, {}),
+        count(false),
+        registerInfos({}, RegIdSet{1}, 1 /*nrIn*/, 1 /*nrOut*/, RegIdFlatSet{},
+                      RegIdFlatSetStack{{}}),
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
-                      projections, coveringIndexAttributePositions, random) {}
+                      projections, coveringIndexAttributePositions, random, count) {}
 
   auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1,
-                         std::unordered_set<RegisterId> regToClear = {},
-                         std::unordered_set<RegisterId> regToKeep = {}) -> RegisterInfos {
-    auto inputRegisters = make_shared_unordered_set({});
-    auto outputRegisters = make_shared_unordered_set({outputRegister});
-    RegisterInfos registerInfos{inputRegisters,        outputRegisters,
-                                nrInputRegister,       nrOutputRegister,
-                                std::move(regToClear), std::move(regToKeep)};
+                         RegisterId nrOutputRegister = 1, RegIdFlatSet regToClear = {},
+                         RegIdFlatSetStack regToKeep = {{}}) -> RegisterInfos {
+    RegisterInfos registerInfos{{},
+                                RegIdSet{outputRegister},
+                                nrInputRegister,
+                                nrOutputRegister,
+                                std::move(regToClear),
+                                std::move(regToKeep)};
     return registerInfos;
   }
 
@@ -315,7 +316,7 @@ class EnumerateCollectionExecutorTestProduce
         &aqlCollection, &outVariable,
         varUsedLater,   nullptr,
         projections,    coveringIndexAttributePositions,
-        random};
+        random, count};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
     return infos;
   }

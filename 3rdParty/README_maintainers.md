@@ -129,10 +129,10 @@ the _Execute_ button.
 
   This confirms that the change inferring the URL was applied correctly.
 
-* All sections of the API documentation should be expanded to show all
-  routes but NOT fully expanded to reveal descriptions and examples.
+* The sections should be collapsed, NOT showing the individual routes.
 
-  This confirms the change to `docExpansion` was applied correctly.
+  This confirms the `docExpansion` changes work correctly in the API
+  documentation.
 
 * When using the `POST /_api/cursor` route with a query the authenticated
   user is authorized to execute, the response should not indicate an
@@ -153,6 +153,16 @@ the _Execute_ button.
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
+
+To verify the `docExpansion` changes work correctly in Foxx, navigate to the
+_Services_ tab, reveal system services via the menu in the gear icon, open the
+service `/_api/foxx` and navigate to the _API_ tab within that service.
+
+* All sections of the API documentation should be expanded to show all
+  routes but NOT fully expanded to reveal descriptions and examples.
+
+  This confirms the `docExpansion` changes work correctly in FOxx.
+
 
 ## taocpp::json
 

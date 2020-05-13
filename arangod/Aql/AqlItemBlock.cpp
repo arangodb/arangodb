@@ -71,7 +71,7 @@ inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a
 }  // namespace
 
 /// @brief create the block
-AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
+AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterCount nrRegs)
     : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
@@ -379,7 +379,7 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 }
 
-void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
+void AqlItemBlock::rescale(size_t nrItems, RegisterCount nrRegs) {
   TRI_ASSERT(_valueCount.empty());
   TRI_ASSERT(nrRegs <= RegisterPlan::MaxRegisterId);
 
@@ -419,8 +419,14 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
 
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear) {
+void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
   for (size_t i = 0; i < _nrItems; i++) {
+    if (isShadowRow(i)) {
+      // Do not clear shadow rows:
+      // 1) our toClear set is only valid for data rows
+      // 2) there will never be anything to clear for shadow rows
+      continue;
+    }
     for (auto const& reg : toClear) {
       AqlValue& a(_data[getAddress(i, reg)]);
 
@@ -458,7 +464,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
       if (isShadowRow(row)) {
         AqlValue a = stealAndEraseValue(row, col);
         AqlValueGuard guard{a, true};
-        auto [it, inserted] =  cache.emplace(a);
+        auto [it, inserted] = cache.emplace(a);
         res->setValue(row, col, *it);
         // TRI_ASSERT(inserted); // I'm not 100% sure yet that this is true.
         if (inserted) {
@@ -807,7 +813,7 @@ void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const*
     } else {
       builder.add(VPackSlice::nullSlice());
     }
-    RegisterId const n = getNrRegs();
+    auto const n = getNrRegs();
     for (RegisterId reg = 0; reg < n; ++reg) {
       AqlValue const& ref = getValueReference(row, reg);
       if (ref.isEmpty()) {
@@ -941,8 +947,7 @@ void AqlItemBlock::eraseAll() {
 }
 
 void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
-                                          std::unordered_set<RegisterId> const& regs,
-                                          size_t fromRow) {
+                                          RegIdFlatSet const& regs, size_t fromRow) {
   TRI_ASSERT(currentRow != fromRow);
 
   for (auto const reg : regs) {
@@ -979,7 +984,7 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   return value;
 }
 
-RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
+RegisterCount AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 

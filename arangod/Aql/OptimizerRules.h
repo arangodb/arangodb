@@ -141,6 +141,11 @@ void clusterLiftConstantsForDisjointGraphNodes(Optimizer* opt,
                                                OptimizerRule const& rule);
 #endif
 
+#ifdef USE_ENTERPRISE
+void clusterPushSubqueryToDBServer(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                   OptimizerRule const& rule);
+#endif
+
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -156,9 +161,8 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
-ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, SubqueryNode* snode,
+ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
-                                                          ExecutionNode* originalParent,
                                                           bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections
@@ -279,6 +283,9 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
+/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized count operation
+void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
@@ -305,6 +312,16 @@ void insertScatterGatherSnippet(
 //// @brief find all subqueries in a plan and store a map from subqueries to nodes
 void findSubqueriesInPlan(ExecutionPlan& plan,
                           containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
+
+//// @brief create a DistributeNode for the given ExecutionNode
+auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
+
+//// @brief create a gather node matching the given DistributeNode
+auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;
+
+//// @brief enclose a node in DISTRIBUTE/GATHER
+auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
+    -> DistributeNode*;
 
 }  // namespace aql
 }  // namespace arangodb

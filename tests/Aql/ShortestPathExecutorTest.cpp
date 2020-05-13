@@ -193,7 +193,6 @@ struct TestShortestPathOptions : public ShortestPathOptions {
 };
 
 using Vertex = ShortestPathExecutorInfos::InputVertex;
-using RegisterSet = std::unordered_set<RegisterId>;
 using RegisterMapping =
     std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash>;
 using Path = std::vector<std::string>;
@@ -203,14 +202,14 @@ enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 
 // TODO: this needs a << operator
 struct ShortestPathTestParameters {
-  static RegisterSet _makeOutputRegisters(ShortestPathOutput in) {
+  static RegIdSet _makeOutputRegisters(ShortestPathOutput in) {
     switch (in) {
       case ShortestPathOutput::VERTEX_ONLY:
-        return RegisterSet{std::initializer_list<RegisterId>{2}};
+        return RegIdSet{std::initializer_list<RegisterId>{2}};
       case ShortestPathOutput::VERTEX_AND_EDGE:
-        return RegisterSet{std::initializer_list<RegisterId>{2, 3}};
+        return RegIdSet{std::initializer_list<RegisterId>{2, 3}};
     }
-    return RegisterSet{};
+    return RegIdSet{};
   }
   static RegisterMapping _makeRegisterMapping(ShortestPathOutput in) {
     switch (in) {
@@ -238,8 +237,8 @@ struct ShortestPathTestParameters {
 
   Vertex _source;
   Vertex _target;
-  RegisterSet _inputRegisters;
-  RegisterSet _outputRegisters;
+  RegIdSet _inputRegisters;
+  RegIdSet _outputRegisters;
   RegisterMapping _registerMapping;
   MatrixBuilder<2> _inputMatrix;
   MatrixBuilder<2> _inputMatrixCopy;
@@ -284,9 +283,8 @@ class ShortestPathExecutorTest
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        registerInfos(std::make_shared<RegisterSet>(parameters._inputRegisters),
-                      std::make_shared<RegisterSet>(parameters._outputRegisters),
-                      2, 4, {}, {0, 1}),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
+                      2, 4, {}, {RegIdSet{0, 1}}),
         executorInfos(std::make_unique<FakePathFinder>(options, translator),
                       std::move(parameters._registerMapping),
                       std::move(parameters._source), std::move(parameters._target)),

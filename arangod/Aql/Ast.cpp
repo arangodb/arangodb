@@ -1497,11 +1497,11 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
 
   if (normalized.second) {
     // built-in function
+    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+    TRI_ASSERT(func != nullptr);
+   
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
-    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
-
-    TRI_ASSERT(func != nullptr);
     node->setData(static_cast<void const*>(func));
 
     TRI_ASSERT(arguments != nullptr);
@@ -2164,8 +2164,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 }
 
 /// @brief determines the variables referenced in an expression
-void Ast::getReferencedVariables(AstNode const* node,
-                                 ::arangodb::containers::HashSet<Variable const*>& result) {
+void Ast::getReferencedVariables(AstNode const* node, VarSet& result) {
   auto preVisitor = [](AstNode const* node) -> bool {
     return !node->isConstant();
   };

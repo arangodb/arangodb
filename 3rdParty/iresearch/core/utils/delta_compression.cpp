@@ -80,8 +80,6 @@ void delta::init() {
   REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::delta);
-
 REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 
 NS_END // compression

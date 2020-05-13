@@ -63,8 +63,10 @@ struct ExpressionCompilationContext {
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct ExpressionExecutionContext
 ///////////////////////////////////////////////////////////////////////////////
-struct ExpressionExecutionContext : irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+struct ExpressionExecutionContext final : irs::attribute {
+  static const irs::string_ref type_name() noexcept {
+    return "arangodb::iresearch::ExpressionExecutionContext";
+  }
 
   ExpressionExecutionContext() = default;
 
@@ -85,8 +87,11 @@ struct ExpressionExecutionContext : irs::attribute {
 ///////////////////////////////////////////////////////////////////////////////
 class ByExpression final : public irs::filter {
  public:
-  DECLARE_FACTORY();
-  DECLARE_FILTER_TYPE();
+  static const irs::string_ref type_name() noexcept {
+    return "arangodb::iresearch::ByExpression";
+  }
+
+  static ptr make();
 
   ByExpression() noexcept;
 
@@ -105,10 +110,11 @@ class ByExpression final : public irs::filter {
 
   using irs::filter::prepare;
 
-  virtual irs::filter::prepared::ptr prepare(irs::index_reader const& index,
-                                             irs::order::prepared const& ord,
-                                             irs::boost_t boost,
-                                             irs::attribute_view const& ctx) const override;
+  virtual irs::filter::prepared::ptr prepare(
+      irs::index_reader const& index,
+      irs::order::prepared const& ord,
+      irs::boost_t boost,
+      irs::attribute_provider const* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 

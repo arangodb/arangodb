@@ -465,14 +465,15 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
     return RestStatus::DONE;
   }
 
-  if (body.isObject()) {
-    VPackSlice server = body.get("server");
-    if (server.isString()) {
-      std::string serverId = resolveServerNameID(server.copyString());
-      return handlePostRemoveServer(serverId);
-    }
-  } else if (body.isString()) {
-    std::string serverId = resolveServerNameID(body.copyString());
+  VPackSlice server = VPackSlice::noneSlice();
+  if (body.isString()) {
+    server = body;
+  } else if (body.isObject()) {
+    server = body.get("server");
+  }
+
+  if (server.isString()) {
+    std::string serverId = resolveServerNameID(server.copyString());
     return handlePostRemoveServer(serverId);
   }
 

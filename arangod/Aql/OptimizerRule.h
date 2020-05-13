@@ -304,11 +304,19 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // operation
+    optimizeCountRule,
+
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
     // reduce a sorted gather to an unsorted gather if only a single shard is affected
     decayUnnecessarySortedGatherRule,
+
+#ifdef USE_ENTERPRISE
+    clusterPushSubqueryToDBServer,
+#endif
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule

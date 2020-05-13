@@ -26,7 +26,7 @@
 using namespace arangodb::aql;
 
 DocumentIndexExpressionContext::DocumentIndexExpressionContext(
-    transaction::Methods& trx,
+    arangodb::transaction::Methods& trx,
     QueryContext& query,
     RegexCache& cache, AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
     void const* ctx)

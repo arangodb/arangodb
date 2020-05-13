@@ -980,7 +980,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(VarSet const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -996,7 +996,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  ::arangodb::containers::HashSet<Variable const*> varsUsed;
+  VarSet varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);

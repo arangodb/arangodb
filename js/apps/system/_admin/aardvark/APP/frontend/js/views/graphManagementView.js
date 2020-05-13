@@ -65,7 +65,8 @@
       'row_new-smartGraphAttribute',
       'row_new-numberOfShards',
       'row_new-replicationFactor',
-      'row_new-writeConcern'
+      'row_new-writeConcern',
+      'row_new-isDisjoint'
     ],
 
     // rows that needs to be hidden while creating satellites
@@ -743,6 +744,7 @@
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
             replicationFactor: parseInt($('#new-replicationFactor').val()),
             minReplicationFactor: parseInt($('#new-writeConcern').val()),
+            isDisjoint: $('#new-isDisjoint').is(':checked')
           };
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
@@ -901,6 +903,21 @@
           );
         }
 
+        if (isSmart) {
+          let isDisjoint = 'No';
+          if (graph.get('isDisjoint')) {
+            isDisjoint = 'Yes';
+          }
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'isDisjoint',
+              'Disjoint Smart Graph',
+              isDisjoint,
+              'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.',
+            )
+          );
+        }
+
         buttons.push(
           window.modalView.createDeleteButton('Delete', this.deleteGraph.bind(this))
         );
@@ -979,6 +996,15 @@
                 msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
               }
             ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-isDisjoint',
+            'Create disjoint graph',
+            false,
+            'Creates a Disjoint SmartGraph. Creating edges between different SmartGraph components is not allowed.',
           )
         );
 
@@ -1185,7 +1211,8 @@
     },
 
     addRemoveDefinition: function (e) {
-      var collList = []; var collections = this.options.collectionCollection.models;
+      var collList = [];
+      var collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
         if (!c.get('isSystem')) {
@@ -1195,7 +1222,8 @@
         }
       });
       e.stopPropagation();
-      var id = $(e.currentTarget).attr('id'); var number;
+      var id = $(e.currentTarget).attr('id');
+      var number;
       if (id.indexOf('addAfter_newEdgeDefinitions') !== -1) {
         this.counter++;
         $('#row_newVertexCollections').before(
