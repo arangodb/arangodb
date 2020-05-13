@@ -568,22 +568,6 @@ CostEstimate GatherNode::estimateCost() const {
   return estimate;
 }
 
-void GatherNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  {
-    auto const& later = dependency->getVarsUsedLaterStack();
-    setVarsUsedLater(later);
-  }
-  {
-    auto const& valid = dependency->getVarsValidStack();
-    setVarsValid(valid);
-  }
-  setVarUsageValid();
-}
-
 void GatherNode::setConstrainedSortLimit(size_t limit) noexcept {
   _limit = limit;
 }

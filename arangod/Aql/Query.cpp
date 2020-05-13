@@ -1166,15 +1166,20 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
         arangodb::aql::ExecutionNode::MUTEX}, true);
       for (ExecutionNode* n : nodes) {
         auto parents = n->getParents();
-        for (size_t i = 1; i < parents.size(); i++) {
-          TRI_ASSERT(parents[i]->getType() == ExecutionNode::TRAVERSAL);
-          ExecutionNode* graph = parents[i];
-          ExecutionNode* async = graph->getFirstParent();
-          TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
-          ExecutionNode* gather = async->getFirstParent();
-          TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
-          gather->removeDependency(async);
-          plan->clearVarUsageComputed();
+        for (size_t i = 0; i < parents.size(); i++) {
+          TRI_ASSERT(parents[i]->getType() == ExecutionNode::DISTRIBUTE_CONSUMER);
+          ExecutionNode* graph = parents[i]->getFirstParent();
+          TRI_ASSERT(graph->getType() == ExecutionNode::TRAVERSAL);
+          plan->unlinkNode(parents[i]); // Dist-Consumer node does not like toVelocyPack
+          if (i > 0) {
+            // unlink additional ASYNC nodes, explainer does not handle cycles
+            ExecutionNode* async = graph->getFirstParent();
+            TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
+            ExecutionNode* gather = async->getFirstParent();
+            TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
+            gather->removeDependency(async);
+            plan->clearVarUsageComputed();
+          }
         }
       }
       plan->findVarUsage();

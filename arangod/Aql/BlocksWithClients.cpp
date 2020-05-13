@@ -32,6 +32,8 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/MutexExecutor.h"
+#include "Aql/MutexNode.h"
 #include "Aql/Query.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SkipResult.h"
@@ -93,15 +95,24 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
-
-  auto scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
-  TRI_ASSERT(scatter != nullptr);
-  _type = scatter->getScatterType();
-
+        
   _clientBlockData.reserve(shardIds.size());
+        
+  if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+    auto* mutex = ExecutionNode::castTo<MutexNode const*>(ep);
+    TRI_ASSERT(mutex != nullptr);
 
-  for (auto const& id : shardIds) {
-    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _registerInfos});
+    for (auto const& id : shardIds) {
+      _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, mutex, _registerInfos});
+    }
+  } else {
+    auto* scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
+    TRI_ASSERT(scatter != nullptr);
+    _type = scatter->getScatterType();
+
+    for (auto const& id : shardIds) {
+      _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _registerInfos});
+    }
   }
 }
 
@@ -159,10 +170,27 @@ template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
                                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  traceExecuteBegin(stack, clientId);
-  auto res = executeWithoutTraceForClient(stack, clientId);
-  traceExecuteEnd(res, clientId);
-  return res;
+  
+  if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+    _executor.acquireLock();
+  }
+  
+  try {
+    traceExecuteBegin(stack, clientId);
+    auto res = executeWithoutTraceForClient(stack, clientId);
+    traceExecuteEnd(res, clientId);
+    
+    if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+      _executor.releaseLock();
+    }
+    
+    return res;
+  } catch (...) {
+    if constexpr (std::is_same<MutexExecutor, Executor>::value) {
+      _executor.releaseLock();
+    }
+    throw;
+  }
 }
 
 template <class Executor>
@@ -276,3 +304,4 @@ std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForSh
 
 template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;
 template class ::arangodb::aql::BlocksWithClientsImpl<DistributeExecutor>;
+template class ::arangodb::aql::BlocksWithClientsImpl<MutexExecutor>;

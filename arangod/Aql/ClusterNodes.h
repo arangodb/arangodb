@@ -181,13 +181,6 @@ class ScatterNode : public ExecutionNode {
     _clients.emplace_back(distId);
   }
 
-  // Just temporary as long as we have two versions
-  void addClient(std::string const& clientId) {
-    // We cannot add the same distributeId twice, data is delivered exactly once for each id
-    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
-    _clients.emplace_back(clientId);
-  }
-
   /// @brief drop the current clients.
   void clearClients() { _clients.clear(); }
 
@@ -364,8 +357,6 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
-  
-  void cloneRegisterPlan(ExecutionNode* dependency);
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const final;

@@ -314,6 +314,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/MultiAqlItemBlockInputRange.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
   Aql/MutexExecutor.cpp
+  Aql/MutexNode.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp

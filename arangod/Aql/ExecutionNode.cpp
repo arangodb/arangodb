@@ -49,7 +49,7 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
-#include "Aql/MutexExecutor.h"
+#include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
@@ -636,6 +636,16 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClo
     }
     ++it;
   }
+}
+
+void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
+  setVarUsageValid();
 }
 
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
@@ -2539,71 +2549,7 @@ ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
                      withDependencies, withProperties);
 }
 
-void AsyncNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLaterStack());
-  setVarsValid(dependency->getVarsValidStack());
-  setVarUsageValid();
-}
-
 auto AsyncNode::getOutputVariables() const -> VariableIdSet { return {}; }
-
-MutexNode::MutexNode(ExecutionPlan* plan, ExecutionNodeId id)
-    : ExecutionNode(plan, id) {}
-
-MutexNode::MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base) {}
-
-ExecutionNode::NodeType MutexNode::getType() const { return MUTEX; }
-
-ExecutionNode* MutexNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                bool withProperties) const {
-  return cloneHelper(std::make_unique<MutexNode>(plan, _id),
-                     withDependencies, withProperties);
-}
-
-/// @brief toVelocyPack, for MutexNode
-void MutexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                   std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
-  // And close it
-  nodes.close();
-}
-
-/// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> MutexNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-
-  return std::make_unique<ExecutionBlockImpl<MutexExecutor>>(&engine, this);
-}
-
-/// @brief estimateCost, the cost of a NoResults is nearly 0
-CostEstimate MutexNode::estimateCost() const {
-  if (_dependencies.empty()) {
-    return aql::CostEstimate::empty();
-  }
-  CostEstimate estimate = CostEstimate::empty();
-  return estimate;
-}
-
-void MutexNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLaterStack());
-  setVarsValid(dependency->getVarsValidStack());
-  setVarUsageValid();
-}
-
-auto MutexNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";

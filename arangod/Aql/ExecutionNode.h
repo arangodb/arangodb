@@ -1014,39 +1014,6 @@ class NoResultsNode : public ExecutionNode {
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
-/// @brief class MutexNode
-class MutexNode : public ExecutionNode {
-  friend class ExecutionBlock;
-
-  /// @brief constructor with an id
- public:
-  MutexNode(ExecutionPlan* plan, ExecutionNodeId id);
-
-  MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
-
-  /// @brief return the type of the node
-  NodeType getType() const override final;
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
-  /// @brief creates corresponding ExecutionBlock
-  std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
-
-  /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
-
-  /// @brief the cost of a AsyncNode is whatever is 0
-  CostEstimate estimateCost() const override final;
-  
-  void cloneRegisterPlan(ExecutionNode* dependency);
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
-};
 
 /// @brief class AsyncNode
 class AsyncNode : public ExecutionNode {
@@ -1076,9 +1043,7 @@ class AsyncNode : public ExecutionNode {
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
-
-  void cloneRegisterPlan(ExecutionNode* dependency);
-
+  
   [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 };
 
