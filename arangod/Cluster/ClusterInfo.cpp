@@ -2270,6 +2270,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           AgencyPrecondition::Type::EMPTY, false);
       opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
     }
+    opers.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
     auto trx = AgencyWriteTransaction{opers, precs};
 
     using namespace std::chrono;
@@ -5067,7 +5068,7 @@ void ClusterInfo::SyncerThread::run() {
 }
 
 futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(uint64_t index) {
-  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);
+  READ_LOCKER(readLocker, _currentProt.lock);
   if (index <= _currentIndex) {
     return futures::makeFuture(arangodb::Result());
   }
