@@ -76,27 +76,13 @@ CommTask::CommTask(GeneralServer& server,
                    ConnectionInfo info)
     : _server(server),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(nullptr),
+      _connectionStatistics(ConnectionStatistics::acquire()),
       _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics = ConnectionStatistics::acquire();
-  ConnectionStatistics::SET_START(_connectionStatistics);
+  _connectionStatistics.SET_START();
 }
 
-CommTask::~CommTask() {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-  for (auto& statistics : _statisticsMap) {
-    auto stat = statistics.second;
-
-    if (stat != nullptr) {
-      stat->release();
-    }
-  }
-  if (_connectionStatistics != nullptr) {
-    _connectionStatistics->release();
-    _connectionStatistics = nullptr;
-  }
-}
+CommTask::~CommTask() = default;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -218,7 +204,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
         ReplicationFeature::prepareFollowerResponse(res.get(), mode);
-        sendResponse(std::move(res), nullptr);
+        sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
       break;
@@ -367,7 +353,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    statistics(messageId).SET_SUPERUSER();
     std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
                                  futures::Try<Result> && /*ignored*/) -> void {
       self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
@@ -377,8 +363,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestStatistics::SET_ASYNC(statistics(messageId));
-    handler->setStatistics(stealStatistics(messageId));
+    RequestStatistics::Item stats = stealStatistics(messageId);
+    stats.SET_ASYNC();
+    handler->setStatistics(std::move(stats));
 
     uint64_t jobId = 0;
 
@@ -402,7 +389,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
         // return the job id we just created
         resp->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
-      sendResponse(std::move(resp), nullptr);
+      sendResponse(std::move(resp), RequestStatistics::Item());
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        respType, messageId, TRI_ERROR_QUEUE_FULL);
@@ -419,55 +406,33 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
-  RequestStatistics* stat = RequestStatistics::acquire();
-  
+RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
+  RequestStatistics::Item stat = RequestStatistics::acquire();
+ 
   {
     std::lock_guard<std::mutex> guard(_statisticsMutex);
-    if (stat == nullptr) {
-      auto it = _statisticsMap.find(id);
-      if (it != _statisticsMap.end()) {
-        it->second->release();
-        _statisticsMap.erase(it);
-      }
-    } else {
-      auto result = _statisticsMap.insert({id, stat});
-      if (!result.second) {
-        result.first->second->release();
-        result.first->second = stat;
-      }
-    }
+    return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
   }
-  
-  return stat;
 }
 
 
-RequestStatistics* CommTask::statistics(uint64_t id) {
+RequestStatistics::Item const& CommTask::statistics(uint64_t id) {
   std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  auto iter = _statisticsMap.find(id);
-  if (iter == _statisticsMap.end()) {
-    return nullptr;
-  }
-
-  return iter->second;
+  return _statisticsMap[id];
 }
 
 
-RequestStatistics* CommTask::stealStatistics(uint64_t id) {
+RequestStatistics::Item CommTask::stealStatistics(uint64_t id) {
+  RequestStatistics::Item result;
   std::lock_guard<std::mutex> guard(_statisticsMutex);
 
   auto iter = _statisticsMap.find(id);
-
-  if (iter == _statisticsMap.end()) {
-    return nullptr;
+  if (iter != _statisticsMap.end()) {
+    result = std::move(iter->second);
+    _statisticsMap.erase(iter);
   }
 
-  RequestStatistics* stat = iter->second;
-  _statisticsMap.erase(iter);
-
-  return stat;
+  return result;
 }
 
 /// @brief send error response including response body
@@ -521,7 +486,7 @@ void CommTask::addErrorResponse(rest::ResponseCode code,
 
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
-  RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  handler->statistics().SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
@@ -531,7 +496,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
   auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
-    RequestStatistics::SET_QUEUE_END(handler->statistics());
+    handler->statistics().SET_QUEUE_END();
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       try {
         // Pass the response to the io context

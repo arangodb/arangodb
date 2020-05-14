@@ -8,6 +8,8 @@ devel
   paths queries on disjoint smart graphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
 
+* ClusterInfo does its own updating of plan / current caches.
+
 * Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
 
 * Made several improvements to AQL's internal register planning. This will
@@ -59,15 +61,15 @@ devel
   query, e.g. `FOR ... IN ... GRAPH abc`. Previously, the graph name had
   to be a bind parameter or a string enclosed in quotes.
 
-* loadPlan and loadCurrent have been fixed to not miss out on increments. 
+* loadPlan and loadCurrent have been fixed to not miss out on increments.
 
 * ClusterInfo and all data definition changes use the local agency cache.
 
-* Coordinators and DB servers cache the agency's read key value store. 
+* Coordinators and DB servers cache the agency's read key value store.
 
 * Agency offers the new poll API to subscribe to the Raft log stream.
 
-* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for
   edges. The option is turned on by default. This normally helps with
   performance in read-only and read-mostly workloads.
 

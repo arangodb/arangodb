@@ -62,7 +62,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   /// @return role argument as it was supplied by a user
   std::string const& myRole() const noexcept { return _myRole; }
 
-  void syncDBServerStatusQuo();
+  void notify();
 
   AgencyCallbackRegistry* agencyCallbackRegistry() const {
     return _agencyCallbackRegistry.get();

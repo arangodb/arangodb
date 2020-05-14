@@ -28,6 +28,7 @@
 
 #include "GeneralServer/RequestLane.h"
 #include "Rest/GeneralResponse.h"
+#include "Statistics/RequestStatistics.h"
 
 #include <Cluster/ResultT.h>
 #include <atomic>
@@ -81,9 +82,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   application_features::ApplicationServer& server() { return _server; };
 
-  RequestStatistics* statistics() const { return _statistics; }
-  RequestStatistics* stealStatistics();
-  void setStatistics(RequestStatistics* stat);
+  RequestStatistics::Item const& statistics() { return _statistics; }
+  RequestStatistics::Item&& stealStatistics();
+  void setStatistics(RequestStatistics::Item&& stat);
 
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
@@ -200,7 +201,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
-  RequestStatistics* _statistics;
+  RequestStatistics::Item _statistics;
 
  private:
   mutable Mutex _executionMutex;
