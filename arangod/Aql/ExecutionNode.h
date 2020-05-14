@@ -57,6 +57,7 @@
 
 #include <memory>
 #include <vector>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -67,6 +68,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
+#include "Aql/VarUsageFinder.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -120,16 +122,7 @@ struct SortElement {
 
 typedef std::vector<SortElement> SortElementVector;
 
-struct VariableIdSet {
-
-  VariableIdSet() = default;
-  VariableIdSet(std::initializer_list<VariableId> list) : _set(list) {}
-  void insert(VariableId id) {
-    _set.push_back(id);
-  }
-
-  std::vector<VariableId> _set;
-};
+using VariableIdSet = std::set<VariableId>;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
@@ -174,6 +167,9 @@ class ExecutionNode {
     SUBQUERY_START = 29,
     SUBQUERY_END = 30,
     MATERIALIZE = 31,
+    ASYNC = 32,
+    PARALLEL_START = 33,
+    PARALLEL_END = 34,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -381,7 +377,7 @@ class ExecutionNode {
    */
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  virtual void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>&) const;
+  virtual void getVariablesUsedHere(VarSet& vars) const;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const;
@@ -390,25 +386,32 @@ class ExecutionNode {
   ::arangodb::containers::HashSet<VariableId> getVariableIdsUsedHere() const;
 
   /// @brief tests whether the node sets one of the passed variables
-  bool setsVariable(::arangodb::containers::HashSet<Variable const*> const& which) const;
+  bool setsVariable(VarSet const& which) const;
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(::arangodb::containers::HashSet<Variable const*> const& v);
+  void setVarsUsedLater(VarSetStack varStack);
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  ::arangodb::containers::HashSet<Variable const*> const& getVarsUsedLater() const;
+  auto getVarsUsedLaterStack() const noexcept -> VarSetStack const&;
 
   /// @brief setVarsValid
-  void setVarsValid(::arangodb::containers::HashSet<Variable const*> const& v);
+  void setVarsValid(VarSetStack varStack);
 
   /// @brief set regs to be deleted
-  void setRegsToClear(std::unordered_set<RegisterId>&& toClear);
+  void setRegsToClear(RegIdSet toClear);
+
+  /// @brief set regs to be kept
+  void setRegsToKeep(RegIdSetStack toKeep);
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  ::arangodb::containers::HashSet<Variable const*> const& getVarsValid() const;
+  auto getVarsValidStack() const noexcept -> VarSetStack const&;
+
+  /// @brief shortcut functions matching the old interface
+  auto getVarsValid() const noexcept -> VarSet const& { return getVarsValidStack().back(); }
+  auto getVarsUsedLater() const noexcept -> VarSet const& { return getVarsUsedLaterStack().back(); }
 
   /// @brief setVarUsageValid
   void setVarUsageValid();
@@ -436,7 +439,7 @@ class ExecutionNode {
   int getDepth() const;
 
   /// @brief get registers to clear
-  std::unordered_set<RegisterId> const& getRegsToClear() const;
+  RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
   bool isVarUsedLater(Variable const* variable) const;
@@ -451,9 +454,10 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
+  [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
-  [[nodiscard]] virtual VariableIdSet getOutputVariables() const = 0;
-  //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
+  [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
+  [[nodiscard]] bool alwaysCopiesRows() const;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -472,22 +476,18 @@ class ExecutionNode {
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
                                  std::unordered_set<ExecutionNode const*>& seen) const;
 
-
-  std::unordered_set<RegisterId> calcRegsToKeep() const;
+  auto getRegsToKeepStack() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
   RegisterId variableToRegisterOptionalId(Variable const* var) const;
 
-  RegisterInfos createRegisterInfos(
-      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-      std::shared_ptr<std::unordered_set<RegisterId>> writableOutputRegisters) const;
+  RegisterInfos createRegisterInfos(RegIdSet readableInputRegisters,
+                                    RegIdSet writableOutputRegisters) const;
 
-  RegisterId getNrInputRegisters() const;
+  RegisterCount getNrInputRegisters() const;
 
-  RegisterId getNrOutputRegisters() const;
-
-  RegisterId varToRegUnchecked(Variable const& var) const;
+  RegisterCount getNrOutputRegisters() const;
 
  protected:
   /// @brief node id
@@ -507,10 +507,9 @@ class ExecutionNode {
   /// latter contains the variables that are set from the dependent nodes
   /// when an item comes into the current node. Both are only valid if
   /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
-  /// this.
-  ::arangodb::containers::HashSet<Variable const*> _varsUsedLater;
-
-  ::arangodb::containers::HashSet<Variable const*> _varsValid;
+  /// this. TODO update this comment
+  VarSetStack _varsUsedLaterStack;
+  VarSetStack _varsValidStack;
 
   /// @brief depth of the current frame, will be filled in by planRegisters
   unsigned int _depth;
@@ -529,7 +528,12 @@ class ExecutionNode {
   /// @brief the following contains the registers which should be cleared
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
-  std::unordered_set<RegisterId> _regsToClear;
+  RegIdSet _regsToClear;
+
+  /// @brief contains the registers which should be copied into the next row
+  /// This is computed during the static analysis for each node using the
+  /// variable usage in the plan.
+  RegIdSetStack _regsToKeepStack;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes
@@ -567,8 +571,6 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
-
-  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -618,8 +620,6 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
 
-  [[nodiscard]] VariableIdSet getOutputVariables() const final;
-
  private:
   /// @brief whether or not we want random iteration
   bool _random;
@@ -660,7 +660,7 @@ class EnumerateListNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -670,8 +670,6 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief return out variable
   Variable const* outVariable() const;
-
-  [[nodiscard]] VariableIdSet getOutputVariables() const final;
 
  private:
   /// @brief input variable to read from
@@ -719,8 +717,6 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the limit value
   size_t limit() const;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the offset
@@ -773,14 +769,12 @@ class CalculationNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const override final;
 
   bool isDeterministic() override final;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief output variable to write to
@@ -836,7 +830,7 @@ class SubqueryNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -848,8 +842,6 @@ class SubqueryNode : public ExecutionNode {
 
   bool isConst();
   bool mayAccessCollections();
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief we need to have an expression and where to write the result
@@ -890,11 +882,9 @@ class FilterNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   Variable const* inVariable() const;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief input variable to read from
@@ -954,14 +944,13 @@ class ReturnNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   Variable const* inVariable() const;
 
   void inVariable(Variable const* v);
 
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+  bool returnInheritedResults() const;
 
  private:
   /// @brief the variable produced by Return
@@ -998,8 +987,70 @@ class NoResultsNode : public ExecutionNode {
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+};
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+/// @brief class ParallelStartNode
+class ParallelStartNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+  /// @brief constructor with an id
+ public:
+  ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id);
+
+  ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final;
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief the cost of a AsyncNode is whatever is 0
+  CostEstimate estimateCost() const override final;
+
+  void cloneRegisterPlan(ExecutionNode* dependency);
+};
+
+/// @brief class ParallelEndNode
+class ParallelEndNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+  /// @brief constructor with an id
+ public:
+  ParallelEndNode(ExecutionPlan* plan, ExecutionNodeId id);
+
+  ParallelEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final;
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
+
+  /// @brief the cost of a AsyncNode is whatever is 0
+  CostEstimate estimateCost() const override final;
+
+  void cloneRegisterPlan(ExecutionNode* dependency);
 };
 
 namespace materialize {
@@ -1030,7 +1081,7 @@ class MaterializeNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override;
+  void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -1042,9 +1093,7 @@ class MaterializeNode : public ExecutionNode {
  protected:
   template <typename T>
   auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
-      -> std::shared_ptr<std::unordered_set<RegisterId>>;
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
+      -> RegIdSet;
 
  protected:
   /// @brief input variable non-materialized document ids
@@ -1057,12 +1106,11 @@ class MaterializeNode : public ExecutionNode {
 template <typename T>
 auto MaterializeNode::getReadableInputRegisters(T const collectionSource,
                                                 RegisterId const inNmDocId) const
-    -> std::shared_ptr<std::unordered_set<RegisterId>> {
+    -> RegIdSet {
   if constexpr (std::is_same_v<T, RegisterId>) {
-    return make_shared_unordered_set(
-        std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
+    return RegIdSet{collectionSource, inNmDocId};
   } else {
-    return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
+    return RegIdSet{inNmDocId};
   }
 }
 
@@ -1088,7 +1136,7 @@ class MaterializeMultiNode : public MaterializeNode {
                        bool withProperties) const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
  private:
   /// @brief input variable non-materialized collection ids

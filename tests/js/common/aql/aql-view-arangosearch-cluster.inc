@@ -1828,6 +1828,42 @@
         assertNotEqual(0, result.length);
       },
 
+      testLevenshteinMatch0 : function() {
+        var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lazi', 0), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+        assertEqual(2, res.length);
+        assertEqual("full", res[0].name);
+        assertEqual("half", res[1].name);
+      },
+
+      testLevenshteinMatch1 : function() {
+        var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzi', 1), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+        assertEqual(2, res.length);
+        assertEqual("full", res[0].name);
+        assertEqual("half", res[1].name);
+      },
+
+      testLevenshteinDamerauMatch1 : function() {
+        var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1, true), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+        assertEqual(2, res.length);
+        assertEqual("full", res[0].name);
+        assertEqual("half", res[1].name);
+      },
+
+      testLevenshteinDamerauMatch1NoLimit : function() {
+        var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'lzai', 1, true), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+        assertEqual(2, res.length);
+        assertEqual("full", res[0].name);
+        assertEqual("half", res[1].name);
+      },
+
+      testLevenshteinMatch2 : function() {
+        var res = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(LEVENSHTEIN_MATCH(doc.text, 'dog', 2, false), 'text_en') OPTIONS { waitForSync : true } SORT doc.name RETURN doc").toArray();
+        assertEqual(3, res.length);
+        assertEqual("full", res[0].name);
+        assertEqual("half", res[1].name);
+        assertEqual("other half", res[2].name);
+      },
+
       testPhraseTerm : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {TERM: 'quick'}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
         assertEqual(1, result.length);
@@ -1860,6 +1896,11 @@
 
       testPhraseLevenshteinMatch : function () {
         var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {LEVENSHTEIN_MATCH: ['queck', 1, false]}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+        assertEqual(1, result.length);
+      },
+
+      testPhraseLevenshteinMatchNoLimit : function () {
+        var result = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, {LEVENSHTEIN_MATCH: ['queck', 1, false, 0]}, 0, 'brown', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
         assertEqual(1, result.length);
       },
 

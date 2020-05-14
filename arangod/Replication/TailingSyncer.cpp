@@ -795,7 +795,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  arangodb::CollectionGuard guard(vocbase, col);
+  arangodb::CollectionGuard guard(vocbase, col->id());
 
   return guard.collection()->properties(data, false);  // always a full-update
 }

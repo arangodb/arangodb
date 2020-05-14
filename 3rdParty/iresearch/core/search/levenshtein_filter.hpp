@@ -24,27 +24,91 @@
 #define IRESEARCH_LEVENSHTEIN_FILTER_H
 
 #include "filter.hpp"
-#include "prefix_filter.hpp"
 #include "utils/string.hpp"
 
 NS_ROOT
 
+class by_edit_distance;
 class parametric_description;
 struct filter_visitor;
+
+struct IRESEARCH_API by_edit_distance_filter_options {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief parametric description provider
+  //////////////////////////////////////////////////////////////////////////////
+  using pdp_f = const parametric_description&(*)(byte_type, bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief target value
+  //////////////////////////////////////////////////////////////////////////////
+  bstring term;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns current parametric description provider, nullptr - use default
+  /// @note since creation of parametric description is expensive operation,
+  ///       especially for distances > 4, expert users may want to set its own
+  ///       providers
+  //////////////////////////////////////////////////////////////////////////////
+  pdp_f provider{};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns maximum allowed edit distance
+  //////////////////////////////////////////////////////////////////////////////
+  byte_type max_distance{0};
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief consider transpositions as an atomic change
+  //////////////////////////////////////////////////////////////////////////////
+  bool with_transpositions{false};
+
+  bool operator==(const by_edit_distance_filter_options& rhs) const noexcept {
+    return term == rhs.term &&
+      max_distance == rhs.max_distance &&
+      with_transpositions == rhs.with_transpositions;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(std::hash<bool>()(with_transpositions),
+                        hash_combine(std::hash<bstring>()(term),
+                                     std::hash<byte_type>()(max_distance)));
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_edit_distance_options
+/// @brief options for levenshtein filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_edit_distance_options : by_edit_distance_filter_options {
+  using filter_type = by_edit_distance;
+  using filter_options = by_edit_distance_filter_options;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum number of the most relevant terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t max_terms{};
+
+  bool operator==(const by_edit_distance_options& rhs) const noexcept {
+    return filter_options::operator==(rhs) &&
+      max_terms == rhs.max_terms;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(filter_options::hash(), max_terms);
+  }
+}; // by_edit_distance_options
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_edit_distance final : public by_prefix {
+class IRESEARCH_API by_edit_distance final
+    : public filter_base<by_edit_distance_options> {
  public:
-  DECLARE_FILTER_TYPE();
-  DECLARE_FACTORY();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::by_edit_distance";
+  }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief parametric description provider
-  //////////////////////////////////////////////////////////////////////////////
-  using pdp_f = const parametric_description&(*)(byte_type, bool);
+  DECLARE_FACTORY();
 
   static prepared::ptr prepare(
     const index_reader& index,
@@ -52,27 +116,13 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
     boost_t boost,
     const string_ref& field,
     const bytes_ref& term,
-    size_t scored_terms_limit,
+    size_t terms_limit,
     byte_type max_distance,
-    pdp_f provider,
+    options_type::pdp_f provider,
     bool with_transpositions);
 
-  static void visit(
-    const term_reader& reader,
-    const bytes_ref& term,
-    byte_type max_distance,
-    pdp_f provider,
-    bool with_transpositions,
-    filter_visitor& fv);
-
-  explicit by_edit_distance() noexcept;
-
-  using by_prefix::field;
-
-  by_edit_distance& field(std::string fld) {
-    by_prefix::field(std::move(fld));
-    return *this;
-  }
+  static field_visitor visitor(
+    const options_type::filter_options& options);
 
   using filter::prepare;
 
@@ -80,80 +130,24 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
       const index_reader& index,
       const order::prepared& order,
       boost_t boost,
-      const attribute_view& /*ctx*/) const override {
+      const attribute_provider* /*ctx*/) const override {
     return prepare(index, order, this->boost()*boost,
-                   field(), term(), scored_terms_limit(),
-                   max_distance_, provider_, with_transpositions_);
+                   field(), options().term, options().max_terms,
+                   options().max_distance, options().provider,
+                   options().with_transpositions);
   }
-
-
-  using by_prefix::scored_terms_limit;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& scored_terms_limit(size_t limit) noexcept {
-    by_prefix::scored_terms_limit(limit);
-    return *this;
-  }
-
-  
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets maximum allowed edit distance
-  //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& max_distance(byte_type limit) noexcept {
-    max_distance_ = limit;
-    return *this;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns maximum allowed edit distance
-  //////////////////////////////////////////////////////////////////////////////
-  byte_type max_distance() const noexcept {
-    return max_distance_;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets option contollling if we need to consider transpositions
-  ///        as an atomic change
-  //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& with_transpositions(bool with_transpositions) noexcept {
-    with_transpositions_ = with_transpositions;
-    return *this;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns option controlling if we need to consider transpositions
-  ///        as an atomic change
-  //////////////////////////////////////////////////////////////////////////////
-  bool with_transpositions() const noexcept {
-    return with_transpositions_;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns current parametric description provider
-  //////////////////////////////////////////////////////////////////////////////
-  pdp_f provider() const noexcept { return provider_; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets parametric description provider,
-  ///        nullptr == use default
-  /// @note since creation of parametric description is expensive operation,
-  ///       especially for distances > 4, expert users may want to set its own
-  ///       providers
-  //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& provider(pdp_f provider) noexcept;
-
- protected:
-  size_t hash() const noexcept override;
-  bool equals(const filter& rhs) const noexcept override;
-
- private:
-  pdp_f provider_;
-  byte_type max_distance_{0};
-  bool with_transpositions_{false};
 }; // by_edit_distance
+
+NS_END
+
+NS_BEGIN(std)
+
+template<>
+struct hash<::iresearch::by_edit_distance_filter_options> {
+  size_t operator()(const ::iresearch::by_edit_distance_filter_options& v) const noexcept {
+    return v.hash();
+  }
+};
 
 NS_END
 

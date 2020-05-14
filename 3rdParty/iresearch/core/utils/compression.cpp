@@ -88,7 +88,7 @@ NS_ROOT
 NS_BEGIN(compression)
 
 compression_registrar::compression_registrar(
-    const type_id& type,
+    const type_info& type,
     compressor_factory_f compressor_factory,
     decompressor_factory_f decompressor_factory,
     const char* source /*= nullptr*/) {
@@ -130,8 +130,6 @@ compression_registrar::compression_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 
@@ -198,8 +196,6 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
   REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 #endif
 }
-
-DEFINE_COMPRESSION_TYPE(iresearch::compression::none);
 
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 

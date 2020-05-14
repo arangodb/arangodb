@@ -71,8 +71,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
-    auto set = make_shared_unordered_set({sortReg.reg});
-    return RegisterInfos(set, {}, 1, 1, {}, {0});
+    return RegisterInfos(RegIdSet{sortReg.reg}, {}, 1, 1, {}, {RegIdSet{0}});
   }
 
   auto makeExecutorInfos() -> SortExecutorInfos {
@@ -87,7 +86,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
 
  private:
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-  Variable sortVar{"mySortVar", 0};
+  Variable sortVar{"mySortVar", 0, false};
 };
 
 template <size_t... vs>

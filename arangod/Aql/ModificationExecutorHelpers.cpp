@@ -164,7 +164,7 @@ void ModificationExecutorHelpers::throwOperationResultException(
   //
   // Find the first error with a message and throw that
   // This mirrors previous behaviour and might not be entirely ideal.
-  for (auto const p : errorCounter) {
+  for (auto const& p : errorCounter) {
     auto const errorCode = p.first;
     if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
@@ -216,8 +216,9 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
 
 AqlValue ModificationExecutorHelpers::getDocumentOrNull(VPackSlice const& elm,
                                                         std::string const& key) {
-  if (elm.hasKey(key)) {
-    return AqlValue{elm.get(key)};
+  VPackSlice s = elm.get(key);
+  if (!s.isNone()) {
+    return AqlValue{s};
   }
-  return AqlValue{VPackSlice::nullSlice()};
+  return AqlValue(AqlValueHintNull());
 }

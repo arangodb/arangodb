@@ -76,10 +76,10 @@ class HashedCollectExecutorTest
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> RegisterInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    auto readableInputRegisters = make_shared_unordered_set();
-    auto writeableOutputRegisters = make_shared_unordered_set();
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -87,18 +87,18 @@ class HashedCollectExecutorTest
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters->emplace(in);
-      writeableOutputRegisters->emplace(out);
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
     }
 
     if (collectRegister != RegisterPlan::MaxRegisterId) {
-      writeableOutputRegisters->emplace(collectRegister);
+      writeableOutputRegisters.emplace(collectRegister);
     }
     for (auto const& [out, in] : aggregateRegisters) {
       if (in != RegisterPlan::MaxRegisterId) {
-        readableInputRegisters->emplace(in);
+        readableInputRegisters.emplace(in);
       }
-      writeableOutputRegisters->emplace(out);
+      writeableOutputRegisters.emplace(out);
     }
 
     return RegisterInfos{std::move(readableInputRegisters),
@@ -125,7 +125,7 @@ class HashedCollectExecutorTest
                                       collectRegister,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
-                                      fakedQuery->trx(),
+                                      &VPackOptions::Defaults,
                                       count};
   };
 };
@@ -241,9 +241,9 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
   }
 
   auto inputBlock = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->engine(),
+  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->rootEngine(),
                                                    generateNodeDummy(),
                                                    std::move(registerInfos),
                                                    std::move(executorInfos)};
@@ -568,10 +568,10 @@ class HashedCollectExecutorTestAggregate
   auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> const& groupRegisters)
       -> RegisterInfos {
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
-    auto readableInputRegisters = make_shared_unordered_set();
-    auto writeableOutputRegisters = make_shared_unordered_set();
+    RegIdSet registersToClear{};
+    RegIdSetStack registersToKeep{{}};
+    auto readableInputRegisters = RegIdSet{};
+    auto writeableOutputRegisters = RegIdSet{};
 
     for (RegisterId i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
@@ -579,17 +579,17 @@ class HashedCollectExecutorTestAggregate
     }
 
     for (auto const& [out, in] : groupRegisters) {
-      readableInputRegisters->emplace(in);
-      writeableOutputRegisters->emplace(out);
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
     }
 
     auto agg = getAggregator();
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
     if (agg.inReg != RegisterPlan::MaxRegisterId) {
-      readableInputRegisters->emplace(agg.inReg);
+      readableInputRegisters.emplace(agg.inReg);
     }
 
-    writeableOutputRegisters->emplace(3);
+    writeableOutputRegisters.emplace(3);
 
     return RegisterInfos{std::move(readableInputRegisters),
                          std::move(writeableOutputRegisters),
@@ -611,7 +611,7 @@ class HashedCollectExecutorTestAggregate
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
-                                            fakedQuery->trx(), count);
+                                            &VPackOptions::Defaults, count);
     return infos;
   };
 };

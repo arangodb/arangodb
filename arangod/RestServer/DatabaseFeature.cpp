@@ -41,7 +41,6 @@
 #include "Basics/files.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -57,7 +56,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
@@ -213,11 +211,6 @@ void DatabaseManagerThread::run() {
         auto queryRegistry = QueryRegistryFeature::registry();
         if (queryRegistry != nullptr) {
           queryRegistry->expireQueries();
-        }
-
-        auto engineRegistry = TraverserEngineRegistryFeature::registry();
-        if (engineRegistry != nullptr) {
-          engineRegistry->expireEngines();
         }
 
         // perform cursor cleanup here
@@ -504,7 +497,7 @@ void DatabaseFeature::unprepare() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is to avoid heap use after free errors in the iresearch tests, because
   // the destruction a callback uses a database.
-  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
+  // I don't know if this is safe to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
   // to prevent accidentally breaking anything. However,
   // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
   // or if this has to be done differently in the tests instead. The errors may
@@ -701,14 +694,14 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
   }  // release _databaseCreateLock
 
   // write marker into log
-  int res = TRI_ERROR_NO_ERROR;
+  Result res;
 
   if (!engine->inRecovery()) {
     res = engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
-  events::CreateDatabase(name, res);
+  events::CreateDatabase(name, res.errorNumber());
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -813,7 +806,7 @@ int DatabaseFeature::dropDatabase(std::string const& name,
       server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>().invalidate(*vocbase);
     }
 
-    engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
+    res = engine->prepareDropDatabase(*vocbase).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
@@ -1255,7 +1248,6 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
       // try to open this database
       arangodb::CreateDatabaseInfo info(server());
-      info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);

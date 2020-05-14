@@ -1361,7 +1361,7 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    
 
 /// 1922: ERROR_GRAPH_CREATE_MISSING_NAME
 /// "missing graph name"
-/// a graph name is required to create a graph.
+/// a graph name is required to create or drop a graph.
 constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               = 1922;
 
 /// 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
@@ -1694,6 +1694,12 @@ constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 
 /// Will be raised if there is an attempt to update the value of the
 /// smartJoinAttribute.
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
+
+/// 4010: ERROR_INVALID_DISJOINT_SMART_EDGE
+/// "non disjoint edge found"
+/// Will be raised if there is an attempt to create an edge between separated
+/// graph components.
+constexpr int TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = 4010;
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"

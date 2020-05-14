@@ -33,6 +33,21 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+  static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
+    if (!row.isInitialized()) {
+      return false;
+    }
+    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+
 MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
                                                          std::size_t skipped,
                                                          std::size_t nrInputRanges) {
@@ -109,13 +124,22 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::Shadow
   if (!hasShadowRow()) {
     return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   }
+
   // All Ranges are on the same shadow Row.
   auto row = _inputs.at(0).peekShadowRow();
-  TRI_ASSERT(row.isInitialized());
-  TRI_ASSERT(std::all_of(std::begin(_inputs), std::end(_inputs),
-                         [&row](AqlItemBlockInputRange const& i) -> bool {
-                           return i.peekShadowRow().equates(row, &velocypack::Options::Defaults);
-                         }));
+  if (RowHasNonEmptyValue(row)) {
+    return row;
+  }
+  for (size_t i = 1; i < _inputs.size(); ++i) {
+    auto const otherrow = _inputs.at(i).peekShadowRow();
+    if (RowHasNonEmptyValue(otherrow)) {
+      return otherrow;
+    }
+  }
+  // There is a smallish chance that actually
+  // None of the shadowRows contains data
+  // That is if no register needs to be bypassed
+  // in the query.
   return row;
 }
 
@@ -124,12 +148,30 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   TRI_ASSERT(!hasDataRow());
 
   // Need to consume all shadow rows simultaneously.
-  // TODO: Assert we're on the correct shadow row for all upstreams
-  auto state = ExecutorState::HASMORE;
-  auto shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
-
-  for (auto& i : _inputs) {
-    std::tie(state, shadowRow) = i.nextShadowRow();
+  // Only one (a random one) will contain the data.
+  TRI_ASSERT(!_inputs.empty());
+  auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
+  
+  bool foundData = ::RowHasNonEmptyValue(shadowRow);
+  for (size_t i = 1; i < _inputs.size(); ++i) {
+    auto [otherState, otherRow] = _inputs.at(i).nextShadowRow();
+    // All inputs need to be in the same part of the query.
+    // We cannot have overlapping subquery executions.
+    TRI_ASSERT(state == otherState);
+    // We can only have all rows initialized or none.
+    TRI_ASSERT(shadowRow.isInitialized() == otherRow.isInitialized());
+    if (!foundData) {
+      if (::RowHasNonEmptyValue(otherRow)) {
+        // We found the one that contains data.
+        // Take it
+        shadowRow = otherRow;
+        foundData = true;
+      }
+    } else {
+      // we allready have the filled one.
+      // Just assert the others are empty for correctness
+      TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
+    }
   }
   return {state, shadowRow};
 }

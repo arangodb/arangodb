@@ -37,6 +37,8 @@ using EN = arangodb::aql::ExecutionNode;
 
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
+    case EN::PARALLEL_START:
+    case EN::PARALLEL_END:
     case EN::ENUMERATE_LIST:
     case EN::COLLECT:
     case EN::SCATTER:
@@ -126,18 +128,18 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto [filtering, sorting] = condition->findIndexes(node, usedIndexes, sortCondition.get());
 
-      if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
+      if (filtering || sorting) {
         bool descending = false;
-        if (canUseIndex.second && sortCondition->isUnidirectional()) {
+        if (sorting && sortCondition->isUnidirectional()) {
           descending = sortCondition->isDescending();
         }
 
-        if (!canUseIndex.first) {
+        if (!filtering) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
-          TRI_ASSERT(canUseIndex.second);
+          TRI_ASSERT(sorting);
           condition.reset(new Condition(_plan->getAst()));
           condition->normalize(_plan);
         }
@@ -156,13 +158,15 @@ bool ConditionFinder::before(ExecutionNode* en) {
         _changes->try_emplace(
             node->id(),
             arangodb::lazyConstruct([&]{
-              return new IndexNode(_plan, _plan->nextId(), node->collection(),
-                          node->outVariable(), usedIndexes, std::move(condition), opts);
+              IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                             node->outVariable(), usedIndexes, std::move(condition), opts);
+              // if the enumerate collection node had the counting flag
+              // set, we can copy it over to the index node as well
+              idx->copyCountFlag(node);
+              return idx;
             })
         );
-
       }
-
       break;
     }
 

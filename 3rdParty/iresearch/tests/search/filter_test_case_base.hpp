@@ -63,9 +63,8 @@ struct boost : public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* query_attrs,
-        const irs::attribute_view& doc_attrs,
-        irs::boost_t boost
-    ) const override {
+        const irs::attribute_provider& doc_attrs,
+        irs::boost_t boost) const override {
       return {
         irs::memory::make_unique<boost::score_ctx>(boost),
         [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
@@ -80,10 +79,13 @@ struct boost : public irs::sort {
     const std::function<bool(score_t, score_t)>* less_;
   }; // sort::boost::prepared
 
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::boostsort";
+  }
+
   DECLARE_FACTORY();
   typedef irs::boost_t score_t;
-  boost() : sort(boost::type()) {}
+  boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
     return boost::prepared::make<boost::prepared>();
   }
@@ -93,31 +95,58 @@ struct boost : public irs::sort {
 /// @brief expose sort functionality through overidable lambdas
 //////////////////////////////////////////////////////////////////////////////
 struct custom_sort: public irs::sort {
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::custom_sort";
+  }
 
   class prepared: public irs::prepared_sort_base<irs::doc_id_t, void> {
    public:
-    class collector
-      : public irs::sort::field_collector, public irs::sort::term_collector {
+    class field_collector :  public irs::sort::field_collector {
      public:
-      collector(const custom_sort& sort): sort_(sort) {}
+      field_collector(const custom_sort& sort): sort_(sort) {}
 
       virtual void collect(
-        const irs::sub_reader& segment,
-        const irs::term_reader& field
-      ) override {
+          const irs::sub_reader& segment,
+          const irs::term_reader& field) override {
         if (sort_.collector_collect_field) {
           sort_.collector_collect_field(segment, field);
         }
       }
 
+      virtual void reset() override {
+        if (sort_.field_reset_) {
+          sort_.field_reset_();
+        }
+      }
+
+      virtual void collect(const irs::bytes_ref& in) override {
+        // NOOP
+      }
+
+      virtual void write(irs::data_output& out) const override {
+        // NOOP
+      }
+
+     private:
+      const custom_sort& sort_;
+    };
+
+    class term_collector : public irs::sort::term_collector {
+     public:
+      term_collector(const custom_sort& sort): sort_(sort) {}
+
       virtual void collect(
-        const irs::sub_reader& segment,
-        const irs::term_reader& field,
-        const irs::attribute_view& term_attrs
-      ) override {
+          const irs::sub_reader& segment,
+          const irs::term_reader& field,
+          const irs::attribute_provider& term_attrs) override {
         if (sort_.collector_collect_term) {
           sort_.collector_collect_term(segment, field, term_attrs);
+        }
+      }
+
+      virtual void reset() override {
+        if (sort_.term_reset_) {
+          sort_.term_reset_();
         }
       }
 
@@ -135,19 +164,19 @@ struct custom_sort: public irs::sort {
 
     struct scorer: public irs::score_ctx {
       scorer(
-        const custom_sort& sort,
-        const irs::sub_reader& segment_reader,
-        const irs::term_reader& term_reader,
-        const irs::byte_type* filter_node_attrs,
-        const irs::attribute_view& document_attrs
-      ): document_attrs_(document_attrs),
-         filter_node_attrs_(filter_node_attrs),
-         segment_reader_(segment_reader),
-         sort_(sort),
-         term_reader_(term_reader) {
+          const custom_sort& sort,
+          const irs::sub_reader& segment_reader,
+          const irs::term_reader& term_reader,
+          const irs::byte_type* filter_node_attrs,
+          const irs::attribute_provider& document_attrs)
+        : document_attrs_(document_attrs),
+          filter_node_attrs_(filter_node_attrs),
+          segment_reader_(segment_reader),
+          sort_(sort),
+          term_reader_(term_reader) {
       }
 
-      const irs::attribute_view& document_attrs_;
+      const irs::attribute_provider& document_attrs_;
       const irs::byte_type* filter_node_attrs_;
       const irs::sub_reader& segment_reader_;
       const custom_sort& sort_;
@@ -203,16 +232,15 @@ struct custom_sort: public irs::sort {
         return sort_.prepare_field_collector_();
       }
 
-      return irs::memory::make_unique<collector>(sort_);
+      return irs::memory::make_unique<field_collector>(sort_);
     }
 
     virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader& segment_reader,
         const irs::term_reader& term_reader,
         const irs::byte_type* filter_node_attrs,
-        const irs::attribute_view& document_attrs,
-        irs::boost_t boost
-    ) const override {
+        const irs::attribute_provider& document_attrs,
+        irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
         return sort_.prepare_scorer(
           segment_reader, term_reader, filter_node_attrs, document_attrs
@@ -226,7 +254,7 @@ struct custom_sort: public irs::sort {
           auto& state = *reinterpret_cast<const scorer*>(ctx);
           auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
 
-          doc_id = state.document_attrs_.get<irs::document>()->value;
+          doc_id = irs::get<irs::document>(state.document_attrs_)->value;
 
           if (state.sort_.scorer_score) {
             state.sort_.scorer_score(doc_id);
@@ -244,7 +272,7 @@ struct custom_sort: public irs::sort {
         return sort_.prepare_term_collector_();
       }
 
-      return irs::memory::make_unique<collector>(sort_);
+      return irs::memory::make_unique<term_collector>(sort_);
     }
 
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
@@ -256,18 +284,20 @@ struct custom_sort: public irs::sort {
   };
 
   std::function<void(const irs::sub_reader&, const irs::term_reader&)> collector_collect_field;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
+  std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_provider&)> collector_collect_term;
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
-  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
+  std::function<std::pair<irs::score_ctx_ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_provider&)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_max;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
   std::function<void(irs::doc_id_t&)> scorer_score;
+  std::function<void()> term_reset_;
+  std::function<void()> field_reset_;
 
   DECLARE_FACTORY();
-  custom_sort(): sort(custom_sort::type()) {}
+  custom_sort(): sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
@@ -277,7 +307,9 @@ struct custom_sort: public irs::sort {
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
 struct frequency_sort: public irs::sort {
-  DECLARE_SORT_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::frequency_sort";
+  }
 
   struct score_t {
     irs::doc_id_t id;
@@ -348,15 +380,19 @@ struct frequency_sort: public irs::sort {
    public:
     struct term_collector: public irs::sort::term_collector {
       size_t docs_count{};
-      irs::attribute_view::ref<irs::term_meta>::type meta_attr;
+      const irs::term_meta* meta_attr;
 
       virtual void collect(
           const irs::sub_reader& segment,
           const irs::term_reader& field,
-          const irs::attribute_view& term_attrs
-      ) override {
-        meta_attr = term_attrs.get<irs::term_meta>();
+          const irs::attribute_provider& term_attrs) override {
+        meta_attr = irs::get<irs::term_meta>(term_attrs);
+        ASSERT_NE(nullptr, meta_attr);
         docs_count += meta_attr->docs_count;
+      }
+
+      virtual void reset() noexcept override {
+        docs_count = 0;
       }
 
       virtual void collect(const irs::bytes_ref& in) override {
@@ -369,11 +405,11 @@ struct frequency_sort: public irs::sort {
     };
 
     struct scorer: public irs::score_ctx {
-      scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>::type& doc_id_t):
-        doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
+      scorer(const size_t* docs_count, const irs::document* doc_id_attr):
+        doc_id_attr(doc_id_attr), docs_count(docs_count) {
       }
 
-      const irs::attribute_view::ref<irs::document>::type& doc_id_t_attr;
+      const irs::document* doc_id_attr;
       const size_t* docs_count;
     };
 
@@ -406,10 +442,9 @@ struct frequency_sort: public irs::sort {
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* stats_buf,
-        const irs::attribute_view& doc_attrs,
-        irs::boost_t boost
-    ) const override {
-      auto& doc_id_t = doc_attrs.get<irs::document>();
+        const irs::attribute_provider& doc_attrs,
+        irs::boost_t boost) const override {
+      auto* doc_id_t = irs::get<irs::document>(doc_attrs);
       auto& stats = stats_cast(stats_buf);
       const size_t* docs_count = &stats.count;
       return {
@@ -417,7 +452,7 @@ struct frequency_sort: public irs::sort {
         [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           auto& state = *reinterpret_cast<const scorer*>(ctx);
           auto& buf = irs::sort::score_cast<score_t>(score_buf);
-          buf.id = state.doc_id_t_attr->value;
+          buf.id = state.doc_id_attr->value;
 
           // docs_count may be nullptr if no collector called, e.g. by range_query for bitset_doc_iterator
           if (state.docs_count) {
@@ -449,7 +484,7 @@ struct frequency_sort: public irs::sort {
   };
 
   DECLARE_FACTORY();
-  frequency_sort(): sort(frequency_sort::type()) {}
+  frequency_sort(): sort(irs::type<frequency_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return frequency_sort::prepared::make<frequency_sort::prepared>();
   }
@@ -472,8 +507,7 @@ class filter_test_case_base : public index_test_base {
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::order::prepared::unordered()),
-      expected, rdr, 
-      result, result_costs);
+      rdr, result, result_costs);
     ASSERT_EQ(expected, result);
     ASSERT_EQ(expected_costs, result_costs);
   }
@@ -481,14 +515,12 @@ class filter_test_case_base : public index_test_base {
   void check_query(
       const irs::filter& filter,
       const std::vector<irs::doc_id_t>& expected,
-      const irs::index_reader& rdr
-  ) {
+      const irs::index_reader& rdr) {
     std::vector<irs::doc_id_t> result;
     std::vector<irs::cost::cost_t> result_costs;
     get_query_result(
       filter.prepare(rdr, irs::order::prepared::unordered()),
-      expected, rdr, 
-      result, result_costs);
+      rdr, result, result_costs);
     ASSERT_EQ(expected, result);
   }
 
@@ -497,14 +529,12 @@ class filter_test_case_base : public index_test_base {
       const irs::order& order,
       const std::vector<irs::doc_id_t>& expected,
       const irs::index_reader& rdr,
-      bool score_must_be_present = true
-  ) {
-    typedef std::pair<irs::string_ref, irs::doc_id_t> result_item_t;
+      bool score_must_be_present = true) {
     auto prepared_order = order.prepare();
     auto prepared_filter = filter.prepare(rdr, prepared_order);
     auto score_less = [&prepared_order](
-      const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
-    )->bool {
+        const irs::bytes_ref& lhs,
+        const irs::bytes_ref& rhs)->bool {
       return prepared_order.less(lhs.c_str(), rhs.c_str());
     };
     std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
@@ -512,10 +542,10 @@ class filter_test_case_base : public index_test_base {
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
 
-      auto& doc = docs->attributes().get<irs::document>();
+      auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
 
-      const auto* score = docs->attributes().get<irs::score>().get();
+      const auto* score = irs::get<irs::score>(*docs);
 
       // ensure that we avoid COW for pre c++11 std::basic_string
       irs::bytes_ref score_value;
@@ -546,20 +576,18 @@ class filter_test_case_base : public index_test_base {
  private:
   void get_query_result(
       const irs::filter::prepared::ptr& q,
-      const std::vector<irs::doc_id_t>& expected,
       const irs::index_reader& rdr,
       std::vector<irs::doc_id_t>& result,
-      std::vector<irs::cost::cost_t>& result_costs
-  ) {
+      std::vector<irs::cost::cost_t>& result_costs) {
     for (const auto& sub : rdr) {
       auto docs = q->execute(sub);
 
-      auto& doc = docs->attributes().get<irs::document>();
+      auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
 
-      auto& score = docs->attributes().get<irs::score>();
+      auto* score = irs::get<irs::score>(*docs);
 
-      result_costs.push_back(irs::cost::extract(docs->attributes()));
+      result_costs.push_back(irs::cost::extract(*docs));
 
       while (docs->next()) {
         ASSERT_EQ(docs->value(), doc->value);
@@ -588,8 +616,8 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
     return EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const noexcept {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
+    return nullptr;
   }
 
   // total number of terms
@@ -611,17 +639,24 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  virtual void prepare(const irs::seek_term_iterator& /*terms*/) noexcept override {
+  virtual void prepare(const irs::sub_reader& segment,
+                       const irs::term_reader& field,
+                       const irs::seek_term_iterator& terms) noexcept override {
+    it_ = &terms;
     ++prepare_calls_counter_;
   }
 
-  virtual void visit() noexcept override {
+  virtual void visit(irs::boost_t boost) noexcept override {
+    ASSERT_NE(nullptr, it_);
+    terms_.emplace_back(it_->value(), boost);
     ++visit_calls_counter_;
   }
 
   void reset() noexcept {
     prepare_calls_counter_ = 0;
     visit_calls_counter_ = 0;
+    terms_.clear();
+    it_ = nullptr;
   }
 
   size_t prepare_calls_counter() const noexcept {
@@ -632,7 +667,29 @@ class empty_filter_visitor : public irs::filter_visitor {
     return visit_calls_counter_;
   }
 
+  const std::vector<std::pair<irs::bstring, irs::boost_t>>& terms() const noexcept {
+    return terms_;
+  }
+
+  template<typename Char>
+  std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> term_refs() const {
+    std::vector<std::pair<irs::basic_string_ref<Char>, irs::boost_t>> refs(terms_.size());
+    auto begin = refs.begin();
+    for (auto& term : terms_) {
+      begin->first = irs::ref_cast<Char>(term.first);
+      begin->second = term.second;
+      ++begin;
+    }
+    return refs;
+  }
+
+  virtual void assert_boost(irs::boost_t boost) {
+    ASSERT_EQ(irs::no_boost(), boost);
+  }
+
  private:
+  const irs::seek_term_iterator* it_{};
+  std::vector<std::pair<irs::bstring, irs::boost_t>> terms_;
   size_t prepare_calls_counter_ = 0;
   size_t visit_calls_counter_ = 0;
 }; // empty_filter_visitor

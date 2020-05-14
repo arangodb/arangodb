@@ -108,6 +108,8 @@ class KShortestPathsNode : public virtual GraphNode {
     return *_inStartVariable;
   }
 
+  void setStartInVariable(Variable const* inVariable);
+
   std::string const getStartVertex() const { return _startVertexId; }
 
   /// @brief Test if this node uses an in variable or constant for target
@@ -130,7 +132,7 @@ class KShortestPathsNode : public virtual GraphNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override {
+  void getVariablesUsedHere(VarSet& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

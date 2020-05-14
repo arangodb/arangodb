@@ -45,22 +45,10 @@ using namespace arangodb::basics;
 HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
                          uint64_t mid, bool allowMethodOverride)
     : GeneralRequest(connectionInfo, mid),
-      _allowMethodOverride(allowMethodOverride) {
+      _allowMethodOverride(allowMethodOverride),
+      _validatedPayload(false) {
   _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::JSON;
-}
-
-// HACK HACK HACK
-// This should only be called by createFakeRequest in ClusterComm
-// as the Request is not fully constructed. This 2nd constructor
-// avoids the need of a additional FakeRequest class.
-HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-                         std::unordered_map<std::string, std::string> const& headers)
-    : GeneralRequest(ConnectionInfo(), 1) {
-  _contentType = contentType;
-  _contentTypeResponse = contentType;
-  _payload.append(body, contentLength);
-  GeneralRequest::_headers = headers;
 }
 
 void HttpRequest::parseHeader(char* start, size_t length) {
@@ -442,7 +430,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
 
       TRI_ASSERT(q >= start);
-      _databaseName = std::string(start, q - start);
+      _databaseName.assign(start, q - start);
       _fullUrl.assign(q, end - q);
 
       start = q;
@@ -875,31 +863,25 @@ VPackStringRef HttpRequest::rawPayload() const {
   return VPackStringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 };
 
-VPackSlice HttpRequest::payload(VPackOptions const* options) {
-  TRI_ASSERT(options != nullptr);
+VPackSlice HttpRequest::payload(bool strictValidation) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
-        VPackParser parser(&basics::VelocyPackHelper::requestValidationOptions);
-        parser.parse(_payload.data(),
-                     _payload.size());
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackParser parser(options);
+        parser.parse(_payload.data(), _payload.size());
         _vpackBuilder = parser.steal();
       }
       return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
   } else if (_contentType == ContentType::VPACK) {
-    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
     if (!_validatedPayload) {
+      VPackOptions const* options = validationOptions(strictValidation);
+      VPackValidator validator(options);
       _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
     }
     return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
   }
   return VPackSlice::noneSlice();
-}
-
-HttpRequest* HttpRequest::createHttpRequest(
-    ContentType contentType, char const* body, int64_t contentLength,
-    std::unordered_map<std::string, std::string> const& headers) {
-  return new HttpRequest(contentType, body, contentLength, headers);
 }

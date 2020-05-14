@@ -54,13 +54,6 @@
   // NOOP
 #endif
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #if (__GNUC__ >= 7)
-    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
-  #endif
-#endif
-
 #include "shared.hpp"
 #include "format_utils.hpp"
 #include "analysis/token_attributes.hpp"
@@ -75,7 +68,7 @@
 #include "utils/fst.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
-#include "utils/attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
 #include "utils/fst_matcher.hpp"
@@ -130,7 +123,7 @@ void read_segment_features(
 
   for (size_t count = feature_map.capacity(); count; --count) {
     const auto name = read_string<std::string>(in); // read feature name
-    const attribute::type_id* feature = attribute::type_id::get(name);
+    const irs::type_info feature = attributes::get(name);
 
     if (!feature) {
       throw irs::index_error(irs::string_utils::to_string(
@@ -139,8 +132,8 @@ void read_segment_features(
       ));
     }
 
-    feature_map.emplace_back(feature);
-    features.add(*feature);
+    feature_map.emplace_back(feature.id());
+    features.add(feature.id());
   }
 }
 
@@ -152,7 +145,7 @@ void read_field_features(
     const size_t id = in.read_vlong(); // feature id
 
     if (id < feature_map.size()) {
-      features.add(*feature_map[id]);
+      features.add(feature_map[id]);
     } else {
       throw irs::index_error(irs::string_utils::to_string(
         "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id
@@ -494,7 +487,7 @@ class block_iterator : util::noncopyable {
   void scan_to_block(uint64_t ptr);
 
   // read attributes
-  void load_data(const field_meta& meta, const attribute_view& attrs,
+  void load_data(const field_meta& meta, attribute_provider& attrs,
                  version10::term_meta& state, irs::postings_reader& pr);
 
  private:
@@ -549,30 +542,26 @@ class block_iterator : util::noncopyable {
 /// @class term_iterator_base
 /// @brief base class for term_iterator and automaton_term_iterator
 ///////////////////////////////////////////////////////////////////////////////
-class term_iterator_base : public seek_term_iterator {
+class term_iterator_base
+    : public frozen_attributes<3, seek_term_iterator> {
  public:
-  explicit term_iterator_base(const term_reader& owner)
-    : owner_(&owner),
-      attrs_(2) { // version10::term_meta + frequency
+  explicit term_iterator_base(const term_reader& owner, payload* pay = nullptr)
+    : attributes{{
+        { type<version10::term_meta>::id(), &state_ },
+        { type<frequency>::id(), owner.field_.features.check<frequency>() ? &freq_ : nullptr },
+        { type<payload>::id(), pay }
+      }},
+      owner_(&owner) {
     assert(owner_);
-    attrs_.emplace(state_);
-
-    if (owner_->field_.features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
   // read attributes
   void read(block_iterator& it) {
-    it.load_data(owner_->field_, attrs_, state_, *owner_->owner_->pr_);
+    it.load_data(owner_->field_, *this, state_, *owner_->owner_->pr_);
   }
 
   virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
     return ::cookie::make(state_, freq_.value);
-  }
-
-  virtual const irs::attribute_view& attributes() const noexcept final {
-    return attrs_;
   }
 
   virtual const bytes_ref& value() const noexcept final { return term_; }
@@ -601,9 +590,9 @@ class term_iterator_base : public seek_term_iterator {
     const field_meta& field = owner_->field_;
     postings_reader& pr = *owner_->owner_->pr_;
     if (it) {
-      it->load_data(field, attrs_, state_, pr); // read attributes
+      it->load_data(field, const_cast<term_iterator_base&>(*this), state_, pr); // read attributes
     }
-    return pr.iterator(field.features, attrs_, features);
+    return pr.iterator(field.features, *this, features);
   }
 
   index_input& terms_input() const;
@@ -633,7 +622,6 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   const term_reader* owner_;
-  irs::attribute_view attrs_;
   mutable version10::term_meta state_;
   frequency freq_;
   mutable index_input::ptr terms_in_;
@@ -662,14 +650,9 @@ index_input& term_iterator_base::terms_input() const {
 class term_iterator final : public term_iterator_base {
  public:
   explicit term_iterator(const term_reader& owner)
-    : term_iterator_base(owner),
+    : term_iterator_base(owner, nullptr),
       matcher_(&fst(), fst::MATCH_INPUT) { // pass pointer to avoid copying FST
     assert(owner_);
-    attrs_.emplace(state_);
-
-    if (field().features.check<frequency>()) {
-      attrs_.emplace(freq_);
-    }
   }
 
   virtual bool next() override;
@@ -783,10 +766,11 @@ class automaton_term_iterator final : public term_iterator_base {
  public:
   explicit automaton_term_iterator(const term_reader& owner,
                                    automaton_table_matcher& matcher)
-    : term_iterator_base(owner),
+    : term_iterator_base(owner, &payload_),
       acceptor_(&matcher.GetFst()),
       matcher_(&matcher) {
-    attrs_.emplace(payload_);
+    // init payload value
+    payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
 
   virtual bool next() override;
@@ -894,14 +878,6 @@ class automaton_term_iterator final : public term_iterator_base {
     automaton::StateId state_;  // state to which current block belongs
   }; // block_iterator
 
-  struct payload : irs::payload {
-    payload() noexcept {
-      irs::payload::value = bytes_ref(&value, sizeof(value));
-    }
-
-    automaton::Weight::PayloadType value;
-  }; // payload
-
   typedef std::deque<block_iterator> block_stack_t;
 
   block_iterator* pop_block() noexcept {
@@ -933,7 +909,8 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton_table_matcher* matcher_;
   block_stack_t block_stack_;
   block_iterator* cur_block_{};
-  payload payload_{}; // payload of the matched automaton state
+  automaton::Weight::PayloadType payload_value_;
+  payload payload_; // payload of the matched automaton state
 }; // automaton_term_iterator
 
 bool automaton_term_iterator::next() {
@@ -1011,7 +988,7 @@ bool automaton_term_iterator::next() {
       case ET_TERM: {
         const auto weight = acceptor_->Final(state);
         if (weight) {
-          payload_.value = weight.Payload();
+          payload_value_ = weight.Payload();
           copy(suffix, cur_block_->prefix(), suffix_size);
           match = MATCH;
         }
@@ -1381,7 +1358,7 @@ void block_iterator::scan_to_block(uint64_t start) {
 }
 
 void block_iterator::load_data(const field_meta& meta,
-                               const attribute_view& attrs,
+                               attribute_provider& attrs,
                                version10::term_meta& state,
                                irs::postings_reader& pr) {
   assert(ET_TERM == cur_type_);
@@ -1687,7 +1664,7 @@ SeekResult term_iterator::seek_ge(const bytes_ref& term) {
           assert(false);
           return SeekResult::END;
       }
-      // intentional fallthrough
+    [[fallthrough]];
     case SeekResult::END:
       return next()
         ? SeekResult::NOT_FOUND // have moved to the next entry
@@ -1716,7 +1693,7 @@ term_reader::term_reader(term_reader&& rhs) noexcept
     doc_freq_(rhs.doc_freq_),
     term_freq_(rhs.term_freq_),
     field_(std::move(rhs.field_)),
-    fst_(rhs.fst_),
+    fst_(std::move(rhs.fst_)),
     owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
   max_term_ref_ = max_term_;
@@ -1728,10 +1705,6 @@ term_reader::term_reader(term_reader&& rhs) noexcept
   rhs.term_freq_ = 0;
   rhs.fst_ = nullptr;
   rhs.owner_ = nullptr;
-}
-
-term_reader::~term_reader() {
-  delete fst_;
 }
 
 seek_term_iterator::ptr term_reader::iterator() const {
@@ -1749,8 +1722,7 @@ seek_term_iterator::ptr term_reader::iterator(automaton_table_matcher& matcher) 
 void term_reader::prepare(
     std::istream& in, 
     const feature_map_t& feature_map,
-    field_reader& owner
-) {
+    field_reader& owner) {
   // read field metadata
   index_input& meta_in = *static_cast<input_buf*>(in.rdbuf());
   field_.name = read_string<std::string>(meta_in);
@@ -1768,14 +1740,18 @@ void term_reader::prepare(
 
   if (field_.features.check<frequency>()) {
     freq_.value = meta_in.read_vlong();
-    attrs_.emplace(freq_);
+    pfreq_ = &freq_;
   }
 
   // read FST
-  fst_ = fst_t::Read(in, fst_read_options());
+  fst_.reset(fst_t::Read(in, fst_read_options()));
   assert(fst_);
 
   owner_ = &owner;
+}
+
+attribute* term_reader::get_mutable(type_info::type_id type) noexcept {
+  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 
 NS_END // detail
@@ -2109,7 +2085,7 @@ void field_writer::write(
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists = features.check<frequency>();
-  auto& docs = pw_->attributes().get<version10::documents>();
+  auto* docs = irs::get<version10::documents>(*pw_);
   assert(docs);
 
   for (; terms.next();) {
@@ -2165,8 +2141,8 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
   out.write_vlong(features.size());
   feature_map_.clear();
   feature_map_.reserve(features.size());
-  for (const attribute::type_id* feature : features) {
-    write_string(out, feature->name());
+  for (const type_info::type_id feature : features) {
+    write_string(out, feature().name());
     feature_map_.emplace(feature, feature_map_.size());
   }
 }
@@ -2174,14 +2150,14 @@ void field_writer::write_segment_features(data_output& out, const flags& feature
 void field_writer::write_field_features(data_output& out, const flags& features) const {
   out.write_vlong(features.size());
   for (auto feature : features) {
-    const auto it = feature_map_.find(*feature);
+    const auto it = feature_map_.find(feature);
     assert(it != feature_map_.end());
 
     if (feature_map_.end() == it) {
       // should not happen in reality
       throw irs::index_error(string_utils::to_string(
         "feature '%s' is not listed in segment features",
-        feature->name().c_str()
+        feature().name().c_str()
       ));
     }
 
@@ -2454,11 +2430,3 @@ size_t field_reader::size() const noexcept {
 
 NS_END // burst_trie
 NS_END // ROOT
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

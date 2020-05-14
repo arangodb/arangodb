@@ -39,7 +39,7 @@ class RemoveModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  OperationResult transact(VPackSlice const& data);
+  OperationResult transact(transaction::Methods& trx, VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;

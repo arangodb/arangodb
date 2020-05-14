@@ -305,7 +305,7 @@ IResearchLink::IResearchLink(arangodb::IndexId iid, LogicalCollection& collectio
     TRI_ASSERT(state != nullptr);
 
     // check state of the top-most transaction only
-    if (!state || !state->isTopLevelTransaction()) {
+    if (!state) {
       return;  // NOOP
     }
 
@@ -819,7 +819,9 @@ Result IResearchLink::init(
   bool const sorted = !meta._sort.empty();
   auto const& storedValuesColumns = meta._storedValues.columns();
   TRI_ASSERT(meta._sortCompression);
-  auto const& primarySortCompression = meta._sortCompression? *meta._sortCompression : getDefaultCompression();
+  auto const primarySortCompression = meta._sortCompression
+      ? meta._sortCompression
+      : getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) { // coordinator link
     if (!vocbase.server().hasFeature<arangodb::ClusterFeature>()) {
       return {
@@ -992,7 +994,7 @@ Result IResearchLink::init(
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::compression::type_id const& primarySortCompression) {
+    irs::type_info::type_id primarySortCompression) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1113,10 +1115,10 @@ Result IResearchLink::initDataStore(
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
   // as values provided may be temporary
-  std::map<std::string, irs::compression::type_id const&> compressionMap;
+  std::map<std::string, irs::type_info::type_id> compressionMap;
   for (auto c : storedColumns) {
     if (ADB_LIKELY(c.compression != nullptr)) {
-      compressionMap.emplace(c.name, *c.compression);
+      compressionMap.emplace(c.name, c.compression);
     } else {
       TRI_ASSERT(false);
       compressionMap.emplace(c.name, getDefaultCompression());
@@ -1125,16 +1127,17 @@ Result IResearchLink::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt = (nullptr != irs::get_encryption(_dataStore._directory->attributes()));
   options.column_info =
-    [encrypt, comprMap = std::move(compressionMap), &primarySortCompression](const irs::string_ref& name) -> irs::column_info {
+    [encrypt, comprMap = std::move(compressionMap), primarySortCompression](
+        const irs::string_ref& name) -> irs::column_info {
       if (name.null()) {
-        return { primarySortCompression, {}, encrypt };
+        return { primarySortCompression(), {}, encrypt };
       }
       auto compress = comprMap.find(name);
       if (compress != comprMap.end()) {
         // do not waste resources to encrypt primary key column
-        return { compress->second, {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+        return { compress->second(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       } else {
-        return { getDefaultCompression(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
+        return { getDefaultCompression()(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };
       }
     };
 
@@ -1373,7 +1376,7 @@ void IResearchLink::setupMaintenance() {
       auto res = consolidateUnsafe(state._consolidationPolicy, state._progress);
 
       if (!res.ok()) {
-        LOG_TOPIC("bce4f", WARN, iresearch::TOPIC)
+        LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
             << "error while consolidating arangosearch link '" << id()
             << "': " << res.errorNumber() << " " << res.errorMessage();
       } else if (state._cleanupIntervalStep // if enabled

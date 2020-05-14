@@ -38,16 +38,16 @@
 NS_BEGIN(tests)
 
 struct incompatible_attribute : irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "tests::incompatible_attribute";
+  }
 
   incompatible_attribute() noexcept;
 };
 
 REGISTER_ATTRIBUTE(incompatible_attribute);
-DEFINE_ATTRIBUTE_TYPE(incompatible_attribute)
 
-incompatible_attribute::incompatible_attribute() noexcept {
-}
+incompatible_attribute::incompatible_attribute() noexcept { }
 
 NS_BEGIN(templates)
 
@@ -58,15 +58,21 @@ NS_BEGIN(templates)
 token_stream_payload::token_stream_payload(irs::token_stream* impl)
   : impl_(impl) {
     assert(impl_);
-    auto& attrs = const_cast<irs::attribute_view&>(impl_->attributes());
-    term_ = const_cast<const irs::attribute_view&>(attrs).get<irs::term_attribute>().get();
+    term_ = irs::get<irs::term_attribute>(*impl_);
     assert(term_);
-    attrs.emplace(pay_);
+}
+
+irs::attribute* token_stream_payload::get_mutable(irs::type_info::type_id type) {
+  if (irs::type<irs::payload>::id() == type) {
+    return &pay_;
+  }
+
+  return impl_->get_mutable(type);
 }
 
 bool token_stream_payload::next() {
   if (impl_->next()) {
-    pay_.value = term_->value();
+    pay_.value = term_->value;
     return true;
   }
   pay_.value = irs::bytes_ref::NIL;
@@ -80,7 +86,7 @@ bool token_stream_payload::next() {
 string_field::string_field(
     const irs::string_ref& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::frequency::type(), irs::position::type() }) {
+): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
   this->name(name);
 }
@@ -89,7 +95,7 @@ string_field::string_field(
     const irs::string_ref& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::frequency::type(), irs::position::type() }),
+  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
      value_(value) {
   features_ |= extra_features;
   this->name(name);
@@ -127,7 +133,7 @@ irs::token_stream& string_field::get_tokens() const {
 string_ref_field::string_ref_field(
     const irs::string_ref& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-): features_({ irs::frequency::type(), irs::position::type() }) {
+): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
   this->name(name);
 }
@@ -136,7 +142,7 @@ string_ref_field::string_ref_field(
     const irs::string_ref& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
-  ): features_({ irs::frequency::type(), irs::position::type() }),
+  ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
      value_(value) {
   features_ |= extra_features;
   this->name(name);
@@ -246,17 +252,17 @@ void generic_json_field_factory(
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::null_token_stream::value_null());
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
@@ -295,17 +301,17 @@ void payloaded_json_field_factory(
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::null_token_stream::value_null());
+    field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_true());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
     field.name(iresearch::string_ref(name));
-    field.value(irs::boolean_token_stream::value_false());
+    field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
@@ -319,7 +325,7 @@ void normalized_string_json_field_factory(
   tests::document& doc,
   const std::string& name,
   const json_doc_generator::json_value& data) {
-  static irs::flags norm{ irs::norm::type() };
+  static irs::flags norm{ irs::type<irs::norm>::get() };
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
       irs::string_ref(name),
@@ -331,14 +337,32 @@ void normalized_string_json_field_factory(
   }
 }
 
-std::string to_string(
-    const testing::TestParamInfo<index_test_context>& info
-) {
+std::string to_string(const testing::TestParamInfo<index_test_context>& info) {
   dir_factory_f factory;
-  const char* codec_name;
-  std::tie(factory, codec_name) = info.param;
+  format_info codec;
+  std::tie(factory, codec) = info.param;
 
-  return (*factory)(nullptr).second + "___" + codec_name;
+  std::string str = (*factory)(nullptr).second;
+  if (codec.codec) {
+    str += "___";
+    str += codec.codec;
+  }
+
+  return str;
+}
+
+std::shared_ptr<irs::directory> index_test_base::get_directory(const test_base& ctx) const {
+  dir_factory_f factory;
+  std::tie(factory, std::ignore) = GetParam();
+
+  return (*factory)(&ctx).first;
+}
+
+irs::format::ptr index_test_base::get_codec() const {
+  tests::format_info info;
+  std::tie(std::ignore, info) = GetParam();
+
+  return irs::formats::get(info.codec, info.module);
 }
 
 NS_END // tests
@@ -347,12 +371,12 @@ class index_test_case : public tests::index_test_base {
  public:
   void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::flags(), skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip, matcher);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() }, skip, matcher);
   }
 
   void clear_writer() {
@@ -625,7 +649,7 @@ class index_test_case : public tests::index_test_base {
             auto& exp_term_itr = expected_term_itrs[i];
 
             pool.run([&mutex, &act_term_itr, &exp_term_itr]()->void {
-              const irs::flags features({ irs::frequency::type(), irs::offset::type(), irs::position::type(), irs::payload::type() });
+              const irs::flags features({ irs::type<irs::frequency>::get(), irs::type<irs::offset>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() });
               irs::doc_iterator::ptr act_docs_itr;
               irs::doc_iterator::ptr exp_docs_itr;
 
@@ -638,17 +662,19 @@ class index_test_case : public tests::index_test_base {
                 exp_docs_itr = exp_term_itr->postings(features); // this step creates 3 internal iterators
               }
 
-              auto& actual_attrs = act_docs_itr->attributes();
-              auto& expected_attrs = exp_docs_itr->attributes();
-              ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
+//FIXME
+//              auto& actual_attrs = act_docs_itr->attributes();
+//              auto& expected_attrs = exp_docs_itr->attributes();
+//              ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
 
-              auto& actual_freq = actual_attrs.get<irs::frequency>();
-              auto& expected_freq = expected_attrs.get<irs::frequency>();
+              auto* actual_freq = irs::get<irs::frequency>(*act_docs_itr);
+              auto* expected_freq = irs::get<irs::frequency>(*exp_docs_itr);
               ASSERT_FALSE(!actual_freq);
               ASSERT_FALSE(!expected_freq);
 
-              auto& actual_pos = actual_attrs.get<irs::position>();
-              auto& expected_pos = expected_attrs.get<irs::position>();
+              //FIXME const_cast
+              auto* actual_pos = const_cast<irs::position*>(irs::get<irs::position>(*act_docs_itr));
+              auto* expected_pos = const_cast<irs::position*>(irs::get<irs::position>(*exp_docs_itr));
               ASSERT_FALSE(!actual_pos);
               ASSERT_FALSE(!expected_pos);
 
@@ -657,13 +683,13 @@ class index_test_case : public tests::index_test_base {
                 ASSERT_EQ(exp_docs_itr->value(), act_docs_itr->value());
                 ASSERT_EQ(expected_freq->value, actual_freq->value);
 
-                auto& actual_offs = actual_pos->attributes().get<irs::offset>();
-                auto& expected_offs = expected_pos->attributes().get<irs::offset>();
+                auto* actual_offs = irs::get<irs::offset>(*actual_pos);
+                auto* expected_offs = irs::get<irs::offset>(*expected_pos);
                 ASSERT_FALSE(!actual_offs);
                 ASSERT_FALSE(!expected_offs);
 
-                auto& actual_pay = actual_pos->attributes().get<irs::payload>();
-                auto& expected_pay = expected_pos->attributes().get<irs::payload>();
+                auto* actual_pay = irs::get<irs::payload>(*actual_pos);
+                auto* expected_pay = irs::get<irs::payload>(*expected_pos);
                 ASSERT_FALSE(!actual_pay);
                 ASSERT_FALSE(!expected_pay);
 
@@ -1333,7 +1359,7 @@ class index_test_case : public tests::index_test_base {
           return false;
         }
 
-        auto& payload = it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*it);
 
         if (!payload) {
           return false;
@@ -1856,8 +1882,9 @@ class index_test_case : public tests::index_test_base {
     class field {
       public:
       field(std::string&& name, const irs::string_ref& value)
-        : name_(std::move(name)),
-        value_(value) {}
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)),
+          value_(value) {}
       field(field&& other) noexcept
         : stream_(std::move(other.stream_)),
           name_(std::move(other.name_)),
@@ -1866,15 +1893,15 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return irs::flags::empty_instance();
       }
 
       private:
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
     }; // field
@@ -1943,7 +1970,10 @@ class index_test_case : public tests::index_test_base {
     class indexed_and_stored_field {
      public:
       indexed_and_stored_field(std::string&& name, const irs::string_ref& value, bool stored_valid = true, bool indexed_valid = true)
-        : name_(std::move(name)), value_(value), stored_valid_(stored_valid) {
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)),
+          value_(value),
+          stored_valid_(stored_valid) {
         if (!indexed_valid) {
           features_.add<tests::incompatible_attribute>();
         }
@@ -1958,8 +1988,8 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return features_;
@@ -1971,7 +2001,7 @@ class index_test_case : public tests::index_test_base {
 
      private:
       irs::flags features_;
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
       bool stored_valid_;
@@ -1980,7 +2010,8 @@ class index_test_case : public tests::index_test_base {
     class indexed_field {
      public:
       indexed_field(std::string&& name, const irs::string_ref& value, bool valid = true)
-        : name_(std::move(name)), value_(value) {
+        : stream_(std::make_unique<irs::string_token_stream>()),
+          name_(std::move(name)), value_(value) {
         if (!valid) {
           features_.add<tests::incompatible_attribute>();
         }
@@ -1994,8 +2025,8 @@ class index_test_case : public tests::index_test_base {
       irs::string_ref name() const { return name_; }
       float_t boost() const { return 1.f; }
       irs::token_stream& get_tokens() const {
-        stream_.reset(value_);
-        return stream_;
+        stream_->reset(value_);
+        return *stream_;
       }
       const irs::flags& features() const {
         return features_;
@@ -2003,7 +2034,7 @@ class index_test_case : public tests::index_test_base {
 
      private:
       irs::flags features_;
-      mutable irs::string_token_stream stream_;
+      mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       irs::string_ref value_;
     }; // indexed_field
@@ -6245,7 +6276,7 @@ TEST_P(index_test_case, segment_column_user_system) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
       irs::string_ref("test-field"),
       "test-value",
-      irs::flags({ irs::norm::type() }) // trigger addition of a system column
+      irs::flags({ irs::type<irs::norm>::get() }) // trigger addition of a system column
     ), true, false);
   }
 
@@ -7052,7 +7083,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
   irs::bytes_ref actual_value;
 
   std::vector<size_t> expected_consolidating_segments;
@@ -7171,7 +7202,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
   tests::document const* doc4 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -7797,11 +7828,11 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
   irs::bytes_ref actual_value;
   auto const all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   size_t count = 0;
@@ -7977,7 +8008,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -8380,11 +8411,11 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // validate structure
   irs::bytes_ref actual_value;
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
   gen.reset();
   tests::index_t expected;
@@ -8458,7 +8489,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   size_t count = 0;
   auto get_number_of_files_in_segments = [&count](const std::string& name) noexcept {
@@ -11533,7 +11564,7 @@ TEST_P(index_test_case, segment_consolidate) {
   tests::document const* doc6 = gen.next();
 
   auto always_merge = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto all_features = irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() };
 
   // remove empty new segment
   {
@@ -13223,7 +13254,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-    ::testing::Values("1_1")
+    ::testing::Values(tests::format_info{"1_1", "1_0"})
   ),
   tests::to_string
 );
@@ -13231,9 +13262,10 @@ INSTANTIATE_TEST_CASE_P(
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_12_values = ::testing::Values("1_2", "1_2simd");
+const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"},
+                                                         tests::format_info{"1_2simd", "1_0"});
 #else
-const auto index_test_case_12_values = ::testing::Values("1_2");
+const auto index_test_case_12_values = ::testing::Values(tests::format_info{"1_2", "1_0"});
 #endif
 NS_END
 
@@ -13254,9 +13286,10 @@ INSTANTIATE_TEST_CASE_P(
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #if defined(IRESEARCH_SSE2)
-const auto index_test_case_13_values = ::testing::Values("1_3", "1_3simd");
+const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"},
+                                                         tests::format_info{"1_3simd", "1_0"});
 #else
-const auto index_test_case_13_values = ::testing::Values("1_3");
+const auto index_test_case_13_values = ::testing::Values(tests::format_info{"1_3", "1_0"});
 #endif
 NS_END
 
@@ -14004,9 +14037,12 @@ TEST_P(index_test_case_11, commit_payload) {
 // Separate definition as MSVC parser fails to do conditional defines in macro expansion
 NS_LOCAL
 #ifdef IRESEARCH_SSE2
-const auto index_test_case_11_values = ::testing::Values("1_1", "1_2", "1_2simd");
+const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
+                                                         tests::format_info{"1_2", "1_0"},
+                                                         tests::format_info{"1_2simd", "1_0"});
 #else
-const auto index_test_case_11_values = ::testing::Values("1_1", "1_2");
+const auto index_test_case_11_values = ::testing::Values(tests::format_info{"1_1", "1_0"},
+                                                         tests::format_info{"1_2", "1_0"});
 #endif
 NS_END
 
@@ -14023,7 +14059,3 @@ INSTANTIATE_TEST_CASE_P(
   ),
   tests::to_string
 );
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

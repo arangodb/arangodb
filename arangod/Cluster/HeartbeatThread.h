@@ -191,7 +191,7 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  void syncDBServerStatusQuo(bool asyncPush = false);
+  void notify();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
@@ -325,12 +325,6 @@ class HeartbeatThread : public CriticalThread,
   std::atomic<uint64_t> _lastCurrentVersionNoticed;
   // For periodic update of the current DBServer list:
   std::atomic<int> _DBServerUpdateCounter;
-
-  // The following are used in the DBServer case to store the agency callback
-  // objects. We need to have them available as members since a scheduler thread
-  // might call refetchAndUpdate.
-  std::shared_ptr<AgencyCallback> _planAgencyCallback;
-  std::shared_ptr<AgencyCallback> _currentAgencyCallback;
 
   /// @brief Sync job
   DBServerAgencySync _agencySync;

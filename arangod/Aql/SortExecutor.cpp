@@ -73,13 +73,13 @@ class OurLessThan {
 
 SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
                                      RegisterCount nrOutputRegisters,
-                                     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+                                     RegIdFlatSet const& registersToClear,
                                      std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
                                      velocypack::Options const* options, bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
-      _registersToClear(std::move(registersToClear)),
+      _registersToClear(registersToClear.begin(), registersToClear.end()),
       _limit(limit),
       _manager(manager),
       _vpackOptions(options),
@@ -94,7 +94,7 @@ RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
   return _numOutRegs;
 }
 
-std::shared_ptr<std::unordered_set<RegisterId> const> const& SortExecutorInfos::registersToClear() const {
+RegIdFlatSet const& SortExecutorInfos::registersToClear() const {
   return _registersToClear;
 }
 

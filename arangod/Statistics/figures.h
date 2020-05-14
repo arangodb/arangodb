@@ -24,6 +24,7 @@
 #ifndef ARANGOD_STATISTICS_FIGURES_H
 #define ARANGOD_STATISTICS_FIGURES_H 1
 
+#include <atomic>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -31,16 +32,16 @@
 #include "Basics/MutexLocker.h"
 
 namespace arangodb {
-namespace basics {
+namespace statistics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a simple counter
 ////////////////////////////////////////////////////////////////////////////////
 
-struct StatisticsCounter {
-  StatisticsCounter() : _count(0) {}
+struct Counter {
+  Counter() : _count(0) {}
 
-  StatisticsCounter& operator=(StatisticsCounter const& other) {
+  Counter& operator=(Counter const& other) {
     _count.store(other._count.load());
     return *this;
   }
@@ -49,6 +50,9 @@ struct StatisticsCounter {
 
   void decCounter() { --_count; }
 
+  int64_t get() const { return _count.load(std::memory_order_relaxed); }
+
+private:
   std::atomic<int64_t> _count;
 };
 
@@ -56,15 +60,15 @@ struct StatisticsCounter {
 /// @brief a distribution with count, min, max, mean, and variance
 ////////////////////////////////////////////////////////////////////////////////
 
-struct StatisticsDistribution {
-  StatisticsDistribution() : _count(0), _total(0.0), _cuts(), _counts() {}
+struct Distribution {
+  Distribution() : _count(0), _total(0.0), _cuts(), _counts() {}
 
-  explicit StatisticsDistribution(std::vector<double> const& dist)
+  explicit Distribution(std::vector<double> const& dist)
       : _count(0), _total(0.0), _cuts(dist), _counts() {
     _counts.resize(_cuts.size() + 1);
   }
 
-  StatisticsDistribution& operator=(StatisticsDistribution& other) {
+  Distribution& operator=(Distribution& other) {
     MUTEX_LOCKER(l1, _mutex);
     MUTEX_LOCKER(l2, other._mutex);
 
@@ -77,6 +81,7 @@ struct StatisticsDistribution {
   }
 
   void addFigure(double value) {
+    TRI_ASSERT(!_counts.empty());
     MUTEX_LOCKER(lock, _mutex);
 
     ++_count;
@@ -95,7 +100,7 @@ struct StatisticsDistribution {
     ++(*j);
   }
 
-  void add(StatisticsDistribution& other) {
+  void add(Distribution& other) {
     MUTEX_LOCKER(lock, _mutex);
     MUTEX_LOCKER(lock2, other._mutex);
     TRI_ASSERT(_counts.size() == other._counts.size() &&
@@ -116,7 +121,7 @@ struct StatisticsDistribution {
  private:
   Mutex _mutex;
 };
-}  // namespace basics
+}  // namespace statistics
 }  // namespace arangodb
 
 #endif

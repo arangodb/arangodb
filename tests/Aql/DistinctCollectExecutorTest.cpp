@@ -42,6 +42,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
 
@@ -60,13 +61,10 @@ class DistinctCollectExecutorTest
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
-  arangodb::transaction::Methods* trx;
+  // arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
-
-  std::unordered_set<RegisterId> readableInputRegisters = {0};
-  std::unordered_set<RegisterId> writeableOutputRegisters = {1};
+  RegIdSet readableInputRegisters = RegIdSet{0};
+  RegIdSet writeableOutputRegisters = RegIdSet{1};
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
@@ -76,11 +74,9 @@ class DistinctCollectExecutorTest
   DistinctCollectExecutorInfos executorInfos;
 
   DistinctCollectExecutorTest()
-      : trx(fakedQuery->trx()),
-        registerInfos(std::make_shared<decltype(readableInputRegisters)>(readableInputRegisters),
-                      std::make_shared<decltype(readableInputRegisters)>(writeableOutputRegisters), 1, 2,
-                      regToClear, regToKeep),
-        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
+      : registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+                      1, 2, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
+        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {

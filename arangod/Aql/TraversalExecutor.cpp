@@ -294,44 +294,36 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       TRI_ASSERT(_inputRow.isInitialized());
     }
 
+    auto sourceString = std::string{};
     TRI_ASSERT(_inputRow.isInitialized());
+
     if (_infos.usesFixedSource()) {
-      auto pos = _infos.getFixedSource().find('/');
-      if (pos == std::string::npos) {
-        _traverser.options()->query()->registerWarning(
-            TRI_ERROR_BAD_PARAMETER,
-            "Invalid input for traversal: "
-            "Only id strings or objects with "
-            "_id are allowed");
-      } else {
-        // Use constant value
-        _traverser.setStartVertex(_infos.getFixedSource());
-        TRI_ASSERT(_inputRow.isInitialized());
-        return true;
-      }
+      sourceString = _infos.getFixedSource();
     } else {
       AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
       if (in.isObject()) {
         try {
-          _traverser.setStartVertex(
-              _traverser.options()->trx()->extractIdString(in.slice()));
-          TRI_ASSERT(_inputRow.isInitialized());
-          return true;
+          sourceString = _traverser.options()->trx()->extractIdString(in.slice());
         } catch (...) {
           // on purpose ignore this error.
         }
       } else if (in.isString()) {
-        _traverser.setStartVertex(in.slice().copyString());
-        TRI_ASSERT(_inputRow.isInitialized());
-        return true;
-      } else {
-        // _id or _key not present we cannot start here, register warning take next
-        _traverser.options()->query()->registerWarning(
-            TRI_ERROR_BAD_PARAMETER,
-            "Invalid input for traversal: Only "
-            "id strings or objects with _id are "
-            "allowed");
+        sourceString = in.slice().copyString();
       }
+    }
+
+    auto pos = sourceString.find('/');
+
+    if (pos == std::string::npos) {
+      _traverser.options()->query().warnings().registerWarning(
+        TRI_ERROR_BAD_PARAMETER,
+        "Invalid input for traversal: Only "
+        "id strings or objects with _id are "
+        "allowed");
+    } else {
+      _traverser.setStartVertex(sourceString);
+      TRI_ASSERT(_inputRow.isInitialized());
+      return true;
     }
   }
   return false;
