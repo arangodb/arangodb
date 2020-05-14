@@ -62,16 +62,12 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _request(request),
       _response(response),
       _server(server),
-      _statistics(nullptr),
+      _statistics(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
       _canceled(false) {}
 
-RestHandler::~RestHandler() {
-  if (_statistics != nullptr) {
-    _statistics->release();
-  }
-}
+RestHandler::~RestHandler() = default;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -97,18 +93,12 @@ uint64_t RestHandler::messageId() const {
   return messageId;
 }
 
-RequestStatistics* RestHandler::stealStatistics() {
-  RequestStatistics* ptr = _statistics;
-  _statistics = nullptr;
-  return ptr;
+RequestStatistics::Item&& RestHandler::stealStatistics() {
+  return std::move(_statistics);
 }
 
-void RestHandler::setStatistics(RequestStatistics* stat) {
-  RequestStatistics* old = _statistics;
-  _statistics = stat;
-  if (old != nullptr) {
-    old->release();
-  }
+void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
+  _statistics = std::move(stat);
 }
 
 futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
@@ -245,7 +235,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
     << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -253,7 +243,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     << "caught velocypack exception in " << name() << ": "
     << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -266,7 +256,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     << "caught memory exception in " << name() << ": "
     << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
@@ -274,14 +264,14 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
     << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -326,7 +316,7 @@ void RestHandler::runHandlerStateMachine() {
         break;
 
       case HandlerState::FINALIZE:
-        RequestStatistics::SET_REQUEST_END(_statistics);
+        _statistics.SET_REQUEST_END();
         RestHandler::CURRENT_HANDLER = this;
 
         // shutdownExecute is noexcept
@@ -342,7 +332,7 @@ void RestHandler::runHandlerStateMachine() {
         break;
 
       case HandlerState::FAILED:
-        RequestStatistics::SET_REQUEST_END(_statistics);
+        _statistics.SET_REQUEST_END();
         // Callback may stealStatistics!
         _callback(this);
         // No need to finalize here!
@@ -360,11 +350,11 @@ void RestHandler::runHandlerStateMachine() {
 
 void RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
-  RequestStatistics::SET_REQUEST_START_END(_statistics);
+  _statistics.SET_REQUEST_START_END();
 
   if (_canceled) {
     _state = HandlerState::FAILED;
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
@@ -377,14 +367,14 @@ void RestHandler::prepareEngine() {
     _state = HandlerState::EXECUTE;
     return;
   } catch (Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (std::exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -442,7 +432,7 @@ void RestHandler::executeEngine(bool isContinue) {
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -450,7 +440,7 @@ void RestHandler::executeEngine(bool isContinue) {
         << "caught velocypack exception in " << name() << ": "
         << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
          ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -463,7 +453,7 @@ void RestHandler::executeEngine(bool isContinue) {
         << "caught memory exception in " << name() << ": "
         << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
@@ -471,14 +461,14 @@ void RestHandler::executeEngine(bool isContinue) {
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": " << ex.what();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
+    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
