@@ -167,13 +167,20 @@ Upstream is: https://github.com/taocpp/json
 
 ## V8
 
-Javascript interpreter.
-This is maintained via https://github.com/arangodb-helper/v8
+JavaScript engine.
+
+We more or less copy what Node.js has:
+https://github.com/nodejs/node/tree/master/deps/v8
 
 Upstream is: https://chromium.googlesource.com/v8/v8.git
 
-- On upgrade the ICU data file(s) need to be replaced with ICU upstream, 
-  since the V8 copy doesn't contain all locales (known as full-icu, ~25 MB icudt*.dat).
+- On upgrade, check if the ICU data file needs to be replaced with the
+  full version (~25 MB icudt*.dat). V8 may come with a smaller subset which
+  doesn't contain all locales (e.g. Icelandic `is`).
+- Find the corresponding release at https://github.com/unicode-org/icu/releases
+  and download `icu4c-{version}-data-bin-l.zip` (`-l` stands for little endian).
+- Extract the `icudt*l.dat` file, rename it to `icudtl.dat` and replace the one in
+  `3rdParty/V8/v{version}/third_party/icu/common/icudtl.dat`.
 
 ## velocypack
 
