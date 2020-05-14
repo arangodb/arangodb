@@ -145,6 +145,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   }
 
  protected:
+  /// @brief returns the short id of the server which should handle this request
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
+
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
   std::string assembleDocumentId(std::string const& collectionName, 
