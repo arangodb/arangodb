@@ -106,7 +106,7 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
 
-#if defined(__GNUC__) && (__GNUC___ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
 #pragma GCC diagnostic pop
 #endif
 
