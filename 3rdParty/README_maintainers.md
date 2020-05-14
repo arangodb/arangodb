@@ -115,8 +115,8 @@ To upgrade to a newer version:
    `#region ArangoDB-specific changes` and `#endregion`
 8. Verify the changes were applied correctly and discard the old copy of `index.html`
 
-To verify the changes were applied correctly, start ArangoDB and
-open the ArangoDB Rest API documentation in the ArangoDB web interface.
+To verify the changes were applied correctly, start the ArangoDB server and
+open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
 Routes can be executed by clicking on them to expand their documentation,
 clicking the _Try it out_ button, filling out any required fields and clicking
 the _Execute_ button.
@@ -131,8 +131,8 @@ the _Execute_ button.
 
 * The sections should be collapsed, NOT showing the individual routes.
 
-  This confirms the `docExpansion` changes work correctly in the API
-  documentation.
+  This confirms the `docExpansion` changes work correctly for the
+  server API documentation.
 
 * When using the `POST /_api/cursor` route with a query the authenticated
   user is authorized to execute, the response should not indicate an
@@ -161,8 +161,7 @@ service `/_api/foxx` and navigate to the _API_ tab within that service.
 * All sections of the API documentation should be expanded to show all
   routes but NOT fully expanded to reveal descriptions and examples.
 
-  This confirms the `docExpansion` changes work correctly in FOxx.
-
+  This confirms the `docExpansion` changes work correctly for Foxx services.
 
 ## taocpp::json
 
