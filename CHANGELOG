@@ -2,8 +2,8 @@ v3.6.4 (XXXX-XX-XX)
 -------------------
 
 * Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
-  to abort search was too eager and hence missed the shortest path between
-  two vertices and returned a longer one.
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
 
 * Fixed issue #11590: Querying for document by _key returning only a single
   seemingly random property on entity ("old", in this case).
