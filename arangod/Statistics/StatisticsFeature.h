@@ -26,46 +26,51 @@
 #include <array>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Mutex.h"
-#include "Basics/Thread.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
-#include "Statistics/Descriptions.h"
-#include "Statistics/StatisticsWorker.h"
 #include "Statistics/figures.h"
 
 namespace arangodb {
-namespace basics {
+class Thread;
+class StatisticsWorker;
+namespace stats {
+  class Descriptions;
+}
 
-extern Mutex TRI_RequestsStatisticsMutex;
+namespace statistics {
+extern std::initializer_list<double> const BytesReceivedDistributionCuts;
+extern std::initializer_list<double> const BytesSentDistributionCuts;
+extern std::initializer_list<double> const ConnectionTimeDistributionCuts;
+extern std::initializer_list<double> const RequestTimeDistributionCuts;
 
-extern std::vector<double> const TRI_BytesReceivedDistributionVectorStatistics;
-extern std::vector<double> const TRI_BytesSentDistributionVectorStatistics;
-extern std::vector<double> const TRI_ConnectionTimeDistributionVectorStatistics;
-extern std::vector<double> const TRI_RequestTimeDistributionVectorStatistics;
-
-extern StatisticsCounter TRI_AsyncRequestsStatistics;
-extern StatisticsCounter TRI_HttpConnectionsStatistics;
-extern StatisticsCounter TRI_TotalRequestsStatistics;
+extern Counter AsyncRequests;
+extern Counter HttpConnections;
+extern Counter TotalRequests;
 
 constexpr size_t MethodRequestsStatisticsSize =
     ((size_t)arangodb::rest::RequestType::ILLEGAL) + 1;
-extern std::array<StatisticsCounter, MethodRequestsStatisticsSize> TRI_MethodRequestsStatistics;
+using MethodRequestCounters = std::array<Counter, MethodRequestsStatisticsSize>;
+extern MethodRequestCounters MethodRequests;
+extern Distribution ConnectionTimeDistribution;
 
-extern StatisticsDistribution TRI_BytesReceivedDistributionStatistics;
-extern StatisticsDistribution TRI_BytesSentDistributionStatistics;
-extern StatisticsDistribution TRI_ConnectionTimeDistributionStatistics;
-extern StatisticsDistribution TRI_IoTimeDistributionStatistics;
-extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
-extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
-extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
-extern StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser;
-extern StatisticsDistribution TRI_BytesSentDistributionStatisticsUser;
-extern StatisticsDistribution TRI_IoTimeDistributionStatisticsUser;
-extern StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser;
-extern StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser;
-extern StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser;
-}  // namespace basics
+struct RequestFigures {
+  RequestFigures();
+
+  RequestFigures(RequestFigures const&) = delete;
+  RequestFigures(RequestFigures&&) = delete;
+  RequestFigures& operator=(RequestFigures const&) = delete;
+  RequestFigures& operator=(RequestFigures&&) = delete;
+
+  Distribution bytesReceivedDistribution;
+  Distribution bytesSentDistribution;
+  Distribution ioTimeDistribution;
+  Distribution queueTimeDistribution;
+  Distribution requestTimeDistribution;
+  Distribution totalTimeDistribution;
+};
+extern RequestFigures GeneralRequestFigures;
+extern RequestFigures UserRequestFigures;
+}  // namespace statistics
 
 class StatisticsFeature final : public application_features::ApplicationFeature {
  public:
@@ -80,17 +85,14 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
 
  public:
   explicit StatisticsFeature(application_features::ApplicationServer& server);
+  ~StatisticsFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now) {
-    if (_statisticsWorker != nullptr) {
-      _statisticsWorker->generateRawStatistics(result, now);
-    }
-  }
+  void toPrometheus(std::string& result, double const& now);
 
   static stats::Descriptions const* descriptions() {
     if (STATISTICS != nullptr) {
