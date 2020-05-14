@@ -1,8 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Do not loadPlan from agency whenever all collections of a database are
-  listed. This is particularly important for arangosync.
+* Do not loadPlan from agency whenever all collections of a database are listed.
+  This is particularly important for arangosync.
 
 * Fixed issue #11590: Querying for document by _key returning only a single
   seemingly random property on entity ("old", in this case).
