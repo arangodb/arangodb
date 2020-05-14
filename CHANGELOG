@@ -1,6 +1,9 @@
 v3.4.10 (2020-04-24)
 --------------------
 
+* Do not always loadPlan from agency when collections of a database are
+  listed. This is particularly important for arangosync.
+
 * Don't invoke collection key ranges compaction after performing a truncate
   operation on a RocksDB storage engine collection via the REST API's truncate
   endpoint.
