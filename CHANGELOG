@@ -10,6 +10,8 @@ devel
 
 * ClusterInfo does its own updating of plan / current caches.
 
+* Properly forward requests based on the transaction header.
+
 * Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
 
 * Made several improvements to AQL's internal register planning. This will
