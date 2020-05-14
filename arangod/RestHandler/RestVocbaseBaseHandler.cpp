@@ -266,7 +266,8 @@ uint32_t RestVocbaseBaseHandler::forwardingTarget() {
       tid = std::stoull(value, &pos, 10);
     } catch (...) {
     }
-    if (tid != 0) {
+    if (tid != 0 && TRI_ExtractServerIdFromTick(tid) !=
+                        ServerState::instance()->getShortId()) {
       return TRI_ExtractServerIdFromTick(tid);
     }
   }
