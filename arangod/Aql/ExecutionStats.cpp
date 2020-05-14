@@ -102,7 +102,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
 }
 
 void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeStats const& stats) {
-  auto const& alias = _nodeAliases.find(nid);
+  auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
     nid = alias->second;
     if (nid.id() == std::numeric_limits<decltype(nid)::BaseType>::max()) {
@@ -190,4 +190,3 @@ void ExecutionStats::clear() {
   peakMemoryUsage = 0;
   _nodes.clear();
 }
-
