@@ -34,7 +34,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
-#include "Logger/Logger.h"
 
 namespace {
 
@@ -279,16 +278,16 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     }
   }
 
-  // currently gzip and encryption are mutually exclusive, encryption wins
-  if (::EncryptionTypeNone != _encryptionType) {
-    _writeGzip = false;
-  } // if
-
 #ifdef USE_ENTERPRISE
   ::writeEncryptionFile(_path, _encryptionType, _encryptionFeature);
 #else
   ::writeEncryptionFile(_path, _encryptionType);
 #endif
+
+  // currently gzip and encryption are mutually exclusive, encryption wins
+  if (::EncryptionTypeNone != _encryptionType) {
+    _writeGzip = false;
+  }  // if
 }
 
 ManagedDirectory::~ManagedDirectory() = default;

@@ -1190,7 +1190,7 @@ void DumpFeature::start() {
 
         _directory = std::make_unique<ManagedDirectory>(
             server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-            true, true);
+            true, true, _options.useGzip);
 
         if (_directory->status().fail()) {
           res = _directory->status();
