@@ -2019,7 +2019,7 @@ bool SubqueryNode::mayAccessCollections() {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
-  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2110,7 +2110,7 @@ CostEstimate SubqueryNode::estimateCost() const {
 }
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
+struct SubqueryVarUsageFinder final : public UniqueWalkerWorker<ExecutionNode> {
   VarSet _usedLater;
   VarSet _valid;
 
@@ -2163,7 +2163,7 @@ void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 /// @brief is the node determistic?
-struct DeterministicFinder final : public WalkerWorker<ExecutionNode> {
+struct DeterministicFinder final : public UniqueWalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}
