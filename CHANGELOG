@@ -1,7 +1,7 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Properly forward requests based on the transaction header
+* Properly forward requests based on the transaction header.
 
 * Fixed issue #11590: Querying for document by _key returning only a single
   seemingly random property on entity ("old", in this case).
