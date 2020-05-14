@@ -1,5 +1,11 @@
 devel
 -----
+
+* Fixed issue #7111: Wrong sorting for the Icelandic alphabet
+
+  Upgraded to the full ICU data file (10 -> 25 MiB) for enhanced language
+	support, such as Icelandic (`--default-language is`).
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.
