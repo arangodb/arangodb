@@ -165,7 +165,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
     }
     ~Ball() = default;
-    const VertexRef center() const { return _center; };
+    const VertexRef centre() const { return _centre; };
     bool done(std::optional<double> const currentBest) {
       return _frontier.empty() || (currentBest.has_value() && currentBest.value() < _closest);
     };
