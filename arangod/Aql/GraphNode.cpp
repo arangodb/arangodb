@@ -792,11 +792,3 @@ bool GraphNode::isSatelliteNode() const { return false; }
 void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
 
 #endif
-
-VariableIdSet GraphNode::getOutputVariables() const {
-  VariableIdSet vars;
-  for (auto const& it : getVariablesSetHere()) {
-    vars.insert(it->id);
-  }
-  return vars;
-}

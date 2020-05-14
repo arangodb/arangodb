@@ -495,6 +495,14 @@ void QuerySnippet::serializeIntoBuilder(
 
       TRI_ASSERT(!remoteParent->hasDependency());
       remoteParent->addDependency(prototypeConsumer);
+    } else {
+      // TODO: Refactor the code above so that we don't copy and paste
+
+      // Remote is nullptr, so we assume that an optimizer rule
+      // removed the REMOTE/SCATTER bit of our snippet.
+      for (size_t i = 0; i < numberOfShardsToPermutate; i++) {
+        distIds.emplace_back(StringUtils::itoa(i));
+      }
     }
 
 #if 0
@@ -521,9 +529,11 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(!_nodes.empty());
     auto snippetRoot = _nodes.at(0);
 
+    // make sure we don't explode accessing distIds
+    TRI_ASSERT(numberOfShardsToPermutate == distIds.size());
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
       auto cloneWorker = CloneWorker(snippetRoot, internalGather, internalScatter,
-                                     localExpansions, i, distIds[i], nodeAliases);
+                                     localExpansions, i, distIds.at(i), nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }

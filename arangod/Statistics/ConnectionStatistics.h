@@ -26,36 +26,69 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
-
-#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class ConnectionStatistics {
  public:
   static void initialize();
+  
+  class Item {
+   public:
+    Item() : _stat(nullptr) {}
+    explicit Item(ConnectionStatistics* stat) : _stat(stat) {}
 
-  static ConnectionStatistics* acquire();
-  void release();
+    Item(Item const&) = delete;
+    Item& operator=(Item const&) = delete;
 
-  static void SET_START(ConnectionStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_connStart = StatisticsFeature::time();
+    Item(Item&& r) : _stat(r._stat) { r._stat = nullptr; }
+    Item& operator=(Item&& r) {
+      if (&r != this) {
+        reset();
+        _stat = r._stat;
+        r._stat = nullptr;
+      }
+      return *this;
     }
-  }
 
-  static void SET_HTTP(ConnectionStatistics* stat);
+    ~Item() { reset(); }
 
-  static void fill(basics::StatisticsCounter& httpConnections,
-                   basics::StatisticsCounter& totalRequests,
-                   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize>& methodRequests,
-                   basics::StatisticsCounter& asyncRequests,
-                   basics::StatisticsDistribution& connectionTime);
+    void reset() {
+      if (_stat != nullptr) {
+        _stat->release();
+        _stat = nullptr;
+      }
+    }
+
+    void SET_START() {
+      if (_stat != nullptr) {
+        _stat->_connStart = StatisticsFeature::time();
+      }
+    }
+
+    void SET_HTTP();
+
+   private:
+    ConnectionStatistics* _stat;
+  };
+  
+  static Item acquire();
+
+  struct Snapshot {
+    statistics::Counter httpConnections;
+    statistics::Counter totalRequests;
+    statistics::MethodRequestCounters methodRequests;
+    statistics::Counter asyncRequests;
+    statistics::Distribution connectionTime;
+  };
+
+  static void getSnapshot(Snapshot& snapshot);
 
  private:
   ConnectionStatistics() { reset(); }
+
+  void release();
 
   void reset() {
     _connStart = 0.0;
@@ -63,12 +96,6 @@ class ConnectionStatistics {
     _http = false;
     _error = false;
   }
-
-  static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
-
-  static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
-
-  static boost::lockfree::queue<ConnectionStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
 
  private:
   double _connStart;

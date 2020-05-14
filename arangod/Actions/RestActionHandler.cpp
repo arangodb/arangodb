@@ -43,7 +43,7 @@ RestStatus RestActionHandler::execute() {
   // check the request path
   if (_request->databaseName() == StaticStrings::SystemDatabase) {
     if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      RequestStatistics::SET_IGNORE(_statistics);
+      _statistics.SET_IGNORE();
     }
   }
 
