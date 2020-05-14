@@ -84,8 +84,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   me->_messageDone = false;
 
   // acquire a new statistics entry for the request
-  RequestStatistics* stat = me->acquireStatistics(1UL);
-  RequestStatistics::SET_READ_START(stat, TRI_microtime());
+  me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
 
   return HPE_OK;
 }
@@ -101,8 +100,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
     return HPE_USER;
   }
 
-  RequestStatistics* stat = me->statistics(1UL);
-  RequestStatistics::SET_REQUEST_TYPE(stat, me->_request->requestType());
+  me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
 
   return HPE_OK;
 }
@@ -195,8 +193,7 @@ template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
 
-  RequestStatistics* stat = me->statistics(1UL);
-  RequestStatistics::SET_READ_END(stat);
+  me->statistics(1UL).SET_READ_END();
   me->_messageDone = true;
 
   return HPE_PAUSED;
@@ -210,7 +207,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _shouldKeepAlive(false),
       _messageDone(false),
       _allowMethodOverride(GeneralServerFeature::allowMethodOverride()) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
   llhttp_settings_init(&_parserSettings);
@@ -262,8 +259,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
-    RequestStatistics* stat = this->statistics(1UL);
-    RequestStatistics::ADD_RECEIVED_BYTES(stat, nparsed);
+    this->statistics(1UL).ADD_RECEIVED_BYTES(nparsed);
 
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
@@ -405,7 +401,7 @@ void HttpCommTask<T>::processRequest() {
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
-    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
+    this->statistics(1UL).SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -438,7 +434,7 @@ static void DTraceHttpCommTaskSendResponse(size_t) {}
 
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
-                                   RequestStatistics* stat) {
+                                   RequestStatistics::Item stat) {
 
   DTraceHttpCommTaskSendResponse((size_t) this);
 
@@ -543,7 +539,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
-  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
+  double const totalTime = stat.ELAPSED_SINCE_READ_START();
 
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
@@ -554,9 +550,10 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << Logger::FIXED(totalTime, 6);
 
   // sendResponse is always called from a scheduler thread
-  this->_protocol->context.io_context.post([self = this->shared_from_this(), stat]() mutable {
-    static_cast<HttpCommTask<T>&>(*self).writeResponse(stat);
-  });
+  boost::asio::post(this->_protocol->context.io_context,
+    [self = this->shared_from_this(), stat = std::move(stat)]() mutable {
+      static_cast<HttpCommTask<T>&>(*self).writeResponse(std::move(stat));
+    });
 }
 
 #ifdef USE_DTRACE
@@ -574,13 +571,13 @@ static void DTraceHttpCommTaskResponseWritten(size_t) {}
 
 // called on IO context thread
 template <SocketType T>
-void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
+void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
 
   DTraceHttpCommTaskWriteResponse((size_t) this);
 
   TRI_ASSERT(!_header.empty());
 
-  RequestStatistics::SET_WRITE_START(stat);
+  stat.SET_WRITE_START();
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(_header.data(), _header.size());
@@ -591,13 +588,13 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
   // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),
-                        stat](asio_ns::error_code ec, size_t nwrite) {
+                        stat = std::move(stat)](asio_ns::error_code ec, size_t nwrite) {
 
                          DTraceHttpCommTaskResponseWritten((size_t) self.get());
 
                          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
-                         RequestStatistics::SET_WRITE_END(stat);
-                         RequestStatistics::ADD_SENT_BYTES(stat, nwrite);
+                         stat.SET_WRITE_END();
+                         stat.ADD_SENT_BYTES(nwrite);
 
                          thisPtr->_response.reset();
 
@@ -607,9 +604,6 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
                          } else {  // ec == HPE_PAUSED
                            llhttp_resume(&thisPtr->_parser);
                            thisPtr->asyncReadSome();
-                         }
-                         if (stat != nullptr) {
-                           stat->release();
                          }
                        });
 }

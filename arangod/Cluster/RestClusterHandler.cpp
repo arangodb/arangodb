@@ -118,9 +118,9 @@ void RestClusterHandler::handleAgencyCache() {
     }
   }
 
-
   auto& ac = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = ac.get();
+  auto acb = ac.dump();
+  
   generateResult(rest::ResponseCode::OK, acb->slice());
 
 }

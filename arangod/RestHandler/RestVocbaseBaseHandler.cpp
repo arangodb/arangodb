@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -29,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -259,6 +262,29 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::Application
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
+
+/// @brief returns the short id of the server which should handle this request
+ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget() {
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    TRI_voc_tid_t tid = 0;
+    std::size_t pos = 0;
+    try {
+      tid = std::stoull(value, &pos, 10);
+    } catch (...) {
+    }
+    if (tid != 0) {
+      uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+      if (sourceServer != ServerState::instance()->getShortId()) {
+        auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+      }
+    }
+  }
+
+  return {std::make_pair(StaticStrings::Empty, false)};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
