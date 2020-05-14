@@ -1830,9 +1830,9 @@ function processQuery(query, explain, planIndex) {
       case 'MaterializeNode':
         return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
       case 'MutexNode':
-        return keyword('MUTEX') + ' /* end async execution */';;
+        return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
-        return keyword('ASYNC') + ' /* begin async execution */';
+        return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
     }
 
     return 'unhandled node type (' + node.type + ')';
