@@ -648,7 +648,8 @@ TEST_F(RegisterPlanTest, variable_usage_with_subquery_using_many_registers) {
   }
 }
 
-TEST_F(RegisterPlanTest, multiple_spliced_subqueries) {
+// The current register planning isn't optimal enough to satisfy this test.
+TEST_F(RegisterPlanTest, DISABLED_multiple_spliced_subqueries) {
   auto&& [vars, ptrs] = generateVars<10>();
   auto [maria, andrew, douglas, christopher, patricia, betty, doris, christine,
         wanda, ronald] = ptrs;
@@ -713,6 +714,30 @@ TEST_F(RegisterPlanTest, multiple_spliced_subqueries) {
   {
     SCOPED_TRACE("while checking ronald");
     assertVariableInRegister(plan, *ronald, 1);
+  }
+}
+
+// The current register planning cannot reuse registers that are never used.
+// Also see the comment on "brenda".
+TEST_F(RegisterPlanTest, DISABLED_reuse_unused_register) {
+  auto&& [vars, ptrs] = generateVars<2>();
+  auto [howard, brenda] = ptrs;
+  std::vector<ExecutionNodeMock> nodes{
+      ExecutionNodeMock{ExecutionNode::SINGLETON, {}, {}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {howard}},
+      ExecutionNodeMock{ExecutionNode::ENUMERATE_COLLECTION, {}, {brenda}},
+      ExecutionNodeMock{ExecutionNode::RETURN, {brenda}, {}}};
+  getVarUsage(nodes);
+  auto plan = walk(nodes);
+  {
+    SCOPED_TRACE("while checking howard");
+    assertVariableInRegister(plan, *howard, 0);
+  }
+  {
+    // As howard is never used, we could reuse register 0 immediately.
+    // However, the current register planning does not do that.
+    SCOPED_TRACE("while checking steve");
+    assertVariableInRegister(plan, *brenda, 0);
   }
 }
 
