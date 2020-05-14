@@ -2591,7 +2591,9 @@ void IResearchAnalyzerFeature::start() {
     addFunctions(server().getFeature<aql::AqlFunctionFeature>());
   }
 
-  if (server().hasFeature<ClusterFeature>() && ServerState::instance()->isCoordinator()) {
+  if (server().hasFeature<ClusterFeature>() &&
+      server().hasFeature<SchedulerFeature>() && // Mostly for tests without scheduler
+      ServerState::instance()->isCoordinator()) {
     queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
   }
 }
