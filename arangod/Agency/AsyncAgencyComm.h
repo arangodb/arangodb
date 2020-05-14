@@ -79,6 +79,15 @@ struct AsyncAgencyCommResult {
   }
 };
 
+// Work around a spurious compiler warning in GCC 9.3 with our maintainer mode
+// switched off. And since warnings are considered to be errors, we must
+// switch the warning off:
+
+#if defined(__GNUC__) && (__GNUC___ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 struct AgencyReadResult : public AsyncAgencyCommResult {
   AgencyReadResult(AsyncAgencyCommResult&& result,
                    std::shared_ptr<arangodb::cluster::paths::Path const> valuePath)
@@ -96,6 +105,10 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
   VPackSlice _value;
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
+#pragma GCC diagnostic pop
+#endif
 
 class AsyncAgencyComm;
 

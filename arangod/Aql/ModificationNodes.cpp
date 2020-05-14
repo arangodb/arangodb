@@ -103,17 +103,6 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
   CollectionAccessingNode::cloneInto(*c);
 }
 
-VariableIdSet ModificationNode::getOutputVariables() const {
-  VariableIdSet vars;
-  if (_outVariableOld != nullptr) {
-    vars.insert(getOutVariableOld()->id);
-  }
-  if (_outVariableNew != nullptr) {
-    vars.insert(getOutVariableNew()->id);
-  }
-  return vars;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
 ///

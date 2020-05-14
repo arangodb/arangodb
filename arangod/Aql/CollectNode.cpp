@@ -820,27 +820,3 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
   }
   return v;
 }
-
-VariableIdSet CollectNode::getOutputVariables() const {
-  VariableIdSet vars;
-
-  for (auto const& p : groupVariables()) {
-    // p is std::pair<Variable const*,Variable const*>
-    // and the first is the to be assigned output variable
-    // for which we need to create a register in the current
-    // frame:
-    vars.insert(p.first->id);
-  }
-  for (auto const& p : aggregateVariables()) {
-    // p is std::pair<Variable const*,Variable const*>
-    // and the first is the to be assigned output variable
-    // for which we need to create a register in the current
-    // frame:
-    vars.insert(p.first->id);
-  }
-  if (hasOutVariable()) {
-    vars.insert(outVariable()->id);
-  }
-
-  return vars;
-}
