@@ -7,7 +7,10 @@ const arango = require('@arangodb').arango;
 const _ = require("lodash");
 
 function getStatistics() {
-  return arango.GET("/_db/_system/_admin/statistics");
+  let rc =arango.GET("/_db/_system/_admin/statistics");
+  print(rc.client.bytesReceived)
+  print(rc.http)
+  return rc;
 }
 
 function performGETRequest() {

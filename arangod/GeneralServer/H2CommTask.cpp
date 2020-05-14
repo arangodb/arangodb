@@ -48,12 +48,15 @@ template <SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
                                                const nghttp2_frame* frame, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-
+   
   if (frame->hd.type != NGHTTP2_HEADERS || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   const int32_t sid = frame->hd.stream_id;
+  if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+    me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
+  }
   auto req = std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
                                            /*allowMethodOverride*/ false);
   me->createStream(sid, std::move(req));
@@ -434,6 +437,11 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   
   // store origin header for later use
   stream->origin = req->header(StaticStrings::Origin);
+  auto messageId = req->messageId();
+  RequestStatistics::Item const& stat = this->statistics(messageId);
+  stat.SET_REQUEST_TYPE(req->requestType());
+  stat.SET_READ_END();
+  stat.ADD_RECEIVED_BYTES(req->body().size());
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
@@ -446,7 +454,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    this->statistics(1UL).SET_SUPERUSER();
+    stat.SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -464,7 +472,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             req->messageId(), nullptr);
+                                             messageId, nullptr);
   resp->setContentType(req->contentTypeResponse());
   this->executeRequest(std::move(req), std::move(resp));
 }
@@ -605,6 +613,12 @@ void H2CommTask<T>::queueHttp2Responses() {
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
+    
+    
+    RequestStatistics::Item const& stat = this->statistics(streamId);
+    stat.SET_READ_END();
+    stat.ADD_SENT_BYTES(res.bodySize());
+    LOG_DEVEL << "xx";
     if ((res.bodySize() > 0) &&
         res.generateBody() &&
         ::expectResponseBody(static_cast<int>(res.responseCode()))
