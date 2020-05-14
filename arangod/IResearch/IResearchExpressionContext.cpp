@@ -29,6 +29,8 @@
 #include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
 
+#include <Containers/HashSet.h>
+
 namespace arangodb {
 namespace iresearch {
 

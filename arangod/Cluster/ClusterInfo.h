@@ -20,6 +20,7 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_CLUSTER_CLUSTER_INFO_H
@@ -37,10 +38,12 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
+#include "Futures/Future.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -292,7 +295,8 @@ class ClusterInfo  {
 #else
 class ClusterInfo final  {
 #endif
- private:
+
+private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
   typedef std::unordered_map<CollectionID, std::shared_ptr<CollectionInfoCurrent>> DatabaseCollectionsCurrent;
@@ -301,17 +305,43 @@ class ClusterInfo final  {
   typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>> DatabaseViews;
   typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
 
- private:
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  class SyncerThread final : public arangodb::Thread {
+#else
+  class SyncerThread : public arangodb::Thread {
+#endif
+  public:
+    explicit SyncerThread(
+      application_features::ApplicationServer&, std::string const& section,
+      std::function<void()>, AgencyCallbackRegistry*);
+    explicit SyncerThread(SyncerThread const&);
+    ~SyncerThread();
+    void beginShutdown();
+    void run();
+    void start();
+    bool notify(velocypack::Slice const&);
+
+  private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _news;
+    application_features::ApplicationServer& _server;
+    std::string _section;
+    std::function<void()> _f;
+    AgencyCallbackRegistry* _cr;
+    std::shared_ptr<AgencyCallback> _acb;
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
   /// We are a singleton class, therefore nobody is allowed to create
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
+public:
   ClusterInfo(ClusterInfo const&) = delete;             // not implemented
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
- public:
   class ServersKnown {
    public:
     ServersKnown() = default;
@@ -335,7 +365,6 @@ class ClusterInfo final  {
     std::unordered_map<ServerID, KnownServer> _serversKnown;
   };
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
@@ -353,6 +382,16 @@ class ClusterInfo final  {
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+
+  /**
+   * @brief begin shutting down plan and current syncers
+   */
+  void shutdownSyncers();
+
+  /**
+   * @brief begin shutting down plan and current syncers
+   */
+  void startSyncers();
 
   /// @brief produces an agency dump and logs it
   void logAgencyDump() const;
@@ -385,6 +424,20 @@ class ClusterInfo final  {
    */
   arangodb::Result agencyReplan(VPackSlice const plan);
 
+  /**
+   * @brief Wait for plan cache to be at Raft index
+   * @param    Plan to adapt to
+   * @return       Operation's result
+   */
+  futures::Future<Result> waitForPlan(uint64_t index);
+
+  /**
+   * @brief Wait for plan cache to be at Raft index
+   * @param    Plan to adapt to
+   * @return       Operation's result
+   */
+  futures::Future<Result> waitForCurrent(uint64_t index);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
   //////////////////////////////////////////////////////////////////////////////
@@ -402,20 +455,6 @@ class ClusterInfo final  {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<DatabaseID> databases(bool reload = false);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about our plan
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadPlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about current state
-  /// Usually one does not have to call this directly.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadCurrent();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -815,6 +854,21 @@ class ClusterInfo final  {
 
   application_features::ApplicationServer& server() const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about our plan
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadPlan();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief (re-)load the information about current state
+  /// Usually one does not have to call this directly.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void loadCurrent();
+
+  
  private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
@@ -824,6 +878,10 @@ class ClusterInfo final  {
 
   Result waitForDatabaseInCurrent(CreateDatabaseInfo const& database);
   void loadClusterId();
+
+  void triggerWaiting(
+    std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex);
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
@@ -925,9 +983,11 @@ class ClusterInfo final  {
 
   uint64_t _planVersion;     // This is the version in the Plan which underlies
                              // the data in _plannedCollections and _shards
+  uint64_t _planIndex;       // This is the Raft index, which corresponds to the above plan version
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
+  uint64_t _currentIndex;    // This is the Raft index, which corresponds to the above current version
   std::unordered_map<DatabaseID, std::unordered_map<ServerID, VPackSlice>> _currentDatabases;  // from Current/Databases
   ProtectionData _currentProt;
 
@@ -1003,6 +1063,18 @@ class ClusterInfo final  {
 
   arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief plan and current update threads
+  //////////////////////////////////////////////////////////////////////////////
+  std::unique_ptr<SyncerThread> _planSyncer;
+  std::unique_ptr<SyncerThread> _curSyncer;
+
+  mutable std::mutex _waitPlanLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
+  mutable std::mutex _waitCurrentLock;
+  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
+
 
 };
 

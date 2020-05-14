@@ -96,21 +96,21 @@ class CollectNode : public ExecutionNode {
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the collect register
   void calcCollectRegister(RegisterId& collectRegister,
-                           std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                           RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
   void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-                          std::unordered_set<RegisterId>& readableInputRegisters,
-                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                          RegIdSet& readableInputRegisters,
+                          RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              std::unordered_set<RegisterId>& readableInputRegisters,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              RegIdSet& readableInputRegisters,
+                              RegIdSet& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
 

@@ -91,13 +91,13 @@ double extractNumber(VPackSlice slice, char const* attribute) {
 }  // namespace
 
 using namespace arangodb;
-using namespace arangodb::basics;
+using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
 
-  for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
+  for (auto const& val : BytesSentDistributionCuts) {
     _bytesSentDistribution.add(VPackValue(val));
   }
 
@@ -105,7 +105,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _bytesReceivedDistribution.openArray();
 
-  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics) {
+  for (auto const& val : BytesReceivedDistributionCuts) {
     _bytesReceivedDistribution.add(VPackValue(val));
   }
 
@@ -113,7 +113,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _requestTimeDistribution.openArray();
 
-  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics) {
+  for (auto const& val : RequestTimeDistributionCuts) {
     _requestTimeDistribution.add(VPackValue(val));
   }
 
@@ -956,23 +956,11 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
     rssp = static_cast<double>(rss) / static_cast<double>(PhysicalMemory::getValue());
   }
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  ConnectionStatistics::Snapshot connectionStats;
+  ConnectionStatistics::getSnapshot(connectionStats);
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-      asyncRequests, connectionTime);
-
-  StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
-
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
+  RequestStatistics::Snapshot requestStats;
+  RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
   ServerStatistics const& serverInfo =
       _vocbase.server().getFeature<MetricsFeature>().serverStatistics();
@@ -996,26 +984,27 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
 
   // _clientStatistics()
-  appendMetric(result, std::to_string(httpConnections._count), "clientHttpConnections");
-  appendHistogram(result, connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
-  appendHistogram(result, totalTime, "totalTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-  appendHistogram(result, requestTime, "requestTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-  appendHistogram(result, queueTime, "queueTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-  appendHistogram(result, ioTime, "ioTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-  appendHistogram(result, bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
-  appendHistogram(result, bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
+  appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
+  appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
+  appendHistogram(result, requestStats.totalTime, "totalTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.requestTime, "requestTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.queueTime, "queueTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.ioTime, "ioTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
+  appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
 
   // _httpStatistics()
-  appendMetric(result, std::to_string(httpConnections._count), "httpReqsAsync");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::DELETE_REQ)._count), "httpReqsDelete");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::GET)._count), "httpReqsGet");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::HEAD)._count), "httpReqsHead");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::OPTIONS)._count), "httpReqsOptions");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::PATCH)._count), "httpReqsPatch");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::POST)._count), "httpReqsPost");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::PUT)._count), "httpReqsPut");
-  appendMetric(result, std::to_string(methodRequests.at((int)rest::RequestType::ILLEGAL)._count), "httpReqsOther");
-  appendMetric(result, std::to_string(totalRequests._count), "httpReqsTotal");
+  using rest::RequestType;
+  appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "httpReqsAsync");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()), "httpReqsDelete");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::GET].get()), "httpReqsGet");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::HEAD].get()), "httpReqsHead");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::OPTIONS].get()), "httpReqsOptions");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PATCH].get()), "httpReqsPatch");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::POST].get()), "httpReqsPost");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PUT].get()), "httpReqsPut");
+  appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()), "httpReqsOther");
+  appendMetric(result, std::to_string(connectionStats.totalRequests.get()), "httpReqsTotal");
 
   result += "\n";
 }
@@ -1031,7 +1020,7 @@ void StatisticsWorker::appendMetric(
 }
 
 void StatisticsWorker::appendHistogram(
-  std::string& result, StatisticsDistribution const& dist,
+  std::string& result, Distribution const& dist,
   std::string const& label, std::initializer_list<std::string> const& les) const {
 
   auto const countLabel = label + "Count";
@@ -1063,23 +1052,11 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     rssp = static_cast<double>(rss) / static_cast<double>(PhysicalMemory::getValue());
   }
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  ConnectionStatistics::Snapshot connectionStats;
+  ConnectionStatistics::getSnapshot(connectionStats);
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
-
-  StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
-
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
+  RequestStatistics::Snapshot requestStats;
+  RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
   ServerStatistics const& serverInfo =
       _vocbase.server().getFeature<MetricsFeature>().serverStatistics();
@@ -1110,50 +1087,51 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   // _clientStatistics()
   builder.add("client", VPackValue(VPackValueType::Object));
-  builder.add("httpConnections", VPackValue(httpConnections._count));
+  builder.add("httpConnections", VPackValue(connectionStats.httpConnections.get()));
 
-  VPackBuilder tmp = fillDistribution(connectionTime);
+  VPackBuilder tmp = fillDistribution(connectionStats.connectionTime);
   builder.add("connectionTime", tmp.slice());
 
-  tmp = fillDistribution(totalTime);
+  tmp = fillDistribution(requestStats.totalTime);
   builder.add("totalTime", tmp.slice());
 
-  tmp = fillDistribution(requestTime);
+  tmp = fillDistribution(requestStats.requestTime);
   builder.add("requestTime", tmp.slice());
 
-  tmp = fillDistribution(queueTime);
+  tmp = fillDistribution(requestStats.queueTime);
   builder.add("queueTime", tmp.slice());
 
-  tmp = fillDistribution(ioTime);
+  tmp = fillDistribution(requestStats.ioTime);
   builder.add("ioTime", tmp.slice());
 
-  tmp = fillDistribution(bytesSent);
+  tmp = fillDistribution(requestStats.bytesSent);
   builder.add("bytesSent", tmp.slice());
 
-  tmp = fillDistribution(bytesReceived);
+  tmp = fillDistribution(requestStats.bytesReceived);
   builder.add("bytesReceived", tmp.slice());
   builder.close();
 
   // _httpStatistics()
+  using rest::RequestType;
   builder.add("http", VPackValue(VPackValueType::Object));
-  builder.add("requestsTotal", VPackValue(totalRequests._count));
-  builder.add("requestsAsync", VPackValue(asyncRequests._count));
+  builder.add("requestsTotal", VPackValue(connectionStats.totalRequests.get()));
+  builder.add("requestsAsync", VPackValue(connectionStats.asyncRequests.get()));
   builder.add("requestsGet",
-              VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::GET].get()));
   builder.add("requestsHead",
-              VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::HEAD].get()));
   builder.add("requestsPost",
-              VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::POST].get()));
   builder.add("requestsPut",
-              VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::PUT].get()));
   builder.add("requestsPatch",
-              VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::PATCH].get()));
   builder.add("requestsDelete",
-              VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()));
   builder.add("requestsOptions",
-              VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::OPTIONS].get()));
   builder.add("requestsOther",
-              VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()));
   builder.close();
 
   // _serverStatistics()
@@ -1216,7 +1194,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 }
 
-VPackBuilder StatisticsWorker::fillDistribution(StatisticsDistribution const& dist) const {
+VPackBuilder StatisticsWorker::fillDistribution(Distribution const& dist) const {
   VPackBuilder builder;
   builder.openObject();
 

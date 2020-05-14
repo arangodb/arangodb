@@ -82,7 +82,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state{ExecutorState::HASMORE};
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
     std::tie(state, inputRow) = input.nextDataRow();
@@ -106,7 +106,7 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
     std::tie(state, inputRow) = input.nextDataRow();

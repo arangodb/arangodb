@@ -439,7 +439,7 @@ class ExecutionNode {
   int getDepth() const;
 
   /// @brief get registers to clear
-  std::unordered_set<RegisterId> const& getRegsToClear() const;
+  RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
   bool isVarUsedLater(Variable const* variable) const;
