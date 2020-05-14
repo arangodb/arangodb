@@ -167,7 +167,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     }
     ~Ball() = default;
     const VertexRef centre() const { return _centre; };
-    bool done(std::optional<double> const currentBest) {
+    bool done(boost::optional<double> const currentBest) {
       return _frontier.empty() || (currentBest.has_value() && currentBest.value() < _closest);
     };
   };
