@@ -1,5 +1,8 @@
 devel
 -----
+
+* Fixed issue ES-605: arangodump broken when using encryption
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.
