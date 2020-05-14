@@ -85,7 +85,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     auto const& alias = _nodeAliases.find(nid);
     if (alias != _nodeAliases.end()) {
       nid = alias->second;
-      if (nid.id() == std::numeric_limits<decltype(nid)::BaseType>::max()) {
+      if (nid.id() == ExecutionNodeId::InternalNode) {
         // ignore this value, it is an internal node that we do not want to expose
         continue;
       }
@@ -105,7 +105,7 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeSt
   auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
     nid = alias->second;
-    if (nid.id() == std::numeric_limits<decltype(nid)::BaseType>::max()) {
+    if (nid.id() == ExecutionNodeId::InternalNode) {
       // ignore this value, it is an internal node that we do not want to expose
       return;
     }

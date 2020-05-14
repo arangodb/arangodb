@@ -245,17 +245,6 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
     } else {
       auto const& cached = cache.find(en);
       if (cached != cache.end()) {
-        // the following assertion doesn't hold true anymore, as in parallel traversals 
-        // we can encounter different node types here.
-        /*
-        // We allow to have SCATTER, REMOTE, DISTRIBUTE and MUTEX multiple times.
-        // But only these.
-        // Chances are if you hit a different node here, that you created a loop.
-        TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
-                   en->getType() == ExecutionNode::SCATTER ||
-                   en->getType() == ExecutionNode::DISTRIBUTE ||
-                   en->getType() == ExecutionNode::MUTEX);
-        */
         block = cached->second;
         TRI_ASSERT(block != nullptr);
       }

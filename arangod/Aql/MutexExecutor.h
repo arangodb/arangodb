@@ -40,7 +40,7 @@ class MutexNode;
 
 class MutexExecutorInfos : public ClientsExecutorInfos {
  public:
-  MutexExecutorInfos(std::vector<std::string> clientIds);
+  explicit MutexExecutorInfos(std::vector<std::string> clientIds);
 };
 
 // The DistributeBlock is actually implemented by specializing
@@ -89,7 +89,7 @@ class MutexExecutor {
     bool _executorHasMore = false;
   };
 
-  MutexExecutor(MutexExecutorInfos const& infos);
+  explicit MutexExecutor(MutexExecutorInfos const& infos);
   ~MutexExecutor() = default;
 
   /**
@@ -109,6 +109,7 @@ class MutexExecutor {
   void acquireLock() {
     _mutex.lock();
   }
+
   void releaseLock() {
     _mutex.unlock();
   }
@@ -116,16 +117,12 @@ class MutexExecutor {
  private:
   /**
    * @brief Compute which client needs to get this row
-   *        NOTE: Has SideEffects
-   *        If the input value does not contain an object, it is modified inplace with
-   *        a new Object containing a key value!
-   *        Hence this method is not const ;(
    *
    * @param block The input block
    * @param rowIndex
    * @return std::string Identifier used by the client
    */
-  std::string getClient(SharedAqlItemBlockPtr block, size_t rowIndex);
+  std::string const& getClient(SharedAqlItemBlockPtr block, size_t rowIndex);
 
  private:
   MutexExecutorInfos const& _infos;

@@ -52,7 +52,7 @@ class WalkerWorkerBase {
 
   virtual void leaveSubquery(T* /*super*/, T* /*sub*/) {}
 
-  virtual bool done(T* en) { return false; }
+  virtual bool done(T* /*en*/) { return false; }
 };
 
 /// @brief functionality to walk an execution plan recursively.

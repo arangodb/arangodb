@@ -906,12 +906,12 @@ QueryResult Query::explain() {
   }
 }
 
-bool Query::isModificationQuery() const {
+bool Query::isModificationQuery() const noexcept {
   TRI_ASSERT(_ast != nullptr);
   return _ast->containsModificationNode();
 }
 
-bool Query::isAsyncQuery() const {
+bool Query::isAsyncQuery() const noexcept {
   TRI_ASSERT(_ast != nullptr);
   return _ast->canApplyParallelism();
 }
@@ -1151,6 +1151,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
       ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
       plan->findUniqueNodesOfType(nodes, std::vector<ExecutionNode::NodeType>{
         arangodb::aql::ExecutionNode::MUTEX}, true);
+
       for (ExecutionNode* n : nodes) {
         auto parents = n->getParents();
         for (size_t i = 0; i < parents.size(); i++) {
@@ -1317,6 +1318,8 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    TRI_ASSERT(plan != nullptr);
+
     plan->findVarUsage();
 
     res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),

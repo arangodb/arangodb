@@ -111,16 +111,16 @@ class Ast {
   bool functionsMayAccessDocuments() const;
 
   /// @brief whether or not the query contains a traversal
-  bool containsTraversal() const;
+  bool containsTraversal() const noexcept;
   
   /// @brief whether or not query contains any modification operations
-  bool containsModificationNode() const;
-  void setContainsModificationNode();
-  void setContainsParallelNode();
-  bool willUseV8() const;
-  void setWillUseV8();
+  bool containsModificationNode() const noexcept;
+  void setContainsModificationNode() noexcept;
+  void setContainsParallelNode() noexcept;
+  bool willUseV8() const noexcept;
+  void setWillUseV8() noexcept;
         
-  bool canApplyParallelism() const {
+  bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
   }
   

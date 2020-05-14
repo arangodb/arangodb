@@ -56,8 +56,6 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   // moved into some AsyncExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, AsyncNode const* node);
 
-  ~ExecutionBlockImpl() override = default;
-  
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
  
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;

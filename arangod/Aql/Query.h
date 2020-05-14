@@ -138,9 +138,9 @@ class Query : public QueryContext {
   QueryResult explain();
 
   /// @brief whether or not a query is a modification query
-  virtual bool isModificationQuery() const override;
+  virtual bool isModificationQuery() const noexcept override;
 
-  virtual bool isAsyncQuery() const override;
+  virtual bool isAsyncQuery() const noexcept override;
 
   /// @brief enter a V8 context
   virtual void enterV8Context() override;

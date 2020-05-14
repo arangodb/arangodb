@@ -199,7 +199,7 @@ bool CloneWorker::before(ExecutionNode* node) {
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
     auto consumer = createConsumerNode(plan, _internalScatter, _distId);
     consumer->isResponsibleForInitializeCursor(false);
-    _nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
+    _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
     _originalToClone.try_emplace(node, consumer);
 
     // Stop here. Note that we do things special here and don't really
@@ -422,8 +422,7 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
-    auto const reservedId =
-        ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
+    auto const reservedId = ExecutionNodeId::InternalNode;
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
     DistributeConsumerNode* prototypeConsumer{nullptr};
@@ -488,7 +487,7 @@ void QuerySnippet::serializeIntoBuilder(
 
       // hook distribute node into stream '0', since that does not happen below
       prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0]);
-      nodeAliases.try_emplace(prototypeConsumer->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(prototypeConsumer->id(), ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
 
       TRI_ASSERT(_nodes.size() > 1);
