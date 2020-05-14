@@ -1,5 +1,13 @@
 devel
 -----
+
+* fixed:
+  If you have a collection access within a Subquery, where the main query is fully skipped
+  and the "splice-subqueries" rule is active. The information of the skip was not transported
+  correctly. This could cause incorrect counting reports.
+  If splice-subqueries are disbaled, or the main-query is only partly skipped everything worked
+  as expected.
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.
