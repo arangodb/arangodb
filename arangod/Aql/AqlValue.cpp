@@ -1456,7 +1456,7 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
     _data.internal[0] = 0x1fU + vSize;
     int i = 1;
     while (vSize-- > 0 && i < 16) {
-      _data.internal[i] = x & 0xffU;
+      _data.internal[i] = x & 0xffU;  // GCC-10: complains about possible out of bounds access (i = 16)
       ++i;
       x >>= 8;
     }
