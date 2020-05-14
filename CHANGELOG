@@ -8,7 +8,7 @@ devel
   paths queries on disjoint smart graphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
 
-* ClusterInfo does its own updating of plan / current caches
+* ClusterInfo does its own updating of plan / current caches.
 
 * Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
 
