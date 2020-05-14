@@ -274,6 +274,12 @@ function analyzersRevisionTestSuite () {
       	try { db._dropDatabase(dbName); } catch (e) {}
       	internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
       }
+    },
+    testAnalyzersCleanupAfterFailedRemoveUpdate: function() {
+    },
+    testAnalyzersCleanupAfterFailedRemoveCommit: function() {
+    },
+    testAnalyzersInsertOnUpdatedDatabase: function() {
     }
   };
 }

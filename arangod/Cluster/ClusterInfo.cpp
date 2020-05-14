@@ -821,67 +821,162 @@ void ClusterInfo::loadPlan() {
       }
     }
   }
+  // "Plan":{"Analyzers": {
+  //  "_system": {
+  //    "Revision": 0,
+  //    "BuildingRevision": 0,
+  //    "Coordinator": "",
+  //    "RebootID": 0
+  //  },...
+  // }}
+  // Now the same for analyzers:
+  auto planAnalyzersSlice = planSlice.get("Analyzers");  // format above
 
-    // Immediate children of "Collections" are database names, then ids
-    // of collections, then one JSON object with the description:
+  if (planAnalyzersSlice.isObject()) {
+    swapAnalyzers = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
 
-    // "Plan":{"Collections": {
-    //  "_system": {
-    //    "3010001": {
-    //      "deleted": false,
-    //      DO_COMPACT: true,
-    //      "id": "3010001",
-    //      INDEX_BUCKETS: 8,
-    //      "indexes": [
-    //        {
-    //          "fields": [
-    //            "_key"
-    //          ],
-    //          "id": "0",
-    //          "sparse": false,
-    //          "type": "primary",
-    //          "unique": true
-    //        }
-    //      ],
-    //      "isSmart": false,
-    //      "isSystem": true,
-    //      "isVolatile": false,
-    //      JOURNAL_SIZE: 1048576,
-    //      "keyOptions": {
-    //        "allowUserKeys": true,
-    //        "lastValue": 0,
-    //        "type": "traditional"
-    //      },
-    //      "name": "_graphs",
-    //      "numberOfSh ards": 1,
-    //      "path": "",
-    //      "replicationFactor": 2,
-    //      "shardKeys": [
-    //        "_key"
-    //      ],
-    //      "shards": {
-    //        "s3010002": [
-    //          "PRMR-bf44d6fe-e31c-4b09-a9bf-e2df6c627999",
-    //          "PRMR-11a29830-5aca-454b-a2c3-dac3a08baca1"
-    //        ]
-    //      },
-    //      "status": 3,
-    //      "statusString": "loaded",
-    //      "type": 2,
-    //      StaticStrings::WaitForSyncString: false
-    //    },...
-    //  },...
-    // }}
+    for (auto const databaseDataSlice : velocypack::ObjectIterator(planAnalyzersSlice)) {
+      auto const& analyzerSlice = databaseDataSlice.value;
 
-    auto planCollectionsSlice = planSlice.get("Collections");  // format above
+      if (!analyzerSlice.isObject()) {
+        LOG_TOPIC("bc53f", INFO, Logger::AGENCY)
+          << "Analyzers in the plan is not a valid json object."
+          << " Analyzers will be ignored for now and the invalid information"
+          << " will be repaired. VelocyPack: " << analyzerSlice.toJson();
 
-    if (planCollectionsSlice.isObject()) {
-      swapCollections = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+        continue;
+      }
+      auto const databaseName = databaseDataSlice.key.copyString();
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
-      bool const isCoordinator = ServerState::instance()->isCoordinator();
+      if (!vocbase) {
+        // No database with this name found.
+        // We have an invalid state here.
+        LOG_TOPIC("e5a6b", WARN, Logger::AGENCY)
+          << "No database '" << databaseName << "' found,"
+          << " corresponding analyzer will be ignored for now and the "
+          << "invalid information will be repaired. VelocyPack: "
+          << analyzerSlice.toJson();
+        planValid &= !analyzerSlice.length();  // cannot find vocbase for defined analyzers (allow empty analyzers for missing vocbase)
 
-      for (auto const& databasePairSlice : velocypack::ObjectIterator(planCollectionsSlice)) {
-        auto const& collectionsSlice = databasePairSlice.value;
+        continue;
+      }
+
+      auto const revisionSlice = analyzerSlice.get(StaticStrings::AnalyzersRevision);
+      if (!revisionSlice.isNumber()) {
+        LOG_TOPIC("dd4e1", WARN, Logger::AGENCY)
+          << "Invalid analyzer revision for database '" << databaseName << "',"
+          << " corresponding analyzer will be ignored for now and the "
+          << "invalid information will be repaired. VelocyPack: "
+          << analyzerSlice.toJson();
+        continue;
+      }
+
+      auto const buildingRevisionSlice = analyzerSlice.get(StaticStrings::AnalyzersBuildingRevision);
+      if (!buildingRevisionSlice.isNumber()) {
+        LOG_TOPIC("f0c72", WARN, Logger::AGENCY)
+          << "Invalid analyzer building revision for database '" << databaseName << "',"
+          << " corresponding analyzer will be ignored for now and the "
+          << "invalid information will be repaired. VelocyPack: "
+          << analyzerSlice.toJson();
+        continue;
+      }
+      ServerID coordinatorID;
+      if (analyzerSlice.hasKey(StaticStrings::AttrCoordinator)) {
+        auto const coordinatorSlice = analyzerSlice.get(StaticStrings::AttrCoordinator);
+        if (!coordinatorSlice.isString()) {
+          LOG_TOPIC("67bc9", WARN, Logger::AGENCY)
+            << "Invalid analyzer coordinator for database '" << databaseName << "',"
+            << " corresponding analyzer will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << analyzerSlice.toJson();
+          continue;
+        }
+        velocypack::ValueLength length;
+        auto const* cID = coordinatorSlice.getString(length);
+        coordinatorID = ServerID(cID, length);
+      }
+
+      uint64_t rebootID = 0;
+      if (analyzerSlice.hasKey(StaticStrings::AttrCoordinatorRebootId)) {
+        auto const rebootIDSlice = analyzerSlice.get(StaticStrings::AttrCoordinatorRebootId);
+        if (!rebootIDSlice.isNumber()) {
+          LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
+            << "Invalid analyzer reboot ID for database '" << databaseName << "',"
+            << " corresponding analyzer will be ignored for now and the "
+            << "invalid information will be repaired. VelocyPack: "
+            << analyzerSlice.toJson();
+          continue;
+        }
+        rebootID = rebootIDSlice.getNumber<uint64_t>();
+      }
+
+      newDbAnalyzersRevision[databaseName] = std::make_shared<AnalyzersRevision>(
+        revisionSlice.getNumber<AnalyzersRevision::Revision>(),
+        buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
+        std::move(coordinatorID), rebootID);
+    }
+  }
+  // Immediate children of "Collections" are database names, then ids
+  // of collections, then one JSON object with the description:
+
+  // "Plan":{"Collections": {
+  //  "_system": {
+  //    "3010001": {
+  //      "deleted": false,
+  //      DO_COMPACT: true,
+  //      "id": "3010001",
+  //      INDEX_BUCKETS: 8,
+  //      "indexes": [
+  //        {
+  //          "fields": [
+  //            "_key"
+  //          ],
+  //          "id": "0",
+  //          "sparse": false,
+  //          "type": "primary",
+  //          "unique": true
+  //        }
+  //      ],
+  //      "isSmart": false,
+  //      "isSystem": true,
+  //      "isVolatile": false,
+  //      JOURNAL_SIZE: 1048576,
+  //      "keyOptions": {
+  //        "allowUserKeys": true,
+  //        "lastValue": 0,
+  //        "type": "traditional"
+  //      },
+  //      "name": "_graphs",
+  //      "numberOfSh ards": 1,
+  //      "path": "",
+  //      "replicationFactor": 2,
+  //      "shardKeys": [
+  //        "_key"
+  //      ],
+  //      "shards": {
+  //        "s3010002": [
+  //          "PRMR-bf44d6fe-e31c-4b09-a9bf-e2df6c627999",
+  //          "PRMR-11a29830-5aca-454b-a2c3-dac3a08baca1"
+  //        ]
+  //      },
+  //      "status": 3,
+  //      "statusString": "loaded",
+  //      "type": 2,
+  //      StaticStrings::WaitForSyncString: false
+  //    },...
+  //  },...
+  // }}
+
+  auto planCollectionsSlice = planSlice.get("Collections");  // format above
+
+  if (planCollectionsSlice.isObject()) {
+    swapCollections = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+
+    bool const isCoordinator = ServerState::instance()->isCoordinator();
+
+    for (auto const& databasePairSlice : velocypack::ObjectIterator(planCollectionsSlice)) {
+      auto const& collectionsSlice = databasePairSlice.value;
 
       if (!collectionsSlice.isObject()) {
         LOG_TOPIC("e2e7a", INFO, Logger::AGENCY)
