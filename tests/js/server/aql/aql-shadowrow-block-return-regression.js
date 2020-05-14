@@ -38,8 +38,8 @@ var db = require("@arangodb").db, indexId;
 ////////////////////////////////////////////////////////////////////////////////
 
 function blockReturnRegressionSuite() {
-  const activateSplicing = {optimizer: {rules: ["+splice-subqueries"]}};
-  const deactivateSplicing = {optimizer: {rules: ["-splice-subqueries"]}};
+  const activateSplicing = {profile: 4, optimizer: {rules: ["+splice-subqueries"]}};
+  const deactivateSplicing = {profile: 4, optimizer: {rules: ["-splice-subqueries"]}};
 
   const deepAssertElements = (left, right, path) => {
     if (Array.isArray(left)) {
@@ -155,9 +155,41 @@ function blockReturnRegressionSuite() {
       const splicedRes = db._query(query, {}, activateSplicing).toArray();
       const nosplicedRes = db._query(query, {}, deactivateSplicing).toArray();
       deepAssertElements(splicedRes, nosplicedRes, "result");
-    }
+    },
 
+    testSkipMainQuery: function () {
+        const query = `
+        FOR x IN 1..10
+        LIMIT 100, 10
+          LET sq = (FOR y IN 1..100 LIMIT 10 RETURN y)
+            RETURN {x, sq}
+        `;
+       
+        const splicedRes = db._query(query, {}, activateSplicing).toArray();
+        const nosplicedRes = db._query(query, {}, deactivateSplicing).toArray();
+        deepAssertElements(splicedRes, nosplicedRes, "result");
+    },
+
+    testEmptyCollections: function () {
+      const col = db._createEdgeCollection("UnitTestCollection", {numberOfShards: 5});
+      try {
+        const query = `
+        FOR x IN @@collectionName
+          LET sq = (FOR y IN @@collectionName LIMIT 10 RETURN UNSET(y, "_rev"))
+          LET sq2 = (FOR z IN @@collectionName LIMIT 10 RETURN UNSET(z, "_rev"))
+            RETURN [sq, sq2]
+        `;
+        const bindVars = { "@collectionName": col.name() };
+        const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
+        const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
+        deepAssertElements(splicedRes, nosplicedRes, "result");
+      } finally {
+        col.drop();
+      }
+    }
   };
+
+
 
 }
 ////////////////////////////////////////////////////////////////////////////////
