@@ -302,7 +302,9 @@ public:
   AnalyzerModificationTransaction& operator=(AnalyzerModificationTransaction const&) = delete;
 
   ~AnalyzerModificationTransaction() {
-    abort();
+    try {
+      abort();
+    } catch (...) {} // force no exceptions
   }
 
   static int32_t getPendingCount() noexcept {

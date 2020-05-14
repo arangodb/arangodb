@@ -645,6 +645,7 @@ void ClusterInfo::loadPlan() {
   bool swapDatabases = false;
   bool swapCollections = false;
   bool swapViews = false;
+  bool swapAnalyzers = false;
 
   auto planDatabasesSlice = planSlice.get("Databases");
 
@@ -821,7 +822,6 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-==== BASE ====
     // Immediate children of "Collections" are database names, then ids
     // of collections, then one JSON object with the description:
 
@@ -5382,6 +5382,83 @@ void ClusterInfo::triggerWaiting(
     pit = mm.erase(pit);
   }
 
+}
+
+Result AnalyzerModificationTransaction::start() {
+  auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
+  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  // locking stage
+  while (true) {
+    // Do not let break out of cleanup mode.
+    // Cleanup itself could start only from idle state.
+    if (count < 0 || _cleanupTransaction) {
+      count = 0;
+    }
+    if (_pendingAnalyzerOperationsCount.compare_exchange_weak(count,
+      _cleanupTransaction ? -1 : count + 1,
+      std::memory_order_acquire)) {
+      break;
+    }
+    if (TRI_microtime() > endTime) {
+      return Result(
+        TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+        "start modifying analyzer for database " + _database + ": failed to acquire operation counter");
+    }
+  }
+  _rollbackCounter = true; // from now on we must release our counter
+
+  if (_cleanupTransaction) {
+    _rollbackRevision = true; // we just need to revert our revision
+    return {};
+  } else {
+    auto res = _clusterInfo->startModifyingAnalyzerCoordinator(_database);
+    _rollbackRevision = res.ok();
+    return res;
+  }
+}
+
+Result AnalyzerModificationTransaction::commit() {
+  TRI_ASSERT(_rollbackCounter && _rollbackRevision);
+  auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
+  _rollbackRevision = res.fail();
+  // if succesful revert mark our transaction as completed (otherwise postpone it to abort call).
+  // for cleanup - always this attempt is completed. Will try next time
+  if (res.ok() || _cleanupTransaction) {
+    revertCounter();
+  }
+  return res;
+}
+
+Result AnalyzerModificationTransaction::abort() {
+  if (!_rollbackCounter) {
+    TRI_ASSERT(!_rollbackRevision);
+    return Result();
+  }
+  Result res{};
+  try {
+    if (_rollbackRevision && !_cleanupTransaction) { // cleanup transaction has nothing to rollback
+      res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
+      _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
+    }
+  }
+  catch (...) { // let`s be as safe as possible
+    revertCounter();
+    throw;
+  }
+  revertCounter();
+  return res;
+}
+
+void AnalyzerModificationTransaction::revertCounter() {
+  TRI_ASSERT(_rollbackCounter);
+  if (_cleanupTransaction) {
+    TRI_ASSERT(_pendingAnalyzerOperationsCount.load() == -1);
+    _pendingAnalyzerOperationsCount = 0;
+  } else {
+    TRI_ASSERT(_pendingAnalyzerOperationsCount.load() > 0);
+    _pendingAnalyzerOperationsCount.fetch_sub(1);
+  }
+  _rollbackCounter = false;
 }
 
 std::atomic<int32_t>  arangodb::AnalyzerModificationTransaction::_pendingAnalyzerOperationsCount{ 0 };
