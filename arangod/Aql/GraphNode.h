@@ -178,8 +178,6 @@ class GraphNode : public ExecutionNode {
     _collectionToShard[coll] = shard;
   }
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
-
  public:
   graph::Graph const* graph() const noexcept;
 

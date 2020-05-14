@@ -1363,7 +1363,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     }
 
     for (auto const& it : vars) {
-      aql::RegisterId reg = varToRegUnchecked(*it);
+      aql::RegisterId reg = variableToRegisterId(it);
       // The filter condition may refer to registers that are written here
       if (reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
@@ -1589,56 +1589,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                             std::move(executorInfos));
     default:
       ADB_UNREACHABLE;
-  }
-}
-
-aql::VariableIdSet IResearchViewNode::getOutputVariables() const {
-  aql::VariableIdSet vars;
-  // plan registers for output scores
-
-  for (auto const& scorer : _scorers) {
-    vars.insert(scorer.var->id);
-  }
-
-  if (isLateMaterialized() || noMaterialization()) {
-    if (isLateMaterialized()) {
-      vars.insert(_outNonMaterializedColPtr->id);
-      vars.insert(_outNonMaterializedDocId->id);
-    } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-      // there is no variable if noMaterialization()
-    }
-    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
-      for (auto const& fieldVar : columnFieldsVars.second) {
-        vars.insert(fieldVar.var->id);
-      }
-    }
-  } else {  // plan register for document-id only block
-    vars.insert(_outVariable->id);
-  }
-  return vars;
-}
-
-void IResearchViewNode::planNodeRegisters(aql::RegisterPlan& registerPlan) const {
-  // plan registers for output scores
-  for (auto const& scorer : _scorers) {
-    registerPlan.registerVariable(scorer.var->id);
-  }
-
-  if (isLateMaterialized() || noMaterialization()) {
-    if (isLateMaterialized()) {
-      registerPlan.registerVariable(_outNonMaterializedColPtr->id);
-      registerPlan.registerVariable(_outNonMaterializedDocId->id);
-    } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-      // there is no variable if noMaterialization()
-      registerPlan.addRegister();
-    }
-    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
-      for (auto const& fieldVar : columnFieldsVars.second) {
-        registerPlan.registerVariable(fieldVar.var->id);
-      }
-    }
-  } else {  // plan register for document-id only block
-    registerPlan.registerVariable(_outVariable->id);
   }
 }
 

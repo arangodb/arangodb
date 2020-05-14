@@ -93,7 +93,6 @@ class DistributeConsumerNode : public ExecutionNode {
 
   void cloneRegisterPlan(ScatterNode* dependency);
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,
                                   std::unordered_set<ExecutionNode const*>& seen) const;

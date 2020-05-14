@@ -126,7 +126,6 @@ class SortNode : public ExecutionNode {
   // geo-index
   bool _reinsertInCluster;
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  private:
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
