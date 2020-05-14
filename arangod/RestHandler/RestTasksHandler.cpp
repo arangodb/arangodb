@@ -73,6 +73,11 @@ RestStatus RestTasksHandler::execute() {
 
 /// @brief returns the short id of the server which should handle this request
 uint32_t RestTasksHandler::forwardingTarget() {
+  uint32_t base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base != 0) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
