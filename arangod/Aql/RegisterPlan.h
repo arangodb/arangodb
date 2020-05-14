@@ -59,6 +59,21 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
+/// There are still some improvements that can be done to the RegisterPlanWalker
+/// to produce better plans.
+/// The most important point is that registersToClear are currently used to find
+/// unused registers that can be reused. That is correct, but does not include
+/// all cases that can be reused. For example:
+///  - A register that is written in one node and never used later will not be
+///    found.
+///  - When a spliced subquery starts (at a SubqueryStartNode), two things are
+///    missed:
+///    1) registers that are used after the subquery, but not inside, will not
+///       be marked as unused registers inside the subquery.
+///    2) registers that are used inside the subquery, but not after it, are not
+///       marked as unused registers outside the subquery (i.e. on the stack
+///       level below it). It would of course suffice when this would be done
+///       at the SubqueryEndNode.
 template <typename T>
 struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
