@@ -1554,7 +1554,10 @@ Result IResearchAnalyzerFeature::emplace(
       if (res.ok()) {
         result = std::make_pair(pool, itr.second);
         // cppcheck-suppress unreadVariable
-        erase = false; // successful pool creation, cleanup not required
+        if (ServerState::instance()->isSingleServer()) {
+          erase = false; // Successful pool creation, cleanup not required for single server.
+                         // For cluster we are waiting for agency commit - remove pool by now
+        }
       }
 
       return res;
@@ -2623,6 +2626,10 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
+  TRI_IF_FAILURE("FailStoreAnalyzer") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
   try {
     auto& dbFeature = server().getFeature<DatabaseFeature>();
 

@@ -3346,19 +3346,19 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
               " error details: " + res.errorDetails() + " body: " + res.body());
     }
     if (!restore) {
-      int tries = 0;
+      // ensure at least our coordinator sees self-made changes immediately.
+      auto const endTimeReload = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
       do {
         auto loadedRevision = getAnalyzersRevision(databaseID, true);
         if (loadedRevision && loadedRevision->getRevision() >= revision) {
           break; // ok, our cache is actually updated.
         }
-        if (tries >= 2) {
-          LOG_TOPIC("ca3cb", DEBUG, Logger::CLUSTER)
+        if (TRI_microtime() > endTimeReload) {
+          LOG_TOPIC("ca3cb", WARN, Logger::CLUSTER)
             << "Failed to update analyzers cache to revision: '" << revision
             << "' in database '" << databaseID << "'";
           break;
         }
-        ++tries;
       } while (true);
     }
     break;
@@ -3372,7 +3372,8 @@ std::unique_ptr<AnalyzerModificationTransaction> ClusterInfo::createAnalyzersCle
     READ_LOCKER(readLocker, _planProt.lock);
     for (auto& it : _dbAnalyzersRevision) {
       if (it.second->getRebootID() == ServerState::instance()->getRebootId() &&
-          it.second->getServerID() == ServerState::instance()->getId()) {
+          it.second->getServerID() == ServerState::instance()->getId() &&
+          it.second->getRevision() != it.second->getBuildingRevision()) {
         // this maybe dangling
         if (AnalyzerModificationTransaction::getPendingCount() == 0) { // still nobody active
           return std::make_unique<AnalyzerModificationTransaction>(it.first, this, true);
@@ -5370,10 +5371,15 @@ CollectionWatcher::~CollectionWatcher() {
 
 Result AnalyzerModificationTransaction::start() {
   auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
-  int32_t count = _cleanupTransaction ? 0 : _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
 
   // locking stage
   while (true) {
+    // Do not let break out of cleanup mode.
+    // Cleanup itself could start only from idle state.
+    if (count < 0 || _cleanupTransaction) { 
+      count = 0;
+    }
     if (_pendingAnalyzerOperationsCount.compare_exchange_weak(count,
       _cleanupTransaction ? -1 : count + 1,
       std::memory_order_acquire)) {
@@ -5401,7 +5407,7 @@ Result AnalyzerModificationTransaction::commit() {
   TRI_ASSERT(_rollbackCounter && _rollbackRevision);
   auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
   _rollbackRevision = res.fail();
-  // if succesful revert mark our transaction as completed.
+  // if succesful revert mark our transaction as completed (otherwise postpone it to abort call).
   // for cleanup - always this attempt is completed. Will try next time
   if (res.ok() || _cleanupTransaction) {
     revertCounter();
@@ -5416,9 +5422,14 @@ Result AnalyzerModificationTransaction::abort() {
   }
 
   Result res{};
-  if (_rollbackRevision && !_cleanupTransaction) { // cleanup transaction has nothing to rollback
-    res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
-    _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
+  try {
+    if (_rollbackRevision && !_cleanupTransaction) { // cleanup transaction has nothing to rollback
+      res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
+      _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
+    }
+  } catch (...) { // let`s be as safe as possible
+    revertCounter();
+    throw;
   }
   revertCounter();
   return res;
