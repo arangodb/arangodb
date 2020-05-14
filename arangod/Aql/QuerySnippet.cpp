@@ -520,7 +520,8 @@ void QuerySnippet::serializeIntoBuilder(
     // of the ExecutionNodes created during this procedure.
     TRI_ASSERT(!_nodes.empty());
     auto snippetRoot = _nodes.at(0);
-
+    
+    TRI_ASSERT(distIds.size() >= numberOfShardsToPermutate);
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
       auto cloneWorker = CloneWorker(snippetRoot, internalGather, internalScatter,
                                      localExpansions, i, distIds[i], nodeAliases);
