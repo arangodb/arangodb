@@ -1317,9 +1317,6 @@ std::string ClusterInfo::getCollectionNotFoundMsg(DatabaseID const& databaseID,
 std::vector<std::shared_ptr<LogicalCollection>> const ClusterInfo::getCollections(DatabaseID const& databaseID) {
   std::vector<std::shared_ptr<LogicalCollection>> result;
 
-  // always reload
-  loadPlan();
-
   READ_LOCKER(readLocker, _planProt.lock);
   // look up database by id
   AllCollections::const_iterator it = _plannedCollections.find(databaseID);
@@ -2187,6 +2184,8 @@ Result ClusterInfo::createCollectionsCoordinator(
           AgencyPrecondition::Type::EMPTY, false);
       opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
     }
+    opers.emplace_back("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+
     auto trx = AgencyWriteTransaction{opers, precs};
 
     using namespace std::chrono;
