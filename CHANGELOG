@@ -1,3 +1,10 @@
+v3.4.11 (XXXX-XX-XX)
+--------------------
+
+* Do not always loadPlan from agency when collections of a database are listed.
+  This is particularly important for arangosync.
+
+
 v3.4.10 (2020-04-24)
 --------------------
 
