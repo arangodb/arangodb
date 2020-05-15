@@ -1,5 +1,10 @@
 devel
 -----
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Fixed a lockup in dropCollection due to a mutex being held for too long.
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.
@@ -9,6 +14,8 @@ devel
   on the DB Server without involvement of a coordinator.
 
 * ClusterInfo does its own updating of plan / current caches.
+
+* Properly forward requests based on the transaction header.
 
 * Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
 
