@@ -54,7 +54,6 @@ function dumpIntegrationSuite () {
           structure = cn + ".structure.json";
         }
 
-        print(fs.join(dumpDir, structure))
         assertTrue(fs.isFile(fs.join(dumpDir, structure)), structure);
         assertNotEqual(-1, tree.indexOf(structure));
         data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());

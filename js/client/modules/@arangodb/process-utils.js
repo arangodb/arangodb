@@ -126,12 +126,12 @@ class ConfigBuilder {
   }
   activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
   activateCompression() {
-    if (this.type == 'dump') {
+    if (this.type === 'dump') {
       this.config['--compress-output'] = true;
     }
   }
   activateUNCompression() {
-    if (this.type == 'dump') {
+    if (this.type === 'dump') {
       this.config['--compress-output'] = false;
     }
   }
