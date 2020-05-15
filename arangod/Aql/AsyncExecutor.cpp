@@ -72,6 +72,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
     }
     return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
   } else if (_internalState == AsyncState::GotException) {
+    TRI_ASSERT(_returnException != nullptr);
     std::rethrow_exception(_returnException);
     TRI_ASSERT(false);
     return {ExecutionState::DONE, SkipResult(), SharedAqlItemBlockPtr()};

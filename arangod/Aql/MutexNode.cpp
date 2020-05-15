@@ -93,8 +93,6 @@ CostEstimate MutexNode::estimateCost() const {
   return estimate;
 }
 
-auto MutexNode::getOutputVariables() const -> VariableIdSet { return {}; }
-
 void MutexNode::addClient(DistributeConsumerNode const* client) {
   auto const& distId = client->getDistributeId();
   // We cannot add the same distributeId twice, data is delivered exactly once for each id

@@ -3943,25 +3943,25 @@ bool Ast::functionsMayAccessDocuments() const {
   return _functionsMayAccessDocuments;
 }
 
-bool Ast::containsTraversal() const { return _containsTraversal; }
+bool Ast::containsTraversal() const noexcept { return _containsTraversal; }
 
-bool Ast::containsModificationNode() const { return _containsModificationNode; }
+bool Ast::containsModificationNode() const noexcept { return _containsModificationNode; }
 
-void Ast::setContainsModificationNode() {
+void Ast::setContainsModificationNode() noexcept {
   _containsModificationNode = true;
 }
 
-void Ast::setContainsParallelNode() {
+void Ast::setContainsParallelNode() noexcept {
 #ifdef USE_ENTERPRISE
   _containsParallelNode = true;
 #endif
 }
 
-bool Ast::willUseV8() const {
+bool Ast::willUseV8() const noexcept {
   return _willUseV8;
 }
 
-void Ast::setWillUseV8() {
+void Ast::setWillUseV8() noexcept {
   _willUseV8 = true;
 }
 

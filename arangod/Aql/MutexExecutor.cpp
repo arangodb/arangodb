@@ -44,24 +44,6 @@ MutexExecutorInfos::MutexExecutorInfos(
     std::vector<std::string> clientIds)
     : ClientsExecutorInfos(std::move(clientIds)) {}
 
-//auto MutexExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice value) const
-//    -> ResultT<std::string> {
-//  std::string shardId;
-//  int res = _logCol->getResponsibleShard(value, true, shardId);
-//
-//  if (res != TRI_ERROR_NO_ERROR) {
-//    return Result{res};
-//  }
-//
-//  TRI_ASSERT(!shardId.empty());
-//  if (_type == ScatterNode::ScatterType::SERVER) {
-//    // Special case for server based distribution.
-//    shardId = _collection->getServerForShard(shardId);
-//    TRI_ASSERT(!shardId.empty());
-//  }
-//  return shardId;
-//}
-
 MutexExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                 MutexNode const* node,
                                                 RegisterInfos const& registerInfos)
@@ -206,7 +188,7 @@ MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
   : _infos(infos), _numClient(0) {}
 
 auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
-                                         std::unordered_map<std::string, ClientBlockData>& blockMap)
+                                    std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
   std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
   choosenMap.reserve(blockMap.size());
@@ -217,7 +199,7 @@ auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skip
         choosenMap[key].emplace_back(i);
       }
     } else {
-      auto client = getClient(block, i);
+      auto const& client = getClient(block, i);
       // We can only have clients we are prepared for
       TRI_ASSERT(blockMap.find(client) != blockMap.end());
       choosenMap[client].emplace_back(i);
@@ -245,9 +227,9 @@ auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skip
   }
 }
 
-std::string MutexExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex) {
-//  InputAqlItemRow row{block, rowIndex};
-//  AqlValue val = row.getValue(_infos.registerId());
+std::string const& MutexExecutor::getClient(SharedAqlItemBlockPtr /*block*/, size_t rowIndex) {
+  TRI_ASSERT(_infos.nrClients() > 0);
+  // round-robin distribution
   return _infos.clientIds()[(_numClient++) % _infos.nrClients()];
 }
 

@@ -59,11 +59,9 @@ class MutexNode : public ExecutionNode {
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
-  
   void addClient(DistributeConsumerNode const* client);
   
-private:
+ private:
   std::vector<std::string> _clients;
 };
 

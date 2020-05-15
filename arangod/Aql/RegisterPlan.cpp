@@ -20,6 +20,8 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Michael Hackstein
+/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegisterPlan.h"
@@ -76,9 +78,9 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * is different from the input row.
    */
   auto const planRegistersForCurrentNode = [&](T* en) -> void {
-    auto const outputVariables = en->getOutputVariables();
-    for (VariableId const& v : outputVariables) {
-      TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
+    auto const& varsSetHere = en->getVariablesSetHere();
+    for (Variable const* v : varsSetHere) {
+      TRI_ASSERT(v != nullptr);
       plan->registerVariable(v, unusedRegisters.back());
     }
   };
@@ -290,7 +292,7 @@ RegisterId RegisterPlanT<T>::addRegister() {
 }
 
 template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters) {
+void RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
 
   if (unusedRegisters.empty()) {
@@ -302,13 +304,13 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
   }
 
   bool inserted;
-  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(depth, regId));
+  std::tie(std::ignore, inserted) = varInfo.try_emplace(v->id, VarInfo(depth, regId));
   TRI_ASSERT(inserted);
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string("duplicate register assignment for variable #") +
-            std::to_string(v) + " while planning registers");
+        std::string("duplicate register assignment for variable " + v->name + " #") +
+            std::to_string(v->id) + " while planning registers");
   }
 }
 
@@ -396,12 +398,6 @@ auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
   }
 
   return regsToKeepStack;
-}
-
-template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v) {
-  std::set<RegisterId> tmp;
-  registerVariable(v, tmp);
 }
 
 template <typename T>

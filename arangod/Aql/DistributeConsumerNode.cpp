@@ -70,5 +70,3 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
   return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
-
-auto DistributeConsumerNode::getOutputVariables() const -> VariableIdSet { return {}; }

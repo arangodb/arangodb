@@ -38,6 +38,7 @@
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -170,27 +171,21 @@ template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeForClient(AqlCallStack stack,
                                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
-  
+ 
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
     _executor.acquireLock();
   }
   
-  try {
-    traceExecuteBegin(stack, clientId);
-    auto res = executeWithoutTraceForClient(stack, clientId);
-    traceExecuteEnd(res, clientId);
-    
+  auto guard = scopeGuard([this]() {
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
       _executor.releaseLock();
     }
-    
-    return res;
-  } catch (...) {
-    if constexpr (std::is_same<MutexExecutor, Executor>::value) {
-      _executor.releaseLock();
-    }
-    throw;
-  }
+  });
+  
+  traceExecuteBegin(stack, clientId);
+  auto res = executeWithoutTraceForClient(stack, clientId);
+  traceExecuteEnd(res, clientId);
+  return res;
 }
 
 template <class Executor>

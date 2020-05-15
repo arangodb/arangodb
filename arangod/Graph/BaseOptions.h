@@ -162,7 +162,7 @@ struct BaseOptions {
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
   
-  void setParallelism(size_t p) {
+  void setParallelism(size_t p) noexcept {
     _parallelism = p;
   }
 
