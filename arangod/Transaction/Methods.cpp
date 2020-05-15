@@ -1585,6 +1585,11 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
 
+    // Primary keys must not be empty
+    if (key.empty()) {
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    }
+
     previous.clear();
 
     auto res = collection->remove(*this, value, options, previous);
