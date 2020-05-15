@@ -25,11 +25,17 @@
 
 #include "Basics/Identifier.h"
 
+#include <limits>
+
 namespace arangodb::aql {
 
 class ExecutionNodeId : public basics::Identifier {
  public:
   using Identifier::Identifier;
+  using Identifier::BaseType;
+
+  /// @brief placeholder used for internal nodes
+  static constexpr Identifier::BaseType InternalNode = std::numeric_limits<BaseType>::max();
 };
 
 }  // namespace arangodb::aql

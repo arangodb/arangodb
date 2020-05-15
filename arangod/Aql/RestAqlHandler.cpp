@@ -252,20 +252,10 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   
   answerBuilder.add("queryId", VPackValue(query->id()));
-  query->prepareClusterQuery(format, collectionBuilder.slice(),
+  query->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
                              variablesSlice, snippetsSlice,
                              traverserSlice, answerBuilder);
 
-//  if (!traverserSlice.isNone()) {
-//    bool needLocking = false;
-//    bool res = registerTraverserEngines(traverserSlice, ctx, ttl, needLocking, answerBuilder);
-//
-//    if (!res) {
-//      // TODO we need to trigger cleanup here??
-//      // Registering the traverser engines failed.
-//      return;
-//    }
-//  }
   answerBuilder.close(); // result
   answerBuilder.close();
   
@@ -273,109 +263,6 @@ void RestAqlHandler::setupClusterQuery() {
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
-
-#if 0
-bool RestAqlHandler::registerSnippets(
-    VPackSlice const snippetsSlice, VPackSlice const collectionSlice,
-    VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> const& options,
-    std::shared_ptr<transaction::Context> const& ctx, double const ttl,
-    SerializationFormat format, bool& needToLock, VPackBuilder& answerBuilder) {
-  TRI_ASSERT(answerBuilder.isOpenObject());
-  answerBuilder.add(VPackValue("snippets"));
-  answerBuilder.openObject();
-  // NOTE: We need to clean up all engines if we bail out during the following
-  // loop
-  for (auto it : VPackObjectIterator(snippetsSlice)) {
-    auto planBuilder = std::make_shared<VPackBuilder>();
-    planBuilder->openObject();
-    planBuilder->add(VPackValue("collections"));
-    planBuilder->add(collectionSlice);
-
-    planBuilder->add(VPackValue("nodes"));
-    planBuilder->add(it.value.get("nodes"));
-
-    planBuilder->add(VPackValue("variables"));
-    planBuilder->add(variablesSlice);
-    planBuilder->close();  // base-object
-
-    // All snippets know all collections.
-    // The first snippet will provide proper locking
-    auto query = std::make_unique<Query>(ctx, aql::QueryString(), options);
-    
-    try {
-      query->prepareSnippets(format, planBuilder);
-
-    // enables the query to get the correct transaction
-    query->setTransactionContext(ctx);
-
-      query->prepare(_queryRegistry, format);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("c1ce7", ERR, arangodb::Logger::AQL)
-          << "failed to instantiate the query: " << ex.what();
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN, ex.what());
-      return false;
-    } catch (...) {
-      LOG_TOPIC("aae22", ERR, arangodb::Logger::AQL)
-          << "failed to instantiate the query";
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
-      return false;
-    }
-
-    try {
-      QueryId qId = query->id();
-      TRI_ASSERT(qId > 0);
-      _queryRegistry->insert(qId, query.get(), ttl, true, false);
-      query.release();
-      answerBuilder.add(it.key);
-      answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
-    } catch (...) {
-      LOG_TOPIC("e7ea6", ERR, arangodb::Logger::AQL)
-          << "could not keep query in registry";
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                    "could not keep query in registry");
-      return false;
-    }
-  }
-  answerBuilder.close();  // Snippets
-
-  return true;
-}
-
-bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
-                                              std::shared_ptr<transaction::Context> const& ctx,
-                                              double ttl, bool& needToLock,
-                                              VPackBuilder& answerBuilder) {
-  TRI_ASSERT(traverserEngines.isArray());
-
-  TRI_ASSERT(answerBuilder.isOpenObject());
-  answerBuilder.add(VPackValue("traverserEngines"));
-  answerBuilder.openArray();
-
-  for (auto const& te : VPackArrayIterator(traverserEngines)) {
-    try {
-      auto id = _traverserRegistry->createNew(_vocbase, ctx, te, ttl, needToLock);
-
-      needToLock = false;
-      TRI_ASSERT(id != 0);
-      answerBuilder.add(VPackValue(id));
-    } catch (basics::Exception const& e) {
-      LOG_TOPIC("f257c", ERR, arangodb::Logger::AQL)
-          << "Failed to instanciate traverser engines. Reason: " << e.message();
-      generateError(rest::ResponseCode::SERVER_ERROR, e.code(), e.message());
-      return false;
-    } catch (...) {
-      LOG_TOPIC("4087b", ERR, arangodb::Logger::AQL)
-          << "Failed to instanciate traverser engines.";
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                    "Unable to instanciate traverser engines");
-      return false;
-    }
-  }
-  answerBuilder.close();  // traverserEngines
-  // Everything went well
-  return true;
-}
-#endif
 
 // DELETE method for /_api/aql/kill/<queryId>, (internal)
 bool RestAqlHandler::killQuery(std::string const& idString) {
@@ -863,6 +750,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     _engine->sharedState()->resetWakeupHandler();
 
     // return the engine to the registry
+    _engine = nullptr;
     _queryRegistry->closeEngine(_qId);
 
     // delete the engine from the registry

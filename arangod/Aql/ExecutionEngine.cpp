@@ -47,7 +47,6 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -102,7 +101,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 
     if (nodeType == ExecutionNode::REMOTE) {
       remoteNode = ExecutionNode::castTo<RemoteNode*>(en);
-      continue;
+      continue; // handled on GatherNode
     }
 
     // for all node types but REMOTEs, we create blocks
@@ -157,6 +156,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
       for (auto const& serverToSnippet : serversForRemote->second) {
         std::string const& serverID = serverToSnippet.first;
         for (std::string const& snippetId : serverToSnippet.second) {
+          
           remoteNode->queryId(snippetId);
           remoteNode->server(serverID);
           remoteNode->setDistributeId({""});
@@ -164,7 +164,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           auto remoteBlock = dynamic_cast<ExecutionBlockImpl<RemoteExecutor>*>(r.get());
           TRI_ASSERT(remoteBlock->server() == serverID);
-          TRI_ASSERT(remoteBlock->ownName() == "");  // NOLINT(readability-container-size-empty)
+          TRI_ASSERT(remoteBlock->distributeId() == "");  // NOLINT(readability-container-size-empty)
           TRI_ASSERT(remoteBlock->queryId() == snippetId);
 #endif
 
@@ -220,54 +220,40 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
       : engine(engine) {}
+        
+  void after(ExecutionNode* en) override {
+    if (en->getType() == ExecutionNode::TRAVERSAL ||
+        en->getType() == ExecutionNode::SHORTEST_PATH ||
+        en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+      // We have to prepare the options before we build the block
+      ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
+    }
 
-  virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
-    bool doEmplace = true;
-    {
-      if (en->getType() == ExecutionNode::TRAVERSAL ||
-          en->getType() == ExecutionNode::SHORTEST_PATH ||
-          en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
-        // We have to prepare the options before we build the block
-        ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
-      }
-      if (!arangodb::ServerState::instance()->isDBServer()) {
-        // do we need to adjust the root node?
-        auto const nodeType = en->getType();
+    if (!arangodb::ServerState::instance()->isDBServer()) {
+      auto const nodeType = en->getType();
 
-        if (nodeType == ExecutionNode::DISTRIBUTE ||
-            nodeType == ExecutionNode::SCATTER ||
-            (nodeType == ExecutionNode::GATHER)) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "logic error, got cluster node in local query");
-        }
-        block = engine.addBlock(en->createBlock(engine, cache));
-      } else {
-        auto const& cached = cache.find(en);
-        if (cached != cache.end()) {
-          // We allow to have SCATTER, REMOTE and DISTRIBUTE multiple times.
-          // But only these.
-          // Chances are if you hit a different node here, that you created a loop.
-          TRI_ASSERT(en->getType() == ExecutionNode::REMOTE ||
-                     en->getType() == ExecutionNode::SCATTER ||
-                     en->getType() == ExecutionNode::DISTRIBUTE);
-          block = cached->second;
-          doEmplace = false;
-        } else {
-          block = engine.addBlock(en->createBlock(engine, cache));
-        }
+      if (nodeType == ExecutionNode::DISTRIBUTE ||
+          nodeType == ExecutionNode::SCATTER ||
+          (nodeType == ExecutionNode::GATHER &&
+           // simon: parallel traversals use a GatherNode
+           static_cast<GatherNode*>(en)->parallelism() != GatherNode::Parallelism::Parallel)) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "logic error, got cluster node in local query");
       }
-
-      if (!en->hasParent()) {
-        // yes. found a new root!
-        root = block;
+    } else {
+      auto const& cached = cache.find(en);
+      if (cached != cache.end()) {
+        block = cached->second;
+        TRI_ASSERT(block != nullptr);
       }
     }
 
-    TRI_ASSERT(block != nullptr);
-    if (doEmplace) {
-      // We have visited this node earlier, so we got it's dependencies
+    if (block == nullptr) {
+      block = engine.addBlock(en->createBlock(engine, cache));
+      TRI_ASSERT(block != nullptr);
+      // We have visited this node earlier, so we got its dependencies
       // Now add dependencies:
       for (auto const& it : en->getDependencies()) {
         auto it2 = cache.find(it);
@@ -277,6 +263,13 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
       }
 
       cache.try_emplace(en, block);
+    }
+    TRI_ASSERT(block != nullptr);
+      
+    // do we need to adjust the root node?
+    if (!en->hasParent()) {
+      // yes. found a new root!
+      root = block;
     }
   }
 
@@ -495,7 +488,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       TRI_ASSERT(snippets.size() > 0);
       TRI_ASSERT(snippets[0].first == 0);
       snippets[0].second->snippetMapping(std::move(snippetIds), std::move(serverToQueryId));
-      snippets[0].second->globalStats().addAliases(std::move(nodeAliases));
+      snippets[0].second->globalStats().setAliases(std::move(nodeAliases));
     }
     
     return res;
@@ -503,18 +496,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 };
 
 void ExecutionEngine::kill() {
-  // kill coordinator parts
-  // TODO: this doesn't seem to be necessary and sometimes even show adverse
-  // effects so leaving this deactivated for now
-  /*
-  auto queryRegistry = QueryRegistryFeature::registry();
-  if (queryRegistry != nullptr) {
-    for (auto const& id : _coordinatorQueryIds) {
-      queryRegistry->kill(&(_query.vocbase()), id);
-    }
-  }
-  */
-
+  
   // kill DB server parts
   // RemoteNodeId -> DBServerId -> [snippetId]
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
@@ -522,7 +504,8 @@ void ExecutionEngine::kill() {
   if (pool == nullptr) {
     return;
   }
-
+  
+  // TODO: maybe kill global DBServers ?
   VPackBuffer<uint8_t> body;
   std::vector<network::FutureRes> futures;
 
@@ -761,8 +744,19 @@ Result ExecutionEngine::instantiateFromPlan(Query& query,
     
   } else {
     
+#ifdef USE_ENTERPRISE
+    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> aliases;
+    ExecutionEngine::parallelizeTraversals(query, plan, aliases);
+#endif
+   
     // instantiate the engine on a local server
     auto retEngine = std::make_unique<ExecutionEngine>(query, mgr, format, query.sharedState());
+    
+#ifdef USE_ENTERPRISE
+    for (auto const& pair : aliases) {
+      retEngine->_execStats.addAlias(pair.first, pair.second);
+    }
+#endif
 
     SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);
@@ -840,7 +834,7 @@ AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
 ///  @brief collected execution stats
 void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
   for (ExecutionBlock* block : _blocks) {
-    block->collectExecStats(stats);
+    block->collectExecStats(_execStats);
   }
   stats.add(_execStats);
   _execStats.clear();
