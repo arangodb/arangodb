@@ -75,7 +75,6 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
-static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -184,6 +183,9 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
     return "hello from CustomTypeHandler";
   }
 };
+  
+/*static*/ arangodb::velocypack::Options VelocyPackHelper::strictRequestValidationOptions;
+/*static*/ arangodb::velocypack::Options VelocyPackHelper::looseRequestValidationOptions;
 
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
@@ -220,8 +222,26 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.disallowTags = true;
   VPackOptions::Defaults.disallowBCD = true;
   
-  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
-  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+  // set up options for validating incoming end-user requests
+  strictRequestValidationOptions = VPackOptions::Defaults;
+  strictRequestValidationOptions.checkAttributeUniqueness = true;
+  // note: this value may be overriden by configuration!
+  strictRequestValidationOptions.validateUtf8Strings = true;
+  strictRequestValidationOptions.disallowExternals = true;
+  strictRequestValidationOptions.disallowCustom = true;
+  strictRequestValidationOptions.disallowTags = true;
+  strictRequestValidationOptions.disallowBCD = true;
+  strictRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
+  
+  // set up options for validating requests, without UTF-8 validation
+  looseRequestValidationOptions = VPackOptions::Defaults;
+  looseRequestValidationOptions.checkAttributeUniqueness = true;
+  looseRequestValidationOptions.validateUtf8Strings = false;
+  looseRequestValidationOptions.disallowExternals = true;
+  looseRequestValidationOptions.disallowCustom = true;
+  looseRequestValidationOptions.disallowTags = true;
+  looseRequestValidationOptions.disallowBCD = true;
+  looseRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -255,11 +275,6 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
-}
-
-/// @brief return the (global) attribute translator instance
-arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
-  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,

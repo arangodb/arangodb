@@ -54,7 +54,7 @@ class KShortestPathsNode : public virtual GraphNode {
   KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode const& node);
 
  public:
-  KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                      AstNode const* direction, AstNode const* start,
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<graph::BaseOptions> options);
@@ -64,14 +64,15 @@ class KShortestPathsNode : public virtual GraphNode {
   ~KShortestPathsNode();
 
   /// @brief Internal constructor to clone the node.
-  KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                     std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                     std::vector<std::unique_ptr<Collection>> const& vertexColls,
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                     std::vector<Collection*> const& edgeColls,
+                     std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> const& directions,
                      Variable const* inStartVariable, std::string const& startVertexId,
                      Variable const* inTargetVariable, std::string const& targetVertexId,
-                     std::unique_ptr<graph::BaseOptions> options);
+                     std::unique_ptr<graph::BaseOptions> options,
+                     graph::Graph const* graph);
 
  public:
   /// @brief return the type of the node
@@ -107,6 +108,8 @@ class KShortestPathsNode : public virtual GraphNode {
     return *_inStartVariable;
   }
 
+  void setStartInVariable(Variable const* inVariable);
+
   std::string const getStartVertex() const { return _startVertexId; }
 
   /// @brief Test if this node uses an in variable or constant for target
@@ -129,7 +132,7 @@ class KShortestPathsNode : public virtual GraphNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override {
+  void getVariablesUsedHere(VarSet& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

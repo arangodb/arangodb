@@ -23,8 +23,8 @@
 #include "Collections.h"
 #include "Basics/Common.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
@@ -37,11 +37,11 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -49,16 +49,12 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
@@ -73,12 +69,12 @@ using namespace arangodb::methods;
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
-Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection& coll)
-    : _vocbase(vocbase), _coll(coll), _trx(nullptr), _responsibleForTrx(true) {}
+Collections::Context::Context(std::shared_ptr<LogicalCollection> coll)
+    : _coll(std::move(coll)), _trx(nullptr), _responsibleForTrx(true) {}
 
-Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection& coll,
+Collections::Context::Context(std::shared_ptr<LogicalCollection> coll,
                               transaction::Methods* trx)
-    : _vocbase(vocbase), _coll(coll), _trx(trx), _responsibleForTrx(false) {
+    : _coll(std::move(coll)), _trx(trx), _responsibleForTrx(false) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -91,8 +87,8 @@ Collections::Context::~Context() {
 transaction::Methods* Collections::Context::trx(AccessMode::Type const& type, bool embeddable,
                                                 bool forceLoadCollection) {
   if (_responsibleForTrx && _trx == nullptr) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(_vocbase, embeddable);
-    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, _coll, type);
+    auto ctx = transaction::V8Context::CreateWhenRequired(_coll->vocbase(), embeddable);
+    auto trx = std::make_unique<SingleCollectionTransaction>(ctx, *_coll, type);
     if (!trx) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
                                      "Cannot create Transaction");
@@ -115,9 +111,9 @@ transaction::Methods* Collections::Context::trx(AccessMode::Type const& type, bo
   return _trx;
 }
 
-TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
+//TRI_vocbase_t& Collections::Context::vocbase() const { return _vocbase; }
 
-LogicalCollection* Collections::Context::coll() const { return &_coll; }
+std::shared_ptr<LogicalCollection> Collections::Context::coll() const { return _coll; }
 
 void Collections::enumerate(TRI_vocbase_t* vocbase,
                             std::function<void(std::shared_ptr<LogicalCollection> const&)> const& func) {
@@ -292,12 +288,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
+    bool isSystem = vocbase.IsSystemName(info.name);
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
       bool isSmartChild =
           Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
-      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      TRI_voc_rid_t minRev = (isSystem || isSmartChild) ? 0 : TRI_HybridLogicalClock();
       helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
     }
 
@@ -305,14 +302,14 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
         auto factor = vocbase.replicationFactor();
-        if (factor > 0 && vocbase.IsSystemName(info.name)) {
+        if (factor > 0 && isSystem) {
           auto& cl = vocbase.server().getFeature<ClusterFeature>();
           factor = std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
         }
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
-      if (!vocbase.IsSystemName(info.name)) {
+      if (!isSystem) {
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
@@ -466,6 +463,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   }
   for (auto const& info : infos) {
     events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+    events::PropertyUpdateCollection(vocbase.name(), info.name, info.properties);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -487,7 +485,6 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     VPackObjectBuilder scope(&bb);
     bb.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
     bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
-    bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
     bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
     bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));  // deprecated
     bb.add(StaticStrings::WriteConcern, VPackValue(defaultWriteConcern));
@@ -584,12 +581,12 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 }
 
 Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
-  LogicalCollection* coll = ctxt.coll();
+  auto coll = ctxt.coll();
   TRI_ASSERT(coll != nullptr);
   ExecContext const& exec = ExecContext::current();
   bool canRead = exec.canUseCollection(coll->name(), auth::Level::RO);
   if (!canRead || exec.databaseAuthLevel() == auth::Level::NONE) {
-    return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
+    return Result(TRI_ERROR_FORBIDDEN, std::string("cannot access collection '") + coll->name() + "'");
   }
 
   std::unordered_set<std::string> ignoreKeys{
@@ -660,27 +657,26 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return res;
     }
 
-    return info->properties(props, partialUpdate);
+    auto rv = info->properties(props, partialUpdate);
+    if (rv.ok()) {
+      events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+    }
+    return rv;
+
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), false);
     SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
-    if (!res.ok()) {
-      return res;
+    if (res.ok()) {
+      // try to write new parameter to file
+      res = collection.properties(props, partialUpdate);
+      if (res.ok()) {
+        events::PropertyUpdateCollection(collection.vocbase().name(), collection.name(), props);
+      }
     }
 
-    // try to write new parameter to file
-    auto updateRes = collection.properties(props, partialUpdate);
-
-    if (!updateRes.ok()) {
-      return updateRes;
-    }
-
-    auto physical = collection.getPhysical();
-    TRI_ASSERT(physical != nullptr);
-
-    return physical->persistProperties();
+    return res;
   }
 }
 
@@ -688,32 +684,15 @@ Result Collections::updateProperties(LogicalCollection& collection,
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& oldName,
+static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
                                   std::string const& newName) {
-  V8DealerFeature* dealer = V8DealerFeature::DEALER;
-  if (dealer == nullptr || !dealer->isEnabled()) {
-    return TRI_ERROR_NO_ERROR;  // V8 might is disabled
+  ExecContextSuperuserScope exscope;
+
+  graph::GraphManager gmngr{vocbase};
+  bool r = gmngr.renameGraphCollection(oldName, newName);
+  if (!r) {
+    return TRI_ERROR_FAILED;
   }
-
-  basics::StringBuffer buffer(true);
-  buffer.appendText(
-      "require('@arangodb/general-graph-common')._renameCollection(");
-  buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
-  buffer.appendChar(',');
-  buffer.appendJsonEncoded(newName.c_str(), newName.size());
-  buffer.appendText(");");
-
-  JavaScriptSecurityContext securityContext =
-      JavaScriptSecurityContext::createInternalContext();
-  V8ContextGuard guard(vocbase, securityContext);
-
-  auto isolate = guard.isolate();
-  v8::HandleScope scope(isolate);
-  TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                              TRI_V8_ASCII_PAIR_STRING(isolate, buffer.c_str(),
-                                                       buffer.length()),
-                              TRI_V8_ASCII_STRING(isolate, "collection rename"), false);
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -737,7 +716,7 @@ Result Collections::rename(LogicalCollection& collection,
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
-    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   if (!doOverride) {
@@ -768,7 +747,7 @@ Result Collections::rename(LogicalCollection& collection,
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(&(collection.vocbase()), oldName, newName);
+  return RenameGraphCollections(collection.vocbase(), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
@@ -830,7 +809,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
-  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
+  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail() && res.isNot(TRI_ERROR_FORBIDDEN))
     << "error while dropping collection: '" << collName
     << "' error: '" << res.errorMessage() << "'";
 
@@ -892,6 +871,30 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   return futures::makeFuture(res);
 }
 
+futures::Future<Result> Collections::upgrade(TRI_vocbase_t& vocbase,
+                                             LogicalCollection const& coll) {
+  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  if (!exec.canUseCollection(coll.name(), auth::Level::RW)) {
+    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+  }
+
+  if (!ServerState::instance()->isSingleServer()) {
+    return futures::makeFuture(
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "collection upgrade in cluster not supported yet"));
+  }
+
+  Result res;
+  PhysicalCollection* physical = coll.getPhysical();
+  if (!physical) {
+    res.reset(TRI_ERROR_INTERNAL, "collection not found");
+    return futures::makeFuture(res);
+  }
+  res = physical->upgrade();
+
+  return futures::makeFuture(res);
+}
+
 futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
@@ -919,11 +922,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     binds->openObject();
     binds->add("@coll", VPackValue(cname));
     binds->close();
-    arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
-                               std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
-    auto queryRegistry = QueryRegistryFeature::registry();
-    TRI_ASSERT(queryRegistry != nullptr);
-    aql::QueryResult queryResult = query.executeSync(queryRegistry);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+    aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;
     if (queryResult.result.ok()) {
@@ -943,9 +944,9 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
+    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL);
 
-    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
+    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
       cb(doc.resolveExternal());
       return true;
     }, 1000);
@@ -973,9 +974,9 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor(trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL));
+  auto iterator = trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL);
 
-  opCursor.allDocuments([&](LocalDocumentId const& token, VPackSlice slice) {
+  iterator->allDocuments([&](LocalDocumentId const& /*token*/, VPackSlice slice) {
     uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString();
 
     if (withRevisions) {

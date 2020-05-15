@@ -34,6 +34,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemMatrix.h"
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -106,7 +107,9 @@ struct ExecutorTestHelper {
         _unorderedSkippedRows{0},
         _query(query),
         _itemBlockManager(itemBlockManager),
-        _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
+        _dummyNode{std::make_unique<SingletonNode>(
+            const_cast<ExecutionPlan*>(_query.rootEngine()->root()->getPlanNode()->plan()),
+            ExecutionNodeId{42})} {}
 
   auto setCallStack(AqlCallStack stack) -> ExecutorTestHelper& {
     _callStack = stack;
@@ -114,7 +117,7 @@ struct ExecutorTestHelper {
   }
 
   auto setCall(AqlCall c) -> ExecutorTestHelper& {
-    _callStack = AqlCallStack{c};
+    _callStack = AqlCallStack{AqlCallList{c}};
     return *this;
   }
 
@@ -133,7 +136,7 @@ struct ExecutorTestHelper {
     static_assert(inputColumns == 1);
     _input.clear();
     for (auto i = size_t{0}; i < rows; ++i) {
-      _input.emplace_back(RowBuilder<1>{i});
+      _input.emplace_back(RowBuilder<1>{static_cast<int>(i)});
     }
     return *this;
   }
@@ -231,15 +234,16 @@ struct ExecutorTestHelper {
    * @brief Add a dependency, i.e. add an ExecutionBlock to the *end* of the execution pipeline
    *
    * @tparam E The executor template parameter
-   * @param infos to build the executor
+   * @param executorInfos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
   template <typename E>
-  auto addDependency(typename E::Infos infos,
+  auto addDependency(RegisterInfos registerInfos, typename E::Infos executorInfos,
                      ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addDependency(createExecBlock<E>(std::move(infos), nodeType));
+    _pipeline.addDependency(createExecBlock<E>(std::move(registerInfos),
+                                               std::move(executorInfos), nodeType));
     return *this;
   }
 
@@ -247,15 +251,16 @@ struct ExecutorTestHelper {
    * @brief Add a consumer, i.e. add an ExecutionBlock to the *beginning* of the execution pipeline
    *
    * @tparam E The executor template parameter
-   * @param infos to build the executor
+   * @param executorInfos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecutorTestHelper&
    */
   template <typename E>
-  auto addConsumer(typename E::Infos infos,
+  auto addConsumer(RegisterInfos registerInfos, typename E::Infos executorInfos,
                    ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecutorTestHelper& {
-    _pipeline.addConsumer(createExecBlock<E>(std::move(infos), nodeType));
+    _pipeline.addConsumer(createExecBlock<E>(std::move(registerInfos),
+                                             std::move(executorInfos), nodeType));
     return *this;
   }
 
@@ -298,15 +303,13 @@ struct ExecutorTestHelper {
       do {
         auto const [state, skipped, result] = _pipeline.get().front()->execute(_callStack);
         finalState = state;
-        auto call = _callStack.popCall();
+        auto& call = _callStack.modifyTopCall();
         skippedTotal.merge(skipped, false);
         call.didSkip(skipped.getSkipCount());
         if (result != nullptr) {
           call.didProduce(result->size());
           allResults.add(result);
         }
-        _callStack.pushCall(std::move(call));
-
       } while (finalState != ExecutionState::DONE &&
                (!_callStack.peek().hasSoftLimit() ||
                 (_callStack.peek().getLimit() + _callStack.peek().getOffset()) > 0));
@@ -332,7 +335,12 @@ struct ExecutorTestHelper {
     }
 
     if (_testStats) {
-      auto actualStats = _query.engine()->getStats();
+      ExecutionStats actualStats;
+      _query.rootEngine()->collectExecutionStats(actualStats);
+      // simon: engine does not collect most block stats
+      for (auto const& block : _pipeline.get()) {
+        block->collectExecStats(actualStats);
+      }
       EXPECT_EQ(actualStats, _expectedStats);
     }
   };
@@ -342,20 +350,22 @@ struct ExecutorTestHelper {
    * @brief create an ExecutionBlock without tying it into the pipeline.
    *
    * @tparam E The executor template parameter
-   * @param infos to build the executor
+   * @param executorInfos to build the executor
    * @param nodeType The type of executor node, only used for debug printing, defaults to SINGLETON
    * @return ExecBlock
    *
    * Now private to prevent us from leaking memory
    */
   template <typename E>
-  auto createExecBlock(typename E::Infos infos,
+  auto createExecBlock(RegisterInfos registerInfos, typename E::Infos executorInfos,
                        ExecutionNode::NodeType nodeType = ExecutionNode::SINGLETON)
       -> ExecBlock {
     auto& testeeNode = _execNodes.emplace_back(
-        std::make_unique<MockTypedNode>(_query.plan(), _execNodes.size(), nodeType));
-    return std::make_unique<ExecutionBlockImpl<E>>(_query.engine(), testeeNode.get(),
-                                                   std::move(infos));
+        std::make_unique<MockTypedNode>(_query.plan(),
+                                        ExecutionNodeId{_execNodes.size()}, nodeType));
+    return std::make_unique<ExecutionBlockImpl<E>>(_query.rootEngine(), testeeNode.get(),
+                                                   std::move(registerInfos),
+                                                   std::move(executorInfos));
   }
 
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
@@ -409,14 +419,14 @@ struct ExecutorTestHelper {
       blockDeque.emplace_back(nullptr);
     }
 
-    return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
+    return std::make_unique<WaitingExecutionBlockMock>(_query.rootEngine(),
                                                        _dummyNode.get(),
                                                        std::move(blockDeque),
                                                        _waitingBehaviour);
   }
 
   // Default initialize with a fetchAll call.
-  AqlCallStack _callStack{AqlCall{}};
+  AqlCallStack _callStack{AqlCallList{AqlCall{}}};
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
   std::vector<std::pair<size_t, uint64_t>> _outputShadowRows{};
@@ -441,136 +451,6 @@ struct ExecutorTestHelper {
   Pipeline _pipeline;
   std::vector<std::unique_ptr<MockTypedNode>> _execNodes;
 };
-
-enum class ExecutorCall {
-  SKIP_ROWS,
-  PRODUCE_ROWS,
-  FETCH_FOR_PASSTHROUGH,
-  EXPECTED_NR_ROWS,
-};
-
-std::ostream& operator<<(std::ostream& stream, ExecutorCall call);
-
-using ExecutorStepResult = std::tuple<ExecutorCall, arangodb::aql::ExecutionState, size_t>;
-
-// TODO Add skipRows by passing 3 additional integers i, j, k, saying we should
-//  - skip i rows
-//  - produce j rows
-//  - skip k rows
-// TODO Make the calls to skipRows, fetchBlockForPassthrough and (later) expectedNumberOfRows
-//  somehow optional. e.g. call a templated function or so.
-// TODO Add calls to expectedNumberOfRows
-
-template <typename Executor>
-std::tuple<arangodb::aql::SharedAqlItemBlockPtr, std::vector<ExecutorStepResult>, arangodb::aql::ExecutionStats>
-runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
-            arangodb::aql::OutputAqlItemRow& outputRow, size_t const numSkip,
-            size_t const numProduce, bool const skipRest) {
-  using namespace arangodb::aql;
-  ExecutionState state = ExecutionState::HASMORE;
-  std::vector<ExecutorStepResult> results{};
-  ExecutionStats stats{};
-
-  uint64_t rowsLeft = 0;
-  size_t skippedTotal = 0;
-  size_t producedTotal = 0;
-
-  enum class RunState {
-    SKIP_OFFSET,
-    FETCH_FOR_PASSTHROUGH,
-    PRODUCE,
-    SKIP_REST,
-    BREAK
-  };
-
-  while (state != ExecutionState::DONE) {
-    RunState const runState = [&]() {
-      if (skippedTotal < numSkip) {
-        return RunState::SKIP_OFFSET;
-      }
-      if (rowsLeft == 0 && (producedTotal < numProduce || numProduce == 0)) {
-        return RunState::FETCH_FOR_PASSTHROUGH;
-      }
-      if (producedTotal < numProduce || !skipRest) {
-        return RunState::PRODUCE;
-      }
-      if (skipRest) {
-        return RunState::SKIP_REST;
-      }
-      return RunState::BREAK;
-    }();
-
-    switch (runState) {
-      // Skip first
-      // TODO don't do this for executors which don't have skipRows
-      case RunState::SKIP_OFFSET: {
-        size_t skipped;
-        typename Executor::Stats executorStats{};
-        std::tie(state, executorStats, skipped) = executor.skipRows(numSkip);
-        results.emplace_back(std::make_tuple(ExecutorCall::SKIP_ROWS, state, skipped));
-        stats += executorStats;
-        skippedTotal += skipped;
-      } break;
-      // Get a new block for pass-through if we still need to produce rows and
-      // the current (imagined, via rowsLeft) block is "empty".
-      // TODO: Don't do this at all for non-passThrough blocks
-      case RunState::FETCH_FOR_PASSTHROUGH: {
-        ExecutionState fetchBlockState;
-        typename Executor::Stats executorStats{};
-        SharedAqlItemBlockPtr block{};
-        std::tie(fetchBlockState, executorStats, block) =
-            executor.fetchBlockForPassthrough(1000);
-        size_t const blockSize = block != nullptr ? block->size() : 0;
-        results.emplace_back(std::make_tuple(ExecutorCall::FETCH_FOR_PASSTHROUGH,
-                                             fetchBlockState, blockSize));
-        stats += executorStats;
-        rowsLeft = blockSize;
-        if (fetchBlockState != ExecutionState::WAITING &&
-            fetchBlockState != ExecutionState::DONE) {
-          EXPECT_GT(rowsLeft, 0);
-        }
-        if (fetchBlockState != ExecutionState::WAITING && block == nullptr) {
-          EXPECT_EQ(ExecutionState::DONE, fetchBlockState);
-          // Abort
-          state = ExecutionState::DONE;
-        }
-      } break;
-      // Produce rows
-      case RunState::PRODUCE: {
-        EXPECT_GT(rowsLeft, 0);
-        typename Executor::Stats executorStats{};
-        size_t const rowsBefore = outputRow.numRowsWritten();
-        std::tie(state, executorStats) = executor.produceRows(outputRow);
-        size_t const rowsAfter = outputRow.numRowsWritten();
-        size_t const rowsProduced = rowsAfter - rowsBefore;
-        results.emplace_back(std::make_tuple(ExecutorCall::PRODUCE_ROWS, state, rowsProduced));
-        stats += executorStats;
-        EXPECT_LE(rowsProduced, rowsLeft);
-        rowsLeft -= rowsProduced;
-        producedTotal += rowsProduced;
-
-        if (outputRow.produced()) {
-          outputRow.advanceRow();
-        }
-      } break;
-      // TODO don't do this for executors which don't have skipRows
-      case RunState::SKIP_REST: {
-        size_t skipped;
-        typename Executor::Stats executorStats{};
-        std::tie(state, executorStats, skipped) =
-            executor.skipRows(ExecutionBlock::SkipAllSize());
-        results.emplace_back(std::make_tuple(ExecutorCall::SKIP_ROWS, state, skipped));
-        stats += executorStats;
-      } break;
-      // We're done
-      case RunState::BREAK: {
-        state = ExecutionState::DONE;
-      } break;
-    }
-  }
-
-  return {outputRow.stealBlock(), results, stats};
-}
 
 }  // namespace aql
 }  // namespace tests

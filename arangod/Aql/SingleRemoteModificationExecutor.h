@@ -30,27 +30,24 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
 namespace aql {
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(
-      RegisterId inputRegister, RegisterId outputNewRegisterId,
-      RegisterId outputOldRegisterId, RegisterId outputRegisterId,
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> const& registersToClear,
-      std::unordered_set<RegisterId>&& registersToKeep, transaction::Methods* trx,
-      OperationOptions options, aql::Collection const* aqlCollection,
-      ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-      IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
-      std::string key, bool hasParent, bool replaceIndex)
+  SingleRemoteModificationInfos(RegisterId inputRegister, RegisterId outputNewRegisterId,
+                                RegisterId outputOldRegisterId, RegisterId outputRegisterId,
+                                arangodb::aql::QueryContext& query, OperationOptions options,
+                                aql::Collection const* aqlCollection,
+                                ConsultAqlWriteFilter consultAqlWriteFilter,
+                                IgnoreErrors ignoreErrors,
+                                IgnoreDocumentNotFound ignoreDocumentNotFound,
+                                std::string key, bool hasParent, bool replaceIndex)
       : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
                                   RegisterPlan::MaxRegisterId, outputNewRegisterId,
-                                  outputOldRegisterId, outputRegisterId,
-                                  nrInputRegisters, nrOutputRegisters,
-                                  registersToClear, std::move(registersToKeep),
-                                  trx, std::move(options), aqlCollection,
+                                  outputOldRegisterId, outputRegisterId, query,
+                                  std::move(options), aqlCollection,
                                   ProducesResults(false), consultAqlWriteFilter,
                                   ignoreErrors, DoCount(true), IsReplace(false),
                                   ignoreDocumentNotFound),
@@ -97,8 +94,6 @@ struct SingleRemoteModificationExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -108,9 +103,9 @@ struct SingleRemoteModificationExecutor {
   auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&) -> OperationResult;
   auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
                                         OperationResult&) -> void;
-
+  
+  transaction::Methods _trx;
   Infos& _info;
-  Fetcher& _fetcher;
   ExecutionState _upstreamState;
 };
 

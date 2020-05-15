@@ -22,66 +22,14 @@
 
 #include "term_query.hpp"
 
-#include "shared.hpp"
-#include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
+#include "search/score.hpp"
 
 NS_ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         term_query implementation
 // -----------------------------------------------------------------------------
-
-term_query::ptr term_query::make(
-    const index_reader& index,
-    const order::prepared& ord,
-    boost_t boost,
-    const string_ref& field,
-    const bytes_ref& term) {
-  term_query::states_t states(index.size());
-  auto collectors = ord.fixed_prepare_collectors(1);
-
-  // iterate over the segments
-  for (const auto& segment : index) {
-    // get field
-    const auto* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
-    }
-
-    collectors.collect(segment, *reader); // collect field statistics once per segment
-
-    // find term
-    auto terms = reader->iterator();
-
-    if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
-      continue;
-    }
-
-    // read term attributes
-    terms->read();
-
-    // Cache term state in prepared query attributes.
-    // Later, using cached state we could easily "jump" to
-    // postings without relatively expensive FST traversal
-    auto& state = states.insert(segment);
-    state.reader = reader;
-    state.cookie = terms->cookie();
-
-    collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
-  }
-
-  bstring stats(ord.stats_size(), 0);
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
-
-  ord.prepare_stats(stats_buf);
-  collectors.finish(stats_buf, index);
-
-  return memory::make_shared<term_query>(
-    std::move(states), std::move(stats), boost
-  );
-}
 
 term_query::term_query(
     term_query::states_t&& states,
@@ -95,9 +43,10 @@ term_query::term_query(
 doc_iterator::ptr term_query::execute(
     const sub_reader& rdr,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   // get term state for the specified reader
   auto state = states_.find(rdr);
+
   if (!state) {
     // invalid state
     return doc_iterator::empty();
@@ -117,20 +66,20 @@ doc_iterator::ptr term_query::execute(
   }
 
   auto docs = terms->postings(ord.features());
-  auto& attrs = docs->attributes();
+  assert(docs);
 
-  // set score
-  auto& score = attrs.get<irs::score>();
+  if (!ord.empty()) {
+    auto* score = irs::get_mutable<irs::score>(docs.get());
 
-  if (score) {
-    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats_.c_str(), attrs, boost()));
+    if (score) {
+      score->prepare(
+        ord,
+        ord.prepare_scorers(rdr, *state->reader,
+                            stats_.c_str(), *docs, boost()));
+    }
   }
 
   return docs;
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

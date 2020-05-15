@@ -24,6 +24,7 @@
 #include "RestActionHandler.h"
 
 #include "Actions/actions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
@@ -40,9 +41,9 @@ RestActionHandler::RestActionHandler(application_features::ApplicationServer& se
 
 RestStatus RestActionHandler::execute() {
   // check the request path
-  if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
+  if (_request->databaseName() == StaticStrings::SystemDatabase) {
     if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      RequestStatistics::SET_IGNORE(_statistics);
+      _statistics.SET_IGNORE();
     }
   }
 

@@ -231,12 +231,13 @@ function Run (testsuite) {
   let nonMatchedTests = [];
 
   for (var key in definition) {
-    if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
-      // print(`test "${key}" doesn't match "${testFilter}", skipping`);
-      nonMatchedTests.push(key);
-      continue;
-    }
     if (key.indexOf('test') === 0) {
+      if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
+        // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+        nonMatchedTests.push(key);
+        continue;
+      }
+
       var test = { name: key, fn: definition[key]};
 
       tests.push(test);

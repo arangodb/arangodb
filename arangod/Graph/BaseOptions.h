@@ -25,10 +25,10 @@
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/RegexCache.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -39,7 +39,7 @@ namespace aql {
 struct AstNode;
 class ExecutionPlan;
 class Expression;
-class Query;
+class QueryContext;
 
 }  // namespace aql
 
@@ -55,7 +55,7 @@ class SingleServerEdgeCursor;
 class TraverserCache;
 
 struct BaseOptions {
-  public:
+ public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
@@ -73,7 +73,8 @@ struct BaseOptions {
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
+    LookupInfo(arangodb::aql::QueryContext&,
+               arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
     /// @brief Build a velocypack containing all relevant information
@@ -85,19 +86,21 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::Query* query, arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query,
+      arangodb::velocypack::Slice const& definition);
 
-  explicit BaseOptions(arangodb::aql::Query* query);
+  explicit BaseOptions(arangodb::aql::QueryContext& query);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
-  ///        the planning phase; however, the options have to be prepared again
-  ///        (see GraphNode::prepareOptions() and its overrides)
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works
+  ///        after the planning phase; however, the options have to be prepared
+  ///        again (see GraphNode::prepareOptions() and its overrides)
   BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&,
+              arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -116,15 +119,19 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
-  void setCollectionToShard(std::map<std::string, std::string>const&);
+  void setCollectionToShard(std::map<std::string, std::string> const&);
 
   bool produceVertices() const { return _produceVertices; }
-  
+
+  bool produceEdges() const { return _produceEdges; }
+
   void setProduceVertices(bool value) { _produceVertices = value; }
 
-  transaction::Methods* trx() const;
+  void setProduceEdges(bool value) { _produceEdges = value; }
 
-  aql::Query* query() const;
+  transaction::Methods* trx() const;
+  
+  aql::QueryContext& query() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
@@ -132,22 +139,28 @@ struct BaseOptions {
   /// @brief Creates a complete Object containing all index information
   /// in the given builder.
   virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
-  
+
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
   /// @brief whether or not an edge collection shall be excluded
   /// this can be overridden in TraverserOptions
-  virtual bool shouldExcludeEdgeCollection(std::string const& name) const { return false; }
+  virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
+    return false;
+  }
 
   TraverserCache* cache();
   TraverserCache* cache() const;
   void ensureCache();
 
   void activateCache(bool enableDocumentCache,
-                     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+                     std::unordered_map<ServerID, aql::EngineId> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+  
+  aql::RegexCache& regexCache() { return _regexCache; }
+
+  virtual auto estimateDepth() const noexcept -> uint64_t = 0;
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
@@ -164,24 +177,19 @@ struct BaseOptions {
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
-  
+
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
-  aql::Query* _query;
-
-  aql::FixedVarExpressionContext _ctx;
-
-  transaction::Methods* _trx;
+  
+  mutable arangodb::transaction::Methods _trx;
+  arangodb::aql::RegexCache _regexCache; // needed for expression evaluation
+  arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
-
-  /// @brief whether or not the traversal will produce vertices
-  bool _produceVertices;
- 
-  /// @brief whether or not we are running on a coordinator
-  bool const _isCoordinator;
+  
+  aql::QueryContext& _query;
 
   aql::Variable const* _tmpVar;
 
@@ -190,6 +198,15 @@ struct BaseOptions {
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
+  
+  /// @brief whether or not the traversal will produce vertices
+  bool _produceVertices;
+
+  /// @brief whether or not the traversal will produce edges
+  bool _produceEdges{true};
+
+  /// @brief whether or not we are running on a coordinator
+  bool const _isCoordinator;
 };
 
 }  // namespace graph

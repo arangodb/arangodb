@@ -318,7 +318,7 @@ function transactionInvocationSuite () {
     tearDown: function () {
       db._drop(cn);
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: invalid invocations of _createTransaction() function
     // //////////////////////////////////////////////////////////////////////////////
@@ -723,15 +723,15 @@ function transactionInvocationSuite () {
 
         let jobId = result.headers["x-arango-async-id"];
 
+        // wait until job has started...
         let tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
 
-          require("internal").wait(0.5, false);
-          
           if (result.code === 204) {
             break;
           }
+          require("internal").wait(0.5, false);
         }
         
         let trx = db._transactions();
@@ -740,17 +740,17 @@ function transactionInvocationSuite () {
         result = arango.DELETE("/_api/transaction/write");
         assertEqual(result.code, 200);
 
+        // wait until job has been canceled
         tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
-          
-          require("internal").wait(0.5, false);
-          
-          if (result.code === 410) {
+        
+          if (result.code === 410 || result.code === 404) {
             break;
           }
+          require("internal").wait(0.5, false);
         }
-        assertEqual(410, result.code);
+        assertTrue(result.code === 410 || result.code === 404);
       } finally {
         if (trx1 && trx1._id) {
           try { trx1.abort(); } catch (err) {}
@@ -4015,7 +4015,7 @@ function transactionAQLStreamSuite () {
           assertEqual(i, cursor.next());
         }
 
-      } catch(err) {
+      } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor) {
@@ -4052,8 +4052,7 @@ function transactionAQLStreamSuite () {
           while (cursor.hasNext()) {
             cursor.next();
           }
-  
-        } catch(err) {
+        } catch (err) {
           fail("Transaction failed with: " + JSON.stringify(err));
         } finally {
           if (cursor) {
@@ -4101,7 +4100,7 @@ function transactionAQLStreamSuite () {
         assertEqual(100, extras.stats.writesExecuted);
         assertEqual(100, tc.count());
 
-      } catch(err) {
+      } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
         if (cursor1) {
@@ -4121,7 +4120,6 @@ function transactionAQLStreamSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUndeclaredTraversalCollectionStream: function () {
-
       let result;
       // begin trx
       let trx = db._createTransaction({

@@ -36,7 +36,7 @@ namespace aql {
 template <BlockPassthrough allowsPassThrough>
 class SingleRowFetcher;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 class OutputAqlItemRow;
 
 class SubqueryStartExecutor {
@@ -48,12 +48,10 @@ class SubqueryStartExecutor {
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = RegisterInfos;
   using Stats = NoStats;
-  SubqueryStartExecutor(Fetcher& fetcher, Infos& infos);
+  SubqueryStartExecutor(Fetcher&, Infos& infos);
   ~SubqueryStartExecutor() = default;
-
-  [[deprecated]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   // produceRows for SubqueryStart reads a data row from its input and produces
   // a copy of that row and a shadow row. This requires some amount of internal
@@ -70,8 +68,6 @@ class SubqueryStartExecutor {
   // Produce a shadow row *if* we have either skipped or output a datarow
   // previously
   auto produceShadowRow(AqlItemBlockInputRange& input, OutputAqlItemRow& output) -> bool;
-
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;

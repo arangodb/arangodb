@@ -25,7 +25,7 @@
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Cluster/ResultT.h"
 
 namespace arangodb {
@@ -34,17 +34,12 @@ namespace aql {
 class AqlItemBlockManager;
 class DistributeNode;
 
-class DistributeExecutorInfos : public ExecutorInfos, public ClientsExecutorInfos {
+class DistributeExecutorInfos : public ClientsExecutorInfos {
  public:
-  DistributeExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                          std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                          std::unordered_set<RegisterId> registersToClear,
-                          std::unordered_set<RegisterId> registersToKeep,
-                          std::vector<std::string> clientIds, Collection const* collection,
+  DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
                           RegisterId regId, RegisterId alternativeRegId,
                           bool allowSpecifiedKeys, bool allowKeyConversionToObject,
-                          bool createKeys, ScatterNode::ScatterType type);
+                          bool createKeys, bool fixupGraphInput, ScatterNode::ScatterType type);
 
   auto registerId() const noexcept -> RegisterId;
   auto hasAlternativeRegister() const noexcept -> bool;
@@ -60,6 +55,8 @@ class DistributeExecutorInfos : public ExecutorInfos, public ClientsExecutorInfo
 
   auto createKey(VPackSlice input) const -> std::string;
 
+  auto needsToFixGraphInput() const -> bool;
+
  private:
   RegisterId _regId;
   RegisterId _alternativeRegId;
@@ -67,6 +64,7 @@ class DistributeExecutorInfos : public ExecutorInfos, public ClientsExecutorInfo
   bool _createKeys;
   bool _usesDefaultSharding;
   bool _allowSpecifiedKeys;
+  bool _fixupGraphInput;
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
@@ -88,7 +86,7 @@ class DistributeExecutor {
   class ClientBlockData {
    public:
     ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
-                    ExecutorInfos const& scatterInfos);
+                    RegisterInfos const& registerInfos);
 
     auto clear() -> void;
     auto addBlock(SharedAqlItemBlockPtr block, std::vector<size_t> usedIndexes) -> void;
@@ -115,7 +113,7 @@ class DistributeExecutor {
 
    private:
     AqlItemBlockManager& _blockManager;
-    ExecutorInfos const& _infos;
+    RegisterInfos const& registerInfos;
 
     std::deque<std::pair<SharedAqlItemBlockPtr, std::vector<size_t>>> _queue;
     SkipResult _skipped{};
@@ -156,6 +154,8 @@ class DistributeExecutor {
    */
   auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
 
+  auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
+
  private:
   DistributeExecutorInfos const& _infos;
 
@@ -176,7 +176,7 @@ class ExecutionBlockImpl<DistributeExecutor>
     : public BlocksWithClientsImpl<DistributeExecutor> {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
-                     DistributeExecutorInfos&& infos);
+                     RegisterInfos registerInfos, DistributeExecutorInfos&& executorInfos);
 
   ~ExecutionBlockImpl() override = default;
 };

@@ -26,8 +26,8 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Basics/Result.h"
 
@@ -39,19 +39,14 @@ class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SubqueryExecutorInfos : public ExecutorInfos {
+class SubqueryExecutorInfos {
  public:
-  SubqueryExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                        std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                        RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                        std::unordered_set<RegisterId> const& registersToClear,
-                        std::unordered_set<RegisterId>&& registersToKeep,
-                        ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
+  SubqueryExecutorInfos(ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
 
   SubqueryExecutorInfos() = delete;
-  SubqueryExecutorInfos(SubqueryExecutorInfos&&);
+  SubqueryExecutorInfos(SubqueryExecutorInfos&&) noexcept = default;
   SubqueryExecutorInfos(SubqueryExecutorInfos const&) = delete;
-  ~SubqueryExecutorInfos();
+  ~SubqueryExecutorInfos() = default;
 
   inline ExecutionBlock& getSubquery() const { return _subQuery; }
   inline bool returnsData() const { return _returnsData; }
@@ -79,7 +74,7 @@ class SubqueryExecutor {
   using Stats = NoStats;
 
   SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos);
-  ~SubqueryExecutor();
+  ~SubqueryExecutor() = default;
 
   /**
    * @brief Shutdown will be called once for every query
@@ -94,8 +89,6 @@ class SubqueryExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutionState, Stats, AqlCall>;
 
@@ -104,8 +97,6 @@ class SubqueryExecutor {
   template <bool E = isModificationSubquery, std::enable_if_t<E, int> = 0>
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
-
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
   /**

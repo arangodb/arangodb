@@ -26,64 +26,40 @@
 #include "DistinctCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
 
-#define LOG_DEVEL_DISTINCT_COLLECT_ENABLED false
-#define LOG_DEVEL_DC \
-  LOG_DEVEL_IF(LOG_DEVEL_DISTINCT_COLLECT_ENABLED) << __FUNCTION__ << " "
+#define INTERNAL_LOG_DC LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableInputRegisters,
-    std::pair<RegisterId, RegisterId> groupRegister, transaction::Methods* trxPtr)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _groupRegister(groupRegister),
-      _trxPtr(trxPtr) {}
+DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
+                                                           velocypack::Options const* opts)
+    : _groupRegister(std::move(groupRegister)), _vpackOptions(opts) {}
 
 std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
 }
 
-transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
+  return _vpackOptions;
 }
 
-DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
+DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _seen(1024, AqlValueGroupHash(_infos.getTransaction(), 1),
-            AqlValueGroupEqual(_infos.getTransaction())) {}
+      _seen(1024, AqlValueGroupHash(1),
+            AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
 void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
-
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-}
-
-std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  // This block cannot know how many elements will be returned exactly.
-  // but it is upper bounded by the input.
-  return _fetcher.preFetchNumberOfRows(atMost);
-}
 
 [[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
@@ -119,20 +95,20 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutorState state = ExecutorState::HASMORE;
 
-  LOG_DEVEL_DC << output.getClientCall();
+  INTERNAL_LOG_DC << output.getClientCall();
 
   AqlValue groupValue;
 
   while (inputRange.hasDataRow()) {
-    LOG_DEVEL_DC << "output.isFull() = " << std::boolalpha << output.isFull();
+    INTERNAL_LOG_DC << "output.isFull() = " << std::boolalpha << output.isFull();
 
     if (output.isFull()) {
-      LOG_DEVEL_DC << "output is full";
+      INTERNAL_LOG_DC << "output is full";
       break;
     }
 
     std::tie(state, input) = inputRange.nextDataRow();
-    LOG_DEVEL_DC << "inputRange.nextDataRow() = " << state;
+    INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning
@@ -149,7 +125,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  LOG_DEVEL_DC << "returning state " << state;
+  INTERNAL_LOG_DC << "returning state " << state;
   return {inputRange.upstreamState(), {}, {}};
 }
 
@@ -165,17 +141,17 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   AqlValue groupValue;
   size_t skipped = 0;
 
-  LOG_DEVEL_DC << call;
+  INTERNAL_LOG_DC << call;
 
   while (inputRange.hasDataRow()) {
-    LOG_DEVEL_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
+    INTERNAL_LOG_DC << "call.needSkipMore() = " << std::boolalpha << call.needSkipMore();
 
     if (!call.needSkipMore()) {
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
     std::tie(state, input) = inputRange.nextDataRow();
-    LOG_DEVEL_DC << "inputRange.nextDataRow() = " << state;
+    INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
     // for hashing simply re-use the aggregate registers, without cloning

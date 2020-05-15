@@ -24,6 +24,7 @@
 #define ARANGODB_TESTS_MOCK_TYPED_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 
 namespace arangodb::tests::aql {
 
@@ -32,7 +33,7 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  MockTypedNode(::arangodb::aql::ExecutionPlan* plan, size_t id, NodeType);
+  MockTypedNode(::arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id, NodeType);
 
   // return mocked type
   NodeType getType() const final;
@@ -50,7 +51,6 @@ class MockTypedNode : public ::arangodb::aql::ExecutionNode {
                        bool withDependencies, bool withProperties) const override;
 
   ::arangodb::aql::CostEstimate estimateCost() const override;
-
  private:
   NodeType _mockedType{};
 };

@@ -28,28 +28,36 @@
 
 namespace arangodb {
 namespace aql {
-class Query;
+class QueryContext;
+class RegexCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
-  explicit QueryExpressionContext(Query* query)
-      : ExpressionContext(), _query(query) {}
+  explicit QueryExpressionContext(transaction::Methods& trx,
+                                  QueryContext& query,
+                                  RegexCache& cache)
+      : ExpressionContext(),
+        _trx(trx), _query(query), _regexCache(cache) {}
 
-  void registerWarning(int errorCode, char const* msg) override;
-  void registerError(int errorCode, char const* msg) override;
-
+  void registerWarning(int errorCode, char const* msg) override final;
+  void registerError(int errorCode, char const* msg) override final;
+  
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
-                                       bool caseInsensitive) override;
+                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
-                                      bool caseInsensitive) override;
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*,
-                                       bool& isEmptyExpression) override;
+                                      bool caseInsensitive) override final;
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, velocypack::Options const* opts,
+                                       bool& isEmptyExpression) override final;
 
   TRI_vocbase_t& vocbase() const override final;
-  Query* query() const override final;
-
+  /// may be inaccessible on some platforms
+  transaction::Methods& trx() const override final;
+  bool killed() const override final;
+  
  private:
-  Query* _query;
+  transaction::Methods& _trx;
+  QueryContext& _query;
+  RegexCache& _regexCache;
 };
 }  // namespace aql
 }  // namespace arangodb

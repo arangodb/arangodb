@@ -87,25 +87,26 @@ class CalculationExecutorTest
   Expression expr;
   RegisterId outRegID;
   RegisterId inRegID;
-  CalculationExecutorInfos infos;
+  RegisterInfos registerInfos;
+  CalculationExecutorInfos executorInfos;
 
   CalculationExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        ast(fakedQuery.get()),
+        ast(*fakedQuery.get()),
         one(ast.createNodeValueInt(1)),
-        var("a", 0),
+        var("a", 0, false),
         a(::initializeReference(ast, var)),
         node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
         plan(&ast),
-        expr(&plan, &ast, node),
+        expr(&ast, node),
         outRegID(1),
         inRegID(0),
-        infos(outRegID /*out reg*/, RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
-              std::unordered_set<RegisterId>{} /*to clear*/,
-              std::unordered_set<RegisterId>{} /*to keep*/,
-              *fakedQuery.get() /*query*/, expr /*expression*/,
-              std::vector<Variable const*>{&var} /*expression input variables*/,
-              std::vector<RegisterId>{inRegID} /*expression input registers*/) {}
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID},
+                      RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
+                      RegIdSet{} /*to clear*/, RegIdSetStack{{}} /*to keep*/),
+        executorInfos(outRegID /*out reg*/, *fakedQuery.get() /*query*/, expr /*expression*/,
+                      std::vector<Variable const*>{&var} /*expression input variables*/,
+                      std::vector<RegisterId>({inRegID}) /*expression input registers*/) {}
 
   auto getSplit() -> CalculationExecutorSplitType {
     auto [split] = GetParam();
@@ -113,8 +114,7 @@ class CalculationExecutorTest
   }
 
   auto buildInfos() -> CalculationExecutorInfos {
-    return CalculationExecutorInfos{0,    1,      1,  {}, {}, *fakedQuery.get(),
-                                    expr, {&var}, {0}};
+    return CalculationExecutorInfos{0, *fakedQuery.get(), expr, {&var}, {0}};
   }
 };
 
@@ -133,7 +133,8 @@ TEST_P(CalculationExecutorTest, reference_empty_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -149,7 +150,8 @@ TEST_P(CalculationExecutorTest, reference_some_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -174,7 +176,8 @@ TEST_P(CalculationExecutorTest, referece_some_input_skip) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -196,7 +199,8 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -220,7 +224,8 @@ TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -242,7 +247,8 @@ TEST_P(CalculationExecutorTest, condition_some_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -267,7 +273,8 @@ TEST_P(CalculationExecutorTest, condition_some_input_skip) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -289,7 +296,8 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -313,7 +321,8 @@ TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(std::move(registerInfos),
+                                                                    std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
@@ -336,7 +345,8 @@ TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
   ExecutionStats stats{};
 
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(std::move(infos))
+      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(std::move(registerInfos),
+                                                                      std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{
           RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
           RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},

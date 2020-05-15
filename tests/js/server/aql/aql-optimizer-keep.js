@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ KEEP
@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 var internal = require("internal");
 var errors = internal.errors;
 var db = require("@arangodb").db;
@@ -232,7 +233,8 @@ function optimizerKeepTestSuite () {
 
       assertEqual("x", collect.groups[0].outVariable.name);
       assertEqual("g", collect.outVariable.name);
-      assertFalse(collect.hasOwnProperty("keepVariables"));
+      assertTrue(collect.hasOwnProperty("keepVariables"));
+      assertEqual(["doc1", "doc2"], collect.keepVariables.map(v => v.variable.name).sort());
     }
 
   };

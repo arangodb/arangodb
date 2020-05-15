@@ -26,7 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -64,7 +64,7 @@ arangodb::velocypack::StringRef getEdgeDestination(arangodb::velocypack::Slice e
 }
 }  // namespace
 
-TraverserOptions::TraverserOptions(aql::Query* query)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -76,7 +76,8 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       mode(Mode::DFS),
       defaultWeight(1.0) {}
 
-TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
+                                   VPackSlice obj)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
@@ -194,7 +195,7 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
 }
 
-TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
+TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query, VPackSlice info,
                                    VPackSlice collections)
     : BaseOptions(query, info, collections),
       _baseVertexExpression(nullptr),
@@ -232,6 +233,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The options require a mode");
   }
+
   size_t i = read.getNumber<size_t>();
   switch (i) {
     case 0:
@@ -255,7 +257,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
       mode = Mode::BFS;
     }
   }
-
 
   read = info.get("neighbors");
   if (read.isBoolean()) {
@@ -381,14 +382,12 @@ TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       bool emplaced = false;
-      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(
-          d, new aql::Expression(query->plan(), query->ast(), info.value));
+      std::tie(std::ignore, emplaced) =
+          _vertexExpressions.try_emplace(d, new aql::Expression(query.ast(), info.value));
       TRI_ASSERT(emplaced);
 #else
       _vertexExpressions.try_emplace(d, arangodb::lazyConstruct([&] {
-                                       return new aql::Expression(query->plan(),
-                                                                  query->ast(),
-                                                                  info.value);
+                                       return new aql::Expression(query.ast(), info.value);
                                      }));
 #endif
     }
@@ -401,7 +400,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::Query* query, VPackSlice info,
           TRI_ERROR_BAD_PARAMETER,
           "The options require vertexExpressions to be an object");
     }
-    _baseVertexExpression = new aql::Expression(query->plan(), query->ast(), read);
+    _baseVertexExpression.reset(new aql::Expression(query.ast(), read));
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
@@ -439,10 +438,10 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const all
 }
 
 TraverserOptions::~TraverserOptions() {
-  for (auto& pair : _vertexExpressions) {
-    delete pair.second;
-  }
-  delete _baseVertexExpression;
+//  for (auto& pair : _vertexExpressions) {
+//    delete pair.second;
+//  }
+//  delete _baseVertexExpression;
 }
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
@@ -725,9 +724,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
     TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
     idNode->setStringValue(vertexId.data(), vertexId.length());
   }
-  if (edge.isExternal()) {
-    edge = edge.resolveExternal();
-  }
+  edge = edge.resolveExternal();
   return evaluateExpression(expression, edge);
 }
 
@@ -738,14 +735,12 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   auto specific = _vertexExpressions.find(depth);
 
   if (specific != _vertexExpressions.end()) {
-    expression = specific->second;
+    expression = specific->second.get();
   } else {
-    expression = _baseVertexExpression;
+    expression = _baseVertexExpression.get();
   }
 
-  if (vertex.isExternal()) {
-    vertex = vertex.resolveExternal();
-  }
+  vertex = vertex.resolveExternal();
   return evaluateExpression(expression, vertex);
 }
 
@@ -814,12 +809,12 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   return cost;
 }
 
-void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& vars,  // wtf? const r-values
-                                     std::vector<aql::RegisterId> const&& regs,
+void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
+                                     std::vector<aql::RegisterId> regs,
                                      size_t vertexVarIdx, size_t edgeVarIdx,
                                      size_t pathVarIdx, aql::Expression* expr) {
   _pruneExpression =
-      std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, std::move(vars),  // cool, lets move const r-values!!!
+    std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, _regexCache, std::move(vars),  // cool, lets move const r-values!!!
                                                       std::move(regs), vertexVarIdx,
                                                       edgeVarIdx, pathVarIdx, expr);
 }
@@ -832,4 +827,11 @@ double TraverserOptions::weightEdge(VPackSlice edge) const {
 
 bool TraverserOptions::hasWeightAttribute() const {
   return !weightAttribute.empty();
+}
+
+auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
+  // Upper bind this by a random number.
+  // The depth will be used as a power for the estimates.
+  // So having power 7 is evil enough...
+  return std::min(maxDepth, static_cast<uint64_t>(7));
 }

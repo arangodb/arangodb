@@ -95,7 +95,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
       if (canUse && (!excludeSystem || !coll->system())) {
         // We do not need a transaction here
-        methods::Collections::Context ctxt(_vocbase, *coll);
+        methods::Collections::Context ctxt(coll);
 
         collectionRepresentation(ctxt,
                                  /*showProperties*/ false,
@@ -163,9 +163,9 @@ RestStatus RestCollectionHandler::handleCommandGet() {
         obj->add("revision", VPackValue(TRI_RidToString(revId)));
 
         // We do not need a transaction here
-        methods::Collections::Context ctxt(_vocbase, *coll);
+        methods::Collections::Context ctxt(coll);
 
-        collectionRepresentation(*coll,
+        collectionRepresentation(coll,
                                  /*showProperties*/ false,
                                  /*showFigures*/ false,
                                  /*showCount*/ false,
@@ -179,7 +179,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
 
   } else if (sub == "figures") {
     // /_api/collection/<identifier>/figures
-    _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll);
+    _ctxt = std::make_unique<methods::Collections::Context>(coll);
     return waitForFuture(
         collectionRepresentationAsync(*_ctxt,
                                       /*showProperties*/ true,
@@ -190,8 +190,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   } else if (sub == "count") {
     // /_api/collection/<identifier>/count
     initializeTransaction(*coll);
-    _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll,
-                                                            _activeTrx.get());
+    _ctxt = std::make_unique<methods::Collections::Context>(coll, _activeTrx.get());
 
     bool details = _request->parsedValue("details", false);
     return waitForFuture(
@@ -203,7 +202,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
             .thenValue([this](futures::Unit&&) { standardResponse(); }));
   } else if (sub == "properties") {
     // /_api/collection/<identifier>/properties
-    collectionRepresentation(*coll,
+    collectionRepresentation(coll,
                              /*showProperties*/ true,
                              /*showFigures*/ false,
                              /*showCount*/ false,
@@ -213,7 +212,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   } else if (sub == "revision") {
     // /_api/collection/<identifier>/revision
 
-    _ctxt = std::make_unique<methods::Collections::Context>(_vocbase, *coll);
+    _ctxt = std::make_unique<methods::Collections::Context>(coll);
     return waitForFuture(methods::Collections::revisionId(*_ctxt).thenValue(
         [this, coll](OperationResult&& res) {
           if (res.fail()) {
@@ -246,7 +245,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     {
       VPackObjectBuilder obj(&_builder, true);  // need to open object
 
-      collectionRepresentation(*coll,
+      collectionRepresentation(coll,
                                /*showProperties*/ true,
                                /*showFigures*/ false,
                                /*showCount*/ false,
@@ -335,7 +334,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      body, std::unordered_set<std::string>{"doCompact",
+      body, std::unordered_set<std::string>{StaticStrings::DoCompact,
                                             StaticStrings::DataSourceSystem,
                                             StaticStrings::DataSourceId,
                                             "isVolatile",
@@ -355,7 +354,7 @@ void RestCollectionHandler::handleCommandPost() {
                                             StaticStrings::ReplicationFactor,
                                             StaticStrings::MinReplicationFactor, // deprecated
                                             StaticStrings::WriteConcern,
-                                            StaticStrings::Validation,
+                                            StaticStrings::Schema,
                                             "servers"
                                           });
   VPackSlice const parameters = filtered.slice();
@@ -547,7 +546,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           }
 
           // no need to use async method, no
-          collectionRepresentation(*coll,
+          collectionRepresentation(coll,
                                    /*showProperties*/ false,
                                    /*showFigures*/ false,
                                    /*showCount*/ false,
@@ -559,7 +558,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     std::vector<std::string> keep = {StaticStrings::DoCompact,
                                      StaticStrings::JournalSize,
                                      StaticStrings::WaitForSyncString,
-                                     StaticStrings::Validation,
+                                     StaticStrings::Schema,
                                      StaticStrings::IndexBuckets,
                                      StaticStrings::ReplicationFactor,
                                      StaticStrings::MinReplicationFactor,  // deprecated
@@ -616,9 +615,24 @@ RestStatus RestCollectionHandler::handleCommandPut() {
           standardResponse();
         }));
 
+  } else if (sub == "upgrade") {
+    return waitForFuture(
+        methods::Collections::upgrade(_vocbase, *coll).thenValue([this, coll](Result&& res) {
+          if (res.fail()) {
+            generateTransactionError(coll->name(), res, "");
+            return;
+          }
+
+          {
+            VPackObjectBuilder obj(&_builder, true);
+            obj->add("result", VPackValue(res.ok()));
+          }
+
+          standardResponse();
+        }));
   }
 
-  res = handleExtraCommandPut(*coll, sub, _builder);
+  res = handleExtraCommandPut(coll, sub, _builder);
   if (res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
     res.reset(
         TRI_ERROR_HTTP_NOT_FOUND,
@@ -645,7 +659,7 @@ void RestCollectionHandler::handleCommandDelete() {
   }
 
   std::string const& name = suffixes[0];
-  bool allowDropSystem = _request->parsedValue("isSystem", false);
+  bool allowDropSystem = _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
@@ -685,21 +699,21 @@ void RestCollectionHandler::collectionRepresentation(std::string const& name,
     THROW_ARANGO_EXCEPTION(r);
   }
   TRI_ASSERT(coll);
-  collectionRepresentation(*coll, showProperties, showFigures, showCount, detailedCount);
+  collectionRepresentation(coll, showProperties, showFigures, showCount, detailedCount);
 }
 
-void RestCollectionHandler::collectionRepresentation(LogicalCollection& coll,
+void RestCollectionHandler::collectionRepresentation(std::shared_ptr<LogicalCollection> coll,
                                                      bool showProperties, bool showFigures,
                                                      bool showCount, bool detailedCount) {
   if (showProperties || showCount) {
     // Here we need a transaction
-    initializeTransaction(coll);
-    methods::Collections::Context ctxt(_vocbase, coll, _activeTrx.get());
+    initializeTransaction(*coll);
+    methods::Collections::Context ctxt(coll, _activeTrx.get());
 
     collectionRepresentation(ctxt, showProperties, showFigures, showCount, detailedCount);
   } else {
     // We do not need a transaction here
-    methods::Collections::Context ctxt(_vocbase, coll);
+    methods::Collections::Context ctxt(coll);
 
     collectionRepresentation(ctxt, showProperties, showFigures, showCount, detailedCount);
   }

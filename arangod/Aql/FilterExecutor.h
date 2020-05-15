@@ -27,7 +27,7 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -38,17 +38,14 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 class FilterStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class FilterExecutorInfos : public ExecutorInfos {
+class FilterExecutorInfos {
  public:
-  FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear,
-                      std::unordered_set<RegisterId> registersToKeep);
+  explicit FilterExecutorInfos(RegisterId inputRegister);
 
   FilterExecutorInfos() = delete;
   FilterExecutorInfos(FilterExecutorInfos&&) = default;
@@ -84,13 +81,6 @@ class FilterExecutor {
   ~FilterExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  [[nodiscard]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
    * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
@@ -106,14 +96,11 @@ class FilterExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
-  [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
 };
 
 }  // namespace arangodb::aql

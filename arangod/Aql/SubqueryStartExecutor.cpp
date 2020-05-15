@@ -32,12 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos) {}
-
-std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+SubqueryStartExecutor::SubqueryStartExecutor(Fetcher&, Infos&) {}
 
 auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
@@ -94,25 +89,19 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   return false;
 }
 
-// TODO: remove me
-auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
-    -> std::pair<ExecutionState, size_t> {
-  TRI_ASSERT(false);
-  return {ExecutionState::DONE, 0};
-}
-
 [[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
-  // NOTE:
-  // As soon as we can overfetch data, this needs to be modified to
-  // returnVlaue * countDataRows();
+  // The DataRow is consumed after a shadowRow is produced.
+  // So if there is no datarow in the input we will not create a data or a
+  // shadowRow, we might be off by one, if we get asked this and have written the
+  // last dataRow. However, as we only overallocate a single row then, this is not too bad.
   if (input.countDataRows() > 0) {
     // We will write one ShadowRow
     if (call.getLimit() > 0) {
       // We will write one DataRow
-      return 2;
+      return 2 * input.countDataRows();
     }
-    return 1;
+    return input.countDataRows();
   }
   // Nothing to create here.
   return 0;

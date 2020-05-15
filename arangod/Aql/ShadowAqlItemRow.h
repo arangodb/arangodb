@@ -95,6 +95,8 @@ class ShadowAqlItemRow {
    */
   [[nodiscard]] AqlValue const& getValue(RegisterId registerId) const;
 
+  [[nodiscard]] AqlValue stealAndEraseValue(RegisterId registerId);
+
   /// @brief get the depthValue of the shadow row as AqlValue
   [[nodiscard]] AqlValue const& getShadowDepthValue() const;
 

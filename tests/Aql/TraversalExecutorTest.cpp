@@ -56,10 +56,11 @@ namespace aql {
 
 class TestGraph {
  public:
-  TestGraph(std::string const& vertexCollection, std::string const& edgeCollection)
-      : _vertexCollection(vertexCollection), _edgeCollection(edgeCollection) {}
+  TestGraph(std::string vertexCollection, std::string edgeCollection)
+      : _vertexCollection(std::move(vertexCollection)),
+        _edgeCollection(std::move(edgeCollection)) {}
 
-  void addVertex(std::string key) {
+  void addVertex(std::string const& key) {
     VPackBuilder vertex;
     vertex.openObject();
     vertex.add(StaticStrings::IdString, VPackValue(_vertexCollection + "/" + key));
@@ -141,7 +142,7 @@ class GraphEnumerator : public PathEnumerator {
 
   void setStartVertex(arangodb::velocypack::StringRef startVertex) override {
     PathEnumerator::setStartVertex(startVertex);
-  
+
     _idx = 0;
     _depth = 0;
     _currentDepth.clear();
@@ -194,8 +195,8 @@ class GraphEnumerator : public PathEnumerator {
 
 class TraverserHelper : public Traverser {
  public:
-  TraverserHelper(TraverserOptions* opts, transaction::Methods* trx, TestGraph const& g)
-      : Traverser(opts, trx), _graph(g) {
+  TraverserHelper(TraverserOptions* opts, TestGraph const& g)
+      : Traverser(opts), _graph(g) {
     _enumerator.reset(new GraphEnumerator(this, _opts, _graph));
   }
 
@@ -248,7 +249,7 @@ class TraverserHelper : public Traverser {
 };
 
 static TraverserOptions generateOptions(arangodb::aql::Query* query, size_t min, size_t max) {
-  TraverserOptions options{query};
+  TraverserOptions options{*query};
   options.minDepth = min;
   options.maxDepth = max;
   return options;
@@ -266,7 +267,6 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   SharedAqlItemBlockPtr block;
 
   TraverserOptions traversalOptions;
-  arangodb::transaction::Methods* trx;
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
 
   TestGraph myGraph;
@@ -275,32 +275,26 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
   RegisterId inReg;
   RegisterId outReg;
   TraverserHelper* traverser;
-  std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
   std::string const noFixed;
-  TraversalExecutorInfos infos;
+  RegisterInfos registerInfos;
+  TraversalExecutorInfos executorInfos;
 
   TraversalExecutorTestInputStartVertex()
       : fakedQuery(server.createFakeQuery()),
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
-        trx(fakedQuery->trx()),
         myGraph("v", "e"),
-        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
+        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         inReg(0),
         outReg(1),
         traverser(traverserPtr.get()),
-        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{inReg})),
-        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{outReg})),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         noFixed(""),
-        infos(inputRegisters, outputRegisters, 1, 2, {}, {0}, std::move(traverserPtr),
-              registerMapping, noFixed, inReg, filterConditionVariables)
+        registerInfos(RegIdSet{inReg}, RegIdSet{outReg}, 1, 2, {}, {RegIdSet{0}}),
+        executorInfos(std::move(traverserPtr), registerMapping, noFixed, inReg, filterConditionVariables)
 
   {}
 };
@@ -309,15 +303,15 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_no_rows_upstream_produce
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false);
 
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{}}});
-  auto input =
-      AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
+  auto input = AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
   AqlCall call;
 
   std::tie(state, stats, call) = testee.produceRows(input, result);
@@ -331,7 +325,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_p
   myGraph.addVertex("3");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock =
@@ -340,8 +334,8 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_producer_p
   auto input =
       AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
-  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
+                       registerInfos.registersToKeep(), registerInfos.registersToClear());
   auto call = AqlCall{};
 
   std::tie(state, stats, call) = testee.produceRows(input, row);
@@ -365,7 +359,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_no_edges_are_connec
   myGraph.addVertex("3");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), true);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock =
@@ -374,8 +368,8 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_no_edges_are_connec
   auto input =
       AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
-  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
+                       registerInfos.registersToKeep(), registerInfos.registersToClear());
   auto call = AqlCall{};
 
   std::tie(state, stats, call) = testee.produceRows(input, row);
@@ -400,7 +394,7 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_edges_are_
   myGraph.addVertex("3");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), true);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock =
@@ -414,8 +408,8 @@ TEST_F(TraversalExecutorTestInputStartVertex, there_are_rows_upstream_edges_are_
   myGraph.addEdge("3", "1", "3->1");
 
   ExecutionStats total;
-  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
+                       registerInfos.registersToKeep(), registerInfos.registersToClear());
   auto call = AqlCall{};
 
   std::tie(state, stats, call) = testee.produceRows(input, row);
@@ -451,7 +445,6 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   SharedAqlItemBlockPtr block;
 
   TraverserOptions traversalOptions;
-  arangodb::transaction::Methods* trx;
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
 
   TestGraph myGraph;
@@ -464,41 +457,38 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
   std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId, TraversalExecutorInfos::OutputNameHash> registerMapping;
 
   std::string const fixed;
-  TraversalExecutorInfos infos;
+  RegisterInfos registerInfos;
+  TraversalExecutorInfos executorInfos;
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
-        trx(fakedQuery->trx()),
         myGraph("v", "e"),
-        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, trx, myGraph)),
+        traverserPtr(std::make_unique<TraverserHelper>(&traversalOptions, myGraph)),
         outReg(1),
         traverser(traverserPtr.get()),
-        inputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        outputRegisters(std::make_shared<std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{1})),
         registerMapping{{TraversalExecutorInfos::OutputName::VERTEX, outReg}},
         fixed("v/1"),
-        infos(inputRegisters, outputRegisters, 1, 2, {}, {0},
-              std::move(traverserPtr), registerMapping, fixed,
-              RegisterPlan::MaxRegisterId, filterConditionVariables) {}
+        registerInfos({}, RegIdSet{1}, 1, 2, {}, {RegIdSet{0}}),
+        executorInfos(std::move(traverserPtr), registerMapping, fixed,
+                      RegisterPlan::MaxRegisterId, filterConditionVariables) {}
 };
 
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesnt_produce) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
   auto input =
       AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
   AqlCall call;
 
   std::tie(state, stats, call) = testee.produceRows(input, result);
@@ -509,15 +499,15 @@ TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream_producer_doesn
 TEST_F(TraversalExecutorTestConstantStartVertex, no_rows_upstream) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), true);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock = buildBlock<1>(itemBlockManager, MatrixBuilder<1>{{{{}}}});
   auto input =
       AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow result(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(), registerInfos.registersToClear());
   AqlCall call;
 
   std::tie(state, stats, call) = testee.produceRows(input, result);
@@ -533,7 +523,7 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_w
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
 
   auto inputBlock =
@@ -542,8 +532,8 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_doesnt_w
   auto input =
       AqlItemBlockInputRange{ExecutorState::DONE, 0, inputBlock, 0};
 
-  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
+                       registerInfos.registersToKeep(), registerInfos.registersToClear());
   AqlCall call;
 
   std::tie(state, stats, call) = testee.produceRows(input, row);
@@ -568,10 +558,10 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_upstream_producer_waits_no
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), true);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
-  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
+                       registerInfos.registersToKeep(), registerInfos.registersToClear());
 
   auto inputBlock =
       buildBlock<1>(itemBlockManager,
@@ -604,14 +594,14 @@ TEST_F(TraversalExecutorTestConstantStartVertex, rows_edges_connected) {
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, VPackParser::fromJson("[]")->steal(), true);
-  TraversalExecutor testee(fetcher, infos);
+  TraversalExecutor testee(fetcher, executorInfos);
   TraversalStats stats{};
   myGraph.addEdge("1", "2", "1->2");
   myGraph.addEdge("2", "3", "2->3");
   myGraph.addEdge("3", "1", "3->1");
   ExecutionStats total;
-  OutputAqlItemRow row(std::move(block), infos.getOutputRegisters(),
-                       infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow row(std::move(block), registerInfos.getOutputRegisters(),
+                       registerInfos.registersToKeep(), registerInfos.registersToClear());
 
   auto inputBlock =
       buildBlock<1>(itemBlockManager,

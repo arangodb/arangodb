@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
-  arangodb::aql::RegisterId const nrRegs = block->getNrRegs();
+  auto const nrRegs = block->getNrRegs();
   for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
@@ -132,10 +132,21 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
   return false;
 }
 
+namespace {
+
+auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
+  auto regsToKeepStack = RegIdFlatSetStack{};
+  auto& regsToKeep = regsToKeepStack.emplace_back();
+  for (RegisterId i = 0; i < size; i++) {
+    regsToKeep.emplace(i);
+  }
+  return regsToKeepStack;
+}
+
+}  // namespace
+
 ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _state(ExecutionState::HASMORE),
       _returnNext(0),
       _rowsPushed(0),
       _rowsRead(0),
@@ -144,9 +155,8 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
                                                          _infos.numberOfOutputRegisters())),
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.vpackOptions(),
                                                      _infos.sortRegisters())),
-      _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
-                     make_shared_unordered_set(_infos.numberOfOutputRegisters()),
-                     _infos.registersToClear()} {
+      _regsToKeep(initRegsToKeep(_infos.numberOfOutputRegisters())),
+      _heapOutputRow{_heapBuffer, _outputRegister, _regsToKeep, _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);
   _rows.reserve(infos.limit());
   _cmpHeap->setBuffer(_heapBuffer.get());
@@ -271,33 +281,26 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   return {state, NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
-std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(size_t) const {
-  // This block cannot support atMost
-  size_t rowsLeft = 0;
-  if (_state != ExecutionState::DONE) {
-    ExecutionState state;
-    size_t expectedRows;
-    std::tie(state, expectedRows) =
-        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(expectedRows == 0);
-      return {state, 0};
-    }
-    // Return the minimum of upstream + limit
-    rowsLeft = (std::min)(expectedRows, _infos.limit());
-  } else {
-    // We have exactly the following rows available:
-    rowsLeft = _rows.size() - _returnNext;
+[[nodiscard]] auto ConstrainedSortExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  size_t rowsPerBlock = _infos.limit();
+  size_t subqueries = input.countShadowRows();
+  if (subqueries == 0) {
+    // we are a top level block, just pretend we run in the only subquery.
+    subqueries = 1;
   }
-
-  if (rowsLeft == 0) {
-    if (doneSkipping()) {
-      return {ExecutionState::DONE, rowsLeft};
-    }
-    // We always report at least 1 row here, for a possible LIMIT block with fullCount to work.
-    // However, we should never have to do this if the LIMIT block doesn't overfetch with getSome.
-    rowsLeft = 1;
+  // we return rowsPerBlock for every subquery.
+  size_t totalRows = subqueries * rowsPerBlock;
+  // We can only have returnNext reach the total amount of Rows in a block
+  // We have at least 1 block, hence totalRows needs to be higher
+  TRI_ASSERT(_returnNext <= totalRows);
+  // We have totalRows at most available.
+  // adn we have _returnNext many of them already returned
+  // from the first data-rows block.
+  // In unlucky case we overestumate here, if we get called
+  // while operating on any other data-row block then the first.
+  if (input.countShadowRows() == 0) {
+    return std::min(call.getLimit(), totalRows - _returnNext);
   }
-
-  return {ExecutionState::HASMORE, rowsLeft};
+  return totalRows - _returnNext;
 }

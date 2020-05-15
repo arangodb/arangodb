@@ -150,13 +150,13 @@ TEST_F(IResearchQueryOptionsTest, Collections) {
         {
           insertedDocs.emplace_back();
           auto const res =
-              collections[0]->insert(&trx, doc, insertedDocs.back(), opt, false);
+              collections[0]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         {
           insertedDocs.emplace_back();
           auto const res =
-              collections[1]->insert(&trx, doc, insertedDocs.back(), opt, false);
+              collections[1]->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
         ++i;
@@ -751,7 +751,7 @@ TEST_F(IResearchQueryOptionsTest, WaitForSync) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
         ++i;
       }
@@ -885,7 +885,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
       "{ \
         \"name\": \"testView\", \
         \"type\": \"arangosearch\", \
-        \"storedValues\": [\"str\", \"value\", \"_id\"] \
+        \"storedValues\": [{\"fields\":[\"str\"]}, {\"fields\":[\"value\"]}, {\"fields\":[\"_id\"]}] \
       }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
@@ -965,7 +965,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, false);
+            logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -986,7 +986,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
         insertedDocs.emplace_back();
         auto const res =
-            logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt, false);
+            logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
         EXPECT_TRUE(res.ok());
       }
     }
@@ -1068,9 +1068,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"),
-                               arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr,
+                               arangodb::velocypack::Parser::fromJson("{}"));
     auto const res = query.explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();
@@ -1104,9 +1103,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     EXPECT_TRUE(arangodb::tests::assertRules(
         vocbase, queryString, {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), nullptr,
-                               arangodb::velocypack::Parser::fromJson("{}"),
-                               arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString), nullptr,
+                               arangodb::velocypack::Parser::fromJson("{}"));
     auto const res = query.explain();
     ASSERT_TRUE(res.data);
     auto const explanation = res.data->slice();

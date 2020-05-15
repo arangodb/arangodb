@@ -31,7 +31,6 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -48,7 +47,9 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack:
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options) {
+  // cppcheck-suppress *
   _forwardCursor = _options.buildCursor(false);
+  // cppcheck-suppress *
   _backwardCursor = _options.buildCursor(true);
 }
 

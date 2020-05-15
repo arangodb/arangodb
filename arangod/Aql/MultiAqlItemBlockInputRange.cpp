@@ -24,6 +24,7 @@
 #include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <numeric>
 
@@ -31,6 +32,21 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+  static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
+    if (!row.isInitialized()) {
+      return false;
+    }
+    for (RegisterId registerId = 0; registerId < row.getNrRegisters(); ++registerId) {
+      if (!row.getValue(registerId).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
 
 MultiAqlItemBlockInputRange::MultiAqlItemBlockInputRange(ExecutorState state,
                                                          std::size_t skipped,
@@ -103,13 +119,28 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
                      });
 }
 
-// TODO: * It doesn't matter which shadow row we peek, they should all be the same
-//       * assert that all dependencies are on a shadow row?
+// * It doesn't matter which shadow row we peek, they should all be the same
 auto MultiAqlItemBlockInputRange::peekShadowRow() const -> arangodb::aql::ShadowAqlItemRow {
-  TRI_ASSERT(!hasDataRow());
-  TRI_ASSERT(!_inputs.empty());
-  // TODO: Correct?
-  return _inputs.at(0).peekShadowRow();
+  if (!hasShadowRow()) {
+    return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
+  }
+
+  // All Ranges are on the same shadow Row.
+  auto row = _inputs.at(0).peekShadowRow();
+  if (RowHasNonEmptyValue(row)) {
+    return row;
+  }
+  for (size_t i = 1; i < _inputs.size(); ++i) {
+    auto const otherrow = _inputs.at(i).peekShadowRow();
+    if (RowHasNonEmptyValue(otherrow)) {
+      return otherrow;
+    }
+  }
+  // There is a smallish chance that actually
+  // None of the shadowRows contains data
+  // That is if no register needs to be bypassed
+  // in the query.
+  return row;
 }
 
 auto MultiAqlItemBlockInputRange::nextShadowRow()
@@ -117,12 +148,30 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   TRI_ASSERT(!hasDataRow());
 
   // Need to consume all shadow rows simultaneously.
-  // TODO: Assert we're on the correct shadow row for all upstreams
-  auto state = ExecutorState::HASMORE;
-  auto shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint()};
-
-  for (auto& i : _inputs) {
-    std::tie(state, shadowRow) = i.nextShadowRow();
+  // Only one (a random one) will contain the data.
+  TRI_ASSERT(!_inputs.empty());
+  auto [state, shadowRow] = _inputs.at(0).nextShadowRow();
+  
+  bool foundData = ::RowHasNonEmptyValue(shadowRow);
+  for (size_t i = 1; i < _inputs.size(); ++i) {
+    auto [otherState, otherRow] = _inputs.at(i).nextShadowRow();
+    // All inputs need to be in the same part of the query.
+    // We cannot have overlapping subquery executions.
+    TRI_ASSERT(state == otherState);
+    // We can only have all rows initialized or none.
+    TRI_ASSERT(shadowRow.isInitialized() == otherRow.isInitialized());
+    if (!foundData) {
+      if (::RowHasNonEmptyValue(otherRow)) {
+        // We found the one that contains data.
+        // Take it
+        shadowRow = otherRow;
+        foundData = true;
+      }
+    } else {
+      // we allready have the filled one.
+      // Just assert the others are empty for correctness
+      TRI_ASSERT(! ::RowHasNonEmptyValue(otherRow));
+    }
   }
   return {state, shadowRow};
 }
@@ -183,4 +232,37 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
   for (size_t i = 0; i < _inputs.size(); ++i) {
     _inputs[i] = AqlItemBlockInputRange(ExecutorState::HASMORE);
   }
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::countDataRows() const noexcept
+    -> std::size_t {
+  size_t count = 0;
+  for (auto const& range : _inputs) {
+    count += range.countDataRows();
+  }
+  return count;
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::countShadowRows() const noexcept
+    -> std::size_t {
+  size_t count = 0;
+  for (auto const& range : _inputs) {
+    // Every range will convey the same shadowRows.
+    // They can only be taken in a synchronous way on all ranges
+    // at the same time.
+    // So the amount of ShadowRows that we can produce here is
+    // upperbounded by the maximum of shadowRows in each range.
+    count = std::max(count, range.countShadowRows());
+  }
+  return count;
+}
+
+[[nodiscard]] auto MultiAqlItemBlockInputRange::finalState() const noexcept -> ExecutorState {
+  bool hasMore = std::any_of(_inputs.begin(), _inputs.end(), [](auto const& range) {
+    return range.finalState() == ExecutorState::HASMORE;
+  });
+  if (hasMore) {
+    return ExecutorState::HASMORE;
+  }
+  return ExecutorState::DONE;
 }

@@ -29,7 +29,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -40,19 +40,16 @@ namespace aql {
 
 class InputAqlItemRow;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 struct AqlCall;
 class AqlItemBlockInputRange;
 
-class CountCollectExecutorInfos : public ExecutorInfos {
+class CountCollectExecutorInfos {
  public:
-  CountCollectExecutorInfos(RegisterId collectRegister, RegisterId nrInputRegisters,
-                            RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep);
+  explicit CountCollectExecutorInfos(RegisterId collectRegister);
 
   CountCollectExecutorInfos() = delete;
   CountCollectExecutorInfos(CountCollectExecutorInfos&&) = default;
@@ -102,8 +99,6 @@ class CountCollectExecutor {
    */
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
-
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;

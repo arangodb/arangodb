@@ -44,9 +44,9 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
+TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
-      _trx(query->trx()),
+      _trx(opts->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(4096), /* arbitrary block-size may be adjusted for performance */
@@ -111,7 +111,7 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
   }
 
   Result res = _trx->documentFastPathLocal(collectionName,
-                                           id.substr(pos + 1), _mmdr, true);
+                                           id.substr(pos + 1), _mmdr);
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr.vpack());
@@ -126,7 +126,7 @@ VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::String
 
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  _query.warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
   // This is expected, we may have dangling edges. Interpret as NULL
   return arangodb::velocypack::Slice::nullSlice();
 }

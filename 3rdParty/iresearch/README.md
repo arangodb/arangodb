@@ -194,12 +194,12 @@ ICU_ROOT=<path-to-icu>
 
 #### install (*nix)
 
-> the custom CMakeLists.txt was based on revision 5137019d68befd633ce8b1cd48065f41e77ed43e
-> later versions may be used at your own risk of compilation failure
+> the custom CMakeLists.txt is intended to be used with snowball v2.0.0 
+> and later versions. At least it was tested to work on commit
+> 53739a805cfa6c77ff8496dc711dc1c106d987c1
 
 ```bash
 git clone https://github.com/snowballstem/snowball.git
-git reset --hard 5137019d68befd633ce8b1cd48065f41e77ed43e
 mkdir build && cd build
 cmake -DENABLE_STATIC=OFF -DNO_SHARED=OFF -g "Unix Makefiles" ..
 cmake --build .
@@ -573,7 +573,7 @@ The following grammar is currently defined via Bison (the root is <query>):
 
 ## Supported compilers
 
-- GCC: 4.9, 5, 6, 7, 8.3
+- GCC: 7.3-7.5, 8.1-8.4, 9.1-9.3
 - MSVC: 17 (VS 2015), 19 (VS 2017)
 - Apple Clang: 9
 

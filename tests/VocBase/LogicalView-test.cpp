@@ -173,13 +173,9 @@ TEST_F(LogicalViewTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
@@ -191,13 +187,9 @@ TEST_F(LogicalViewTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
+                                  arangodb::auth::Level::RO, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
@@ -210,13 +202,9 @@ TEST_F(LogicalViewTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW) {}
+                                  arangodb::auth::Level::RW, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }

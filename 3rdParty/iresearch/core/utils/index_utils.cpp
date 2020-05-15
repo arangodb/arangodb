@@ -500,7 +500,3 @@ void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
 
 NS_END // index_utils
 NS_END // NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

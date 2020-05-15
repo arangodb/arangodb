@@ -25,7 +25,6 @@
 
 #include "data_input.hpp"
 #include "data_output.hpp"
-#include "utils/attributes_provider.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
@@ -34,6 +33,8 @@
 #include <vector>
 
 NS_ROOT
+
+class attribute_store;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_lock
@@ -125,10 +126,9 @@ ENABLE_BITMASK_ENUM(IOAdvice); // enable bitmap operations on the enum
 /// @struct directory
 /// @brief represents a flat directory of write once/read many files
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API directory 
-  : public util::attribute_store_provider,
-    private util::noncopyable {
-  typedef std::function<bool(std::string& name)> visitor_f;
+struct IRESEARCH_API directory : private util::noncopyable {
+ public:
+  using visitor_f = std::function<bool(std::string&)>;
 
   DECLARE_UNIQUE_PTR(directory);
   DEFINE_FACTORY_INLINE(directory)
@@ -152,8 +152,8 @@ struct IRESEARCH_API directory
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
   virtual bool exists(
-    bool& result, const std::string& name
-  ) const noexcept = 0;
+    bool& result,
+    const std::string& name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief returns the length of the file specified by the given name
@@ -162,8 +162,8 @@ struct IRESEARCH_API directory
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
   virtual bool length(
-    uint64_t& result, const std::string& name
-  ) const noexcept = 0;
+    uint64_t& result,
+    const std::string& name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief creates an index level lock with the specified name 
@@ -179,8 +179,8 @@ struct IRESEARCH_API directory
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
   virtual bool mtime(
-    std::time_t& result, const std::string& name
-  ) const noexcept = 0;
+    std::time_t& result,
+    const std::string& name) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens input stream associated with the existing file
@@ -189,8 +189,7 @@ struct IRESEARCH_API directory
   ////////////////////////////////////////////////////////////////////////////
   virtual index_input::ptr open(
     const std::string& name,
-    IOAdvice advice
-  ) const noexcept = 0;
+    IOAdvice advice) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief removes the file specified by the given name from directory
@@ -206,8 +205,8 @@ struct IRESEARCH_API directory
   /// @returns true if file has been renamed
   ////////////////////////////////////////////////////////////////////////////
   virtual bool rename(
-    const std::string& src, const std::string& dst
-  ) noexcept = 0;
+    const std::string& src,
+    const std::string& dst) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief ensures that all modification have been sucessfully persisted
@@ -223,6 +222,18 @@ struct IRESEARCH_API directory
   /// @exceptions any exception thrown by the visitor
   ////////////////////////////////////////////////////////////////////////////
   virtual bool visit(const visitor_f& visitor) const = 0;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns mutable directory attributes
+  ////////////////////////////////////////////////////////////////////////////
+  virtual irs::attribute_store& attributes() noexcept = 0;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// @returns immutable directory attributes
+  ////////////////////////////////////////////////////////////////////////////
+  const irs::attribute_store& attributes() const noexcept {
+    return const_cast<directory*>(this)->attributes();
+  }
 }; // directory
 
 NS_END

@@ -36,11 +36,13 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "ExecutorTestHelper.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 #include <functional>
 
@@ -59,32 +61,29 @@ class DistinctCollectExecutorTest
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
-  arangodb::transaction::Methods* trx;
+  // arangodb::transaction::Methods* trx;
 
-  std::unordered_set<RegisterId> const regToClear;
-  std::unordered_set<RegisterId> const regToKeep;
-
-  std::unordered_set<RegisterId> readableInputRegisters = {0};
-  std::unordered_set<RegisterId> writeableOutputRegisters = {1};
+  RegIdSet readableInputRegisters = RegIdSet{0};
+  RegIdSet writeableOutputRegisters = RegIdSet{1};
 
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
   NoStats stats;
 
-  DistinctCollectExecutorInfos infos;
+  RegisterInfos registerInfos;
+  DistinctCollectExecutorInfos executorInfos;
 
   DistinctCollectExecutorTest()
-      : trx(fakedQuery->trx()),
-        infos(1 /*nrIn*/, 2 /*nrOut*/, regToClear, regToKeep,
-              std::move(readableInputRegisters), std::move(writeableOutputRegisters),
-              std::make_pair<RegisterId, RegisterId>(1, 0), trx) {}
+      : registerInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters),
+                      1, 2, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
+        executorInfos(std::make_pair<RegisterId, RegisterId>(1, 0), &VPackOptions::Defaults) {}
 };
 
 TEST_P(DistinctCollectExecutorTest, split_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<DistinctCollectExecutor>(std::move(infos))
+      .addConsumer<DistinctCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
@@ -98,7 +97,7 @@ TEST_P(DistinctCollectExecutorTest, split_3) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<DistinctCollectExecutor>(std::move(infos))
+      .addConsumer<DistinctCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 2, 1, 2, 5, 4, 3, 3, 1, 2)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
@@ -112,7 +111,7 @@ TEST_P(DistinctCollectExecutorTest, split_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper()
-      .addConsumer<DistinctCollectExecutor>(std::move(infos))
+      .addConsumer<DistinctCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2, true})

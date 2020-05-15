@@ -29,8 +29,8 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 
 #include <cstddef>
 #include <memory>
@@ -45,24 +45,30 @@ namespace aql {
 struct AqlCall;
 class AqlItemBlockInputMatrix;
 class AllRowsFetcher;
-class ExecutorInfos;
+class RegisterInfos;
 class NoStats;
 class OutputAqlItemRow;
 class AqlItemBlockManager;
 struct SortRegister;
 
-class SortExecutorInfos : public ExecutorInfos {
+class SortExecutorInfos {
  public:
-  SortExecutorInfos(std::vector<SortRegister> sortRegisters, std::size_t limit,
-                    AqlItemBlockManager& manager, RegisterId nrInputRegisters,
-                    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-                    std::unordered_set<RegisterId> registersToKeep,
-                    velocypack::Options const*, bool stable);
+  SortExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
+                    RegIdFlatSet const& registersToClear,
+                    std::vector<SortRegister> sortRegisters, std::size_t limit,
+                    AqlItemBlockManager& manager,
+                    velocypack::Options const* options, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
   SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos() = default;
+
+  [[nodiscard]] RegisterCount numberOfInputRegisters() const;
+
+  [[nodiscard]] RegisterCount numberOfOutputRegisters() const;
+
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const;
 
   [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
 
@@ -75,6 +81,9 @@ class SortExecutorInfos : public ExecutorInfos {
   [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
 
  private:
+  RegisterCount _numInRegs;
+  RegisterCount _numOutRegs;
+  RegIdFlatSet _registersToClear;
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   velocypack::Options const* _vpackOptions;
@@ -96,18 +105,9 @@ class SortExecutor {
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
-  SortExecutor(Fetcher& fetcher, Infos&);
+  SortExecutor(Fetcher&, Infos& infos);
   ~SortExecutor();
 
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const;
   void initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix);
 
   /**
@@ -126,13 +126,14 @@ class SortExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputMatrix& inputMatrix, AqlCall& call);
 
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   void doSorting();
 
  private:
   Infos& _infos;
-
-  Fetcher& _fetcher;
 
   AqlItemMatrix const* _input;
   InputAqlItemRow _currentRow;

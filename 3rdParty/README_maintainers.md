@@ -10,37 +10,13 @@ https://www.boost.org/
 (we don't ship the upstream documentation!)
 To remove some unused doc files, you can run something as follows:
 
-    cd 3rdParty/boost/1.69.0
+    cd 3rdParty/boost/1.71.0
     for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
 
 ## cmake
 
 Custom boost locator
-
-## curl
-
-HTTP client library https://curl.haxx.se/
-
-We apply several build system patches to avoid unneccessary recompiles, bugfixes.
-
-For example, we commented out curl's check for nroff to avoid documentation
-building (and complaining about it on Windows).
-
-We also deactivated some of curl's install CMake commands, as we don't need
-anything installed (apart from that the vanilla curl install commands don't work
-when compiled as part of ArangoDB).
-
-We also disabled adding the OpenSSL libraries via the following command:
-
-   list(APPEND CURL_LIBS OpenSSL::SSL OpenSSL::Crypto)
-
-and instead are using the command
- 
-   list(APPEND CURL_LIBS ${OPENSSL_LIBRARIES})
-
-from the previous version of curl's CMake file. When not applying this change,
-the static builds try to look for libssl.so, which will not work.
 
 ## date
 
@@ -74,7 +50,6 @@ https://github.com/arangodb/linenoise-ng
 We may want to switch to replxx (uniting our & other forks):
 https://github.com/AmokHuginnsson/replxx
 
-
 ## lz4
 
 https://github.com/lz4/lz4
@@ -99,13 +74,6 @@ On Upgrade:
     +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
     +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
     +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
-
-- fix timestamp in `./CMakeLists.txt` to avoid recompilation
-
-    -string(TIMESTAMP GIT_DATE_TIME "%Y/%m/%d %H:%M:%S" UTC)
-    +string(TIMESTAMP TS "%Y/%m/%d %H:%M:%S" UTC )
-    +set(GIT_DATE_TIME "${TS}" CACHE STRING "the time we first built rocksdb")
-
 
 ## s2geometry
 
@@ -157,10 +125,10 @@ the _Execute_ button.
 
   This confirms that the change inferring the URL was applied correctly.
 
-* All sections of the API documentation should be expanded to show all
-  routes but NOT fully expanded to reveal descriptions and examples.
+* The sections should be collapsed, NOT showing the individual routes.
 
-  This confirms the change to `docExpansion` was applied correctly.
+  This confirms the `docExpansion` changes work correctly in the API
+  documentation.
 
 * When using the `POST /_api/cursor` route with a query the authenticated
   user is authorized to execute, the response should not indicate an
@@ -176,6 +144,16 @@ the _Execute_ button.
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
+
+To verify the `docExpansion` changes work correctly in Foxx, navigate to the
+_Services_ tab, reveal system services via the menu in the gear icon, open the
+service `/_api/foxx` and navigate to the _API_ tab within that service.
+
+* All sections of the API documentation should be expanded to show all
+  routes but NOT fully expanded to reveal descriptions and examples.
+
+  This confirms the `docExpansion` changes work correctly in FOxx.
+
 
 ## taocpp::json
 

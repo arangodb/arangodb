@@ -32,13 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ParallelUnsortedGatherExecutorInfos::ParallelUnsortedGatherExecutorInfos(
-    RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
-                    nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}
-
 ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& infos) {}
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
@@ -100,7 +93,8 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
     }
     // Produce a new call if necessary (we consumed all, and the state is still HASMORE)
     if (!range.hasDataRow() && range.upstreamState() == ExecutorState::HASMORE) {
-      callSet.calls.emplace_back(AqlCallSet::DepCallPair{dep, upstreamCallProduce(clientCall)});
+      callSet.calls.emplace_back(
+          AqlCallSet::DepCallPair{dep, AqlCallList{upstreamCallProduce(clientCall)}});
     }
   }
 
@@ -155,7 +149,8 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
   if (call.needSkipMore()) {
     // We are not done with skipping.
     // Prepare next call.
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{waitingDep, upstreamCallSkip(call)});
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{waitingDep, AqlCallList{upstreamCallSkip(call)}});
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
 }

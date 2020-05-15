@@ -22,8 +22,8 @@
 
 #include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/IResearchViewOptimizerRules.h"
+#include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -57,22 +57,26 @@ OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::App
 
   startsAfter<AqlFeature>();
 }
-  
-void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
-  options->addOption("--query.optimizer-rules",
-                     "enable or disable specific optimizer rules (use rule name prefixed with '-' for disabling, '+' for enabling)",
-                     new arangodb::options::VectorParameter<arangodb::options::StringParameter>(&_optimizerRules),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30600);
 
-  options->addOption("--query.parallelize-gather-writes",
-                     "enable write parallelization for gather nodes",
-                     new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
-                     .setIntroducedIn(30600);
+void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
+  options
+      ->addOption("--query.optimizer-rules",
+                  "enable or disable specific optimizer rules (use rule name "
+                  "prefixed with '-' for disabling, '+' for enabling)",
+                  new arangodb::options::VectorParameter<arangodb::options::StringParameter>(
+                      &_optimizerRules),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30600);
+
+  options
+      ->addOption("--query.parallelize-gather-writes",
+                  "enable write parallelization for gather nodes",
+                  new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
+      .setIntroducedIn(30600);
 }
 
-void OptimizerRulesFeature::prepare() { 
-  addRules(); 
+void OptimizerRulesFeature::prepare() {
+  addRules();
   enableOrDisableRules();
 }
 
@@ -336,6 +340,15 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
+#ifdef USE_ENTERPRISE
+  // must run before distribute-in-cluster and must not be disabled, as it is necessary
+  // for distributing smart graph operations
+  registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
+               clusterLiftConstantsForDisjointGraphNodes,
+               OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+#endif
+
   registerRule("distribute-in-cluster", distributeInClusterRule,
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
@@ -346,18 +359,13 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
-  // distribute view queries in cluster
-  registerRule("scatter-arangosearch-view-in-cluster", arangodb::iresearch::scatterViewInClusterRule,
-               OptimizerRule::scatterIResearchViewInClusterRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
-
   // distribute operations in cluster
   registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
-  registerRule("distribute-filtercalc-to-cluster", distributeFilternCalcToClusterRule,
-               OptimizerRule::distributeFilternCalcToClusterRule,
+  registerRule("distribute-filtercalc-to-cluster", distributeFilterCalcToClusterRule,
+               OptimizerRule::distributeFilterCalcToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
@@ -397,14 +405,29 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
-  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
+  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
   
-  registerRule("parallelize-gather", parallelizeGatherRule, 
-               OptimizerRule::parallelizeGatherRule,
+  registerRule("optimize-count", optimizeCountRule,
+               OptimizerRule::optimizeCountRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+  registerRule("parallelize-gather", parallelizeGatherRule, OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
+
+  registerRule("decay-unnecessary-sorted-gather", decayUnnecessarySortedGather,
+               OptimizerRule::decayUnnecessarySortedGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
+#ifdef USE_ENTERPRISE
+  registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
+               OptimizerRule::clusterPushSubqueryToDBServer,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+#endif
 
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
@@ -412,13 +435,14 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // apply late materialization for view queries
-  registerRule("late-document-materialization-arangosearch", arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
+  registerRule("late-document-materialization-arangosearch",
+               arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // add the storage-engine specific rules
   addStorageEngineRules();
-  
+
   // Splice subqueries
   //
   // ***CAUTION***
@@ -433,10 +457,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // finally sort all rules by their level
-  std::sort(_rules.begin(), _rules.end(),
-            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
-              return (lhs.level < rhs.level);
-            });
+  std::sort(
+      _rules.begin(), _rules.end(),
+      [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
+        return (lhs.level < rhs.level);
+      });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on
@@ -495,7 +520,7 @@ void OptimizerRulesFeature::enableOrDisableRules() {
       // strip initial + sign
       n = n.substr(1);
     }
-    
+
     if (n.empty()) {
       continue;
     }
@@ -517,7 +542,8 @@ void OptimizerRulesFeature::enableOrDisableRules() {
             rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
           }
         } else {
-          LOG_TOPIC("6103b", WARN, Logger::QUERIES) << "cannot disable unknown optimizer rule '" << n << "'";
+          LOG_TOPIC("6103b", WARN, Logger::QUERIES)
+              << "cannot disable unknown optimizer rule '" << n << "'";
         }
       }
     } else {
@@ -531,7 +557,8 @@ void OptimizerRulesFeature::enableOrDisableRules() {
           auto& rule = ruleByLevel(id);
           rule.flags &= ~OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
         } else {
-          LOG_TOPIC("aa52f", WARN, Logger::QUERIES) << "cannot enable unknown optimizer rule '" << n << "'";
+          LOG_TOPIC("aa52f", WARN, Logger::QUERIES)
+              << "cannot enable unknown optimizer rule '" << n << "'";
         }
       }
     }

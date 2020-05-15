@@ -32,9 +32,9 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -46,27 +46,22 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SortedCollectExecutorInfos : public ExecutorInfos {
+class SortedCollectExecutorInfos {
  public:
-  SortedCollectExecutorInfos(
-      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-      std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep,
-      std::unordered_set<RegisterId>&& readableInputRegisters,
-      std::unordered_set<RegisterId>&& writeableOutputRegisters,
-      std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-      RegisterId collectRegister, RegisterId expressionRegister,
-      Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-      std::vector<std::pair<std::string, RegisterId>>&& variables,
-      std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      transaction::Methods* trxPtr, bool count);
+  SortedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+                             RegisterId collectRegister, RegisterId expressionRegister,
+                             Variable const* expressionVariable,
+                             std::vector<std::string>&& aggregateTypes,
+                             std::vector<std::pair<std::string, RegisterId>>&& variables,
+                             std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+                             velocypack::Options const*, bool count);
 
   SortedCollectExecutorInfos() = delete;
-  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
+  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) noexcept = default;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos const&) = delete;
   ~SortedCollectExecutorInfos() = default;
 
@@ -81,14 +76,15 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
     return _aggregateTypes;
   }
   bool getCount() const noexcept { return _count; };
-  transaction::Methods* getTransaction() const { return _trxPtr; }
+  velocypack::Options const* getVPackOptions() const { return _vpackOptions; }
   RegisterId getCollectRegister() const noexcept { return _collectRegister; };
   RegisterId getExpressionRegister() const noexcept {
     return _expressionRegister;
   };
   Variable const* getExpressionVariable() const { return _expressionVariable; }
-  std::vector<std::pair<std::string, RegisterId>> const& getVariables() const {
-    return _variables;
+
+  std::vector<std::pair<std::string, RegisterId>> const& getInputVariables() const {
+    return _inputVariables;
   }
 
  private:
@@ -114,14 +110,16 @@ class SortedCollectExecutorInfos : public ExecutorInfos {
   /// @brief list of variables names for the registers
   std::vector<std::pair<std::string, RegisterId>> _variables;
 
+  std::vector<std::pair<std::string, RegisterId>> _inputVariables;
+
   /// @brief input expression variable (might be null)
   Variable const* _expressionVariable;
+  
+  /// @brief the transaction for this query
+  velocypack::Options const* _vpackOptions;
 
   /// @brief COUNTing node?
   bool _count;
-
-  /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
@@ -179,13 +177,6 @@ class SortedCollectExecutor {
   SortedCollectExecutor(Fetcher& fetcher, Infos&);
 
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
-
-  /**
    * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
@@ -206,9 +197,6 @@ class SortedCollectExecutor {
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
-      -> std::pair<ExecutionState, size_t>;
-
   [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
                                              AqlCall const& call) const noexcept -> size_t;
 

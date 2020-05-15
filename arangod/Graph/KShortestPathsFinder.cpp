@@ -31,7 +31,6 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -44,7 +43,9 @@ using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options) {
+  // cppcheck-suppress *
   _forwardCursor = options.buildCursor(false);
+  // cppcheck-suppress *
   _backwardCursor = options.buildCursor(true);
 }
 

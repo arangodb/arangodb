@@ -40,17 +40,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
-                                 // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToKeep,
-                                 // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToClear,
-                                 bool doCount, RegisterId outputRegister,
+IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
                                  std::string distributeId, bool isResponsibleForInitializeCursor)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
-                    nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _doCount(doCount),
+    : _doCount(doCount),
       _outputRegister(outputRegister),
       _distributeId(std::move(distributeId)),
       _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {
@@ -124,14 +116,7 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   }
   call.didSkip(skipped);
   // TODO: Do we need to do counting here?
-  return {inputRange.upstreamState(), stats, skipped, call};
-}
-
-template <class UsedFetcher>
-std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;

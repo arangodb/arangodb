@@ -40,14 +40,14 @@ struct Dependency {
   size_t _number;
 };
 
-UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher{fetcher} {}
+UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher&, Infos&) {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
 auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
                                          OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
+  initialize(input);
   while (!output.isFull() && !done()) {
     if (input.hasDataRow(currentDependency())) {
       auto [state, inputRow] = input.nextDataRow(currentDependency());
@@ -61,7 +61,8 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       } else {
         auto callSet = AqlCallSet{};
         callSet.calls.emplace_back(
-            AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+            AqlCallSet::DepCallPair{currentDependency(),
+                                    AqlCallList{output.getClientCall()}});
         return {input.upstreamState(currentDependency()), Stats{}, callSet};
       }
     }
@@ -84,16 +85,17 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
   } else {
     auto callSet = AqlCallSet{};
     callSet.calls.emplace_back(
-        AqlCallSet::DepCallPair{currentDependency(), output.getClientCall()});
+        AqlCallSet::DepCallPair{currentDependency(), AqlCallList{output.getClientCall()}});
     return {input.upstreamState(currentDependency()), Stats{}, callSet};
   }
 }
 
 auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
+  initialize(input);
   auto skipped = size_t{0};
 
-   if (done()) {
+  if (done()) {
     return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
   }
 
@@ -112,19 +114,26 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input, A
   // Here we are either done, or currentDependency() still could produce more
   if (done()) {
     return {ExecutorState::DONE, Stats{}, skipped, AqlCallSet{}};
-  } 
+  }
   // If we're not done skipping, we can just request the current clientcall
   // from upstream
   auto callSet = AqlCallSet{};
   if (call.needSkipMore()) {
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{currentDependency(), call});
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{currentDependency(), AqlCallList{call}});
   }
   return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
 }
 
-auto UnsortedGatherExecutor::numDependencies() const
-    noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
-  return _fetcher.numberDependencies();
+auto UnsortedGatherExecutor::initialize(typename Fetcher::DataRange const& input) -> void {
+  // Dependencies can never change
+  TRI_ASSERT(_numDependencies == 0 || _numDependencies == input.numberDependencies());
+  _numDependencies = input.numberDependencies();
+}
+
+auto UnsortedGatherExecutor::numDependencies() const noexcept -> size_t {
+  TRI_ASSERT(_numDependencies != 0);
+  return _numDependencies;
 }
 
 auto UnsortedGatherExecutor::done() const noexcept -> bool {

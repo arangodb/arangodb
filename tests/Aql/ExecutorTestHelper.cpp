@@ -82,7 +82,7 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
   EXPECT_EQ(actual->size(), expected->size());
-  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  auto outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
   if (onlyCompareRegisters) {
     outRegs = onlyCompareRegisters->size();
     ASSERT_GE(actual->getNrRegs(), outRegs);
@@ -130,7 +130,7 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
 
   EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
 
-  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  auto outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
   if (onlyCompareRegisters) {
     outRegs = onlyCompareRegisters->size();
     ASSERT_GE(actual->getNrRegs(), outRegs);
@@ -168,24 +168,4 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
       }
     }
   }
-}
-
-std::ostream& arangodb::tests::aql::operator<<(std::ostream& stream,
-                                               arangodb::tests::aql::ExecutorCall call) {
-  return stream << [call]() {
-    switch (call) {
-      case ExecutorCall::SKIP_ROWS:
-        return "SKIP_ROWS";
-      case ExecutorCall::PRODUCE_ROWS:
-        return "PRODUCE_ROWS";
-      case ExecutorCall::FETCH_FOR_PASSTHROUGH:
-        return "FETCH_FOR_PASSTHROUGH";
-      case ExecutorCall::EXPECTED_NR_ROWS:
-        return "EXPECTED_NR_ROWS";
-    }
-    // The control flow cannot reach this. It is only here to make MSVC happy,
-    // which is unable to figure out that the switch above is complete.
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-  }();
 }

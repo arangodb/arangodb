@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVocbaseBaseHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -29,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -259,6 +262,29 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::Application
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
+
+/// @brief returns the short id of the server which should handle this request
+ResultT<std::pair<std::string, bool>> RestVocbaseBaseHandler::forwardingTarget() {
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    TRI_voc_tid_t tid = 0;
+    std::size_t pos = 0;
+    try {
+      tid = std::stoull(value, &pos, 10);
+    } catch (...) {
+    }
+    if (tid != 0) {
+      uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+      if (sourceServer != ServerState::instance()->getShortId()) {
+        auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+      }
+    }
+  }
+
+  return {std::make_pair(StaticStrings::Empty, false)};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
@@ -581,7 +607,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     if (pos > 0 && pos < value.size() &&
         value.compare(pos, std::string::npos, " begin") == 0) {
       if (!ServerState::instance()->isDBServer()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+                                       "cannot start a managed transaction here");
       }
       std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
       if (found) {
@@ -610,7 +637,7 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   bool found = false;
   std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+    return std::make_shared<transaction::StandaloneContext>(_vocbase);
   }
 
   TRI_voc_tid_t tid = 0;
@@ -627,9 +654,9 @@ std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionC
   TRI_ASSERT(mgr != nullptr);
 
   if (pos > 0 && pos < value.size()) {
-    if (!transaction::isLeaderTransactionId(tid) ||
-        !ServerState::instance()->isDBServer()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+    if (!transaction::isLeaderTransactionId(tid) || !ServerState::instance()->isDBServer()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+                                     "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
       return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
