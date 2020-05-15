@@ -1,7 +1,7 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue ES-605: arangodump broken when using encryption
+* Fixed issue ES-605: arangodump broken when using encryption.
 
 * Fixed issue #11590: Querying for document by _key returning only a single
   seemingly random property on entity ("old", in this case).
