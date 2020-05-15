@@ -497,19 +497,6 @@ void QuerySnippet::serializeIntoBuilder(
       remoteParent->addDependency(prototypeConsumer);
     }
 
-#if 0
-    // hook in the async executor node, if required
-    if (internalGather->parallelism() == GatherNode::Parallelism::Async) {
-      TRI_ASSERT(internalScatter == nullptr);
-      auto async = std::make_unique<AsyncNode>(plan, plan->nextId());
-      async->addDependency(_nodes.front());
-      async->setIsInSplicedSubquery(_nodes.front()->isInSplicedSubquery());
-      async->cloneRegisterPlan(_nodes.front());
-      _nodes.insert(_nodes.begin(), async.get());
-      plan->registerNode(async.release());
-    }
-#endif
-
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
     internalGather->addDependency(_nodes.front());
