@@ -272,7 +272,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_GE ">= operator"
 
 %token T_LIKE "like operator"
-%token T_PARALLEL "parallel operator"
 
 %token T_PLUS "+ operator"
 %token T_MINUS "- operator"
@@ -478,8 +477,6 @@ optional_statement_block_statements:
 
 statement_block_statement:
     for_statement {
-    }
-  | parallel_statement {
     }
   | let_statement {
     }
@@ -773,23 +770,6 @@ filter_statement:
     T_FILTER expression {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter($2);
-      parser->ast()->addOperation(node);
-    }
-  ;
-
-parallel_list:
-    let_statement {
-    }
-  | parallel_list let_statement {
-    }
-  ;
-
-parallel_statement:
-    T_PARALLEL T_OPEN {
-      auto node = parser->ast()->createNodeParallelStart();
-      parser->ast()->addOperation(node);
-  } parallel_list T_CLOSE {
-      auto node = parser->ast()->createNodeParallelEnd();
       parser->ast()->addOperation(node);
     }
   ;

@@ -444,7 +444,7 @@ void OptimizerRulesFeature::addRules() {
                arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
+  
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -456,11 +456,11 @@ void OptimizerRulesFeature::addRules() {
   // It changes the structure of the query plan by "splicing", i.e. replacing
   // every SubqueryNode by a SubqueryStart and a SubqueryEnd node with the
   // subquery's nodes in between, resulting in a linear query plan. If an
-  // optimizer runs after this rule, it has to be aware of SubqueryStartNode and
+  // optimizer rule runs after this rule, it has to be aware of SubqueryStartNode and
   // SubqueryEndNode and would likely be more complicated to write.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
+  
   // finally sort all rules by their level
   std::sort(
       _rules.begin(), _rules.end(),
