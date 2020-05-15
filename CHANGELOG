@@ -1,6 +1,10 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
 * Fixed issue ES-605: arangodump broken when using encryption.
 
 * Added a forgotten Plan/Version increment in cleanup code in createCollection.
