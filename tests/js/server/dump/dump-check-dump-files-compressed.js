@@ -35,7 +35,7 @@ let db = arangodb.db;
 
 function dumpIntegrationSuite () {
   'use strict';
-  const dumpDir = process.env['dumpdirectory'];
+  const dumpDir = process.env['dump-directory'];
   const cn = 'UnitTestsDumpKeygen';
 
   return {
