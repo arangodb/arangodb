@@ -75,6 +75,14 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() 
   return res;
 }
 
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow(HasDataRow /*tag unused*/) {
+  TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(hasDataRow());
+  // must calculate nextState() before the increase _rowIndex here.
+  auto state = nextState<LookAhead::NEXT, RowType::DATA>();
+  return std::make_pair(state, InputAqlItemRow{_block, _rowIndex++});
+}
+
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {
   return nextState<LookAhead::NOW, RowType::DATA>();
 }
