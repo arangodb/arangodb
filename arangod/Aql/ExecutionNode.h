@@ -68,7 +68,6 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
-#include "Aql/VarUsageFinder.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
