@@ -57,7 +57,7 @@ const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_encrypted_compressed': [tu.pathForTesting('server/dump')],
+  'dump_compressed': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
@@ -166,10 +166,19 @@ class DumpRestoreHelper {
     return this.validate(this.results.setup);
   }
 
+  runCheckDumpFilesSuite(path) {
+    this.print('Inspecting dumped files');
+    print(this.dumpConfig.config['output-directory'])
+    process.env['dumpdirectory'] = this.dumpConfig.config['output-directory'];
+    this.results.checkDumpFiles = this.arangosh(path, this.clientAuth);
+    process.env['dumpdirectory'] = null;
+    return this.validate(this.results.checkDumpFiles);
+  }
+
   runCleanupSuite(path) {
     this.print('Cleaning up');
     this.results.cleanup = this.arangosh(path, this.clientAuth);
-    return this.validate(this.results.setup);
+    return this.validate(this.results.cleanup);
   }
 
   dumpFrom(database, separateDir = false) {
@@ -374,6 +383,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
  
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
+  const checkDumpFiles = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
@@ -381,6 +391,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('_system', true) ||
         !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+        !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
         !helper.runCleanupSuite(cleanupFile) ||
         !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
         !helper.restoreTo('_system', { separate: true }) ||
@@ -392,6 +403,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   else {
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('UnitTestsDumpSrc') ||
+        !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
         !helper.runCleanupSuite(cleanupFile) ||
         !helper.restoreTo('UnitTestsDumpDst') ||
         !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -433,6 +445,7 @@ function dump (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -447,6 +460,7 @@ function dumpMultiple (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -485,6 +499,7 @@ function dumpAuthentication (options) {
 
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-alter-user.js',
     dumpAgain: 'dump-authentication.js',
     dumpTearDown: 'dump-teardown.js',
@@ -527,9 +542,11 @@ function dumpEncrypted (options) {
 
   let dumpOptions = _.clone(options);
   dumpOptions.encrypted = true;
+  dumpOptions.compressed = true; // Should be overruled by 'encrypted'
   
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -539,7 +556,7 @@ function dumpEncrypted (options) {
   return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
-function dumpEncrypted (options) {
+function dumpCompressed (options) {
   // test is only meaningful in the enterprise version
   let skip = true;
   if (global.ARANGODB_CLIENT_VERSION) {
@@ -568,11 +585,11 @@ function dumpEncrypted (options) {
   };
 
   let dumpOptions = _.clone(options);
-  dumpOptions.encrypted = true;
   dumpOptions.compressed = true;
   
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -604,6 +621,7 @@ function dumpMaskings (options) {
 
   let tstFiles = {
     dumpSetup: 'dump-maskings-setup.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-maskings.js',
     dumpTearDown: 'dump-teardown.js'
@@ -629,6 +647,7 @@ function hotBackup (options) {
   }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCheck: 'dump' + c.cluster + '.js',
     dumpModify: 'dump-modify.js',
     dumpRecheck: 'dump-modified.js',
@@ -712,8 +731,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['dump_encrypted'] = dumpEncrypted;
   defaultFns.push('dump_encrypted');
 
-  testFns['dump_encrypted_compressed'] = dumpEncryptedCompressed;
-  defaultFns.push('dump_encrypted_compressed');
+  testFns['dump_compressed'] = dumpCompressed;
+  defaultFns.push('dump_compressed');
 
   testFns['dump_maskings'] = dumpMaskings;
   defaultFns.push('dump_maskings');
