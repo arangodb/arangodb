@@ -130,7 +130,7 @@ class ConfigBuilder {
       this.config['--compress-output'] = true;
     }
   }
-  activateUNCompression() {
+  deactivateCompression() {
     if (this.type === 'dump') {
       this.config['--compress-output'] = false;
     }
