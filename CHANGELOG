@@ -1,6 +1,8 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue ES-605: arangodump broken when using encryption.
+
 * Do not always loadPlan from agency when collections of a database are listed.
   This is particularly important for arangosync.
 
