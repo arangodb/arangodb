@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-605: arangodump broken when using encryption.
+
 * Added a forgotten Plan/Version increment in cleanup code in createCollection.
 
 * Do not loadPlan from agency whenever all collections of a database are listed.
