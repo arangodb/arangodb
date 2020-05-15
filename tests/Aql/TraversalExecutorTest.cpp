@@ -217,6 +217,11 @@ class TraverserHelper : public Traverser {
     return false;
   }
 
+  bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override {
+    // Implement
+    return false;
+  }
+
   AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) override {
     VPackSlice v = _graph.getVertexData(vid);
     return AqlValue(v);
