@@ -1429,8 +1429,8 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   }
 
   static const auto generator = []( // key + value generator
-    irs::hashed_string_ref const& key,
-    AnalyzerPool::ptr const& value)->irs::hashed_string_ref {
+      irs::hashed_string_ref const& key,
+      AnalyzerPool::ptr const& value)->irs::hashed_string_ref {
     auto pool = std::make_shared<AnalyzerPool>(key); // allocate pool
     const_cast<AnalyzerPool::ptr&>(value) = pool; // lazy-instantiate pool to avoid allocation if pool is already present
     return pool ? irs::hashed_string_ref(key.hash(), pool->name()) : key; // reuse hash but point ref at value in pool
@@ -1539,7 +1539,7 @@ Result IResearchAnalyzerFeature::emplace(
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
     auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features,
-                               getAnalyersRevision(split.first)->getBuildingRevision());
+                               getAnalyzersRevision(split.first)->getBuildingRevision());
 
     if (!res.ok()) {
       return res;
@@ -2002,7 +2002,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       };
     }
 
-    AnalyzersRevision::Revision loadingRevision{getAnalyersRevision(*vocbase, true)->getRevision()};
+    AnalyzersRevision::Revision loadingRevision{getAnalyzersRevision(*vocbase, true)->getRevision()};
 
     if (!engine || engine->inRecovery()) {
       // always load if inRecovery since collection contents might have changed
@@ -2329,18 +2329,18 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   return name; // name prefixed with vocbase (or NIL)
 }
 
-AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyersRevision(const irs::string_ref& vocbaseName,
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const irs::string_ref& vocbaseName,
                                                                      bool forceLoadPlan /* = false */) const {
   TRI_vocbase_t* vocbase{ nullptr };
   auto& dbFeature = server().getFeature<DatabaseFeature>();
   vocbase = dbFeature.useDatabase(vocbaseName.empty() ? irs::string_ref(arangodb::StaticStrings::SystemDatabase) : vocbaseName);
   if (vocbase) {
-    return getAnalyersRevision(*vocbase, forceLoadPlan);
+    return getAnalyzersRevision(*vocbase, forceLoadPlan);
   }
   return AnalyzersRevision::getEmptyRevision();
 }
 
-AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyersRevision(const TRI_vocbase_t& vocbase,
+AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const TRI_vocbase_t& vocbase,
                                                                      bool forceLoadPlan /* = false */) const {
   if (ServerState::instance()->isRunningInCluster()) {
     auto const& server = vocbase.server();

@@ -310,7 +310,7 @@ class IResearchAnalyzerFeature final
   /// @param forceLoadPlan force request to get latest available revision
   /// @return revision number. always 0 for single server and before plan is loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getAnalyersRevision(const TRI_vocbase_t& vocbase, bool forceLoadPlan = false) const;
+  AnalyzersRevision::Ptr getAnalyzersRevision(const TRI_vocbase_t& vocbase, bool forceLoadPlan = false) const;
 
   ///////////////////////////////////////////////////////////////////////////////
 /// @brief return current known analyzers revision
@@ -318,7 +318,7 @@ class IResearchAnalyzerFeature final
 /// @param forceLoadPlan force request to get latest available revision
 /// @return revision number. always 0 for single server and before plan is loaded
 ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getAnalyersRevision(const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
+  AnalyzersRevision::Ptr getAnalyzersRevision(const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
 
   virtual void prepare() override;
   virtual void start() override;

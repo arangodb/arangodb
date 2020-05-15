@@ -105,7 +105,7 @@ std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 // analyzers names
 std::string const StaticStrings::AnalyzersRevision("revision");
 std::string const StaticStrings::AnalyzersBuildingRevision("buildingRevision");
-std::string const StaticStrings::AnalyzersDeletedRevision("revision_deleted");
+std::string const StaticStrings::AnalyzersDeletedRevision("revisionDeleted");
 
 // Database definition fields
 std::string const StaticStrings::DatabaseId("id");
@@ -343,7 +343,7 @@ std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
-std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzers_revision");
+std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");

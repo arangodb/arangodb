@@ -292,7 +292,7 @@ class CollectionInfoCurrent {
 
 
 class AnalyzerModificationTransaction {
-public:
+ public:
   using Ptr = std::unique_ptr<AnalyzerModificationTransaction>;
 
   AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup)
@@ -322,8 +322,7 @@ public:
   Result start();
   Result commit();
   Result abort();
-private:
-
+ private:
   void revertCounter();
 
   // our cluster info
@@ -343,7 +342,7 @@ private:
   bool _cleanupTransaction;
 
   // revision this transaction is building
-  // e.g. revision will be current upon successful commit of 
+  // e.g. revision will be current upon successful commit of
   // this transaction. For cleanup transaction this equals to current revision
   // as cleanup just cleans the mess and reverts revision back to normal
   AnalyzersRevision::Revision _buildingRevision{ AnalyzersRevision::LATEST };
@@ -968,7 +967,7 @@ public:
 
   void loadCurrent();
 
-  
+
  private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
