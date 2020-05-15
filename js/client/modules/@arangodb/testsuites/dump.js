@@ -169,7 +169,7 @@ class DumpRestoreHelper {
 
   runCheckDumpFilesSuite(path) {
     this.print('Inspecting dumped files');
-    process.env['dumpdirectory'] = this.dumpConfig.config['output-directory'];
+    process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
     this.results.checkDumpFiles = this.arangosh(path, this.clientAuth);
     process.env['dumpdirectory'] = null;
     return this.validate(this.results.checkDumpFiles);
