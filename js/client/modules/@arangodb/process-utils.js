@@ -125,6 +125,7 @@ class ConfigBuilder {
     this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
   }
   activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
+  activateCompression() { this.config['--compress-output'] = true }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {

@@ -57,6 +57,7 @@ const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
+  'dump_encrypted_compressed': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
@@ -96,6 +97,10 @@ class DumpRestoreHelper {
     if (options.encrypted) {
       this.dumpConfig.activateEncryption();
       this.restoreOldConfig.activateEncryption();
+    }
+    if (options.compressed) {
+      this.dumpConfig.activateCompression();
+      this.restoreOldConfig.activateCompression();
     }
     if (restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
@@ -531,6 +536,49 @@ function dumpEncrypted (options) {
   return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
 }
 
+function dumpEncrypted (options) {
+  // test is only meaningful in the enterprise version
+  let skip = true;
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      skip = false;
+    }
+  }
+
+  if (skip) {
+    print('skipping dump_encrypted test');
+    return {
+      dump_encrypted_compressed: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
+  let c = getClusterStrings(options);
+
+  let afterServerStart = function(instanceInfo) {
+    let keyFile = fs.join(instanceInfo.rootDir, 'secret-key');
+    fs.write(keyFile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
+    return keyFile;
+  };
+
+  let dumpOptions = _.clone(options);
+  dumpOptions.encrypted = true;
+  dumpOptions.compressed = true;
+  
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    foxxTest: 'check-foxx.js'
+  };
+
+  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted_compressed', tstFiles, afterServerStart);
+}
+
 function dumpMaskings (options) {
   // test is only meaningful in the enterprise version
   let skip = true;
@@ -660,6 +708,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_encrypted'] = dumpEncrypted;
   defaultFns.push('dump_encrypted');
+
+  testFns['dump_encrypted_compressed'] = dumpEncryptedCompressed;
+  defaultFns.push('dump_encrypted_compressed');
 
   testFns['dump_maskings'] = dumpMaskings;
   defaultFns.push('dump_maskings');
