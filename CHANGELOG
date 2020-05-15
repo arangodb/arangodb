@@ -1,6 +1,9 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Do not always loadPlan from agency when collections of a database are listed.
+  This is particularly important for arangosync.
+
 * Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
   to abort search was too eager and hence missed the shortest path between two
   vertices and returned a longer one.
