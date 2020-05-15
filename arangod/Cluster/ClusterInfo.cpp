@@ -2662,13 +2662,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
         // ...remove the entire directory for the collection
         AgencyOperation delCurrentCollection("Current/Collections/" + dbName + "/" + collectionID,
                                              AgencySimpleOperationType::DELETE_OP);
-        AgencyOperation incrementCurrentVersion(
-          "Current/Version", AgencySimpleOperationType::INCREMENT_OP);
-        AgencyWriteTransaction cx({delCurrentCollection, incrementCurrentVersion});
+        AgencyWriteTransaction cx({delCurrentCollection});
         res = ac.sendTransactionWithFailover(cx);
-        if (res.slice().get("results").length()) {
-          waitForCurrent(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-        }
         events::DropCollection(dbName, collectionID, *dbServerResult);
         return Result(*dbServerResult);
       }
