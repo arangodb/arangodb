@@ -100,13 +100,11 @@ class DumpRestoreHelper {
       this.restoreConfig.activateEncryption();
       this.restoreOldConfig.activateEncryption();
     }
-    if (options.compressed) {
+    if (dumpOptions.compressed) {
       this.dumpConfig.activateCompression();
-      this.restoreOldConfig.activateCompression();
     }
-    if (options.uncompressed) {
-      this.dumpConfig.activateUNCompression();
-      this.restoreOldConfig.activateUNCompression();
+    if (dumpOptions.uncompressed) {
+      this.dumpConfig.deactivateCompression();
     }
     if (restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
