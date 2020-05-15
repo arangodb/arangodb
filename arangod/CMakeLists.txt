@@ -240,6 +240,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AstHelper.cpp
   Aql/AstNode.cpp
   Aql/AstResources.cpp
+  Aql/AsyncExecutor.cpp
   Aql/AttributeAccessor.cpp
   Aql/BindParameters.cpp
   Aql/BlocksWithClients.cpp
@@ -312,6 +313,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ModificationOptions.cpp
   Aql/MultiAqlItemBlockInputRange.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
+  Aql/MutexExecutor.cpp
+  Aql/MutexNode.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
@@ -321,7 +324,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OptimizerRulesReplaceFunctions.cpp
   Aql/OptimizerUtils.cpp
   Aql/OutputAqlItemRow.cpp
-  Aql/ParallelStartExecutor.cpp
   Aql/Parser.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp

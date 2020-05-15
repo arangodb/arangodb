@@ -168,8 +168,7 @@ class ExecutionNode {
     SUBQUERY_END = 30,
     MATERIALIZE = 31,
     ASYNC = 32,
-    PARALLEL_START = 33,
-    PARALLEL_END = 34,
+    MUTEX = 33,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -338,6 +337,9 @@ class ExecutionNode {
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone, bool withProperties) const;
+  
+  // clone register plan of dependency, needed when inserting nodes after planning
+  void cloneRegisterPlan(ExecutionNode* dependency);
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
@@ -350,8 +352,9 @@ class ExecutionNode {
   CostEstimate getCost() const;
 
   /// @brief walk a complete execution plan recursively
-  bool walk(WalkerWorker<ExecutionNode>& worker);
-  bool walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker);
+  bool walk(WalkerWorkerBase<ExecutionNode>& worker);
+
+  bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
@@ -989,15 +992,16 @@ class NoResultsNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 };
 
-/// @brief class ParallelStartNode
-class ParallelStartNode : public ExecutionNode {
+
+/// @brief class AsyncNode
+class AsyncNode : public ExecutionNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
  public:
-  ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id);
+  AsyncNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1017,40 +1021,6 @@ class ParallelStartNode : public ExecutionNode {
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
-
-  void cloneRegisterPlan(ExecutionNode* dependency);
-};
-
-/// @brief class ParallelEndNode
-class ParallelEndNode : public ExecutionNode {
-  friend class ExecutionBlock;
-
-  /// @brief constructor with an id
- public:
-  ParallelEndNode(ExecutionPlan* plan, ExecutionNodeId id);
-
-  ParallelEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
-
-  /// @brief return the type of the node
-  NodeType getType() const override final;
-
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
-  /// @brief creates corresponding ExecutionBlock
-  std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
-
-  /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
-
-  /// @brief the cost of a AsyncNode is whatever is 0
-  CostEstimate estimateCost() const override final;
-
-  void cloneRegisterPlan(ExecutionNode* dependency);
 };
 
 namespace materialize {

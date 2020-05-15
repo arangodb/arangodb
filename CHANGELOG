@@ -1,5 +1,24 @@
-v3.7.1-alpha.1 (XXXX-XX-XX)
+v3.7.1-alpha.1 (2020-05-15)
 ---------------------------
+
+* Fixed ability to edit graph edge in Graph Viewer of web UI.
+
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
+* Added feature: DisjointSmartGraphs
+
+  SmartGraphs have been extended to a new subtype, called `DisjointSmartGraphs`.
+  A DisjointSmartGraph prohibits edges between different SmartGraph components.
+  In case the graph schema can be represented without the need of connected 
+  SmartGraph components, a DisjointSmartGraph should be used as this knowledge
+  can be used by the internal optimizer to gain even better query traversal
+  execution times.
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Fixed a lockup in dropCollection due to a mutex being held for too long.
 
 * Add an optimizer rule that enables execution of certain subqueries on a DB
   Server. For this optimization to work, the subquery must contain exactly one

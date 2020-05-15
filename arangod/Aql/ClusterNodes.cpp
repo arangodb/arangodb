@@ -531,7 +531,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
+    if (_parallelism == Parallelism::Parallel) {
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
           &engine, this, std::move(registerInfos), EmptyExecutorInfos());
     } else {
