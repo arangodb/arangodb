@@ -98,6 +98,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
+  _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
   TRI_ASSERT(minDepth <= maxDepth);
 
   std::string tmp = VPackHelper::getStringValue(obj, "mode", "");
@@ -437,18 +438,14 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other, bool const all
              isUniqueGlobalVerticesAllowed());
 }
 
-TraverserOptions::~TraverserOptions() {
-//  for (auto& pair : _vertexExpressions) {
-//    delete pair.second;
-//  }
-//  delete _baseVertexExpression;
-}
+TraverserOptions::~TraverserOptions() = default;
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
 
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
+  builder.add("parallelism", VPackValue(_parallelism));
   builder.add("bfs", VPackValue(mode == Mode::BFS));
   builder.add("neighbors", VPackValue(useNeighbors));
 
@@ -544,6 +541,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("type", VPackValue("traversal"));
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
+  result.add("parallelism", VPackValue(_parallelism));
   result.add("bfs", VPackValue(mode == Mode::BFS));
   result.add("neighbors", VPackValue(useNeighbors));
 

@@ -85,7 +85,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow();
+    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
 
     // We got a data row, put it into the accumulator,
@@ -109,7 +109,7 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow();
+    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
   }
   // This is correct since the SubqueryEndExecutor produces one output out
