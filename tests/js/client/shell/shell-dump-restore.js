@@ -30,14 +30,15 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
+let pu = require('@arangodb/process-utils');
 let db = arangodb.db;
 
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDumpRestore';
-  // TODO: find a way to detect the path of arangodump!!!!
-  let binPath = fs.join('build', 'bin');
-  const arangodump = fs.join(binPath, 'arangodump');
+  // detect the path of arangodump. quite hacky, but seems to works
+  let binPath = internal.env.ARANGOSH_EXECUTABLE.replace(/arangosh$/, '');
+  const arangodump = binPath + 'arangodump' + pu.executableExt;
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
@@ -92,9 +93,14 @@ function dumpIntegrationSuite () {
         let data = fs.readFileSync(fs.join(path, "ENCRYPTION")).toString();
         assertEqual("none", data);
         const prefix = "UnitTestsDumpRestore_fa0ad5acf1c2ba4a5c04b4ddac6ee61e";
-
-        assertNotEqual(-1, tree.indexOf(prefix + ".structure.json"));
-        data = JSON.parse(fs.readFileSync(fs.join(path, prefix + ".structure.json")).toString());
+       
+        let structure = prefix + ".structure.json";
+        if (!fs.isFile(fs.join(path, structure))) {
+          structure = cn + ".structure.json";
+        }
+        assertTrue(fs.isFile(fs.join(path, structure)), structure);
+        assertNotEqual(-1, tree.indexOf(structure));
+        data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
         assertEqual(cn, data.parameters.name);
         
         assertNotEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
@@ -125,8 +131,13 @@ function dumpIntegrationSuite () {
         
         const prefix = "UnitTestsDumpRestore_fa0ad5acf1c2ba4a5c04b4ddac6ee61e";
 
-        assertNotEqual(-1, tree.indexOf(prefix + ".structure.json"));
-        data = JSON.parse(fs.readFileSync(fs.join(path, prefix + ".structure.json")).toString());
+        let structure = prefix + ".structure.json";
+        if (!fs.isFile(fs.join(path, structure))) {
+          structure = cn + ".structure.json";
+        }
+        assertTrue(fs.isFile(fs.join(path, structure)), structure);
+        assertNotEqual(-1, tree.indexOf(structure));
+        data = JSON.parse(fs.readFileSync(fs.join(path, structure)).toString());
         assertEqual(cn, data.parameters.name);
         
         assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
@@ -163,10 +174,16 @@ function dumpIntegrationSuite () {
         let data = fs.readFileSync(fs.join(path, "ENCRYPTION")).toString();
         assertEqual("aes-256-ctr", data);
         const prefix = "UnitTestsDumpRestore_fa0ad5acf1c2ba4a5c04b4ddac6ee61e";
-        assertNotEqual(-1, tree.indexOf(prefix + ".structure.json"));
+
+        let structure = prefix + ".structure.json";
+        if (!fs.isFile(fs.join(path, structure))) {
+          structure = cn + ".structure.json";
+        }
+        assertTrue(fs.isFile(fs.join(path, structure)), structure);
+        assertNotEqual(-1, tree.indexOf(structure));
         try {
           // cannot read encrypted file
-          JSON.parse(fs.readFileSync(fs.join(path, prefix + ".structure.json")));
+          JSON.parse(fs.readFileSync(fs.join(path, structure)));
           fail();
         } catch (err) {
         }
@@ -203,10 +220,15 @@ function dumpIntegrationSuite () {
         let data = fs.readFileSync(fs.join(path, "ENCRYPTION")).toString();
         assertEqual("aes-256-ctr", data);
         const prefix = "UnitTestsDumpRestore_fa0ad5acf1c2ba4a5c04b4ddac6ee61e";
-        assertNotEqual(-1, tree.indexOf(prefix + ".structure.json"));
+        let structure = prefix + ".structure.json";
+        if (!fs.isFile(fs.join(path, structure))) {
+          structure = cn + ".structure.json";
+        }
+        assertTrue(fs.isFile(fs.join(path, structure)), structure);
+        assertNotEqual(-1, tree.indexOf(structure));
         try {
           // cannot read encrypted file
-          JSON.parse(fs.readFileSync(fs.join(path, prefix + ".structure.json")));
+          JSON.parse(fs.readFileSync(fs.join(path, structure)));
           fail();
         } catch (err) {
         }

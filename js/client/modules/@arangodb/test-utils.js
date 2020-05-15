@@ -842,6 +842,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = Object.assign(args, addArgs);
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
+  require('internal').env.ARANGOSH_EXECUTABLE = pu.ARANGOSH_BIN;
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
   return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
@@ -852,6 +853,7 @@ runInArangosh.info = 'runInExternalArangosh';
 // //////////////////////////////////////////////////////////////////////////////
 
 function runInLocalArangosh (options, instanceInfo, file, addArgs) {
+  require('internal').env.ARANGOSH_EXECUTABLE = pu.ARANGOSH_BIN;
   let endpoint = arango.getEndpoint();
   if (options.vst || options.http2) {
     let newEndpoint = findEndpoint(options, instanceInfo);
