@@ -104,7 +104,7 @@ auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInpu
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
   while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
-    auto [state, row] = input.nextDataRow();
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     // Make sure we have a valid row
     TRI_ASSERT(row.isInitialized());

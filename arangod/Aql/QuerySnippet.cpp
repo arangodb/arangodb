@@ -199,7 +199,7 @@ bool CloneWorker::before(ExecutionNode* node) {
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
     auto consumer = createConsumerNode(plan, _internalScatter, _distId);
     consumer->isResponsibleForInitializeCursor(false);
-    _nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
+    _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
     _originalToClone.try_emplace(node, consumer);
 
     // Stop here. Note that we do things special here and don't really
@@ -422,8 +422,7 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
-    auto const reservedId =
-        ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
+    auto const reservedId = ExecutionNodeId::InternalNode;
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
     DistributeConsumerNode* prototypeConsumer{nullptr};
@@ -488,7 +487,7 @@ void QuerySnippet::serializeIntoBuilder(
 
       // hook distribute node into stream '0', since that does not happen below
       prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0]);
-      nodeAliases.try_emplace(prototypeConsumer->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(prototypeConsumer->id(), ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
 
       TRI_ASSERT(_nodes.size() > 1);
@@ -504,19 +503,6 @@ void QuerySnippet::serializeIntoBuilder(
         distIds.emplace_back(StringUtils::itoa(i));
       }
     }
-
-#if 0
-    // hook in the async executor node, if required
-    if (internalGather->parallelism() == GatherNode::Parallelism::Async) {
-      TRI_ASSERT(internalScatter == nullptr);
-      auto async = std::make_unique<AsyncNode>(plan, plan->nextId());
-      async->addDependency(_nodes.front());
-      async->setIsInSplicedSubquery(_nodes.front()->isInSplicedSubquery());
-      async->cloneRegisterPlan(_nodes.front());
-      _nodes.insert(_nodes.begin(), async.get());
-      plan->registerNode(async.release());
-    }
-#endif
 
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.

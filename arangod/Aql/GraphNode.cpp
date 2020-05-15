@@ -65,7 +65,9 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-static TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
+namespace {
+
+TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
   switch (dirNum) {
     case 0:
       return TRI_EDGE_ANY;
@@ -80,11 +82,13 @@ static TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
   }
 }
 
-static TRI_edge_direction_e parseDirection(AstNode const* node) {
+TRI_edge_direction_e parseDirection(AstNode const* node) {
   TRI_ASSERT(node->isIntValue());
   auto dirNum = node->getIntValue();
 
   return uint64ToDirection(dirNum);
+}
+
 }
 
 GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -111,6 +115,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
+    
+  auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
@@ -121,7 +127,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
-    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = true;
       _isDisjoint = true;
@@ -237,7 +242,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 
     // First determine whether all edge collections are smart and sharded
     // like a common collection:
-    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = _graphObj->isSmart();
       _isDisjoint = _graphObj->isDisjoint();

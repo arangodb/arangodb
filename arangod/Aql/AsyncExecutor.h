@@ -7,7 +7,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     http://www.apache.org/licenses/LICENSE2.0
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_PARALLEL_START_EXECUTOR_H
-#define ARANGOD_AQL_PARALLEL_START_EXECUTOR_H
+#ifndef ARANGOD_AQL_ASYNC_EXECUTOR_H
+#define ARANGOD_AQL_ASYNC_EXECUTOR_H
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
@@ -35,43 +35,56 @@
 namespace arangodb {
 namespace aql {
 
-class ParallelStartNode;
+class AsyncNode;
 class NoStats;
 class OutputAqlItemRow;
 class SharedQueryState;
 
 
-// ParallelStartExecutor is actually implemented by specializing ExecutionBlockImpl,
+// The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
-class ParallelStartExecutor final {};
+class AsyncExecutor final {};
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ParallelStartExecutor> : public ExecutionBlock {
+class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
  public:
-  ExecutionBlockImpl(ExecutionEngine* engine, ParallelStartNode const* node);
+  // TODO Even if it's not strictly necessary here, for consistency's sake the
+  // nonstandard arguments (server, ownName and queryId) should probably be
+  // moved into some AsyncExecutorInfos class.
+  ExecutionBlockImpl(ExecutionEngine* engine, AsyncNode const* node);
 
-  ~ExecutionBlockImpl() override = default;
-  
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
-
+ 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
  private:
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
-
-  std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
-
+  
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack const& stack);
+  
+  enum class AsyncState {
+    Empty,
+    InProgress,
+    GotResult,
+    GotException
+  };
 
  private:
-  std::mutex _mutex;
-  bool _isShutdown;
-};
 
+  std::shared_ptr<SharedQueryState> _sharedState;
+
+  std::mutex _mutex;
+  SkipResult _returnSkip;
+  SharedAqlItemBlockPtr _returnBlock;
+  std::exception_ptr _returnException;
+  
+  ExecutionState _returnState = ExecutionState::HASMORE;
+  AsyncState _internalState = AsyncState::Empty;
+};
 
 }  // namespace aql
 }  // namespace arangodb

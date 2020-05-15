@@ -1,5 +1,19 @@
 devel
 -----
+
+* Added feature: DisjointSmartGraphs
+
+  SmartGraphs have been extended to a new subtype, called **DisjointSmartGraphs**.
+  A DisjointSmartGraph prohibits edges between different SmartGraph components. 
+  In case the graph schema can be represented without the need of connected 
+  SmartGraph components, a DisjointSmartGraph should be used as this knowledge 
+  can be used by the internal optimizer to gain even better query traversal 
+  execution times.
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Fixed a lockup in dropCollection due to a mutex being held for too long.
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.

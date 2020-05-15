@@ -75,7 +75,6 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
   }
 
   TRI_ASSERT(_resolver != nullptr);
-
   return *_resolver;
 }
 
@@ -84,17 +83,10 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
                                                                                    bool& responsibleForCommit) {
   
   TRI_ASSERT(_sharedTransactionContext != nullptr);
- /* 
-  if (_currentTransaction) {
-    responsibleForCommit = false;
-    return _currentTransaction;
-  }
-  */
   
   auto state = _sharedTransactionContext->_currentTransaction;
   if (!state) {
     state = transaction::Context::createState(options);
-//    _currentTransaction = state;
     enterV8Context(state);
     responsibleForCommit = true;
   } else {
@@ -127,6 +119,19 @@ void transaction::V8Context::exitV8Context() {
 /// @brief unregister the transaction from the context
 void transaction::V8Context::unregisterTransaction() noexcept {
   exitV8Context();
+}
+
+std::shared_ptr<transaction::Context> transaction::V8Context::clone() const {
+  // intentionally create a StandaloneContext and no V8Context.
+  // We cannot clone V8Contexts into V8Contexts, as this will mess up the
+  // v8 isolates and stuff.
+  // This comes with the consequence that one cannot run any JavaScript
+  // code in the cloned context!
+  auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  //#warning are you sure _currentTransaction is set?
+  auto state = _sharedTransactionContext->_currentTransaction;
+  clone->setState(state);
+  return clone;
 }
 
 /// @brief whether or not the transaction is embeddable
