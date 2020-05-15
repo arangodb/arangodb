@@ -269,6 +269,10 @@ struct OptimizerRule {
     // put it after Scatter rule because we would do
     // the work twice otherwise
     removeSatelliteJoinsRule,
+
+    // remove multiple remote <-> distribute snippets if we are able
+    // to combine multiple in only one
+    removeDistributeNodesRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between
