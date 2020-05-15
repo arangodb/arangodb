@@ -1283,7 +1283,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice collections,
                                        VPackSlice variables,
                                        VPackSlice snippets,
-                                       VPackSlice traverserSlice,
+                                       VPackSlice travererSlice,
                                        VPackBuilder& answerBuilder,
                                        arangodb::AnalyzersRevision::Revision analyzersRevision) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
