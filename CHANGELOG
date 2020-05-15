@@ -10,6 +10,8 @@ devel
         should be used as this knowledge can be used by the internal optimizer to
         gain even better query traversal execution times.
 
+* Fixed issue ES-605: arangodump broken when using encryption.
+
 * Fixed a lockup in dropCollection due to a mutex being held for too long.
 
 * Add an optimizer rule that enables execution of certain subqueries on a
