@@ -1,3 +1,6 @@
+/* jshint globalstrict:false, strict:false, maxlen: 200 */
+/* global fail, assertTrue, assertEqual, assertNotEqual, arango */
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
 // /
@@ -23,9 +26,17 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-return {
-  dumpIntegrationSuite: {
-    status: true,
-    skipped: true
-  }
-};
+let jsunity = require('jsunity');
+
+function dumpIntegrationSuite () {
+  'use strict';
+  return {
+    testDummy: function () {
+      assertTrue(true);
+    }
+  };
+}
+
+jsunity.run(dumpIntegrationSuite);
+
+return jsunity.done();
