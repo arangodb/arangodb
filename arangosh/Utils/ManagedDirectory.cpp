@@ -32,7 +32,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
-#include "Logger/Logger.h"
 
 namespace {
 
@@ -276,16 +275,16 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
     }
   }
 
-  // currently gzip and encryption are mutually exclusive, encryption wins
-  if (::EncryptionTypeNone != _encryptionType) {
-    _writeGzip = false;
-  } // if
-
 #ifdef USE_ENTERPRISE
   ::writeEncryptionFile(_path, _encryptionType, _encryptionFeature);
 #else
   ::writeEncryptionFile(_path, _encryptionType);
 #endif
+
+  // currently gzip and encryption are mutually exclusive, encryption wins
+  if (::EncryptionTypeNone != _encryptionType) {
+    _writeGzip = false;
+  }  // if
 }
 
 ManagedDirectory::~ManagedDirectory() {}

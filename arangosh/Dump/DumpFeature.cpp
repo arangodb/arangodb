@@ -1173,8 +1173,9 @@ void DumpFeature::start() {
         client->setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
 
-        _directory = std::make_unique<ManagedDirectory>(arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-                                                        true, true);
+        _directory = std::make_unique<ManagedDirectory>(
+            arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
+            true, true, _options.useGzip);
 
         if (_directory->status().fail()) {
           res = _directory->status();
