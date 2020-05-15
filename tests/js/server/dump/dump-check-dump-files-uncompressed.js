@@ -36,7 +36,7 @@ let db = arangodb.db;
 function dumpIntegrationSuite () {
   'use strict';
   // this file is used by multiple, hence the checked structure is only in a subdirectory:
-  const dumpDir = fs.join(process.env['dumpdirectory'], 'UnitTestsDumpSrc');
+  const dumpDir = fs.join(process.env['dump-directory'], 'UnitTestsDumpSrc');
   const cn = 'UnitTestsDumpKeygen';
 
   return {
