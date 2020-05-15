@@ -94,8 +94,11 @@ class DumpRestoreHelper {
     this.restoreOldConfig.setIncludeSystem(true);
     this.restoreOldConfig.setRootDir(pu.TOP_DIR);
 
-    if (options.encrypted) {
+    if (dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
+    }
+    if (restoreOptions.encrypted) {
+      this.restoreConfig.activateEncryption();
       this.restoreOldConfig.activateEncryption();
     }
     if (options.compressed) {
