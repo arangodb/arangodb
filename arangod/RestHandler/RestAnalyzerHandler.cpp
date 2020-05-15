@@ -34,19 +34,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
-namespace {
-[[nodiscard]]
-std::unique_ptr<arangodb::AnalyzerModificationTransaction> startPlanModyfing(arangodb::application_features::ApplicationServer& server, 
-                                                                   irs::string_ref const& databaseID) {
-  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
-    TRI_ASSERT(server.hasFeature<arangodb::ClusterFeature>());
-    auto& engine = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    return std::make_unique<arangodb::AnalyzerModificationTransaction>(databaseID, &engine, false);
-  }
-  return nullptr;
-}
-
-}
 
 namespace arangodb {
 namespace iresearch {
@@ -209,16 +196,6 @@ void RestAnalyzerHandler::createAnalyzer( // create
     return;
   }
 
-  auto trans = startPlanModyfing(server(), 
-                                 IResearchAnalyzerFeature::splitAnalyzerName(name).first);
-  if (trans) {
-    auto startRes = trans->start();
-    if (startRes.fail()) {
-      generateError(startRes);
-      return;
-    }
-  }
-
   IResearchAnalyzerFeature::EmplaceResult result;
   auto res = analyzers.emplace(result, name, type, properties, features);
 
@@ -240,14 +217,6 @@ void RestAnalyzerHandler::createAnalyzer( // create
   arangodb::velocypack::Builder builder;
 
   pool->toVelocyPack(builder, false);
-
-  if (trans) {
-    auto commitRes = trans->commit();
-    if (commitRes.fail()) {
-      generateError(commitRes);
-      return;
-    }
-  }
 
   generateResult(
     result.second // new analyzer v.s. existing analyzer
@@ -454,34 +423,9 @@ void RestAnalyzerHandler::removeAnalyzer(
     return;
   }
 
-  auto trans = startPlanModyfing(server(),
-                                 IResearchAnalyzerFeature::splitAnalyzerName(normalizedName).first);
-  if (trans) {
-    auto startRes = trans->start();
-    if (startRes.fail()) {
-      generateError(startRes);
-      return;
-    }
-  }
-
   auto res = analyzers.remove(normalizedName, force);
   if (!res.ok()) {
     generateError(res);
-    return;
-  }
-
-  Result commitRes = trans ? trans->commit() : Result();
-
-  if (commitRes.ok()) {
-    auto finalizeResult = analyzers.finalizeRemove(normalizedName);
-    if (finalizeResult.fail()) {
-      // note the failure here. But change itself is already committed so report success
-      LOG_TOPIC("86631", WARN, arangodb::iresearch::TOPIC)
-        << " Failed to perform analyzer " << normalizedName << " removal finazlizing in cluster. Code: "
-        << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
-    }
-  } else {
-    generateError(commitRes);
     return;
   }
 

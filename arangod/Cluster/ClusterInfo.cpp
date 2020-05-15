@@ -3119,7 +3119,8 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
 /// and the errorMsg is set accordingly. One possible error
 /// is a timeout.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& databaseID) {
+std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyzerCoordinator(
+    DatabaseID const& databaseID) {
   VPackBuilder serverIDBuilder;
   serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
 
@@ -3140,8 +3141,9 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
       auto const it = _dbAnalyzersRevision.find(databaseID);
       if (it == _dbAnalyzersRevision.cend()) {
         if (TRI_microtime() > endTime) {
-          return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                        "start modifying analyzer: unknown database name '" + databaseID + "'");
+          return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                       "start modifying analyzer: unknown database name '" + databaseID + "'"),
+                                AnalyzersRevision::LATEST);
         }
         continue;
       }
@@ -3171,34 +3173,33 @@ Result ClusterInfo::startModifyingAnalyzerCoordinator(DatabaseID const& database
         if (TRI_microtime() > endTime) {
           // Dump agency plan
           logAgencyDump();
-
-          return Result(
-              TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-              "start modifying analyzer precondition for database " + databaseID + ": Revision " +
-                revisionBuilder.toString() + " is not equal to BuildingRevision. Cannot modify an analyzer.");
+          return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                       "start modifying analyzer precondition for database " + 
+                                        databaseID + ": Revision " + revisionBuilder.toString() + 
+                                       " is not equal to BuildingRevision. Cannot modify an analyzer."),
+                                AnalyzersRevision::LATEST);
         }
 
         if (_server.isStopping()) {
-          return Result(TRI_ERROR_SHUTTING_DOWN);
+          return std::make_pair(Result(TRI_ERROR_SHUTTING_DOWN), AnalyzersRevision::LATEST);
         }
 
         continue;
       }
 
-      return Result(
-          TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-              " HTTP code: " + std::to_string(res.httpCode()) +
-              " error message: " + res.errorMessage() +
-              " error details: " + res.errorDetails() + " body: " + res.body());
+      return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                   std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                                   " HTTP code: " + std::to_string(res.httpCode()) +
+                                   " error message: " + res.errorMessage() +
+                                   " error details: " + res.errorDetails() + " body: " + res.body()),
+                            AnalyzersRevision::LATEST);
     }
     break;
   } while (true);
 
   // Update our cache
   loadPlan();
-
-  return Result(TRI_ERROR_NO_ERROR);
+  return std::make_pair(Result(TRI_ERROR_NO_ERROR), revision + 1); // as INCREMENT_OP succeeded
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3316,7 +3317,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-std::unique_ptr<AnalyzerModificationTransaction> ClusterInfo::createAnalyzersCleanupTrans() {
+AnalyzerModificationTransaction::Ptr ClusterInfo::createAnalyzersCleanupTrans() {
   if (AnalyzerModificationTransaction::getPendingCount() == 0) { // rough check, don`t care about sync much
     READ_LOCKER(readLocker, _planProt.lock);
     for (auto& it : _dbAnalyzersRevision) {
@@ -5504,20 +5505,23 @@ Result AnalyzerModificationTransaction::start() {
 
   if (_cleanupTransaction) {
     _rollbackRevision = true; // we just need to revert our revision
+    _buildingRevision = _clusterInfo->getAnalyzersRevision(_database, false)->getRevision();
+    TRI_ASSERT(_clusterInfo->getAnalyzersRevision(_database, false)->getBuildingRevision() != _buildingRevision);
     return {};
   } else {
     auto res = _clusterInfo->startModifyingAnalyzerCoordinator(_database);
-    _rollbackRevision = res.ok();
-    return res;
+    _rollbackRevision = res.first.ok();
+    _buildingRevision = res.second;
+    return res.first;
   }
 }
 
 Result AnalyzerModificationTransaction::commit() {
   TRI_ASSERT(_rollbackCounter && _rollbackRevision);
   auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
-  _rollbackRevision = res.fail();
+  _rollbackRevision = res.fail() && !_cleanupTransaction;
   // if succesful revert mark our transaction as completed (otherwise postpone it to abort call).
-  // for cleanup - always this attempt is completed. Will try next time
+  // for cleanup - always this attempt is completed (cleanup should not waste much time). Will try next time
   if (res.ok() || _cleanupTransaction) {
     revertCounter();
   }

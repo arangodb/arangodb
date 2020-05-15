@@ -81,35 +81,6 @@ v8::Handle<v8::Object> WrapAnalyzer(
   return scope.Escape<v8::Object>(result);
 }
 
-[[nodiscard]]
-std::unique_ptr<arangodb::AnalyzerModificationTransaction> StartPlanModyfing(v8::Isolate* isolate,
-                                                                             TRI_v8_global_t* v8g, 
-                                                                             irs::string_ref const& databaseID) {
-  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
-    TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
-    auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    return std::make_unique< arangodb::AnalyzerModificationTransaction>(databaseID, &engine, false);
-  }
-  return nullptr;
-}
-
-//void FinishPlanModifying(v8::Isolate* isolate, TRI_v8_global_t* v8g, irs::string_ref const& databaseID, bool restore) {
-//  if (arangodb::ServerState::instance()->isCoordinator() && !databaseID.empty()) {
-//    TRI_ASSERT(v8g->_server.hasFeature<arangodb::ClusterFeature>());
-//    auto& engine = v8g->_server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-//    auto const res = engine.finishModifyingAnalyzerCoordinator(databaseID, restore);
-//    if (res.fail()) {
-//      if (!restore) {
-//        TRI_V8_THROW_EXCEPTION(res);
-//      } else {
-//        // do not mask upstream error. Just log our here
-//        LOG_TOPIC("8a2a3", WARN, arangodb::Logger::CLUSTER) << "Failed to restore analyzers revision for database "
-//          << databaseID << " error:" << res;
-//      }
-//    }
-//  }
-//}
-
 void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -402,15 +373,6 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
-  auto trans = StartPlanModyfing(isolate, v8g, 
-                                 arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first);
-  if (trans) {
-    auto startRes = trans->start();
-    if (!startRes.ok()) {
-      TRI_V8_THROW_EXCEPTION(startRes);
-    }
-  }
-
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto res = analyzers.emplace(result, name, type, propertiesSlice, features);
@@ -429,14 +391,6 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (v8Result.IsEmpty()) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
-
-    if (trans) {
-      auto commitRes = trans->commit();
-      if (!commitRes.ok()) {
-        TRI_V8_THROW_EXCEPTION(commitRes);
-      }
-    }
-
     TRI_V8_RETURN(v8Result);
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
@@ -686,36 +640,11 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     );
   }
 
-  auto trans = StartPlanModyfing(isolate, v8g, 
-                                 arangodb::iresearch::IResearchAnalyzerFeature::splitAnalyzerName(name).first);
-  if (trans) {
-    auto startRes = trans->start();
-    if (startRes.fail()) {
-      TRI_V8_THROW_EXCEPTION(startRes);
-    }
-  }
-
   try {
     auto res = analyzers.remove(name, force);
-
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-
-    if (trans) {
-      auto commitRes = trans->commit();
-      if (commitRes.fail()) {
-        TRI_V8_THROW_EXCEPTION(commitRes);
-      }
-    }
-    auto finalizeResult  = analyzers.finalizeRemove(name);
-    if (finalizeResult.fail()) {
-      // note the failure here. But change itself is already committed so report success
-      LOG_TOPIC("a4813", WARN, arangodb::iresearch::TOPIC)
-        << " Failed to perform analyzer " << name << " removal finazlizing in cluster. Code: "
-        << finalizeResult.errorNumber() << " Message: " << finalizeResult.errorMessage();
-    }
-
     TRI_V8_RETURN_UNDEFINED();
   } catch (arangodb::basics::Exception const& ex) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());

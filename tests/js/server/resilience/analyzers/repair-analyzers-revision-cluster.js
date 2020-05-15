@@ -164,7 +164,7 @@ function repairAnalyzersRevisionTestSuite () {
         rebootId = revision.coordinatorRebootId;
       }
       rebootId++;
-      const value2 = {revision: revisionNumber - 1,
+      const value2 = {revision: revisionNumber - 1, // revision is going back -> hotbackup restore case
           buildingRevision: revisionNumber,
           coordinator: coordinator,
           coordinatorRebootId: rebootId + 1};
@@ -181,7 +181,7 @@ function repairAnalyzersRevisionTestSuite () {
         db._useDatabase(dbName + i);
         // revision is rollbacked. This analyzer is no more present
         assertTrue(null === analyzers.analyzer("valid"));
-        // and we could create new one  
+        // and we could create new one with same name
         analyzers.save("valid", "ngram", {min:2, max:3, preserveOriginal:true});
         analyzers.toArray();
         let ngram = analyzers.analyzer("valid");

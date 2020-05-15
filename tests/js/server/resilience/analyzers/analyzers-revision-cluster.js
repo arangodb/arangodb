@@ -79,7 +79,10 @@ function analyzersRevisionTestSuite () {
     waitForCompletedRevision(dbName, revisionNumber);
 
     // invalid repeated name 1
-    try { analyzers.save(prefix + "valid1", "delimiter", { "delimiter": "," }); } catch(e) {};
+    try { 
+      analyzers.save(prefix + "valid1", "delimiter", { "delimiter": "," });
+      fail(); 
+    } catch(e) {};
     waitForCompletedRevision(dbName, revisionNumber);
 
     // remove valid name 0
@@ -88,7 +91,10 @@ function analyzersRevisionTestSuite () {
     waitForCompletedRevision(dbName, revisionNumber);
 
     // remove invalid repeated name 0
-    try { analyzers.remove(prefix + "valid0", true); } catch(e) {};
+    try { 
+      analyzers.remove(prefix + "valid0", true);
+      fail(); 
+    } catch(e) {};
     waitForCompletedRevision(dbName, revisionNumber);
 
     // remove valid name 2

@@ -410,7 +410,7 @@ bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) {
 
 REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder,
                         text_vpack_normalizer);
-}
+} // namespace text_vpack
 
 namespace stem_vpack {
   // FIXME implement proper vpack parsing
@@ -439,7 +439,7 @@ namespace stem_vpack {
 
   REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, stem_vpack_builder,
     stem_vpack_normalizer);
-}
+} // namespace stem_vpack
 
 namespace norm_vpack {
   // FIXME implement proper vpack parsing
@@ -468,7 +468,7 @@ namespace norm_vpack {
 
   REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, norm_vpack_builder,
     norm_vpack_normalizer);
-}
+} // namespace norm_vpack
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
@@ -981,6 +981,16 @@ bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
+arangodb::AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
+  arangodb::application_features::ApplicationServer& server,
+  irs::string_ref const& vocbase) {
+  if (arangodb::ServerState::instance()->isCoordinator() && !vocbase.empty()) {
+    TRI_ASSERT(server.hasFeature<arangodb::ClusterFeature>());
+    auto& engine = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    return std::make_unique<arangodb::AnalyzerModificationTransaction>(vocbase, &engine, false);
+  }
+  return nullptr;
+}
 
 // Auto-repair of dangling AnalyzersRevisions
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
@@ -1494,18 +1504,28 @@ Result IResearchAnalyzerFeature::emplace(
     irs::string_ref const& name,
     irs::string_ref const& type,
     VPackSlice const properties,
-    irs::flags const& features) {
+    irs::flags const& features /* = irs::flags::empty_instance() */) {
   auto const split = splitAnalyzerName(name);
+
+  auto transaction = createAnalyzerModificationTransaction(server(), split.first);
+  if (transaction) {
+    auto startRes = transaction->start();
+    if (startRes.fail()) {
+      return startRes;
+    }
+  }
 
   try {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
     if (!split.first.null()) { // do not trigger load for static-analyzer requests
-      auto cleanupResult = cleanupAnalyzersCollection(split.first,
-                                                      getAnalyersRevision(split.first)->getBuildingRevision());
-      if (cleanupResult.fail()) {
-        return cleanupResult;
+      if (transaction) {
+        auto cleanupResult = cleanupAnalyzersCollection(split.first,
+                                                        transaction->buildingRevision());
+        if (cleanupResult.fail()) {
+          return cleanupResult;
+        }
       }
 
       auto res = loadAnalyzers(split.first);
@@ -1551,36 +1571,42 @@ Result IResearchAnalyzerFeature::emplace(
         res = storeAnalyzer(*pool);
       }
 
-      if (res.ok()) {
-        result = std::make_pair(pool, itr.second);
-        // cppcheck-suppress unreadVariable
-        if (ServerState::instance()->isSingleServer()) {
-          erase = false; // Successful pool creation, cleanup not required for single server.
-                         // For cluster we are waiting for agency commit - remove pool by now
-        }
+      if (res.fail()) {
+        return res;
       }
 
-      return res;
+      // cppcheck-suppress unreadVariable
+      if (transaction) {
+        res = transaction->commit();
+        if (res.fail()) {
+          return res;
+        }
+        auto cached = _lastLoad.find(split.first);
+        TRI_ASSERT(cached != _lastLoad.end());
+        if (ADB_LIKELY(cached != _lastLoad.end())) {
+          cached->second = transaction->buildingRevision(); // as we already "updated cache" to this revision
+        }
+      }
+      erase = false;
     }
-
     result = std::make_pair(pool, itr.second);
   } catch (basics::Exception const& e) {
     return {
       e.code(),
-      "caught exception while registering an arangosearch analizer name '" + std::string(name) +
+      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
       "' type '" + std::string(type) +
       "' properties '" + properties.toString() +
       "': " + std::to_string(e.code()) + " " + e.what() };
   } catch (std::exception const& e) {
     return {
       TRI_ERROR_INTERNAL,
-      "caught exception while registering an arangosearch analizer name '" + std::string(name) +
+      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
       "' type '" + std::string(type) +
       "' properties '" + properties.toString() + "': " + e.what() };
   } catch (...) {
     return {
       TRI_ERROR_INTERNAL, // code
-      "caught exception while registering an arangosearch analizer name '" + std::string(name) +
+      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
       "' type '" + std::string(type) +
       "' properties '" + properties.toString() + "'" };
   }
@@ -1824,15 +1850,15 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     }
     static const auto queryDeleteString = arangodb::aql::QueryString(
       "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER d." +
-      arangodb::StaticStrings::AnalyzersRevision + " > @rev OR ( HAS(d, '" +
+      arangodb::StaticStrings::AnalyzersRevision + " >= @rev OR ( HAS(d, '" +
       arangodb::StaticStrings::AnalyzersDeletedRevision +  "') AND d." +
-      arangodb::StaticStrings::AnalyzersDeletedRevision + " <= @rev) REMOVE d IN " +
+      arangodb::StaticStrings::AnalyzersDeletedRevision + " < @rev) REMOVE d IN " +
       arangodb::StaticStrings::AnalyzersCollection);
 
 
     auto bindBuilder = std::make_shared<VPackBuilder>();
     bindBuilder->openObject();
-    bindBuilder->add("rev", VPackValue(getAnalyersRevision(*vocbase)->getRevision()));
+    bindBuilder->add("rev", VPackValue(buildingRevision));
     bindBuilder->close();
 
     auto ctx = arangodb::transaction::StandaloneContext::Create(*vocbase);
@@ -1854,7 +1880,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
     static const auto queryUpdateString = arangodb::aql::QueryString(
       "FOR d IN " + arangodb::StaticStrings::AnalyzersCollection + " FILTER " +
       " ( HAS(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision + "') AND d." +
-      arangodb::StaticStrings::AnalyzersDeletedRevision + " > @rev) " +
+      arangodb::StaticStrings::AnalyzersDeletedRevision + " >= @rev) " +
       "UPDATE d WITH UNSET(d, '" + arangodb::StaticStrings::AnalyzersDeletedRevision  + "') IN " +
       arangodb::StaticStrings::AnalyzersCollection);
     arangodb::aql::Query queryUpdate(ctx, queryUpdateString, bindBuilder, nullptr);
@@ -2378,25 +2404,13 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& nam
   return trx.commit();
 }
 
-Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name) {
+Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name, irs::string_ref const& vocbase) {
   TRI_IF_FAILURE("FinalizeAnalyzerRemove") {
     return Result(TRI_ERROR_DEBUG);
   }
 
   try {
-    auto split = splitAnalyzerName(name);
-    auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
-
-    if (itr == _analyzers.end()) {
-      return {
-        TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-        "failure to find analyzer while finalizing removing arangosearch analyzer '" + std::string(name) + "'"
-      };
-    }
-    // this is ok. As if we got  there removal is committed into agency
-    _analyzers.erase(itr);
-
-    return removeFromCollection(split.second, split.first);
+    return removeFromCollection(name, vocbase);
   }
   catch (basics::Exception const& e) {
     return { e.code(),
@@ -2431,7 +2445,7 @@ Result IResearchAnalyzerFeature::remove(
 
     // FIXME: really strange  we don`t have this load in remove
     //        This means if we just start server and call remove - we will fail
-    //        Event test IResearchAnalyzerFeatureTest.test_persistence_remove_existing_records  checks this behaviour
+    //        Even test IResearchAnalyzerFeatureTest.test_persistence_remove_existing_records  checks this behaviour
     //        Maybe this is to avoid having here something like onlyCached kludge in get ?
     //if (!split.first.null()) { // do not trigger load for static-analyzer requests
     //  auto res = loadAnalyzers(split.first);
@@ -2477,10 +2491,17 @@ Result IResearchAnalyzerFeature::remove(
       return {};
     }
 
-    auto cleanupResult = cleanupAnalyzersCollection(split.first,
-                                                    getAnalyersRevision(split.first)->getBuildingRevision());
-    if (cleanupResult.fail()) {
-      return cleanupResult;
+    auto analyzerModificationTrx = createAnalyzerModificationTransaction(server(), split.first);
+    if (analyzerModificationTrx) {
+      auto startRes = analyzerModificationTrx->start();
+      if (startRes.fail()) {
+        return startRes;
+      }
+      auto cleanupResult = cleanupAnalyzersCollection(split.first,
+                                                      analyzerModificationTrx->buildingRevision());
+      if (cleanupResult.fail()) {
+        return cleanupResult;
+      }
     }
     // .........................................................................
     // after here the analyzer must be removed from the persisted store first
@@ -2504,7 +2525,8 @@ Result IResearchAnalyzerFeature::remove(
                "' configuration while storage engine in recovery" };
     }
 
-    if (ServerState::instance()->isSingleServer()) {
+    if (!analyzerModificationTrx) {
+      TRI_ASSERT(ServerState::instance()->isSingleServer());
       auto commitResult = removeFromCollection(pool->_key, split.first);
       if (!commitResult.ok()) {
         return commitResult;
@@ -2540,7 +2562,7 @@ Result IResearchAnalyzerFeature::remove(
       builder.openObject();
       addStringRef(builder, arangodb::StaticStrings::KeyString, pool->_key);
       builder.add(arangodb::StaticStrings::AnalyzersDeletedRevision,
-                  VPackValue(getAnalyersRevision(*vocbase)->getBuildingRevision()));
+        VPackValue(analyzerModificationTrx->buildingRevision()));
       builder.close();
 
       auto result = trx.update(arangodb::StaticStrings::AnalyzersCollection,
@@ -2552,12 +2574,30 @@ Result IResearchAnalyzerFeature::remove(
 
         return result.result;
       }
-      auto commitResult = trx.commit();
-      if (!commitResult.ok()) {
-        return commitResult;
+      res = trx.commit();
+      if (!res.ok()) {
+        return res;
+      }
+      res = analyzerModificationTrx->commit();
+      if (res.fail()) {
+        return res;
+      }
+      // this is ok. As if we got  there removal is committed into agency
+      _analyzers.erase(itr);
+      auto cached = _lastLoad.find(split.first);
+      TRI_ASSERT(cached != _lastLoad.end());
+      if (ADB_LIKELY(cached != _lastLoad.end())) {
+        cached->second = analyzerModificationTrx->buildingRevision(); // as we already "updated cache" to this revision
+      }
+      res = removeFromCollection(pool->_key, split.first);
+      if (res.fail()) {
+        // just log this error. Analyzer is already "deleted" for the whole cluster
+        // so we must report success. Leftovers will be cleaned up on the next operation
+        LOG_TOPIC("70a8b", WARN, iresearch::TOPIC) << " Failed to finalize analyzer '" << pool->_key << "'"
+          << " Error Code:" << res.errorNumber() << " Error:" << res.errorMessage();
       }
     }
-    } catch (basics::Exception const& e) {
+  } catch (basics::Exception const& e) {
     return { e.code(),
             "caught exception while removing configuration for arangosearch analyzer name '" +
             std::string(name) + "': " + std::to_string(e.code()) + " "+ e.what() };

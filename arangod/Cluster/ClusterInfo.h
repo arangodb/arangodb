@@ -293,6 +293,8 @@ class CollectionInfoCurrent {
 
 class AnalyzerModificationTransaction {
 public:
+  using Ptr = std::unique_ptr<AnalyzerModificationTransaction>;
+
   AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup)
     : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
     TRI_ASSERT(_clusterInfo);
@@ -305,10 +307,16 @@ public:
     try {
       abort();
     } catch (...) {} // force no exceptions
+    TRI_ASSERT(!_rollbackCounter && !_rollbackRevision);
   }
 
   static int32_t getPendingCount() noexcept {
     return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  }
+
+  AnalyzersRevision::Revision buildingRevision() const noexcept {
+    TRI_ASSERT(_buildingRevision != AnalyzersRevision::LATEST); // unstarted transation access
+    return _buildingRevision;
   }
 
   Result start();
@@ -333,6 +341,12 @@ private:
 
   // cleanup or normal analyzer insert/remove
   bool _cleanupTransaction;
+
+  // revision this transaction is building
+  // e.g. revision will be current upon successful commit of 
+  // this transaction. For cleanup transaction this equals to current revision
+  // as cleanup just cleans the mess and reverts revision back to normal
+  AnalyzersRevision::Revision _buildingRevision{ AnalyzersRevision::LATEST };
 
   // pending operation sount. Positive number means some operations are ongoing
   // zero means system idle
@@ -690,18 +704,21 @@ public:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief start creating or deleting an analyzer in coordinator,
-  /// the return value is an ArangoDB error code
+  /// the return value is an ArangoDB error code and building revision number if succeeded,
+  /// AnalyzersRevision::LATEST on error
   /// and the errorMsg is set accordingly. One possible error
   /// is a timeout.
+  /// @note should not be called directly - use AnalyzerModificationTransaction
   //////////////////////////////////////////////////////////////////////////////
-
-  Result startModifyingAnalyzerCoordinator(DatabaseID const& databaseID);
+  std::pair<Result, AnalyzersRevision::Revision>  startModifyingAnalyzerCoordinator(
+      DatabaseID const& databaseID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish creating or deleting an analyzer in coordinator,
   /// the return value is an ArangoDB error code
   /// and the errorMsg is set accordingly. One possible error
   /// is a timeout.
+  /// @note should not be called directly - use AnalyzerModificationTransaction
   //////////////////////////////////////////////////////////////////////////////
 
   Result finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore);
@@ -711,7 +728,7 @@ public:
   /// @return created transaction or nullptr if no cleanup needed
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<AnalyzerModificationTransaction> createAnalyzersCleanupTrans();
+  AnalyzerModificationTransaction::Ptr createAnalyzersCleanupTrans();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
