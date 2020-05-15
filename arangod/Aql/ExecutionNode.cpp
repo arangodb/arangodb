@@ -835,7 +835,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   }
 
-  if (flags & ExecutionNode::SERIALIZE_DETAILS) {
+  if (flags & (ExecutionNode::SERIALIZE_DETAILS | ExecutionNode::SERIALIZE_REGISTER_INFORMATION)) {
     nodes.add("depth", VPackValue(_depth));
 
     if (_registerPlan) {
@@ -884,6 +884,21 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& oneVar : stackEntry) {
           oneVar->toVelocyPack(nodes);
+        }
+      }
+    }
+
+    if (flags & ExecutionNode::SERIALIZE_REGISTER_INFORMATION) {
+      nodes.add(VPackValue("unusedRegsStack"));
+      auto const& unusedRegsStack = _registerPlan->unusedRegsByNode.at(id());
+      {
+        VPackArrayBuilder guard(&nodes);
+        TRI_ASSERT(!unusedRegsStack.empty());
+        for (auto const& stackEntry : unusedRegsStack) {
+          VPackArrayBuilder stackEntryGuard(&nodes);
+          for (auto const& reg : stackEntry) {
+            nodes.add(VPackValue(reg));
+          }
         }
       }
     }
@@ -940,8 +955,15 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 #endif
 
-/// @brief planRegisters
 void ExecutionNode::planRegisters(ExecutionNode* super) {
+  planRegisters(super, false);
+}
+void ExecutionNode::planRegisters(ExplainRegisterPlan) {
+  planRegisters(nullptr, true);
+}
+
+/// @brief planRegisters
+void ExecutionNode::planRegisters(ExecutionNode* super, bool explain) {
   // The super is only for the case of subqueries.
   std::shared_ptr<RegisterPlan> v;
 
@@ -951,7 +973,13 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  RegisterPlanWalker walker(v);
+  auto walker = std::invoke([&] {
+    if (explain) {
+      return RegisterPlanWalker{v, ExplainRegisterPlan{}};
+    } else {
+      return RegisterPlanWalker{v};
+    }
+  });
   walk(walker);
 
   // Now handle the subqueries:

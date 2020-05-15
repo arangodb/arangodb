@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/HashSet.h"
@@ -81,9 +82,11 @@ class ExecutionPlan {
 //  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
+                                                              bool explainRegisterPlan) const;
 
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
+                    bool explainRegisterPlan) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
@@ -201,7 +204,8 @@ class ExecutionPlan {
   void clearVarUsageComputed() { _varUsageComputed = false; }
 
   /// @brief static analysis
-  void planRegisters() { _root->planRegisters(); }
+  void planRegisters();
+  void planRegisters(ExplainRegisterPlan);
 
   /// @brief find all variables that are populated with data from collections
   void findCollectionAccessVariables();

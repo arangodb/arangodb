@@ -66,6 +66,8 @@
 
 #include <velocypack/Iterator.h>
 
+#include <optional>
+
 #ifndef USE_PLAN_CACHE
 #undef USE_PLAN_CACHE
 #endif
@@ -779,7 +781,7 @@ ExecutionState Query::finalize(QueryResult& result) {
       }
 
       result.extra->add(VPackValue("plan"));
-      plan->toVelocyPack(*result.extra, _ast.get(), false);
+      plan->toVelocyPack(*result.extra, _ast.get(), false, false);
       // needed to happen before plan cleanup
     }
   }
@@ -887,6 +889,17 @@ QueryResult Query::explain() {
 
     QueryResult result;
 
+    auto preparePlanForSerialization = [&](std::unique_ptr<ExecutionPlan> const& plan) {
+      plan->findVarUsage();
+      if (_queryOptions.explainRegisters) {
+        plan->planRegisters(ExplainRegisterPlan{});
+      } else {
+        plan->planRegisters();
+      }
+      plan->findCollectionAccessVariables();
+      plan->prepareTraversalOptions();
+    };
+
     if (_queryOptions.allPlans) {
       result.data = std::make_shared<VPackBuilder>();
       {
@@ -897,11 +910,9 @@ QueryResult Query::explain() {
           auto& pln = it.first;
           TRI_ASSERT(pln != nullptr);
 
-          pln->findVarUsage();
-          pln->planRegisters();
-          pln->findCollectionAccessVariables();
-          pln->prepareTraversalOptions();
-          pln->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
+          preparePlanForSerialization(pln);
+          pln->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans,
+                            _queryOptions.explainRegisters);
         }
       }
       // cacheability not available here
@@ -911,15 +922,12 @@ QueryResult Query::explain() {
       std::unique_ptr<ExecutionPlan> bestPlan = opt.stealBest();  // Now we own the best one again
       TRI_ASSERT(bestPlan != nullptr);
 
-      bestPlan->findVarUsage();
-      bestPlan->planRegisters();
-      bestPlan->findCollectionAccessVariables();
-      bestPlan->prepareTraversalOptions();
-
-      result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
+      preparePlanForSerialization(bestPlan);
+      result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans,
+                                           _queryOptions.explainRegisters);
 
       // cacheability
-      result.cached = (!_queryString.empty() && !isModificationQuery()  &&
+      result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
     }
 

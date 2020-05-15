@@ -51,6 +51,10 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
+  if (explain) {
+    plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
+  }
+
   bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
 
   if (en->isIncreaseDepth()) {

@@ -59,6 +59,8 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
+class ExplainRegisterPlan{};
+
 /// There are still some improvements that can be done to the RegisterPlanWalker
 /// to produce better plans.
 /// The most important point is that registersToClear are currently used to find
@@ -76,8 +78,12 @@ struct RegisterPlanT;
 ///       at the SubqueryEndNode.
 template <typename T>
 struct RegisterPlanWalkerT final : public WalkerWorker<T> {
-  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlanT<T>> plan)
+  using RegisterPlan = RegisterPlanT<T>;
+
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan)
       : plan(std::move(plan)) {}
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan, ExplainRegisterPlan)
+      : plan(std::move(plan)), explain(true) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;
@@ -87,7 +93,8 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
 
   RegIdOrderedSetStack unusedRegisters{{}};
   RegIdSetStack regsToKeepStack{{}};
-  std::shared_ptr<RegisterPlanT<T>> plan;
+  std::shared_ptr<RegisterPlan> plan;
+  bool explain = false;
 };
 
 template <typename T>
@@ -111,6 +118,9 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = RegisterId{1000};
+
+  /// @brief Only used when the register plan is being explained
+  std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
 
  public:
   RegisterPlanT();

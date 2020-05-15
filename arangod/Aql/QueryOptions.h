@@ -80,7 +80,8 @@ struct QueryOptions {
   bool count;
   bool verboseErrors;
   bool inspectSimplePlans;
-  
+  bool explainRegisters;
+
   /// @brief hack to be used only for /_api/export, contains the name of
   /// the target collection
   std::string exportCollection;

@@ -94,6 +94,7 @@ class ExecutionPlan;
 class RegisterInfos;
 class Expression;
 class RedundantCalculationsReplacer;
+class ExplainRegisterPlan;
 template<typename T> struct RegisterPlanWalkerT;
 using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
@@ -361,6 +362,8 @@ class ExecutionNode {
   static constexpr unsigned SERIALIZE_DETAILS = 1 << 2;
   /// include additional function info for explain
   static constexpr unsigned SERIALIZE_FUNCTIONS = 1 << 3;
+  /// include addition information of the register plan for explain
+  static constexpr unsigned SERIALIZE_REGISTER_INFORMATION = 1 << 4;
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags, bool keepTopLevelOpen) const;
@@ -431,6 +434,7 @@ class ExecutionNode {
 
   /// @brief static analysis
   void planRegisters(ExecutionNode* super = nullptr);
+  void planRegisters(ExplainRegisterPlan);
 
   /// @brief get RegisterPlan
   std::shared_ptr<RegisterPlan> getRegisterPlan() const;
@@ -462,6 +466,8 @@ class ExecutionNode {
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 
  protected:
+  void planRegisters(ExecutionNode* super, bool explain);
+
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
   void setId(ExecutionNodeId id);
