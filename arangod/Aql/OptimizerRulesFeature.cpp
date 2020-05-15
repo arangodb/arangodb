@@ -389,6 +389,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeSatelliteJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
+
+  registerRule("remove-distribute-nodes", removeDistributeNodesRule,
+               OptimizerRule::removeDistributeNodesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
 #endif
 
   registerRule("undistribute-remove-after-enum-coll", undistributeRemoveAfterEnumCollRule,
