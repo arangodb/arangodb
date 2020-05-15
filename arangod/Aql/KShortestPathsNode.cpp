@@ -290,14 +290,14 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   RegIdSet inputRegisters;
   if (usesStartInVariable()) {
-    inputRegisters.emplace(varToRegUnchecked(startInVariable()));
+    inputRegisters.emplace(variableToRegisterId(&startInVariable()));
   }
   if (usesTargetInVariable()) {
-    inputRegisters.emplace(varToRegUnchecked(targetInVariable()));
+    inputRegisters.emplace(variableToRegisterId(&targetInVariable()));
   }
 
   TRI_ASSERT(usesPathOutVariable());  // This node always produces the path!
-  auto outputRegister = varToRegUnchecked(pathOutVariable());
+  auto outputRegister = variableToRegisterId(&pathOutVariable());
   auto outputRegisters = RegIdSet{outputRegister};
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
