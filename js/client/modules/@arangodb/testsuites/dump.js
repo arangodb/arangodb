@@ -57,7 +57,6 @@ const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_compressed': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
@@ -104,6 +103,10 @@ class DumpRestoreHelper {
     if (options.compressed) {
       this.dumpConfig.activateCompression();
       this.restoreOldConfig.activateCompression();
+    }
+    if (options.uncompressed) {
+      this.dumpConfig.activateUNCompression();
+      this.restoreOldConfig.activateUNCompression();
     }
     if (restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
@@ -168,7 +171,6 @@ class DumpRestoreHelper {
 
   runCheckDumpFilesSuite(path) {
     this.print('Inspecting dumped files');
-    print(this.dumpConfig.config['output-directory'])
     process.env['dumpdirectory'] = this.dumpConfig.config['output-directory'];
     this.results.checkDumpFiles = this.arangosh(path, this.clientAuth);
     process.env['dumpdirectory'] = null;
@@ -445,7 +447,7 @@ function dump (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
-    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -460,7 +462,7 @@ function dumpMultiple (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
-    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
     dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -468,7 +470,8 @@ function dumpMultiple (options) {
   };
   
   let dumpOptions = {
-    allDatabases: true
+    allDatabases: true,
+    uncompressed: true
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
@@ -554,49 +557,6 @@ function dumpEncrypted (options) {
   };
 
   return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart);
-}
-
-function dumpCompressed (options) {
-  // test is only meaningful in the enterprise version
-  let skip = true;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      skip = false;
-    }
-  }
-
-  if (skip) {
-    print('skipping dump_encrypted test');
-    return {
-      dump_encrypted_compressed: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
-  let c = getClusterStrings(options);
-
-  let afterServerStart = function(instanceInfo) {
-    let keyFile = fs.join(instanceInfo.rootDir, 'secret-key');
-    fs.write(keyFile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
-    return keyFile;
-  };
-
-  let dumpOptions = _.clone(options);
-  dumpOptions.compressed = true;
-  
-  let tstFiles = {
-    dumpSetup: 'dump-setup' + c.cluster + '.js',
-    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
-    dumpCleanup: 'cleanup-nothing.js',
-    dumpAgain: 'dump' + c.cluster + '.js',
-    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
-    foxxTest: 'check-foxx.js'
-  };
-
-  return dump_backend(options, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted_compressed', tstFiles, afterServerStart);
 }
 
 function dumpMaskings (options) {
@@ -730,9 +690,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_encrypted'] = dumpEncrypted;
   defaultFns.push('dump_encrypted');
-
-  testFns['dump_compressed'] = dumpCompressed;
-  defaultFns.push('dump_compressed');
 
   testFns['dump_maskings'] = dumpMaskings;
   defaultFns.push('dump_maskings');

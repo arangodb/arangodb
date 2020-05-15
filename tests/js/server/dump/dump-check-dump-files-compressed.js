@@ -39,37 +39,36 @@ function dumpIntegrationSuite () {
   const cn = 'UnitTestsDumpKeygen';
 
   return {
-    testDumpCompressedEncrypted: function () {
+    testDumpCompressed: function () {
       try {
         let tree = fs.listTree(dumpDir);
         assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
         let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
-        assertEqual("aes-256-ctr", data);
+        assertEqual("none", data);
         const prefix = "UnitTestsDumpKeygen_24f160fff8671be21db71c5f77fd72ce";
-
+       
         let structure = prefix + ".structure.json";
         if (!fs.isFile(fs.join(dumpDir, structure))) {
           structure = cn + ".structure.json";
         }
         assertTrue(fs.isFile(fs.join(dumpDir, structure)), structure);
         assertNotEqual(-1, tree.indexOf(structure));
-        try {
-          // cannot read encrypted file
-          JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)));
-          fail();
-        } catch (err) {
-        }
+        data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
+        assertEqual(cn, data.parameters.name);
         
-        assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
-        assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
-        try {
-          // cannot read encrypted file
-          JSON.parse(fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")));
-          fail();
-        } catch (err) {}
+        assertNotEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
+        assertEqual(-1, tree.indexOf(prefix + ".data.json"));
+        data = fs.readGzip(fs.join(dumpDir, prefix + ".data.json.gz")).toString().trim().split('\n');
+        assertEqual(1000, data.length);
+        data.forEach(function(line) {
+          line = JSON.parse(line);
+          assertEqual(2300, line.type);
+          assertTrue(line.data.hasOwnProperty('_key'));
+          assertTrue(line.data.hasOwnProperty('_rev'));
+        });
       } finally {
       }
-    },
+    }
   };
 }
 
