@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,56 +17,55 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H
-#define ARANGOD_AQL_SUBQUERY_START_EXECUTION_NODE_H 1
+#ifndef ARANGOD_AQL_MUTEX_NODE_H
+#define ARANGOD_AQL_MUTEX_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionNodeId.h"
-#include "Aql/ExecutionPlan.h"
 
 namespace arangodb {
 namespace aql {
 
-struct Variable;
+class DistributeConsumerNode;
 
-class SubqueryStartNode : public ExecutionNode {
-  friend class ExecutionNode;
+/// @brief class MutexNode
+class MutexNode : public ExecutionNode {
   friend class ExecutionBlock;
 
+  /// @brief constructor with an id
  public:
-  SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-  SubqueryStartNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* subqueryOutVariable)
-      : ExecutionNode(plan, id), _subqueryOutVariable(subqueryOutVariable) {}
+  MutexNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  CostEstimate estimateCost() const override final;
+  MutexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  NodeType getType() const override final { return SUBQUERY_START; }
+  /// @brief return the type of the node
+  NodeType getType() const override final;
 
+  /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
                           std::unordered_set<ExecutionNode const*>& seen) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
 
+  /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  bool isEqualTo(ExecutionNode const& other) const override final;
+  /// @brief the cost of a AsyncNode is whatever is 0
+  CostEstimate estimateCost() const override final;
 
-  bool isModificationSubqueryNode();
-
+  void addClient(DistributeConsumerNode const* client);
+  
  private:
-  /// @brief This is only required for Explain output.
-  ///        it has no practical usage other then to print this information during explain.
-  Variable const* _subqueryOutVariable;
-  bool _isModificationSubquery;
+  std::vector<std::string> _clients;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}
+}
 
 #endif

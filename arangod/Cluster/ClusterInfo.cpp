@@ -1788,8 +1788,6 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
   {
     double const interval = getPollInterval();
 
-    CONDITION_LOCKER(locker, agencyCallback->_cv);
-
     int count = 0;  // this counts, when we have to reload the DBServers
     while (true) {
       if (++count >= static_cast<int>(getReloadServerListTimeout() / interval)) {
@@ -1812,7 +1810,10 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
         return Result(tmpRes, *errMsg);
       }
 
-      agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
+      {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
+      }
 
       if (_server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
@@ -2039,8 +2040,6 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
   // Now wait stuff in Current to disappear and thus be complete:
   {
-    CONDITION_LOCKER(locker, agencyCallback->_cv);
-
     while (true) {
       if (dbServerResult->load(std::memory_order_acquire) >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
@@ -2060,7 +2059,10 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
               return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
-      agencyCallback->executeByCallbackOrTimeout(interval);
+      {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(interval);
+      }
 
       if (_server.isStopping()) {
               return Result(TRI_ERROR_SHUTTING_DOWN);
@@ -2796,21 +2798,14 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
 
   {
-    CONDITION_LOCKER(locker, agencyCallback->_cv);
-
     while (true) {
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
         AgencyOperation delCurrentCollection("Current/Collections/" + dbName + "/" + collectionID,
                                              AgencySimpleOperationType::DELETE_OP);
-        AgencyOperation incrementCurrentVersion(
-          "Current/Version", AgencySimpleOperationType::INCREMENT_OP);
-        AgencyWriteTransaction cx({delCurrentCollection, incrementCurrentVersion});
+        AgencyWriteTransaction cx({delCurrentCollection});
         res = ac.sendTransactionWithFailover(cx);
-        if (res.slice().get("results").length()) {
-          waitForCurrent(res.slice().get("results")[0].getNumber<uint64_t>()).get();
-        }
         events::DropCollection(dbName, collectionID, *dbServerResult);
         return Result(*dbServerResult);
       }
@@ -2827,7 +2822,10 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
-      agencyCallback->executeByCallbackOrTimeout(interval);
+      {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(interval);
+      }
 
       if (_server.isStopping()) {
         events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
@@ -4033,8 +4031,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   }
 
   {
-    CONDITION_LOCKER(locker, agencyCallback->_cv);
-
     while (true) {
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb
@@ -4050,7 +4046,10 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
-      agencyCallback->executeByCallbackOrTimeout(interval);
+      {
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(interval);
+      }
 
       if (_server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);

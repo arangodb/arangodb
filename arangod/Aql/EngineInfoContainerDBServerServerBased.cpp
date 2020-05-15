@@ -241,7 +241,7 @@ void EngineInfoContainerDBServerServerBased::openSnippet(GatherNode const* sinkG
 // to the given queryid of the coordinator.
 void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) {
   TRI_ASSERT(!_snippetStack.empty());
-  auto e = _snippetStack.top();
+  std::shared_ptr<QuerySnippet> e = _snippetStack.top();
   TRI_ASSERT(e);
   _snippetStack.pop();
   e->useQueryIdAsInput(inputSnippet);
@@ -261,7 +261,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    MapRemoteToSnippet& snippetIds,  std::map<std::string, QueryId>& serverToQueryId,
+    MapRemoteToSnippet& snippetIds, std::map<std::string, QueryId>& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
@@ -310,6 +310,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     addVariablesPart(infoBuilder);
     TRI_ASSERT(infoBuilder.isOpenObject());
+    
+    infoBuilder.add("isModificationQuery", VPackValue(_query.isModificationQuery()));
+    infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
     addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
     TRI_ASSERT(infoBuilder.isOpenObject());

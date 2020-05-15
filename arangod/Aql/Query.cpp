@@ -102,7 +102,6 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _executionPhase(ExecutionPhase::INITIALIZE),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _killed(false),
-      _isAsyncQuery(false),
       _queryHashCalculated(false) {
   
   if (!_transactionContext) {
@@ -215,19 +214,17 @@ void Query::prepareQuery(SerializationFormat format) {
   std::unique_ptr<ExecutionPlan> plan = preparePlan();
   TRI_ASSERT(plan != nullptr);
   plan->findVarUsage();
-
-  _isAsyncQuery |= plan->contains(ExecutionNode::ASYNC);
-  TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
-
+  
   TRI_ASSERT(_trx != nullptr);
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
-
+  
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
   // this is confusing and should be fixed!
   auto res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                   format, _snippets);
+
   _plans.push_back(std::move(plan));
   
   if (_snippets.size() > 1) {  // register coordinator snippets
@@ -258,9 +255,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // put in bind parameters
   parser.ast()->injectBindParameters(_bindParameters, this->resolver());
-
-  _isAsyncQuery = _ast->containsParallelNode();
-
+  
   TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
@@ -307,10 +302,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
-  if (plan == nullptr) { // oops
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "failed to create query execution engine");
-  }
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
@@ -758,45 +749,11 @@ ExecutionState Query::finalize(QueryResult& result) {
 
     result.extra = std::make_shared<VPackBuilder>();
     result.extra->openObject(true);
-    
-    auto role = ServerState::instance()->getRole();
-    if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS &&
-        (ServerState::isCoordinator(role) ||
-         ServerState::isSingleServer(role))) {
-      TRI_ASSERT(_plans.size() == 1);
-      auto& plan = _plans[0];
-      
-      if (ServerState::isCoordinator(role)) {
-        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
-            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-            arangodb::aql::ExecutionNode::INDEX,
-            arangodb::aql::ExecutionNode::REMOVE,
-            arangodb::aql::ExecutionNode::INSERT,
-            arangodb::aql::ExecutionNode::UPDATE,
-            arangodb::aql::ExecutionNode::REPLACE,
-            arangodb::aql::ExecutionNode::UPSERT};
-
-        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-        plan->findNodesOfType(nodes, collectionNodeTypes, true);
-
-        for (auto& n : nodes) {
-          // clear shards so we get back the full collection name when
-          // serializing the plan
-          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
-          if (cn) {
-            cn->setUsedShard("");
-          }
-        }
-      }
-
-      result.extra->add(VPackValue("plan"));
-      plan->toVelocyPack(*result.extra, _ast.get(), false);
-      // needed to happen before plan cleanup
-    }
   }
-
-  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false, result.extra.get());
+  
+  const bool addPlan = _queryOptions.profile >= PROFILE_LEVEL_BLOCKS &&
+  (ServerState::instance()->isSingleServerOrCoordinator());
+  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/false, result.extra.get(), addPlan);
   if (state == ExecutionState::WAITING) {
     return state;
   }
@@ -883,12 +840,6 @@ QueryResult Query::explain() {
     std::unique_ptr<ExecutionPlan> plan =
         ExecutionPlan::instantiateFromAst(parser.ast());
 
-    if (plan == nullptr) {
-      // oops
-      return QueryResult(
-          Result(TRI_ERROR_INTERNAL, "unable to create plan from AST"));
-    }
-
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
     arangodb::aql::Optimizer opt(_queryOptions.maxNumberOfPlans);
@@ -968,20 +919,18 @@ QueryResult Query::explain() {
   }
 }
 
-bool Query::isModificationQuery() const {
+bool Query::isModificationQuery() const noexcept {
   TRI_ASSERT(_ast != nullptr);
-  if (!_ast) {  // TODO: this is called pre init()
-    return false;
-  }
   return _ast->containsModificationNode();
 }
 
-/// @brief mark a query as modification query
-void Query::setIsModificationQuery() { return _ast->setContainsModificationNode(); }
+bool Query::isAsyncQuery() const noexcept {
+  TRI_ASSERT(_ast != nullptr);
+  return _ast->canApplyParallelism();
+}
 
 /// @brief enter a V8 context
 void Query::enterV8Context() {
-  TRI_ASSERT(!_isAsyncQuery);
   if (!_contextOwnedByExterior) {
     if (_v8Context == nullptr) {
       if (V8DealerFeature::DEALER == nullptr) {
@@ -1016,7 +965,6 @@ void Query::enterV8Context() {
 
 /// @brief return a V8 context
 void Query::exitV8Context() {
-  TRI_ASSERT(!_isAsyncQuery);
   if (!_contextOwnedByExterior) {
     if (_v8Context != nullptr) {
       // unregister transaction in context
@@ -1142,7 +1090,8 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
-                                           VPackBuilder* statsBuilder) {
+                                           VPackBuilder* statsBuilder,
+                                           bool includePlan) {
   auto* engine = rootEngine();
   if (engine) {
     std::shared_ptr<SharedQueryState> ss;
@@ -1181,6 +1130,65 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
 
     statsBuilder->add(VPackValue("stats"));
     stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
+    
+    if (includePlan) {
+      TRI_ASSERT(_plans.size() == 1);
+      auto& plan = _plans[0];
+      
+      if (ServerState::instance()->isCoordinator()) {
+        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
+            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+            arangodb::aql::ExecutionNode::INDEX,
+            arangodb::aql::ExecutionNode::REMOVE,
+            arangodb::aql::ExecutionNode::INSERT,
+            arangodb::aql::ExecutionNode::UPDATE,
+            arangodb::aql::ExecutionNode::REPLACE,
+            arangodb::aql::ExecutionNode::UPSERT};
+
+        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+        plan->findNodesOfType(nodes, collectionNodeTypes, true);
+
+        for (ExecutionNode* n : nodes) {
+          // clear shards so we get back the full collection name when
+          // serializing the plan
+          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
+          if (cn) {
+            cn->setUsedShard("");
+          }
+        }
+      }
+      
+      // remove additional ASYNC and TraversalNodes added for traversal parallelization
+      ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+      ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+      plan->findUniqueNodesOfType(nodes, std::vector<ExecutionNode::NodeType>{
+        arangodb::aql::ExecutionNode::MUTEX}, true);
+
+      for (ExecutionNode* n : nodes) {
+        auto parents = n->getParents();
+        for (size_t i = 0; i < parents.size(); i++) {
+          TRI_ASSERT(parents[i]->getType() == ExecutionNode::DISTRIBUTE_CONSUMER);
+          ExecutionNode* graph = parents[i]->getFirstParent();
+          TRI_ASSERT(graph->getType() == ExecutionNode::TRAVERSAL);
+          plan->unlinkNode(parents[i]); // Dist-Consumer node does not like toVelocyPack
+          if (i > 0) {
+            // unlink additional ASYNC nodes, explainer does not handle cycles
+            ExecutionNode* async = graph->getFirstParent();
+            TRI_ASSERT(async->getType() == ExecutionNode::ASYNC);
+            ExecutionNode* gather = async->getFirstParent();
+            TRI_ASSERT(gather->getType() == ExecutionNode::GATHER);
+            gather->removeDependency(async);
+            plan->clearVarUsageComputed();
+          }
+        }
+      }
+      plan->findVarUsage();
+
+      statsBuilder->add(VPackValue("plan"));
+      plan->toVelocyPack(*statsBuilder, _ast.get(), false);
+      // needed to happen before plan cleanup
+    }
   }
   
   if (!_snippets.empty() && _trx && _trx->state()->isCoordinator()) {
@@ -1217,7 +1225,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
   
-  if (_isAsyncQuery) {
+  if (_ast->canApplyParallelism()) {
     TRI_ASSERT(!_ast->containsModificationNode());
     return _transactionContext->clone();
   }
@@ -1271,6 +1279,7 @@ ClusterQuery::~ClusterQuery() {
 } 
 
 void ClusterQuery::prepareClusterQuery(SerializationFormat format,
+                                       VPackSlice querySlice,
                                        VPackSlice collections,
                                        VPackSlice variables,
                                        VPackSlice snippets,
@@ -1282,6 +1291,16 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                              << " this: " << (uintptr_t)this;
   
   init();
+  
+  VPackSlice val = querySlice.get("isModificationQuery");
+  if (val.isBool() && val.getBool()) {
+    _ast->setContainsModificationNode();
+  }
+  val = querySlice.get("isAsyncQuery");
+  if (val.isBool() && val.getBool()) {
+    _ast->setContainsParallelNode();
+  }
+  
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
   
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
@@ -1313,16 +1332,10 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
   
   auto instantiateSnippet = [&](VPackSlice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
-    if (plan == nullptr) {  // oops
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "could not create plan from vpack");
-    }
+    TRI_ASSERT(plan != nullptr);
 
     plan->findVarUsage();
 
-    _isAsyncQuery = _isAsyncQuery || plan->contains(ExecutionNode::ASYNC);
-    TRI_ASSERT(!isModificationQuery() || !_isAsyncQuery);
-    
     res = ExecutionEngine::instantiateFromPlan(*this, *plan, /*planRegisters*/!_queryString.empty(),
                                                format, _snippets);
     if (res.fail()) {
@@ -1359,10 +1372,10 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     }
   }
   
-  if (travererSlice.isArray()) {
+  if (traverserSlice.isArray()) {
     // used to be RestAqlHandler::registerTraverserEngines
     answerBuilder.add("traverserEngines", VPackValue(VPackValueType::Array));
-    for (auto const& te : VPackArrayIterator(travererSlice)) {
+    for (auto const& te : VPackArrayIterator(traverserSlice)) {
       
       aql::EngineId eId = TRI_NewTickServer();
       auto engine = traverser::BaseEngine::BuildEngine(_vocbase, *this, te);
@@ -1387,6 +1400,13 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
        << TRI_microtime() - _startTime << " "
        << "Query::finalizeSnippets: before _trx->commit"
        << " this: " << (uintptr_t)this;
+  
+  for (auto& [eId, engine] : _snippets) {
+    engine->setShutdown(); // no need to pass through shutdown
+
+    engine->sharedState()->invalidate();
+    engine->collectExecutionStats(stats);
+  }
 
   Result finishResult;
   if (_trx->status() == transaction::Status::RUNNING) {
@@ -1409,11 +1429,6 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   stats.requests += _numRequests.load(std::memory_order_relaxed);
   stats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
   stats.setExecutionTime(TRI_microtime() - _startTime);
-  
-  for (auto& [eId, engine] : _snippets) {
-    engine->collectExecutionStats(stats);
-    engine->setShutdown(); // no need to pass through shutdown
-  }
   
   _snippets.clear();
   _traversers.clear();

@@ -124,6 +124,10 @@ class QueryContext {
 
   virtual void setKilled() = 0;
   
+  /// @brief whether or not a query is a modification query
+  virtual bool isModificationQuery() const noexcept = 0;
+  virtual bool isAsyncQuery() const noexcept = 0;
+  
 public:
   
   virtual void enterV8Context();
