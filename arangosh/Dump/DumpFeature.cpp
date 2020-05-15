@@ -663,7 +663,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
       .setIntroducedIn(30402);
 
   options->addOption("--compress-output",
-                     "compress files containing collection contents using gzip format",
+                     "compress files containing collection contents using gzip format (not compatible with encryption)",
                      new BooleanParameter(&_options.useGzip))
                      .setIntroducedIn(30406)
                      .setIntroducedIn(30500);
