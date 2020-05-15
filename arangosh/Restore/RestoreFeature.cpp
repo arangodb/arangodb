@@ -1414,7 +1414,7 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(_options.inputPath, false, false);
+  _directory = std::make_unique<ManagedDirectory>(_options.inputPath, false, false, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_NOT_FOUND:
@@ -1570,7 +1570,7 @@ void RestoreFeature::start() {
       client->setDatabaseName(db);
       LOG_TOPIC("36075", INFO, Logger::RESTORE) << "Restoring database '" << db << "'";
       _directory = std::make_unique<ManagedDirectory>(
-          basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
+          basics::FileUtils::buildFilename(_options.inputPath, db), false, false, true);
 
       result = _clientManager.getConnectedClient(httpClient, _options.force, false,
                                                  !_options.createDatabase, false);

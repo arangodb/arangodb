@@ -100,8 +100,9 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 
 /// @brief returns the short id of the server which should handle this request
 uint32_t RestDocumentHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return 0;
+  uint32_t base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base != 0) {
+    return base;
   }
 
   bool found = false;

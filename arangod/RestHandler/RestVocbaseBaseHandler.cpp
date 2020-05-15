@@ -255,6 +255,26 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request, GeneralR
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestVocbaseBaseHandler::forwardingTarget() {
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    TRI_voc_tid_t tid = 0;
+    std::size_t pos = 0;
+    try {
+      tid = std::stoull(value, &pos, 10);
+    } catch (...) {
+    }
+    if (tid != 0 && TRI_ExtractServerIdFromTick(tid) !=
+                        ServerState::instance()->getShortId()) {
+      return TRI_ExtractServerIdFromTick(tid);
+    }
+  }
+
+  return 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
 /// optionally url-encodes

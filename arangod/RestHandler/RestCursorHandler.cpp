@@ -368,6 +368,11 @@ RestStatus RestCursorHandler::handleQueryResult() {
 
 /// @brief returns the short id of the server which should handle this request
 uint32_t RestCursorHandler::forwardingTarget() {
+  uint32_t base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base != 0) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
     return 0;
