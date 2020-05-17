@@ -7,10 +7,7 @@ const arango = require('@arangodb').arango;
 const _ = require("lodash");
 
 function getStatistics() {
-  let rc =arango.GET("/_db/_system/_admin/statistics");
-  print(rc.client.bytesReceived)
-  print(rc.http)
-  return rc;
+  return arango.GET("/_db/_system/_admin/statistics");
 }
 
 function performGETRequest() {
@@ -82,7 +79,7 @@ describe('request statistics', function () {
     performGETRequest();
     internal.sleep(1); // need to wait a bit for the statistic updates to be processed
     const finalStats = getStatistics();
-
+    
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByTwo = [
