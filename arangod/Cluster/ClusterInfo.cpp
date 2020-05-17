@@ -838,14 +838,6 @@ void ClusterInfo::loadPlan() {
     for (auto const databaseDataSlice : velocypack::ObjectIterator(planAnalyzersSlice)) {
       auto const& analyzerSlice = databaseDataSlice.value;
 
-      if (!analyzerSlice.isObject()) {
-        LOG_TOPIC("bc53f", INFO, Logger::AGENCY)
-          << "Analyzers in the plan is not a valid json object."
-          << " Analyzers will be ignored for now and the invalid information"
-          << " will be repaired. VelocyPack: " << analyzerSlice.toJson();
-
-        continue;
-      }
       auto const databaseName = databaseDataSlice.key.copyString();
       auto* vocbase = databaseFeature.lookupDatabase(databaseName);
 
@@ -862,59 +854,23 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
-      auto const revisionSlice = analyzerSlice.get(StaticStrings::AnalyzersRevision);
-      if (!revisionSlice.isNumber()) {
-        LOG_TOPIC("dd4e1", WARN, Logger::AGENCY)
-          << "Invalid analyzer revision for database '" << databaseName << "',"
-          << " corresponding analyzer will be ignored for now and the "
+      std::string revisionError;
+      auto revision = AnalyzersRevision::fromVelocyPack(analyzerSlice, revisionError);
+      if (revision) {
+        newDbAnalyzersRevision.emplace(databaseName, std::move(revision));
+      } else {
+        LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
+          << "Invalid analyzer data for database '" << databaseName << "'"
+          << " Error:" << revisionError << ", "
+          << " corresponding analyzers revision will be ignored for now and the "
           << "invalid information will be repaired. VelocyPack: "
           << analyzerSlice.toJson();
-        continue;
       }
-
-      auto const buildingRevisionSlice = analyzerSlice.get(StaticStrings::AnalyzersBuildingRevision);
-      if (!buildingRevisionSlice.isNumber()) {
-        LOG_TOPIC("f0c72", WARN, Logger::AGENCY)
-          << "Invalid analyzer building revision for database '" << databaseName << "',"
-          << " corresponding analyzer will be ignored for now and the "
-          << "invalid information will be repaired. VelocyPack: "
-          << analyzerSlice.toJson();
-        continue;
-      }
-      ServerID coordinatorID;
-      if (analyzerSlice.hasKey(StaticStrings::AttrCoordinator)) {
-        auto const coordinatorSlice = analyzerSlice.get(StaticStrings::AttrCoordinator);
-        if (!coordinatorSlice.isString()) {
-          LOG_TOPIC("67bc9", WARN, Logger::AGENCY)
-            << "Invalid analyzer coordinator for database '" << databaseName << "',"
-            << " corresponding analyzer will be ignored for now and the "
-            << "invalid information will be repaired. VelocyPack: "
-            << analyzerSlice.toJson();
-          continue;
-        }
-        velocypack::ValueLength length;
-        auto const* cID = coordinatorSlice.getString(length);
-        coordinatorID = ServerID(cID, length);
-      }
-
-      uint64_t rebootID = 0;
-      if (analyzerSlice.hasKey(StaticStrings::AttrCoordinatorRebootId)) {
-        auto const rebootIDSlice = analyzerSlice.get(StaticStrings::AttrCoordinatorRebootId);
-        if (!rebootIDSlice.isNumber()) {
-          LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
-            << "Invalid analyzer reboot ID for database '" << databaseName << "',"
-            << " corresponding analyzer will be ignored for now and the "
-            << "invalid information will be repaired. VelocyPack: "
-            << analyzerSlice.toJson();
-          continue;
-        }
-        rebootID = rebootIDSlice.getNumber<uint64_t>();
-      }
-
-      newDbAnalyzersRevision[databaseName] = std::make_shared<AnalyzersRevision>(
-        revisionSlice.getNumber<AnalyzersRevision::Revision>(),
-        buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
-        std::move(coordinatorID), rebootID);
+      //!!!! Remove me
+      //newDbAnalyzersRevision[databaseName] =  std::make_shared<AnalyzersRevision>(
+      //  revisionSlice.getNumber<AnalyzersRevision::Revision>(),
+      //  buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
+      //  std::move(coordinatorID), rebootID);
     }
   }
   // Immediate children of "Collections" are database names, then ids
@@ -1674,7 +1630,7 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
 /// @brief ask about analyzers revision
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<AnalyzersRevision> ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
+AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
                                                                      bool forceLoadPlan /* = false */) {
   int tries = 0;
 

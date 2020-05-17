@@ -27,6 +27,8 @@
 #include <string>
 #include <iostream>
 #include <memory>
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 
@@ -85,16 +87,15 @@ class Slice;
 class AnalyzersRevision {
  public:
   using Revision = uint64_t;
-  using Ptr = std::shared_ptr<AnalyzersRevision>;
+  using Ptr = std::shared_ptr<AnalyzersRevision const>;
 
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
 
-
   AnalyzersRevision(Revision revision, Revision buildingRevision,
                     ServerID&& serverID, uint64_t rebootID) noexcept
     : _revision(revision), _buildingRevision(buildingRevision),
-      _serverID(std::move(serverID)), _rebootID(rebootID) {}
+    _serverID(std::move(serverID)), _rebootID(rebootID) {}
 
   Revision getRevision() const noexcept {
     return _revision;
@@ -112,10 +113,12 @@ class AnalyzersRevision {
     return _rebootID;
   }
 
-  arangodb::velocypack::Builder toVelocyPack() const;
+  VPackBuilder toVelocyPack() const;
+
+  static Ptr fromVelocyPack(VPackSlice const& slice, std::string& error);
 
   static Ptr getEmptyRevision() {
-    static Ptr ptr = std::make_shared<AnalyzersRevision>(
+    static Ptr ptr = std::make_shared<AnalyzersRevision::Ptr::element_type>(
         AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0);
     return ptr;
   }

@@ -23,8 +23,7 @@
 #include "ClusterTypes.h"
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+
 
 std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
@@ -34,7 +33,7 @@ namespace arangodb {
 
 arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
   arangodb::velocypack::Builder builder;
-  builder.openObject();
+  VPackObjectBuilder guard(&builder);
   builder.add(StaticStrings::AnalyzersRevision, VPackValue(_revision));
   builder.add(StaticStrings::AnalyzersBuildingRevision, VPackValue(_buildingRevision));
   TRI_ASSERT((_serverID.empty() && !_rebootID.initialized()) ||
@@ -46,8 +45,50 @@ arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
   if (_rebootID.initialized()) {
     builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootID.value()));
   }
-  builder.close();
-
   return builder;
+}
+
+AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice, std::string& error) {
+  if (!slice.isObject()) {
+    error = "Analyzers in the plan is not a valid json object.";
+    return nullptr;
+  }
+
+  auto const revisionSlice = slice.get(StaticStrings::AnalyzersRevision);
+  if (!revisionSlice.isNumber()) {
+    error = StaticStrings::AnalyzersRevision + " key is missing or not a number";
+    return nullptr;
+  }
+
+  auto const buildingRevisionSlice = slice.get(StaticStrings::AnalyzersBuildingRevision);
+  if (!buildingRevisionSlice.isNumber()) {
+    error = StaticStrings::AnalyzersBuildingRevision + " key is missing or not a number";
+    return nullptr;
+  }
+  ServerID coordinatorID;
+  if (slice.hasKey(StaticStrings::AttrCoordinator)) {
+    auto const coordinatorSlice = slice.get(StaticStrings::AttrCoordinator);
+    if (!coordinatorSlice.isString()) {
+      error = StaticStrings::AttrCoordinator + " is not a string";
+      return nullptr;
+    }
+    velocypack::ValueLength length;
+    auto const* cID = coordinatorSlice.getString(length);
+    coordinatorID = ServerID(cID, length);
+  }
+  
+  uint64_t rebootID = 0;
+  if (slice.hasKey(StaticStrings::AttrCoordinatorRebootId)) {
+    auto const rebootIDSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
+    if (!rebootIDSlice.isNumber()) {
+      error = StaticStrings::AttrCoordinatorRebootId + " key is not a number";
+      return nullptr;
+    }
+    rebootID = rebootIDSlice.getNumber<uint64_t>();
+  }
+  return std::make_shared<AnalyzersRevision::Ptr::element_type>(
+      revisionSlice.getNumber<AnalyzersRevision::Revision>(), 
+      buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
+      std::move(coordinatorID), rebootID);
 }
 }  // namespace arangodb

@@ -577,7 +577,7 @@ public:
   /// @param databaseID database name
   /// @param forceLoadPlan always reload plan
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<AnalyzersRevision> getAnalyzersRevision(DatabaseID const& databaseID,
+  AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
                                                           bool forceLoadPlan = false);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1114,7 +1114,7 @@ public:
                               // execution
 
   // database ID => analyzers revision
-  std::unordered_map<DatabaseID, std::shared_ptr<AnalyzersRevision>> _dbAnalyzersRevision; // from Plan/Analyzers
+  std::unordered_map<DatabaseID, AnalyzersRevision::Ptr> _dbAnalyzersRevision; // from Plan/Analyzers
 
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 
