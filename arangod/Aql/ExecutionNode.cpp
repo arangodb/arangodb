@@ -1315,6 +1315,9 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case MATERIALIZE:
+
+    case SUBQUERY_START:
+    case SUBQUERY_END:
       return true;
 
     default:
