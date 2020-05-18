@@ -28,6 +28,7 @@
 #define VELOCYPACK_EXCEPTION_H 1
 
 #include <exception>
+#include <vector>
 #include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
@@ -77,85 +78,25 @@ class Exception : public virtual std::exception {
  private:
   ExceptionType const _type;
   char const* _msg;
+  std::vector<void*> _backtrace;
 
  public:
-  Exception(ExceptionType type, char const* msg) : _type(type), _msg(msg) {}
-
+  Exception(ExceptionType type, char const* msg) : _type(type), _msg(msg), _backtrace(generateBacktrace()) {}
   explicit Exception(ExceptionType type) : Exception(type, message(type)) {}
-  
-  Exception(Exception const& other) : _type(other._type), _msg(other._msg) {}
-  
+  //Exception(Exception const& other) = default;
+  Exception(Exception &&) noexcept = default;
   ~Exception() = default;
 
-  char const* what() const noexcept { return _msg; }
-
+  char const* what() const noexcept override { return _msg; }
   ExceptionType errorCode() const noexcept { return _type; }
+  std::vector<void*> const& backtrace() const noexcept { return _backtrace; }
 
-  static char const* message(ExceptionType type) noexcept {
-    switch (type) {
-      case InternalError:
-        return "Internal error";
-      case NotImplemented:
-        return "Not implemented";
-      case NoJsonEquivalent:
-        return "Type has no equivalent in JSON";
-      case ParseError:
-        return "Parse error";
-      case UnexpectedControlCharacter:
-        return "Unexpected control character";
-      case DuplicateAttributeName:
-        return "Duplicate attribute name";
-      case IndexOutOfBounds:
-        return "Index out of bounds";
-      case NumberOutOfRange:
-        return "Number out of range";
-      case InvalidUtf8Sequence:
-        return "Invalid UTF-8 sequence";
-      case InvalidAttributePath:
-        return "Invalid attribute path";
-      case InvalidValueType:
-        return "Invalid value type for operation";
-      case NeedCustomTypeHandler:
-        return "Cannot execute operation without custom type handler";
-      case NeedAttributeTranslator:
-        return "Cannot execute operation without attribute translator";
-      case CannotTranslateKey:
-        return "Cannot translate key";
-      case KeyNotFound:
-        return "Key not found";
-      case BuilderNotSealed:
-        return "Builder value not yet sealed";
-      case BuilderNeedOpenObject:
-        return "Need open Object";
-      case BuilderNeedOpenArray:
-        return "Need open Array";
-      case BuilderNeedSubvalue:
-        return "Need subvalue in current Object or Array";
-      case BuilderNeedOpenCompound:
-        return "Need open compound value (Array or Object)";
-      case BuilderUnexpectedType:
-        return "Unexpected type";
-      case BuilderUnexpectedValue:
-        return "Unexpected value";
-      case BuilderExternalsDisallowed:
-        return "Externals are not allowed in this configuration";
-      case BuilderKeyAlreadyWritten:
-        return "The key of the next key/value pair is already written";
-      case BuilderKeyMustBeString:
-        return "The key of the next key/value pair must be a string";
-      case BuilderCustomDisallowed:
-        return "Custom types are not allowed in this configuration";
-    
-      case ValidatorInvalidType:
-        return "Invalid type found in binary data";
-      case ValidatorInvalidLength:
-        return "Invalid length found in binary data";
+  std::string formatBacktrace() const;
 
-      case UnknownError:
-      default:
-        return "Unknown error";
-    }
-  }
+ private:
+  static char const* message(ExceptionType type) noexcept;
+  static std::vector<void*> generateBacktrace();
+
 };
 
 }  // namespace arangodb::velocypack

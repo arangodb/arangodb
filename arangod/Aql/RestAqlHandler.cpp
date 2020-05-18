@@ -464,9 +464,13 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
   }
 
   try {
+    VPackSlice::emptyArraySlice().at(0);
     return handleUseQuery(operation, querySlice);
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
+  } catch (velocypack::Exception const& ex) {
+    LOG_TOPIC("d126f", ERR, arangodb::Logger::AQL)
+        << "VPackException during use of Query:" << ex.what() << "backtrace: " << ex.formatBacktrace();
   } catch (std::exception const& ex) {
     LOG_TOPIC("d1266", ERR, arangodb::Logger::AQL)
         << "failed during use of Query: " << ex.what();
