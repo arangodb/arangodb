@@ -955,15 +955,8 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 #endif
 
-void ExecutionNode::planRegisters(ExecutionNode* super) {
-  planRegisters(super, false);
-}
-void ExecutionNode::planRegisters(ExplainRegisterPlan) {
-  planRegisters(nullptr, true);
-}
-
 /// @brief planRegisters
-void ExecutionNode::planRegisters(ExecutionNode* super, bool explain) {
+void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan explainRegisterPlan) {
   // The super is only for the case of subqueries.
   std::shared_ptr<RegisterPlan> v;
 
@@ -973,19 +966,13 @@ void ExecutionNode::planRegisters(ExecutionNode* super, bool explain) {
     v = std::make_shared<RegisterPlan>(*(super->_registerPlan), super->_depth);
   }
 
-  auto walker = std::invoke([&] {
-    if (explain) {
-      return RegisterPlanWalker{v, ExplainRegisterPlan{}};
-    } else {
-      return RegisterPlanWalker{v};
-    }
-  });
+  auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
-    sq->getSubquery()->planRegisters(s);
+    sq->getSubquery()->planRegisters(s, explainRegisterPlan);
   }
   walker.reset();
 }

@@ -59,8 +59,6 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
-class ExplainRegisterPlan{};
-
 /// There are still some improvements that can be done to the RegisterPlanWalker
 /// to produce better plans.
 /// The most important point is that registersToClear are currently used to find
@@ -80,10 +78,10 @@ template <typename T>
 struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   using RegisterPlan = RegisterPlanT<T>;
 
-  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan)
-      : plan(std::move(plan)) {}
-  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan, ExplainRegisterPlan)
-      : plan(std::move(plan)), explain(true) {}
+  explicit RegisterPlanWalkerT(std::shared_ptr<RegisterPlan> plan,
+                               ExplainRegisterPlan explainRegisterPlan = ExplainRegisterPlan::No)
+      : plan(std::move(plan)),
+        explain(explainRegisterPlan == ExplainRegisterPlan::Yes) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;

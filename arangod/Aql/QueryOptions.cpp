@@ -53,7 +53,7 @@ QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
       count(false),
       verboseErrors(false),
       inspectSimplePlans(true),
-      explainRegisters(false)
+      explainRegisters(ExplainRegisterPlan::No)
 {
   // now set some default values from server configuration options
   // use global memory limit value
@@ -171,7 +171,8 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   }
   value = slice.get("explainRegisters");
   if (value.isBool()) {
-    explainRegisters = value.getBool();
+    explainRegisters =
+        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
   VPackSlice optimizer = slice.get("optimizer");

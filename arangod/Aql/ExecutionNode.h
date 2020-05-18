@@ -94,7 +94,6 @@ class ExecutionPlan;
 class RegisterInfos;
 class Expression;
 class RedundantCalculationsReplacer;
-class ExplainRegisterPlan;
 template<typename T> struct RegisterPlanWalkerT;
 using RegisterPlanWalker = RegisterPlanWalkerT<ExecutionNode>;
 template<typename T> struct RegisterPlanT;
@@ -433,8 +432,7 @@ class ExecutionNode {
   ExecutionPlan* plan();
 
   /// @brief static analysis
-  void planRegisters(ExecutionNode* super = nullptr);
-  void planRegisters(ExplainRegisterPlan);
+  void planRegisters(ExecutionNode* super = nullptr, ExplainRegisterPlan = ExplainRegisterPlan::No);
 
   /// @brief get RegisterPlan
   std::shared_ptr<RegisterPlan> getRegisterPlan() const;
@@ -466,8 +464,6 @@ class ExecutionNode {
   //[[nodiscard]] virtual std::unordered_set<VariableId> getInputVariables() const = 0;
 
  protected:
-  void planRegisters(ExecutionNode* super, bool explain);
-
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
   void setId(ExecutionNodeId id);

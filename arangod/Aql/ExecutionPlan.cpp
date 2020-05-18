@@ -407,7 +407,7 @@ ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose,
-                                                          bool explainRegisterPlan) const {
+                                                          ExplainRegisterPlan explainRegisterPlan) const {
   VPackOptions options;
   options.checkAttributeUniqueness = false;
   options.buildUnindexedArrays = true;
@@ -419,13 +419,13 @@ std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose
 
 /// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose,
-                                 bool explainRegisterPlan) const {
+                                 ExplainRegisterPlan explainRegisterPlan) const {
   unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
   if (verbose) {
     flags |= ExecutionNode::SERIALIZE_PARENTS | ExecutionNode::SERIALIZE_DETAILS |
              ExecutionNode::SERIALIZE_FUNCTIONS;
   }
-  if (explainRegisterPlan) {
+  if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
     flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
   }
   // keeps top level of built object open
@@ -2194,9 +2194,8 @@ void ExecutionPlan::findVarUsage() {
 /// @brief determine if the above are already set
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
-void ExecutionPlan::planRegisters() { _root->planRegisters(); }
-void ExecutionPlan::planRegisters(ExplainRegisterPlan) {
-  _root->planRegisters(ExplainRegisterPlan{});
+void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
+  _root->planRegisters(nullptr, explainRegisterPlan);
 }
 
 /// @brief unlinkNodes, note that this does not delete the removed

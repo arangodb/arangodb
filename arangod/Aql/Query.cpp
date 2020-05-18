@@ -781,7 +781,7 @@ ExecutionState Query::finalize(QueryResult& result) {
       }
 
       result.extra->add(VPackValue("plan"));
-      plan->toVelocyPack(*result.extra, _ast.get(), false, false);
+      plan->toVelocyPack(*result.extra, _ast.get(), false, ExplainRegisterPlan::No);
       // needed to happen before plan cleanup
     }
   }
@@ -891,11 +891,7 @@ QueryResult Query::explain() {
 
     auto preparePlanForSerialization = [&](std::unique_ptr<ExecutionPlan> const& plan) {
       plan->findVarUsage();
-      if (_queryOptions.explainRegisters) {
-        plan->planRegisters(ExplainRegisterPlan{});
-      } else {
-        plan->planRegisters();
-      }
+      plan->planRegisters(_queryOptions.explainRegisters);
       plan->findCollectionAccessVariables();
       plan->prepareTraversalOptions();
     };

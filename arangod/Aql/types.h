@@ -102,6 +102,11 @@ using GraphEngineList =
     std::vector<std::pair<arangodb::aql::EngineId, std::unique_ptr<BaseEngine>>>;
 }  // namespace traverser
 
+enum class ExplainRegisterPlan {
+  No = 0,
+  Yes
+};
+
 }  // namespace arangodb
 
 #endif

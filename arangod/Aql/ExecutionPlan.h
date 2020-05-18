@@ -83,10 +83,10 @@ class ExecutionPlan {
 
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
-                                                              bool explainRegisterPlan) const;
+                                                              ExplainRegisterPlan) const;
 
   void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
-                    bool explainRegisterPlan) const;
+                    ExplainRegisterPlan) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
@@ -204,8 +204,7 @@ class ExecutionPlan {
   void clearVarUsageComputed() { _varUsageComputed = false; }
 
   /// @brief static analysis
-  void planRegisters();
-  void planRegisters(ExplainRegisterPlan);
+  void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
 
   /// @brief find all variables that are populated with data from collections
   void findCollectionAccessVariables();
