@@ -6,6 +6,37 @@ v3.5.6 (XXXX-XX-XX)
 
   Upgraded Swagger UI to 3.25.1
 
+* Do not always loadPlan from agency when collections of a database are listed.
+  This is particularly important for arangosync.
+
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Properly forward requests based on the transaction header.
+
+* Fixed issue #11590: Querying for document by _key returning only a single
+  seemingly random property on entity ("old", in this case).
+
+  This fixes single-key document lookups in the cluster for simple by-key
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN
+  doc` in case the document has either an "old" or a "new" attribute.
+
+
+v3.5.5.1 (2020-05-08)
+---------------------
+
+* Fixed issue #11303: The result data of filter operation on edge document with
+  _from or _to field ALWAYS miss some data on version 3.6.2.
+
+  This bug could have led to some edges from a RocksDB edge index not being
+  returned when a non-traversal edge lookup was done in an AQL query in an inner
+  FOR loop. Whether or not edges were withheld depended on whether edges were
+  located within the same prefix domain.
+
+
 v3.5.5 (2020-04-24)
 -------------------
 

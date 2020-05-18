@@ -98,12 +98,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _lastKey(VPackSlice::nullSlice()) {
     TRI_ASSERT(_keys != nullptr);
     TRI_ASSERT(_keys->slice().isArray());
-
-    auto* mthds = RocksDBTransactionState::toMethods(trx);
-    // intentional copy of the options
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    ro.fill_cache = EdgeIndexFillBlockCache;
-    _iterator = mthds->NewIterator(ro, index->columnFamily());
   }
 
   ~RocksDBEdgeIndexLookupIterator() {
@@ -305,6 +299,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(VPackStringRef fromTo) {
     // Bad case read from RocksDB
+    auto* mthds = RocksDBTransactionState::toMethods(_trx);
+    // intentional copy of the options
+    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+    ro.fill_cache = EdgeIndexFillBlockCache;
+    std::unique_ptr<rocksdb::Iterator> iterator = mthds->NewIterator(ro, _index->columnFamily());
+
     _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->_objectId, fromTo);
     resetInplaceMemory();
     rocksdb::Comparator const* cmp = _index->comparator();
@@ -312,22 +312,22 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     cache::Cache* cc = _cache.get();
     _builder.openArray(true);
-    for (_iterator->Seek(_bounds.start());
-         _iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0);
-         _iterator->Next()) {
+    for (iterator->Seek(_bounds.start());
+         iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
+         iterator->Next()) {
       LocalDocumentId const documentId =
       RocksDBKey::indexDocumentId(RocksDBEntryType::EdgeIndexValue,
-                                  _iterator->key());
+                                  iterator->key());
       
       // adding documentId and _from or _to value
       _builder.add(VPackValue(documentId.id()));
-      VPackStringRef vertexId = RocksDBValue::vertexId(_iterator->value());
+      VPackStringRef vertexId = RocksDBValue::vertexId(iterator->value());
       _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
     }
     _builder.close();
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    arangodb::rocksutils::checkIteratorStatus(iterator.get());
     
     if (cc != nullptr) {
       // TODO Add cache retry on next call
@@ -368,10 +368,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
 
-  // the following 2 values are required for correct batch handling
-  std::unique_ptr<rocksdb::Iterator> _iterator;  // iterator position in rocksdb
   RocksDBKeyBounds _bounds;
   
+  // the following values are required for correct batch handling
   arangodb::velocypack::Builder _builder;
   arangodb::velocypack::ArrayIterator _builderIterator;
   arangodb::velocypack::Slice _lastKey;
