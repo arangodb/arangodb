@@ -122,8 +122,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     return queued;
   }
   
-  void setMaxParallelism(unsigned max);
-
  private:
   /// execute the _continueCallback. must hold _mutex
   void notifyWaiter(std::unique_lock<std::mutex>& guard);
@@ -144,7 +142,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   unsigned _cbVersion; // increased once callstack is done
   
   // TODO: make configurable
-  const unsigned _maxTasks;
+  const unsigned _maxTasks = 4;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };
