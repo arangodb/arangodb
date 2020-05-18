@@ -36,36 +36,33 @@ function dumpIntegrationSuite () {
 
   return {
     testDumpCompressedEncrypted: function () {
-      try {
-        let tree = fs.listTree(dumpDir);
-        assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
-        let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
-        assertEqual("aes-256-ctr", data);
-        const prefix = "UnitTestsDumpKeygen_24f160fff8671be21db71c5f77fd72ce";
+      let tree = fs.listTree(dumpDir);
+      assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
+      let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();
+      assertEqual("aes-256-ctr", data);
+      const prefix = "UnitTestsDumpKeygen_24f160fff8671be21db71c5f77fd72ce";
 
-        let structure = prefix + ".structure.json";
-        if (!fs.isFile(fs.join(dumpDir, structure))) {
-          structure = cn + ".structure.json";
-        }
-        assertTrue(fs.isFile(fs.join(dumpDir, structure)), structure);
-        assertNotEqual(-1, tree.indexOf(structure));
-        try {
-          // cannot read encrypted file
-          JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)));
-          fail();
-        } catch (err) {
-        }
-        
-        assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
-        assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
-        try {
-          // cannot read encrypted file
-          JSON.parse(fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")));
-          fail();
-        } catch (err) {}
-      } finally {
+      let structure = prefix + ".structure.json";
+      if (!fs.isFile(fs.join(dumpDir, structure))) {
+        structure = cn + ".structure.json";
       }
-    },
+      assertTrue(fs.isFile(fs.join(dumpDir, structure)), structure);
+      assertNotEqual(-1, tree.indexOf(structure));
+      try {
+        // cannot read encrypted file
+        JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)));
+        fail();
+      } catch (err) {
+      }
+      
+      assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
+      assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
+      try {
+        // cannot read encrypted file
+        JSON.parse(fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")));
+        fail();
+      } catch (err) {}
+    }
   };
 }
 
