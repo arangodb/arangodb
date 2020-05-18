@@ -44,7 +44,7 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
-    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
+    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) try {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const keyReg = _infos._input2RegisterId;
   bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
@@ -105,12 +105,20 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   } else {
     return ModifierOperationType::CopyRow;
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def12", WARN, Logger::DEVEL)
+      << "UpdateReplaceModifierCompletion::accumulate failed: " << ex.what();
+  throw;
 }
 
-OperationResult UpdateReplaceModifierCompletion::transact(VPackSlice const& data) {
+OperationResult UpdateReplaceModifierCompletion::transact(VPackSlice const& data) try {
   if (_infos._isReplace) {
     return _infos._trx->replace(_infos._aqlCollection->name(), data, _infos._options);
   } else {
     return _infos._trx->update(_infos._aqlCollection->name(), data, _infos._options);
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def11", WARN, Logger::DEVEL)
+      << "UpdateReplaceModifierCompletion::transact failed: " << ex.what();
+  throw;
 }

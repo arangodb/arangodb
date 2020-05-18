@@ -51,7 +51,7 @@ UpsertModifier::OutputIterator::OutputIterator(UpsertModifier const& modifier)
       _insertResultsIterator(modifier.getInsertResultsIterator()),
       _updateResultsIterator(modifier.getUpdateResultsIterator()) {}
 
-UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::next() {
+UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::next() try {
   if (_operationsIterator->first == UpsertModifier::OperationType::UpdateReturnIfAvailable) {
     ++_updateResultsIterator;
   } else if (_operationsIterator->first == UpsertModifier::OperationType::InsertReturnIfAvailable) {
@@ -59,6 +59,10 @@ UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::next() {
   }
   ++_operationsIterator;
   return *this;
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def10", WARN, Logger::DEVEL)
+      << "UpsertModifier::OutputIterator::next failed: " << ex.what();
+  throw;
 }
 
 UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++() {
@@ -70,7 +74,7 @@ bool UpsertModifier::OutputIterator::operator!=(UpsertModifier::OutputIterator c
   return _operationsIterator != other._operationsIterator;
 }
 
-ModifierOutput UpsertModifier::OutputIterator::operator*() const {
+ModifierOutput UpsertModifier::OutputIterator::operator*() const try {
   // When we get the output of our iterator, we have to check whether the
   // operation in question was APPLY_UPDATE or APPLY_INSERT to determine which
   // of the results slices (UpdateReplace or Insert) we have to look in and
@@ -114,6 +118,10 @@ ModifierOutput UpsertModifier::OutputIterator::operator*() const {
   // shut up compiler
   TRI_ASSERT(false);
   return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def15", WARN, Logger::DEVEL)
+      << "UpsertModifier::OutputIterator::operator* failed: " << ex.what();
+  throw;
 }
 
 typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::begin() const {
@@ -138,7 +146,7 @@ void UpsertModifier::reset() {
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
-    ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) {
+    ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) try {
   std::string key;
   Result result;
 
@@ -174,10 +182,14 @@ UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
   } else {
     return UpsertModifier::OperationType::CopyRow;
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def0e", WARN, Logger::DEVEL)
+      << "UpsertModifier::updateReplaceCase failed: " << ex.what();
+  throw;
 }
 
 UpsertModifier::OperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& accu,
-                                                         AqlValue const& insertDoc) {
+                                                         AqlValue const& insertDoc) try {
   if (insertDoc.isObject()) {
     auto const& toInsert = insertDoc.slice();
     if (writeRequired(_infos, toInsert, StaticStrings::Empty)) {
@@ -195,6 +207,10 @@ UpsertModifier::OperationType UpsertModifier::insertCase(ModificationExecutorAcc
     }
     return UpsertModifier::OperationType::SkipRow;
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def0f", WARN, Logger::DEVEL)
+      << "UpsertModifier::insertCase failed: " << ex.what();
+  throw;
 }
 
 bool UpsertModifier::resultAvailable() const {
@@ -215,7 +231,7 @@ VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
   return VPackArrayIterator(VPackSlice::emptyArraySlice());
 }
 
-Result UpsertModifier::accumulate(InputAqlItemRow& row) {
+Result UpsertModifier::accumulate(InputAqlItemRow& row) try {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const insertReg = _infos._input2RegisterId;
   RegisterId const updateReg = _infos._input3RegisterId;
@@ -236,9 +252,13 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   }
   _operations.push_back({result, row});
   return Result{};
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def0c", WARN, Logger::DEVEL)
+      << "UpsertModifier::accumulate failed: " << ex.what();
+  throw;
 }
 
-Result UpsertModifier::transact() {
+Result UpsertModifier::transact() try {
   auto toInsert = _insertAccumulator->closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
@@ -259,6 +279,10 @@ Result UpsertModifier::transact() {
   }
 
   return Result{};
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def0d", WARN, Logger::DEVEL)
+      << "UpsertModifier::transact failed: " << ex.what();
+  throw;
 }
 
 size_t UpsertModifier::nrOfDocuments() const {

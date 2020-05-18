@@ -168,6 +168,10 @@ void ModificationExecutorHelpers::throwOperationResultException(
     auto const errorCode = p.first;
     if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
+      if (!result.slice().isArray()) {
+        LOG_TOPIC("def0b", WARN, Logger::DEVEL)
+          << "throwOperationResultException will fail: " << result.slice().typeName();
+      }
       for (auto doc : VPackArrayIterator(result.slice())) {
         if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
             doc.get(StaticStrings::ErrorNum).getInt() == errorCode) {

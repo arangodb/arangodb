@@ -43,7 +43,7 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
 ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                           InputAqlItemRow& row) {
+                                                           InputAqlItemRow& row) try {
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be INSERTed
@@ -55,8 +55,16 @@ ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorA
   } else {
     return ModifierOperationType::CopyRow;
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def14", WARN, Logger::DEVEL)
+    << "InsertModifierCompletion::accumulate failed: " << ex.what();
+  throw;
 }
 
-OperationResult InsertModifierCompletion::transact(VPackSlice const& data) {
+OperationResult InsertModifierCompletion::transact(VPackSlice const& data) try {
   return _infos._trx->insert(_infos._aqlCollection->name(), data, _infos._options);
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def13", WARN, Logger::DEVEL)
+    << "InsertModifierCompletion::transact failed: " << ex.what();
+  throw;
 }
