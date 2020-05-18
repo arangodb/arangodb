@@ -159,9 +159,9 @@ function repairAnalyzersRevisionTestSuite () {
       for (let i = 0; i < n; i++) {
         db._useDatabase(dbName + i);
         analyzers.save("valid", "identity");
-        revision = waitForCompletedRevision(dbName + i, revisionNumber);
-        coordinator = revision.coordinator;
-        rebootId = revision.coordinatorRebootId;
+        let currentRevision = waitForCompletedRevision(dbName + i, revisionNumber);
+        coordinator = currentRevision.coordinator;
+        rebootId = currentRevision.coordinatorRebootId;
       }
       rebootId++;
       const value2 = {revision: revisionNumber - 1, // revision is going back -> hotbackup previous dump restore case
