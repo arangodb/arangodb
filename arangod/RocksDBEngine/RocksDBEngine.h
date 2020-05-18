@@ -255,6 +255,8 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) override;
 
+  void prepareDropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
+
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
@@ -327,6 +329,8 @@ class RocksDBEngine final : public StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
+
+  bool useEdgeCache() const { return _useEdgeCache; }
 
  private:
   void shutdownRocksDBInstance() noexcept;
@@ -472,6 +476,8 @@ public:
 
   // activate rocksdb's debug logging
   bool _debugLogging;
+
+  bool _useEdgeCache;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

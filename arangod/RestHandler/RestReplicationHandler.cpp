@@ -687,9 +687,11 @@ Result RestReplicationHandler::testPermissions() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair("", false)};
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
+
   auto res = testPermissions();
   if (!res.ok()) {
     return res;
@@ -2938,10 +2940,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   VPackBuilder patch;
   patch.openObject();
   patch.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v31)));
-  if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
-    // system collection?
-    patch.add("isSystem", VPackValue(true));
-  }
+  patch.add(StaticStrings::DataSourceSystem, VPackValue(TRI_vocbase_t::IsSystemName(name)));
   patch.add("objectId", VPackSlice::nullSlice());
   patch.add("cid", VPackSlice::nullSlice());
   patch.add("id", VPackSlice::nullSlice());

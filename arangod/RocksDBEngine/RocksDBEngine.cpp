@@ -205,7 +205,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
       _useReleasedTick(false),
-      _debugLogging(false) {
+      _debugLogging(false),
+      _useEdgeCache(true) {
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -318,6 +319,12 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--rocksdb.edge-cache",
+                     "use in-memory cache for edges",
+                     new BooleanParameter(&_useEdgeCache),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30604);
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
@@ -803,6 +810,10 @@ void RocksDBEngine::start() {
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
+
+  if (!useEdgeCache()) {
+    LOG_TOPIC("46557", INFO, Logger::ENGINES) << "in-memory cache for edges is disabled";
+  }
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -1270,6 +1281,11 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
 arangodb::Result RocksDBEngine::persistCollection(TRI_vocbase_t& vocbase,
                                                   LogicalCollection const& collection) {
   return {};
+}
+
+void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
+                                          LogicalCollection& coll) {
+  replicationManager()->drop(&coll);
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
