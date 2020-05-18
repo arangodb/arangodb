@@ -102,7 +102,7 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
 // method and accumulates results through the modifier
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t maxOutputs) {
+ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t maxOutputs) try {
   // for fetchRow
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
@@ -124,12 +124,16 @@ ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t maxOutputs) {
   }
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
   return {state, ModificationStats{}};
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def0a", WARN, Logger::DEVEL)
+        << "ModificationExecutor::doCollect failed: " << ex.what();
+  throw;
 }
 
 // Outputs accumulated results, and counts the statistics
 template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
-                                                               Stats& stats) {
+                                                               Stats& stats) try {
   typename ModifierType::OutputIterator modifierOutputIterator(_modifier);
   for (auto const& modifierOutput : modifierOutputIterator) {
     bool written = false;
@@ -162,11 +166,15 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
     stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
     stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
   }
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def09", WARN, Logger::DEVEL)
+        << "ModificationExecutor::doOutput failed: " << ex.what();
+  throw;
 }
 
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
+ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) try {
   TRI_ASSERT(_infos._trx);
 
   ModificationExecutor::Stats stats;
@@ -204,6 +212,10 @@ ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& o
   doOutput(output, stats);
 
   return {_lastState, std::move(stats)};
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def08", WARN, Logger::DEVEL)
+        << "ModificationExecutor::produceRows failed: " << ex.what();
+  throw;
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;

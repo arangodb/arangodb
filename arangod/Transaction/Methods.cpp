@@ -1467,7 +1467,7 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::insertLocal(std::string const& cname,
                                                           VPackSlice const value,
-                                                          OperationOptions& options) {
+                                                          OperationOptions& options) try {
   TRI_voc_cid_t cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
@@ -1703,6 +1703,10 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   }
   return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
                                              options, std::move(errorCounter)));
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def05", WARN, Logger::DEVEL)
+        << "insertLocal failed for " << cname << ", slice: " << value.toJson() << ": " << ex.what();
+  throw;
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1804,7 +1808,7 @@ Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cn
 Future<OperationResult> transaction::Methods::modifyLocal(std::string const& collectionName,
                                                   VPackSlice const newValue,
                                                   OperationOptions& options,
-                                                  TRI_voc_document_operation_e operation) {
+                                                  TRI_voc_document_operation_e operation) try {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
@@ -2022,6 +2026,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   return OperationResult(std::move(res), std::move(resDocs),
                          std::move(options), std::move(errorCounter));
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def06", WARN, Logger::DEVEL)
+        << "modifyLocal failed for " << collectionName << ", slice: " << newValue.toJson() << ": " << ex.what();
+  throw;
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2078,7 +2086,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(std::string cons
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::removeLocal(std::string const& collectionName,
                                                           VPackSlice const value,
-                                                          OperationOptions& options) {
+                                                          OperationOptions& options) try {
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
@@ -2285,6 +2293,10 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   return OperationResult(std::move(res), std::move(resDocs),
                          std::move(options), std::move(errorCounter));
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def07", WARN, Logger::DEVEL)
+        << "removeLocal failed for " << collectionName << ", slice: " << value.toJson() << ": " << ex.what();
+  throw;
 }
 
 /// @brief fetches all documents in a collection
@@ -3131,6 +3143,23 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
 
+namespace {
+char const* opName(TRI_voc_document_operation_e operation) {
+  switch (operation) {
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      return "insert";
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      return "update";
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      return "replace";
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      return "remove";
+    default:
+      return "unknown";
+}
+}
+}
+
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
@@ -3138,7 +3167,7 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
+    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) try {
   TRI_ASSERT(followerList != nullptr);
 
   if (followerList->empty()) {
@@ -3263,8 +3292,18 @@ Future<Result> Methods::replicateOperations(
           bool found;
           std::string val = resp.response->header.metaByKey(StaticStrings::ErrorCodes, found);
           replicationWorked = !found;
+          if (!replicationWorked) {
+            LOG_TOPIC("def02", WARN, Logger::DEVEL) 
+              << "replicateOperations failed for " << opName(operation) << ", errorCodes: " << val;
+          }
+        } else {
+          LOG_TOPIC("def03", WARN, Logger::DEVEL)
+            << "replicateOperations failed for " << opName(operation) << ", responseCode: " << resp.response->statusCode();
         }
         didRefuse = didRefuse || resp.response->statusCode() == fuerte::StatusNotAcceptable;
+      } else {
+        LOG_TOPIC("def04", WARN, Logger::DEVEL)
+            << "replicateOperations failed for " << opName(operation) << ", error: " << to_string(resp.error);
       }
 
       if (!replicationWorked) {
@@ -3292,6 +3331,10 @@ Future<Result> Methods::replicateOperations(
     return Result();
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+} catch (std::exception const& ex) {
+  LOG_TOPIC("def01", ERR, Logger::DEVEL)
+    << "replicateOperations threw an exception for " << opName(operation) << ": " << ex.what();
+  throw;
 }
 
 #ifndef USE_ENTERPRISE
