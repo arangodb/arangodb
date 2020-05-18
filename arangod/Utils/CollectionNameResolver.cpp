@@ -40,6 +40,15 @@ std::string const UNKNOWN("_unknown");
 
 namespace arangodb {
 
+// copy an existing resolver
+CollectionNameResolver::CollectionNameResolver(CollectionNameResolver const& other) 
+    : CollectionNameResolver(other._vocbase) {
+  READ_LOCKER(locker, other._lock);
+  _resolvedIds = other._resolvedIds;
+  _dataSourceById = other._dataSourceById;
+  _dataSourceByName = other._dataSourceByName;
+}
+
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(TRI_voc_cid_t id) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(id));

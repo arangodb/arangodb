@@ -268,7 +268,7 @@ auto SubqueryExecutor<true>::skipRowsRange<>(AqlItemBlockInputRange& inputRange,
       // While skipping we do not care for the result.
       // Simply jump over it.
       AqlCall subqueryCall{};
-      subqueryCall.hardLimit = 0;
+      subqueryCall.hardLimit = 0u;
       auto [state, skipRes, block] =
           _subquery.execute(AqlCallStack(AqlCallList{subqueryCall}));
       TRI_ASSERT(skipRes.nothingSkipped());

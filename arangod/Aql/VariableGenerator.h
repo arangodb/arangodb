@@ -91,7 +91,7 @@ class VariableGenerator {
 
  private:
   /// @brief returns the next variable id
-  inline VariableId nextId() { return _id++; }
+  VariableId nextId() noexcept;
 
  private:
   /// @brief all variables created

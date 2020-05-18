@@ -284,8 +284,6 @@ CostEstimate ScatterNode::estimateCost() const {
   return estimate;
 }
 
-auto ScatterNode::getOutputVariables() const -> VariableIdSet { return {}; }
-
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
@@ -533,7 +531,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
+    if (_parallelism == Parallelism::Parallel) {
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
           &engine, this, std::move(registerInfos), EmptyExecutorInfos());
     } else {
@@ -595,8 +593,6 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collec
               ? Parallelism::Serial
               : Parallelism::Undefined);
 }
-
-auto GatherNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 void GatherNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto const& p : _elements) {
@@ -756,14 +752,6 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 CostEstimate SingleRemoteOperationNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
-}
-
-VariableIdSet SingleRemoteOperationNode::getOutputVariables() const {
-  VariableIdSet vars;
-  for (auto const& it : getVariablesSetHere()) {
-    vars.insert(it->id);
-  }
-  return vars;
 }
 
 std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere() const {
