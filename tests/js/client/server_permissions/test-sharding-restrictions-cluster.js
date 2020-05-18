@@ -101,6 +101,51 @@ function testSuite() {
       let props = c.properties();
       assertEqual(4, props.replicationFactor);
     },
+
+    testCreateGraph : function() {
+      const graph = require("@arangodb/general-graph");
+      const vn = "UnitTestVertices";
+      const en = "UnitTestEdges";
+      const gn = "UnitTestGraph";
+      const edgeDef = [graph._relation(en, vn, vn)];
+      try {
+        graph._drop(gn, true);
+      } catch (err) {}
+
+      let myGraph = graph._create(gn, edgeDef, null, {});
+      try {
+        let props = db[vn].properties();
+        assertEqual(2, props.replicationFactor);
+        props = db[en].properties();
+        assertEqual(2, props.replicationFactor);
+      } finally {
+        graph._drop(gn, true);
+      }
+    },
+    
+    testCreateSmartGraph : function() {
+      if (!require("internal").isEnterprise()) {
+        return;
+      }
+      const smrt = require("@arangodb/smart-graph");
+      const vn = "UnitTestVertices";
+      const en = "UnitTestEdges";
+      const gn = "UnitTestGraph";
+      const edgeDef = [smrt._relation(en, vn, vn)];
+      try {
+        smrt._drop(gn, true);
+      } catch (err) {}
+
+      let myGraph = smrt._create(gn, edgeDef, null, {smartGraphAttribute: "value"});
+      try {
+        let props = db[vn].properties();
+        assertEqual(2, props.replicationFactor);
+        props = db[en].properties();
+        assertEqual(2, props.replicationFactor);
+      } finally {
+        smrt._drop(gn, true);
+      }
+    },
     
   };
 }

@@ -1090,28 +1090,16 @@ void AqlValue::destroy() noexcept {
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case VPACK_INLINE: {
-      VPackSlice s(&_data.internal[0]);
-      if (s.isExternal()) {
-        s = s.resolveExternal();
-      }
-      return s;
+      return VPackSlice(&_data.internal[0]).resolveExternal();
     }
     case VPACK_SLICE_POINTER: {
       return VPackSlice(_data.pointer);
     }
     case VPACK_MANAGED_SLICE: {
-      VPackSlice s(_data.slice);
-      if (s.isExternal()) {
-        s = s.resolveExternal();
-      }
-      return s;
+      return VPackSlice(_data.slice).resolveExternal();
     }
     case VPACK_MANAGED_BUFFER: {
-      VPackSlice s(_data.buffer->data());
-      if (s.isExternal()) {
-        s = s.resolveExternal();
-      }
-      return s;
+      return VPackSlice(_data.buffer->data()).resolveExternal();
     }
     case DOCVEC:
     case RANGE: {

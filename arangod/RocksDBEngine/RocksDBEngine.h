@@ -255,6 +255,8 @@ class RocksDBEngine final : public StorageEngine {
   arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) override;
 
+  void prepareDropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
+
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
