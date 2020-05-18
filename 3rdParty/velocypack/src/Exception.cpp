@@ -44,7 +44,6 @@ std::vector<void*> read_backtrace() {
 
 }
 
-
 using namespace arangodb::velocypack;
 
 std::ostream& operator<<(std::ostream& stream, Exception const* ex) {
@@ -133,6 +132,8 @@ std::string Exception::formatBacktrace() const {
   for (size_t i = 0; i < _backtrace.size(); i++) {
     ss << syms[i] << std::endl;
   }
+
+  free(syms);
 
   return std::move(ss).str();
 }
