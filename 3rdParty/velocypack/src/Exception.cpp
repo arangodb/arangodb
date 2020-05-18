@@ -29,16 +29,21 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
 
+#ifdef __linux__
 #include <execinfo.h>
+#endif
+
 #include <sstream>
 
 namespace {
 
 std::vector<void*> read_backtrace() {
   std::vector<void*> trace;
+#ifdef __linux__
   trace.resize(40, nullptr);
   auto actual = backtrace(trace.data(), trace.size());
   trace.resize(actual);
+#endif
   return trace;
 }
 
