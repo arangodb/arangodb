@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.5.
+
 * Fixed ability to edit graph edge in Graph Viewer of web UI.
 
 * Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
