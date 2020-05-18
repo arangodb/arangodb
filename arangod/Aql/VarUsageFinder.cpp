@@ -1,8 +1,10 @@
+#include <Containers/HashSet.h>
+
 #include "Aql/VarUsageFinder.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 
-#include <Containers/HashSet.h>
+
 #include <Logger/LogMacros.h>
 
 using namespace arangodb::aql;

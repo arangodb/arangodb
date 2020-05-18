@@ -86,7 +86,7 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     auto& range = input.rangeForDependency(dep);
     while (!output.isFull() && range.hasDataRow()) {
-      auto [state, row] = range.nextDataRow();
+      auto [state, row] = range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
       TRI_ASSERT(row);
       output.copyRow(row);
       output.advanceRow();
