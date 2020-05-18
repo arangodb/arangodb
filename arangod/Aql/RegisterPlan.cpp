@@ -34,6 +34,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Containers/Enumerate.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
