@@ -40,9 +40,12 @@ namespace {
 std::vector<void*> read_backtrace() {
   std::vector<void*> trace;
 #ifdef __linux__
-  trace.resize(40, nullptr);
-  auto actual = backtrace(trace.data(), trace.size());
-  trace.resize(actual);
+  void* ptr[40];
+  int actual = backtrace(ptr, 40);
+
+  for (int i = 0; i < actual; ++i) {
+    trace.push_back(ptr[i]);
+  }
 #endif
   return trace;
 }
