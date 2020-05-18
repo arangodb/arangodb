@@ -1466,5 +1466,5 @@ bool AgencyComm::shouldInitializeStructure() {
 }
 
 void AgencyComm::buildInitialAnalyzersSlice(VPackBuilder& builder) {
-  builder.add(AnalyzersRevision::getEmptyRevision()->toVelocyPack().slice());
+  AnalyzersRevision::getEmptyRevision()->toVelocyPack(builder);
 }

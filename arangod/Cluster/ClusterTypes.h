@@ -84,7 +84,7 @@ class Builder;
 class Slice;
 }
 
-class AnalyzersRevision {
+struct AnalyzersRevision {
  public:
   using Revision = uint64_t;
   using Ptr = std::shared_ptr<AnalyzersRevision const>;
@@ -92,10 +92,20 @@ class AnalyzersRevision {
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
 
+  struct Key { // passkey idiom
+   private:
+    friend struct AnalyzersRevision;
+    Key() {}
+    Key(Key const&) = default;
+  };
+
   AnalyzersRevision(Revision revision, Revision buildingRevision,
-                    ServerID&& serverID, uint64_t rebootID) noexcept
+    ServerID&& serverID, uint64_t rebootID, Key&) noexcept
     : _revision(revision), _buildingRevision(buildingRevision),
     _serverID(std::move(serverID)), _rebootID(rebootID) {}
+
+  AnalyzersRevision(AnalyzersRevision const&) = delete;
+  AnalyzersRevision& operator=(AnalyzersRevision const&) = delete;
 
   Revision getRevision() const noexcept {
     return _revision;
@@ -113,16 +123,11 @@ class AnalyzersRevision {
     return _rebootID;
   }
 
-  VPackBuilder toVelocyPack() const;
+  void toVelocyPack(VPackBuilder& builder) const;
 
   static Ptr fromVelocyPack(VPackSlice const& slice, std::string& error);
 
-  static Ptr getEmptyRevision() {
-    static Ptr ptr = std::make_shared<AnalyzersRevision::Ptr::element_type>(
-        AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0);
-    return ptr;
-  }
-
+  static Ptr getEmptyRevision();
  private:
   Revision _revision;
   Revision _buildingRevision;

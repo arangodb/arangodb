@@ -36,6 +36,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "V8Server/V8Context.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Builder.h>
 

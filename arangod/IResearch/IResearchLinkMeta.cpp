@@ -750,8 +750,14 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
         }
 
         arangodb::AnalyzersRevision::Revision revision{ arangodb::AnalyzersRevision::MIN };
-        if (value.hasKey(arangodb::StaticStrings::AnalyzersRevision)) {
-          revision = value.get(arangodb::StaticStrings::AnalyzersRevision).getNumber<arangodb::AnalyzersRevision::Revision>();
+        auto const revisionSlice = value.get(arangodb::StaticStrings::AnalyzersRevision);
+        if (!revisionSlice.isNone()) {
+          if (revisionSlice.isNumber()) {
+            revision = revisionSlice.getNumber<arangodb::AnalyzersRevision::Revision>();
+          } else {
+            errorField = arangodb::StaticStrings::AnalyzersRevision;
+            return false;
+          }
         }
 
         AnalyzerPool::ptr analyzer;

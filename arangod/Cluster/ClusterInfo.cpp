@@ -868,6 +868,9 @@ void ClusterInfo::loadPlan() {
       }
     }
   }
+  TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
+    swapAnalyzers = true;
+  }
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
 
@@ -3094,7 +3097,17 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                                        "start modifying analyzer: unknown database name '" + databaseID + "'"),
                                 AnalyzersRevision::LATEST);
         }
-        // FIXME: less possible case - we have just updated database so write EmptyRevision with preconditions 
+        // less possible case - we have just updated database so try to write EmptyRevision with preconditions 
+        {
+          VPackBuilder emptyRevision;
+          AnalyzersRevision::getEmptyRevision()->toVelocyPack(emptyRevision);
+          auto const anPath = analyzersPath(databaseID) + "/";
+          AgencyWriteTransaction const transaction{
+              {{anPath, AgencyValueOperationType::SET, emptyRevision.slice()},
+               {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+              {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
+          ac.sendTransactionWithFailover(transaction);
+        }
         continue;
       }
       revision = it->second->getRevision();

@@ -348,7 +348,53 @@ function analyzersRevisionTestSuite () {
       }
     },
     testAnalyzersInsertOnUpdatedDatabase: function() {
-      //FIXME: add test
+      db._useDatabase("_system");
+      let dbName = "testDbName";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+      	db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        // remove analyzers revision record for this database from agency
+        let preconditions = {};
+        let operations = {};
+        operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
+        global.ArangoAgency.write([[operations, preconditions]]);
+        global.ArangoAgency.increaseVersion("Plan/Version");
+        db._create("TriggerPlanReload");
+        analyzers.save("TestAnalyzer", "identity");
+        waitForCompletedRevision(dbName, 1);
+      } finally {
+      	db._useDatabase("_system");
+      	try { db._dropDatabase(dbName); } catch (e) {}
+      }
+    },
+    testAnalyzersInsertOnUpdatedDatabaseFullAnalyzers: function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      db._useDatabase("_system");
+      let dbName = "testDbName";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+      	db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('AlwaysSwapAnalyzersRevision');
+        // remove  full Analyzers part from agency
+        let preconditions = {};
+        let operations = {};
+        operations['/arango/Plan/Analyzers'] = {'op': 'delete'};
+        global.ArangoAgency.write([[operations, preconditions]]);
+        global.ArangoAgency.increaseVersion("Plan/Version");
+        db._create("TriggerPlanReload");
+        internal.debugClearFailAt();
+        analyzers.save("TestAnalyzer", "identity");
+        waitForCompletedRevision(dbName, 1);
+      } finally {
+      	internal.debugClearFailAt();
+      	db._useDatabase("_system");
+      	try { db._dropDatabase(dbName); } catch (e) {}
+      }
     }
   };
 }

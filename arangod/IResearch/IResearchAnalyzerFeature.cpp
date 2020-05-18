@@ -1646,7 +1646,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             LOG_TOPIC("6a908", WARN, iresearch::TOPIC)
               << "Failed to update analyzers cache to revision: '" << revision
               << "' in database '" << name.first << "'";
-            break; // do not return error. Maybe requested analyzer was already present earlier, so we still may succeed
+            break; // do not return error. Maybe requested analyzer was already presented earlier, so we still may succeed
           }
           ++tries;
         } while (true);

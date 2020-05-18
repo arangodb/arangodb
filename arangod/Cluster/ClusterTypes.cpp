@@ -24,15 +24,21 @@
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 
-
 std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
 }
 
+
+
 namespace arangodb {
 
-arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
-  arangodb::velocypack::Builder builder;
+AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
+  static auto ptr =  std::make_shared<AnalyzersRevision::Ptr::element_type>(
+      AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0, Key());
+  return ptr;
+}
+
+void AnalyzersRevision::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add(StaticStrings::AnalyzersRevision, VPackValue(_revision));
   builder.add(StaticStrings::AnalyzersBuildingRevision, VPackValue(_buildingRevision));
@@ -45,7 +51,6 @@ arangodb::velocypack::Builder AnalyzersRevision::toVelocyPack() const {
   if (_rebootID.initialized()) {
     builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootID.value()));
   }
-  return builder;
 }
 
 AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice, std::string& error) {
@@ -89,6 +94,6 @@ AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice
   return std::make_shared<AnalyzersRevision::Ptr::element_type>(
       revisionSlice.getNumber<AnalyzersRevision::Revision>(), 
       buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
-      std::move(coordinatorID), rebootID);
+      std::move(coordinatorID), rebootID, Key());
 }
 }  // namespace arangodb
