@@ -103,7 +103,7 @@ class DumpRestoreHelper {
     if (dumpOptions.compressed) {
       this.dumpConfig.activateCompression();
     }
-    if (dumpOptions.uncompressed) {
+    if (options.deactivateCompression) {
       this.dumpConfig.deactivateCompression();
     }
     if (restoreOptions.allDatabases) {
@@ -469,7 +469,7 @@ function dumpMultiple (options) {
   
   let dumpOptions = {
     allDatabases: true,
-    uncompressed: true
+    deactivateCompression: true
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
