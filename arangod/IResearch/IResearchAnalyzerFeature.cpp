@@ -471,7 +471,7 @@ namespace norm_vpack {
     norm_vpack_normalizer);
 } // namespace norm_vpack
 
-arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
+arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressionContext*/,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
@@ -1538,7 +1538,7 @@ Result IResearchAnalyzerFeature::emplace(
     // validate and emplace an analyzer
     EmplaceAnalyzerResult itr;
     auto res = emplaceAnalyzer(itr, _analyzers, name, type, properties, features,
-                               getAnalyzersRevision(split.first)->getBuildingRevision());
+                               transaction? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
     if (!res.ok()) {
       return res;

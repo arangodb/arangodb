@@ -161,8 +161,6 @@ std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot> IResearchVie
 
 aql::QueryContext& IResearchViewExecutorInfos::getQuery() noexcept { return _query; }
 
-aql::QueryContext const& IResearchViewExecutorInfos::getQueryConst() const noexcept { return _query; }
-
 const std::vector<arangodb::iresearch::Scorer>& IResearchViewExecutorInfos::scorers() const
     noexcept {
   return _scorers;

@@ -28,7 +28,7 @@
 
 #include "Basics/StringUtils.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterTypes.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"

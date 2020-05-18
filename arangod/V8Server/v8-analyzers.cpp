@@ -28,7 +28,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"

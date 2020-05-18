@@ -33,7 +33,6 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
-#include "Cluster/ClusterTypes.h"
 #include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
