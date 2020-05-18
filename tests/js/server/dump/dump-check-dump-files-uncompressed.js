@@ -33,7 +33,7 @@ function dumpIntegrationSuite () {
   'use strict';
   // this file is used by multiple, hence the checked structure is only in a subdirectory:
   const dumpDir = fs.join(process.env['dump-directory'], 'UnitTestsDumpSrc');
-  const cn = 'UnitTestsDumpKeygen';
+  const cn = 'UnitTestsDumpEdges';
 
   return {
     testDumpUncompressed: function () {
@@ -43,14 +43,15 @@ function dumpIntegrationSuite () {
         let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION"));
         assertEqual("none", data.toString());
         
-        const prefix = "UnitTestsDumpKeygen_24f160fff8671be21db71c5f77fd72ce";
+        const prefix = "UnitTestsDumpEdges_8a31b923e9407ab76b6ca41131b8acf1";
 
         let structure = prefix + ".structure.json";
         if (!fs.isFile(fs.join(dumpDir, structure))) {
           structure = cn + ".structure.json";
         }
 
-        assertTrue(fs.isFile(fs.join(dumpDir, structure)), structure);
+        let structureFile = fs.join(dumpDir, structure);
+        assertTrue(fs.isFile(structureFile),"structure file does not exist: " + structureFile);
         assertNotEqual(-1, tree.indexOf(structure));
         data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
         assertEqual(cn, data.parameters.name);
@@ -58,7 +59,7 @@ function dumpIntegrationSuite () {
         assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
         assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
         data = fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")).toString().trim().split('\n');
-        assertEqual(1000, data.length);
+        assertEqual(10, data.length);
         data.forEach(function(line) {
           line = JSON.parse(line);
           assertEqual(2300, line.type);
