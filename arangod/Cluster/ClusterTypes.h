@@ -100,7 +100,7 @@ struct AnalyzersRevision {
   };
 
   AnalyzersRevision(Revision revision, Revision buildingRevision,
-    ServerID&& serverID, uint64_t rebootID, Key&) noexcept
+    ServerID&& serverID, uint64_t rebootID, Key const&) noexcept
     : _revision(revision), _buildingRevision(buildingRevision),
     _serverID(std::move(serverID)), _rebootID(rebootID) {}
 
