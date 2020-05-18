@@ -40,11 +40,12 @@ namespace {
 std::vector<void*> read_backtrace() {
   std::vector<void*> trace;
 #ifdef __linux__
-  void* ptr[40];
-  int actual = backtrace(ptr, 40);
+  static constexpr int maxFrames = 100;
+  void* traces[maxFrames];
+  int numFrames = backtrace(traces, maxFrames);
 
-  for (int i = 0; i < actual; ++i) {
-    trace.push_back(ptr[i]);
+  for (int i = 0; i < numFrames; ++i) {
+    trace.push_back(traces[i]);
   }
 #endif
   return trace;
