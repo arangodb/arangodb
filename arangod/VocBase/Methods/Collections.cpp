@@ -1035,11 +1035,11 @@ arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Sli
                                       StaticStrings::IsSmart,
                                       StaticStrings::ShardingStrategy,
                                       StaticStrings::GraphSmartGraphAttribute,
+                                      StaticStrings::Schema,
                                       StaticStrings::SmartJoinAttribute,
                                       StaticStrings::ReplicationFactor,
                                       StaticStrings::MinReplicationFactor, // deprecated
                                       StaticStrings::WriteConcern,
-                                      StaticStrings::Validation,
                                       "servers"
                                     });
 }
