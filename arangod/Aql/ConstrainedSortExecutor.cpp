@@ -182,7 +182,7 @@ ExecutorState ConstrainedSortExecutor::consumeInput(AqlItemBlockInputRange& inpu
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto const& [state, input] = inputRange.nextDataRow();
+    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     // Otherwise we would have left the loop
     TRI_ASSERT(input.isInitialized());
     ++_rowsRead;

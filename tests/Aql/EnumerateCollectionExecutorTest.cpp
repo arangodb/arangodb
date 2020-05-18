@@ -406,7 +406,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_produce_5_documents) {
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
       // .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, 5, AqlCall::Infinity{}, false})
+      .setCall(AqlCall{0u, 5u, AqlCall::Infinity{}, false})
       .expectSkipped(0)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
@@ -426,7 +426,7 @@ TEST_P(EnumerateCollectionExecutorTestProduce, DISABLED_skip_5_documents_default
       .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
 "UnitTestCollection" })"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .setCall(AqlCall{5u, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
       .expectSkipped(5)
       .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)

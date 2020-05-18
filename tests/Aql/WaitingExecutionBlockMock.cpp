@@ -123,7 +123,7 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> WaitingExecutionBl
     AqlCallStack stack) {
   auto myCall = stack.peek();
 
-  TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(myCall.getOffset() == 0 && myCall.softLimit == AqlCall::Limit{0u}));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.fullCount));
   TRI_ASSERT(!(myCall.hasSoftLimit() && myCall.hasHardLimit()));
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {

@@ -191,7 +191,7 @@ template <SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
   initNgHttp2Session();
 }
 
@@ -446,7 +446,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
+    this->statistics(1UL).SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -487,15 +487,12 @@ static void DTraceH2CommTaskSendResponse(size_t) {}
 
 template <SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
-                                 RequestStatistics* stat) {
+                                 RequestStatistics::Item stat) {
 
   DTraceH2CommTaskSendResponse((size_t) this);
 
   // TODO the statistics are total bogus here
-  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
-  if (stat) {
-    stat->release();
-  }
+  double const totalTime = stat.ELAPSED_SINCE_READ_START();
   
   if (this->_stopped.load(std::memory_order_acquire)) {
     return;

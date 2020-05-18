@@ -1110,7 +1110,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       LOG_QUERY("2890e", DEBUG) << printTypeInfo() << " fast forward.";
       // We use a DUMMY Call to simulate fullCount.
       AqlCall dummy;
-      dummy.hardLimit = 0;
+      dummy.hardLimit = 0u;
       dummy.fullCount = true;
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, dummy);
 
@@ -1233,7 +1233,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
   ExecutorState localExecutorState = ExecutorState::DONE;
 
-  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0u}));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
   if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
