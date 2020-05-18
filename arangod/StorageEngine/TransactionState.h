@@ -263,7 +263,7 @@ class TransactionState {
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
-  arangodb::AnalyzersRevision::Revision _analyzersRevision{ ::arangodb::AnalyzersRevision::LATEST };
+  arangodb::AnalyzersRevision::Revision _analyzersRevision{ ::arangodb::AnalyzersRevision::MIN };
 
   bool _registeredTransaction;
 };

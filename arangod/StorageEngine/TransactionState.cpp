@@ -28,7 +28,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -56,16 +55,7 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
       _hints(),
       _options(options),
       _serverRole(ServerState::instance()->getRole()),
-      _registeredTransaction(false) {
-  if (isCoordinator()) {
-    // for cluser operation we need to set analyzersRevision
-    if (_vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
-      _analyzersRevision = _vocbase.server()
-        .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-        .getAnalyzersRevision(_vocbase, true)->getRevision();
-    }
-  }
-}
+      _registeredTransaction(false) {}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
@@ -304,7 +294,7 @@ void TransactionState::setExclusiveAccessType() {
 
 void TransactionState::acceptAnalyzersRevision(AnalyzersRevision::Revision analyzersRevision) noexcept {
   // only init from default allowed! Or we have problem -> different analyzersRevision in one transaction
-  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision == AnalyzersRevision::LATEST);
+  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision == AnalyzersRevision::MIN);
   _analyzersRevision = analyzersRevision;
 }
 
