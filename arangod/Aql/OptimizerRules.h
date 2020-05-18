@@ -173,6 +173,10 @@ void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
+/// @brief remove distribute/gather and remote nodes if possible
+void removeDistributeNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                             OptimizerRule const&);
+
 void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 

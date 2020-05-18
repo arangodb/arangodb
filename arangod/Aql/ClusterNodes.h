@@ -181,13 +181,6 @@ class ScatterNode : public ExecutionNode {
     _clients.emplace_back(distId);
   }
 
-  // Just temporary as long as we have two versions
-  void addClient(std::string const& clientId) {
-    // We cannot add the same distributeId twice, data is delivered exactly once for each id
-    TRI_ASSERT(std::find(_clients.begin(), _clients.end(), clientId) == _clients.end());
-    _clients.emplace_back(clientId);
-  }
-
   /// @brief drop the current clients.
   void clearClients() { _clients.clear(); }
 
@@ -199,7 +192,6 @@ class ScatterNode : public ExecutionNode {
 
   void setScatterType(ScatterType targetType) { _type = targetType; }
 
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
  protected:
   void writeClientsToVelocyPack(velocypack::Builder& builder) const;
   bool readClientsFromVelocyPack(velocypack::Slice base);
@@ -384,12 +376,10 @@ class GatherNode final : public ExecutionNode {
   bool isSortingGather() const noexcept;
 
   void setParallelism(Parallelism value);
-  
+
   Parallelism parallelism() const noexcept {
     return _parallelism;
   }
-  
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   /// @brief the underlying database
@@ -467,8 +457,6 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   CostEstimate estimateCost() const override final;
 
   std::string const& key() const { return _key; }
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
  private:
   // whether we replaced an index node

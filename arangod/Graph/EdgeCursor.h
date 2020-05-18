@@ -25,6 +25,7 @@
 #define ARANGOD_GRAPH_EDGECURSOR_H 1
 
 #include <functional>
+#include <cstdint>
 
 #include "Basics/Common.h"
 

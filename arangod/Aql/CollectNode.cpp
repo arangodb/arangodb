@@ -451,11 +451,10 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       return false;
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      break;
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -495,11 +494,10 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       return false;
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      break;
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -539,11 +537,10 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       return false;
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      break;
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -819,28 +816,4 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
     v.emplace_back(_outVariable);
   }
   return v;
-}
-
-VariableIdSet CollectNode::getOutputVariables() const {
-  VariableIdSet vars;
-
-  for (auto const& p : groupVariables()) {
-    // p is std::pair<Variable const*,Variable const*>
-    // and the first is the to be assigned output variable
-    // for which we need to create a register in the current
-    // frame:
-    vars.insert(p.first->id);
-  }
-  for (auto const& p : aggregateVariables()) {
-    // p is std::pair<Variable const*,Variable const*>
-    // and the first is the to be assigned output variable
-    // for which we need to create a register in the current
-    // frame:
-    vars.insert(p.first->id);
-  }
-  if (hasOutVariable()) {
-    vars.insert(outVariable()->id);
-  }
-
-  return vars;
 }

@@ -421,7 +421,6 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
         // if we are in the same group, we can skip this line
         if (_currentGroup.isSameGroup(input)) {
           INTERNAL_LOG_SC << "input is same group";
-          std::ignore = inputRange.nextDataRow();
           /* do nothing */
         } else {
           if (_currentGroup.isValid()) {
@@ -434,8 +433,8 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 
           INTERNAL_LOG_SC << "group is invalid, creating new group";
           _currentGroup.reset(input);
-          std::ignore = inputRange.nextDataRow();
         }
+        std::ignore = inputRange.nextDataRow();
       }
 
       if (!clientCall.needSkipMore()) {

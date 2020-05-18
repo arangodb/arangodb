@@ -251,7 +251,7 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
   
   answerBuilder.add("queryId", VPackValue(query->id()));
-  query->prepareClusterQuery(format, collectionBuilder.slice(),
+  query->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
                              variablesSlice, snippetsSlice,
                              traverserSlice, answerBuilder);
 
@@ -749,6 +749,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     _engine->sharedState()->resetWakeupHandler();
 
     // return the engine to the registry
+    _engine = nullptr;
     _queryRegistry->closeEngine(_qId);
 
     // delete the engine from the registry

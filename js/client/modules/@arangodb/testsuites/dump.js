@@ -93,9 +93,18 @@ class DumpRestoreHelper {
     this.restoreOldConfig.setIncludeSystem(true);
     this.restoreOldConfig.setRootDir(pu.TOP_DIR);
 
-    if (options.encrypted) {
+    if (dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
+    }
+    if (restoreOptions.encrypted) {
+      this.restoreConfig.activateEncryption();
       this.restoreOldConfig.activateEncryption();
+    }
+    if (dumpOptions.compressed) {
+      this.dumpConfig.activateCompression();
+    }
+    if (options.deactivateCompression) {
+      this.dumpConfig.deactivateCompression();
     }
     if (restoreOptions.allDatabases) {
       this.restoreConfig.setAllDatabases();
@@ -158,10 +167,18 @@ class DumpRestoreHelper {
     return this.validate(this.results.setup);
   }
 
+  runCheckDumpFilesSuite(path) {
+    this.print('Inspecting dumped files');
+    process.env['dump-directory'] = this.dumpConfig.config['output-directory'];
+    this.results.checkDumpFiles = this.arangosh(path, this.clientAuth);
+    delete process.env['dump-directory'];
+    return this.validate(this.results.checkDumpFiles);
+  }
+
   runCleanupSuite(path) {
     this.print('Cleaning up');
     this.results.cleanup = this.arangosh(path, this.clientAuth);
-    return this.validate(this.results.setup);
+    return this.validate(this.results.cleanup);
   }
 
   dumpFrom(database, separateDir = false) {
@@ -366,6 +383,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
  
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
+  const checkDumpFiles = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
@@ -373,6 +391,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('_system', true) ||
         !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+        !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
         !helper.runCleanupSuite(cleanupFile) ||
         !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
         !helper.restoreTo('_system', { separate: true }) ||
@@ -384,6 +403,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   else {
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('UnitTestsDumpSrc') ||
+        !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
         !helper.runCleanupSuite(cleanupFile) ||
         !helper.restoreTo('UnitTestsDumpDst') ||
         !helper.runTests(testFile,'UnitTestsDumpDst') ||
@@ -425,6 +445,7 @@ function dump (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-compressed.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -439,6 +460,7 @@ function dumpMultiple (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
     dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -446,7 +468,8 @@ function dumpMultiple (options) {
   };
   
   let dumpOptions = {
-    allDatabases: true
+    allDatabases: true,
+    deactivateCompression: true
   };
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){});
@@ -477,6 +500,7 @@ function dumpAuthentication (options) {
 
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-alter-user.js',
     dumpAgain: 'dump-authentication.js',
     dumpTearDown: 'dump-teardown.js',
@@ -519,9 +543,11 @@ function dumpEncrypted (options) {
 
   let dumpOptions = _.clone(options);
   dumpOptions.encrypted = true;
+  dumpOptions.compressed = true; // Should be overruled by 'encrypted'
   
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-encrypted.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump' + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
@@ -553,6 +579,7 @@ function dumpMaskings (options) {
 
   let tstFiles = {
     dumpSetup: 'dump-maskings-setup.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-maskings.js',
     dumpTearDown: 'dump-teardown.js'
@@ -578,6 +605,7 @@ function hotBackup (options) {
   }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-nothing.js',
     dumpCheck: 'dump' + c.cluster + '.js',
     dumpModify: 'dump-modify.js',
     dumpRecheck: 'dump-modified.js',

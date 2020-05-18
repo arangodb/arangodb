@@ -278,10 +278,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
 
     _keys->clear();
+    TRI_ASSERT(_keys->isEmpty());
 
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // a.b == value
-      _index->fillLookupValue(*(_keys.get()), aap.value);
+      _index->fillLookupValue(*_keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys->slice());
       reset();
       return true;
@@ -289,7 +290,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN && aap.value->isArray()) {
       // a.b IN values
-      _index->fillInLookupValues(_trx, *(_keys.get()), aap.value);
+      _index->fillInLookupValues(_trx, *_keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys->slice());
       reset();
       return true;
@@ -856,7 +857,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(transaction::M
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
-  fillLookupValue(*(keys.get()), valNode);
+  fillLookupValue(*keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx, this, std::move(keys), _cache);
 }
 
