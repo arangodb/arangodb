@@ -25,7 +25,7 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <functional>
+#include <function2.hpp>
 
 namespace arangodb {
 namespace aql {
@@ -35,12 +35,13 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState()
-    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
-
+  SharedQueryState();
   ~SharedQueryState() = default;
 
   void invalidate();
+  bool isValid() const {
+    return _valid.load(std::memory_order_relaxed);
+  }
 
   /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
@@ -57,15 +58,25 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// continues its execution where it left off.
   template <typename F>
   void executeAndWakeup(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
       _cv.notify_all();
       return;
     }
 
     if (std::forward<F>(cb)()) {
-      execute();
+      notifyWaiter(guard);
     }
+  }
+  
+  template <typename F>
+  void executeLocked(F&& cb) {
+    std::lock_guard<std::mutex> guard(_mutex);
+    if (!_valid) {
+      return;
+    }
+    std::forward<F>(cb)();
   }
 
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
@@ -76,11 +87,47 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   void setWakeupHandler(std::function<bool()> const& cb);
 
   void resetWakeupHandler();
+  
+  void resetNumWakeups();
+  
+  /// execute a task in parallel if capacity is there
+  template<typename F>
+  bool asyncExecuteAndWakeup(F&& cb) {
+    unsigned num = _numTasks.fetch_add(1);
+    if (num + 1 > _maxTasks) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
+      return false;
+    }
+    bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+      if (self->_valid.load()) {
+        try {
+          cb(true);
+        } catch(...) {}
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        self->notifyWaiter(guard);
+      } else {  // need to wakeup everybody
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        guard.unlock();
+        self->_cv.notify_all();
+      }
+    });
+    
+    if (!queued) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
+    }
+    return queued;
+  }
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  void execute();
+  void notifyWaiter(std::unique_lock<std::mutex>& guard);
   void queueHandler();
+  
+  bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
   mutable std::mutex _mutex;
@@ -91,11 +138,13 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// in here, which continueAfterPause simply calls.
   std::function<bool()> _wakeupCb;
 
-  uint32_t _numWakeups;
+  unsigned _numWakeups; // number of times
+  unsigned _cbVersion; // increased once callstack is done
   
-  uint32_t _cbVersion;
-
-  bool _valid;
+  // TODO: make configurable
+  const unsigned _maxTasks = 4;
+  std::atomic<unsigned> _numTasks;
+  std::atomic<bool> _valid;
 };
 
 }  // namespace aql

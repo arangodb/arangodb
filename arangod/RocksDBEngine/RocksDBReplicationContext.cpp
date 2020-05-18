@@ -131,6 +131,20 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   }
 }
 
+/// invalidate all iterators with that collection
+bool RocksDBReplicationContext::removeCollection(LogicalCollection& collection) {
+  MUTEX_LOCKER(locker, _contextLock);
+
+  for (auto const& it : _iterators) {
+    if (it.second->logical != nullptr &&
+        it.second->logical->id() == collection.id()) {
+      _isDeleted = true;  // setDeleted also gets the lock
+      return true;
+    }
+  }
+  return false;
+}
+
 /// remove matching iterator
 void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid) {
   MUTEX_LOCKER(locker, _contextLock);
@@ -816,17 +830,18 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
   
-  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
+  _cTypeHandler = transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  TRI_vocbase_col_status_e ignore;
-  int res = vocbase.useCollection(logical.get(), ignore);
-  if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  try {
+    vocbase.useCollection(logical->id(), true);
+  } catch (...) {
+    vocbase.release();
+    throw;
   }
 
   LOG_TOPIC("71236", TRACE, Logger::REPLICATION)

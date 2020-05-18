@@ -444,9 +444,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     if (rest::ContentType::UNSET == request->contentType()) {
       bool digesteable = false;
       try {
-        VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-        optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-        auto parsed = request->payload(&optionsWithUniquenessCheck);
+        auto parsed = request->payload(true);
         if (parsed.isObject() || parsed.isArray()) {
           request->setDefaultContentType();
           digesteable = true;

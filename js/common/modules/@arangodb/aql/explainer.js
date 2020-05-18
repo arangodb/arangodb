@@ -159,8 +159,6 @@ function pad(n) {
   return new Array(n).join(' ');
 }
 
-/* print functions */
-
 /* print query string */
 function printQuery(query, cacheable) {
   'use strict';
@@ -1117,7 +1115,7 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1180,6 +1178,9 @@ function processQuery(query, explain, planIndex) {
               return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
             }).join('');
           }
+        }
+        if (node.count) {
+          indexAnnotation += '/* with count optimization */';
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
@@ -1359,6 +1360,9 @@ function processQuery(query, explain, planIndex) {
 
         if (node.isSatelliteNode) {
           rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
+        }
+        if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
+          rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
         }
 
         return rc;
@@ -1824,7 +1828,11 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'MutexNode':
+        return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
+      case 'AsyncNode':
+        return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
     }
 
     return 'unhandled node type (' + node.type + ')';

@@ -57,11 +57,11 @@ icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length,
 }
 
 icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression,
-                                                 arangodb::transaction::Methods* trx,
+                                                 arangodb::velocypack::Options const* opts,
                                                  bool& isEmptyExpression) {
   std::string rx;
 
-  AqlValueMaterializer materializer(trx);
+  AqlValueMaterializer materializer(opts);
   VPackSlice slice = materializer.slice(splitExpression, false);
   if (splitExpression.isArray()) {
     for (VPackSlice it : VPackArrayIterator(slice)) {

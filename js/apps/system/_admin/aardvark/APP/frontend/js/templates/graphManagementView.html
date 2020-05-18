@@ -49,6 +49,7 @@
       <% graphs.forEach(function(graph) {
         var graphName = graph.get("_key");
         var isSmart = graph.get("isSmart");
+        var isDisjoint = graph.get("isDisjoint");
         var isSatellite = graph.get("isSatellite") || (graph.get("replicationFactor") == "satellite");
       %>
 
@@ -62,7 +63,11 @@
           <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
           <div class="tileBadge">
             <% if (isSmart === true) { %>
-              <span><div class="corneredBadge inProgress">Smart</div></span>
+              <% if (isDisjoint === true) { %>
+                <span><div class="corneredBadge inProgress">Disjoint Smart</div></span>
+              <% } else { %>
+                <span><div class="corneredBadge inProgress">Smart</div></span>
+              <% } %>
             <% } else if (isSatellite === true) { %>
               <span><div class="corneredBadge inProgress">Satellite</div></span>
             <% } %>

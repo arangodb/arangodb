@@ -62,7 +62,7 @@ namespace tests {
 namespace aql {
 
 using Vertex = KShortestPathsExecutorInfos::InputVertex;
-using RegisterSet = std::unordered_set<RegisterId>;
+using RegisterSet = RegIdSet;
 using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 
@@ -205,10 +205,9 @@ class KShortestPathsExecutorTest
         server{},
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
-        options(fakedQuery.get()),
-        registerInfos(std::make_shared<RegisterSet>(parameters._inputRegisters),
-                      std::make_shared<RegisterSet>(parameters._outputRegisters),
-                      2, 3, {}, {}),
+        options(*fakedQuery.get()),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters,
+                      2, 3, RegIdFlatSet{}, RegIdFlatSetStack{{}}),
         executorInfos(0,
                       std::make_unique<FakeKShortestPathsFinder>(options,
                                                                  parameters._paths),
@@ -417,9 +416,9 @@ auto paths =
                     generateSomeBiggerCase(100), generateSomeBiggerCase(999),
                     generateSomeBiggerCase(1000), generateSomeBiggerCase(2000));
 auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
-                    AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false},
-                    AqlCall{1, 1, 1}, AqlCall{100, 1, 1}, AqlCall{1000},
+    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false}, AqlCall{0, 1u, 0u, false},
+                    AqlCall{0, 0u, 1u, false}, AqlCall{0, 1u, 1u, false},
+                    AqlCall{1, 1u, 1u}, AqlCall{100, 1u, 1u}, AqlCall{1000},
                     AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
 auto blockSizes = testing::Values(5, 1000);
 

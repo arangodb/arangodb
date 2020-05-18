@@ -35,15 +35,15 @@ RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(application_features:
                                                            GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
+Result RocksDBRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (!ExecContext::current().canUseCollection(coll.name(), auth::Level::RW)) {
+    if (!ExecContext::current().canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
-    auto physical = toRocksDBCollection(coll.getPhysical());
+    auto physical = toRocksDBCollection(coll->getPhysical());
 
     Result res;
     uint64_t count = 0;

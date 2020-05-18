@@ -65,18 +65,14 @@ size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
 #ifndef USE_ENTERPRISE
 // Factory methods
 std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase, VPackSlice document) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
+  document = document.resolveExternal();
   std::unique_ptr<Graph> result(new Graph(document, ServerDefaults(vocbase.server())));
   return result;
 }
 
 std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
                                             VPackSlice document, VPackSlice options) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
+  document = document.resolveExternal();
   std::unique_ptr<Graph> result{new Graph{vocbase, std::move(name), document, options}};
   return result;
 }
@@ -722,6 +718,10 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 }
 
 bool Graph::isSmart() const { return false; }
+
+bool Graph::isDisjoint() const {
+  return false;
+}
 
 bool Graph::isSatellite() const { return _isSatellite; }
 

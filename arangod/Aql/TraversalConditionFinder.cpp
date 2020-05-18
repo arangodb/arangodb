@@ -605,7 +605,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
       // edit in-place; TODO: replace node instead
       TEMPORARILY_UNLOCK_NODE(andNode);
-      ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
+      VarSet varsUsedByCondition;
 
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
@@ -740,7 +740,7 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {
     // More then one variable.
@@ -755,15 +755,14 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   TRI_ASSERT(_plan->getAst() != nullptr);
 
   bool mustDestroy = false;
-  Expression tmpExp(_plan, _plan->getAst(), node);
+  Expression tmpExp(_plan->getAst(), node);
 
-  TRI_ASSERT(_plan->getAst()->query() != nullptr);
-  auto trx = _plan->getAst()->query()->trx();
-  TRI_ASSERT(trx != nullptr);
-
-  FixedVarExpressionContext ctxt(_plan->getAst()->query());
+  RegexCache rcache;
+  FixedVarExpressionContext ctxt(_plan->getAst()->query().trxForOptimization(),
+                                 _plan->getAst()->query(),
+                                 rcache);
   ctxt.setVariableValue(pathVar, {});
-  AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
+  AqlValue res = tmpExp.execute(&ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());
 
   if (mustDestroy) {

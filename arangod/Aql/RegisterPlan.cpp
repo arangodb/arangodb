@@ -20,6 +20,8 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Michael Hackstein
+/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegisterPlan.h"
@@ -32,6 +34,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
+#include "Containers/Enumerate.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -51,13 +54,21 @@ template <typename T>
 void RegisterPlanWalkerT<T>::after(T* en) {
   TRI_ASSERT(en != nullptr);
 
-  bool const isPassthrough = en->isPassthrough();
-  if (!isPassthrough) {
+  bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
+
+  if (en->isIncreaseDepth()) {
+    // isIncreaseDepth => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
 
-  if (en->getType() == ExecutionNode::SUBQUERY || en->getType() == ExecutionNode::SUBQUERY_END) {
+  if (en->getType() == ExecutionNode::SUBQUERY) {
     plan->addSubqueryNode(en);
+  }
+
+  if (en->getType() == ExecutionNode::SUBQUERY_START || en->getType() == ExecutionNode::SUBQUERY_END) {
+    // is SQS or SQE => mayReuseRegisterImmediately
+    TRI_ASSERT(mayReuseRegisterImmediately);
   }
 
   /*
@@ -67,22 +78,46 @@ void RegisterPlanWalkerT<T>::after(T* en) {
    * This is not the case if the block is not passthrough since in that case the output row
    * is different from the input row.
    */
-  auto const planRegistersForCurrentNode = [&](T* en, bool isBefore) -> void {
-    if (isBefore == isPassthrough) {
-      auto const outputVariables = en->getOutputVariables();
-      for (VariableId const& v : outputVariables) {
-        TRI_ASSERT(v != RegisterPlanT<T>::MaxRegisterId);
-        plan->registerVariable(v, unusedRegisters);
+  auto const planRegistersForCurrentNode = [&](T* en) -> void {
+    auto const& varsSetHere = en->getVariablesSetHere();
+    for (Variable const* v : varsSetHere) {
+      TRI_ASSERT(v != nullptr);
+      plan->registerVariable(v, unusedRegisters.back());
+    }
+  };
+
+  auto const updateRegsToKeep = [this](T* en, VarSet const& varsUsedLater,
+                                       VarSet const& varsValid) {
+    auto const& varsSetHere = en->getVariablesSetHere();
+
+    auto isSetHere = [&](Variable const *var) {
+      return std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+             varsSetHere.end();
+    };
+    auto isUsedLater = [&](Variable const *var) {
+      return std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+             varsUsedLater.end();
+    };
+
+
+    // items are pushed for each SubqueryStartNode and popped for SubqueryEndNodes.
+    // as they come in pairs, the stack should never be empty.
+    TRI_ASSERT(!regsToKeepStack.empty());
+    regsToKeepStack.back().clear();
+    for (auto const var : varsValid) {
+
+      if (!isSetHere(var) && isUsedLater(var)) {
+        auto reg = plan->variableToRegisterId(var);
+        regsToKeepStack.back().emplace(reg);
       }
     }
   };
 
-  auto const calculateRegistersToClear = [this](T* en) -> std::unordered_set<RegisterId> {
-    ::arangodb::containers::HashSet<Variable const*> const& varsUsedLater =
-        en->getVarsUsedLater();
-    ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
+  auto const calculateRegistersToClear = [this](T* en) -> RegIdSet {
+    auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
+    VarSet varsUsedHere;
     en->getVariablesUsedHere(varsUsedHere);
-    std::unordered_set<RegisterId> regsToClear;
+    RegIdSet regsToClear;
 
     // Now find out which registers ought to be erased after this node:
     // ReturnNodes are special, since they return a single column anyway
@@ -113,22 +148,66 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     return regsToClear;
   };
 
-  planRegistersForCurrentNode(en, true);
-  auto regsToClear = calculateRegistersToClear(en);
-  unusedRegisters.insert(regsToClear.begin(), regsToClear.end());
+  if (!mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
+
+  switch (en->getType()) {
+    case ExecutionNode::SUBQUERY_START: {
+      previousSubqueryNrRegs.emplace(plan->nrRegs.back());
+      auto topUnused = unusedRegisters.back();
+      unusedRegisters.emplace_back(std::move(topUnused));
+
+      auto const& varsValid = en->getVarsValidStack();
+      auto const& varsUsedLater = en->getVarsUsedLaterStack();
+
+      TRI_ASSERT(varsValid.size() > 1);
+      TRI_ASSERT(varsUsedLater.size() > 1);
+      updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
+                       varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
+      regsToKeepStack.emplace_back();
+    } break;
+    case ExecutionNode::SUBQUERY_END: {
+      unusedRegisters.pop_back();
+      regsToKeepStack.pop_back();
+      // This must have added a section, otherwise we would decrease the
+      // number of registers available inside the subquery.
+      TRI_ASSERT(en->isIncreaseDepth());
+      // We must plan the registers after this, so newly added registers are
+      // based upon this nrRegs.
+      TRI_ASSERT(mayReuseRegisterImmediately);
+      plan->nrRegs.back() = previousSubqueryNrRegs.top();
+      previousSubqueryNrRegs.pop();
+    } break;
+    default: {
+      auto regsToClear = calculateRegistersToClear(en);
+      unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
+      // We need to delete those variables that have been used here but are not
+      // used any more later:
+      en->setRegsToClear(std::move(regsToClear));
+    } break;
+  }
+
   // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
-  planRegistersForCurrentNode(en, false);
+  if (mayReuseRegisterImmediately) {
+    planRegistersForCurrentNode(en);
+  }
 
-  // We need to delete those variables that have been used here but are not
-  // used any more later:
-  en->setRegsToClear(std::move(regsToClear));
+  updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto actual = plan->calcRegsToKeep(en->getVarsUsedLaterStack(), en->getVarsValidStack(),
+                                     en->getVariablesSetHere());
+  TRI_ASSERT(regsToKeepStack == actual);
+#endif
+
+  en->setRegsToKeep(regsToKeepStack);
   en->_depth = plan->depth;
   en->_registerPlan = plan;
 }
 
 template <typename T>
-RegisterPlanT<T>::RegisterPlanT() : depth(0), totalNrRegs(0) {
+RegisterPlanT<T>::RegisterPlanT() : depth(0) {
   nrRegs.reserve(8);
   nrRegs.emplace_back(0);
 }
@@ -139,8 +218,7 @@ RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
     : varInfo(v.varInfo),
       nrRegs(v.nrRegs),
       subQueryNodes(),
-      depth(newdepth + 1),
-      totalNrRegs(v.nrRegs[newdepth]) {
+      depth(newdepth + 1) {
   if (depth + 1 < 8) {
     // do a minium initial allocation to avoid frequent reallocations
     nrRegs.reserve(8);
@@ -149,14 +227,13 @@ RegisterPlanT<T>::RegisterPlanT(RegisterPlan const& v, unsigned int newdepth)
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
   nrRegs.resize(depth);
-  RegisterId registerId = nrRegs.back();
-  nrRegs.emplace_back(registerId);
+  auto regCount = nrRegs.back();
+  nrRegs.emplace_back(regCount);
 }
 
 template <typename T>
 RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
-    : depth(depth),
-      totalNrRegs(slice.get("totalNrRegs").getNumericValue<unsigned int>()) {
+    : depth(depth) {
   VPackSlice varInfoList = slice.get("varInfoList");
   if (!varInfoList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -190,13 +267,13 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
     nrRegs.emplace_back(it.getNumericValue<RegisterId>());
   }
 }
+
 template <typename T>
 auto RegisterPlanT<T>::clone() -> std::shared_ptr<RegisterPlanT> {
   auto other = std::make_shared<RegisterPlanT>();
 
   other->nrRegs = nrRegs;
   other->depth = depth;
-  other->totalNrRegs = totalNrRegs;
   other->varInfo = varInfo;
 
   // No need to clone subQueryNodes because this was only used during
@@ -211,18 +288,17 @@ void RegisterPlanT<T>::increaseDepth() {
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
-  RegisterId registerId = nrRegs.back();
-  nrRegs.emplace_back(registerId);
+  auto regCount = nrRegs.back();
+  nrRegs.emplace_back(regCount);
 }
 
 template <typename T>
 RegisterId RegisterPlanT<T>::addRegister() {
-  nrRegs[depth]++;
-  return totalNrRegs++;
+  return static_cast<RegisterId>(nrRegs[depth]++);
 }
 
 template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters) {
+void RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
 
   if (unusedRegisters.empty()) {
@@ -234,21 +310,14 @@ void RegisterPlanT<T>::registerVariable(VariableId v, std::set<RegisterId>& unus
   }
 
   bool inserted;
-  std::tie(std::ignore, inserted) = varInfo.try_emplace(v, VarInfo(depth, regId));
+  std::tie(std::ignore, inserted) = varInfo.try_emplace(v->id, VarInfo(depth, regId));
   TRI_ASSERT(inserted);
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string("duplicate register assignment for variable #") +
-            std::to_string(v) + " while planning registers");
+        std::string("duplicate register assignment for variable " + v->name + " #") +
+            std::to_string(v->id) + " while planning registers");
   }
-}
-
-template <typename T>
-void RegisterPlanT<T>::registerVariable(VariableId v) {
-  auto regId = addRegister();
-
-  varInfo.try_emplace(v, VarInfo(depth, regId));
 }
 
 template <typename T>
@@ -292,7 +361,9 @@ void RegisterPlanT<T>::toVelocyPack(VPackBuilder& builder) const {
   builder.add(VPackValue("nrRegsHere"));
   { VPackArrayBuilder guard(&builder); }
 
-  builder.add("totalNrRegs", VPackValue(totalNrRegs));
+  // totalNrRegs is not used anymore and is intentionally left empty
+  // can be removed in ArangoDB 3.8
+  builder.add("totalNrRegs", VPackSlice::noneSlice());
 }
 
 template <typename T>
@@ -301,8 +372,45 @@ void RegisterPlanT<T>::addSubqueryNode(T* subquery) {
 }
 
 template <typename T>
-auto RegisterPlanT<T>::getTotalNrRegs() -> unsigned int {
-  return totalNrRegs;
+auto RegisterPlanT<T>::calcRegsToKeep(VarSetStack const& varsUsedLaterStack,
+                                      VarSetStack const& varsValidStack,
+                                      std::vector<Variable const*> const& varsSetHere) const
+    -> RegIdSetStack {
+  RegIdSetStack regsToKeepStack;
+  regsToKeepStack.reserve(varsUsedLaterStack.size());
+
+  TRI_ASSERT(varsValidStack.size() == varsUsedLaterStack.size());
+
+  for (auto const [idx, stackEntry] : enumerate(varsValidStack)) {
+    auto& regsToKeep = regsToKeepStack.emplace_back();
+    auto const& varsUsedLater = varsUsedLaterStack[idx];
+
+    for (auto const var : stackEntry) {
+      auto reg = variableToRegisterId(var);
+
+      bool isUsedLater = std::find(varsUsedLater.begin(), varsUsedLater.end(), var) !=
+                         varsUsedLater.end();
+      if (isUsedLater) {
+        bool isSetHere = std::find(varsSetHere.begin(), varsSetHere.end(), var) !=
+                         varsSetHere.end();
+        if (!isSetHere) {
+          regsToKeep.emplace(reg);
+        }
+      }
+    }
+  }
+
+  return regsToKeepStack;
+}
+
+template <typename T>
+auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> RegisterId {
+  TRI_ASSERT(variable != nullptr);
+  auto it = varInfo.find(variable->id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId rv = it->second.registerId;
+  TRI_ASSERT(rv < RegisterPlan::MaxRegisterId);
+  return rv;
 }
 
 template <typename T>

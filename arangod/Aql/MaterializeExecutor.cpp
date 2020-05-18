@@ -22,11 +22,11 @@
 
 #include "MaterializeExecutor.h"
 
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -57,11 +57,17 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
 
 template <typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
-    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
+    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId, aql::QueryContext& query)
     : _collectionSource(collectionSource),
       _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId),
-      _trx(trx) {}
+      _query(query) {}
+
+template <typename T>
+arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(MaterializeExecutor<T>::Fetcher& fetcher, Infos& infos)
+    : _trx(infos.query().newTrxContext()),
+      _readDocumentContext(infos),
+      _infos(infos) {}
 
 template <typename T>
 std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T>::produceRows(
@@ -76,13 +82,12 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     auto& callback = _readDocumentContext._callback;
     auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
     T collectionSource = _readDocumentContext._infos->collectionSource();
-    auto* trx = _readDocumentContext._infos->trx();
-    auto const [state, input] = inputRange.nextDataRow();
+    auto const [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     arangodb::LogicalCollection const* collection = nullptr;
     if constexpr (std::is_same<T, std::string const&>::value) {
       if (_collection == nullptr) {
-        _collection = trx->documentCollection(collectionSource);
+        _collection = _trx.documentCollection(collectionSource);
       }
       collection = _collection;
     } else {
@@ -93,7 +98,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
     written = collection->readDocumentWithCallback(
-        trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
+        &_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
     if (written) {
       output.advanceRow();
     }

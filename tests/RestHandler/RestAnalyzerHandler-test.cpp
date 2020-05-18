@@ -62,12 +62,16 @@ namespace {
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
-  EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
-    _attrs.emplace(_attr);
+  static constexpr irs::string_ref type_name() noexcept {
+    return "rest-analyzer-empty";
   }
-  virtual irs::attribute_view const& attributes() const noexcept override {
-    return _attrs;
+  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) { }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<irs::frequency>::id()) {
+      return &_attr;
+    }
+
+    return nullptr;
   }
   static ptr make(irs::string_ref const&) {
     PTR_NAMED(EmptyAnalyzer, ptr);
@@ -82,11 +86,9 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
  private:
-  irs::attribute_view _attrs;
   irs::frequency _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "rest-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 }  // namespace
@@ -114,7 +116,6 @@ class RestAnalyzerHandlerTest
                                 arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope;  // (&execContext);
-  arangodb::aql::QueryRegistry queryRegistry;  // required for UserManager::loadFromDB()
 
   RestAnalyzerHandlerTest()
       : server(),
@@ -124,11 +125,8 @@ class RestAnalyzerHandlerTest
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
         execContext(),
-        execContextScope(&execContext),
-        queryRegistry(0) {
+        execContextScope(&execContext) {
     grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
-
-    userManager->setQueryRegistry(&queryRegistry);
 
     // TODO: This should at the very least happen in the mock
     // create system vocbase
@@ -165,7 +163,7 @@ class RestAnalyzerHandlerTest
     ASSERT_ARANGO_OK(
         analyzers.emplace(result, name, "rest-analyzer-empty"s,
                            VPackParser::fromJson("{\"args\":\"en\"}"s)->slice(),
-                           irs::flags{irs::frequency::type()}));
+                           irs::flags{irs::type<irs::frequency>::get()}));
   };
 
   // Creates a new database

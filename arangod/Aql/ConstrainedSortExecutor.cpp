@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
-  arangodb::aql::RegisterId const nrRegs = block->getNrRegs();
+  auto const nrRegs = block->getNrRegs();
   for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
@@ -132,6 +132,19 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos,
   return false;
 }
 
+namespace {
+
+auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
+  auto regsToKeepStack = RegIdFlatSetStack{};
+  auto& regsToKeep = regsToKeepStack.emplace_back();
+  for (RegisterId i = 0; i < size; i++) {
+    regsToKeep.emplace(i);
+  }
+  return regsToKeepStack;
+}
+
+}  // namespace
+
 ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos),
       _returnNext(0),
@@ -142,9 +155,8 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
                                                          _infos.numberOfOutputRegisters())),
       _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.vpackOptions(),
                                                      _infos.sortRegisters())),
-      _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
-                     make_shared_unordered_set(_infos.numberOfOutputRegisters()),
-                     _infos.registersToClear()} {
+      _regsToKeep(initRegsToKeep(_infos.numberOfOutputRegisters())),
+      _heapOutputRow{_heapBuffer, _outputRegister, _regsToKeep, _infos.registersToClear()} {
   TRI_ASSERT(_infos.limit() > 0);
   _rows.reserve(infos.limit());
   _cmpHeap->setBuffer(_heapBuffer.get());
@@ -170,7 +182,7 @@ ExecutorState ConstrainedSortExecutor::consumeInput(AqlItemBlockInputRange& inpu
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    auto const& [state, input] = inputRange.nextDataRow();
+    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     // Otherwise we would have left the loop
     TRI_ASSERT(input.isInitialized());
     ++_rowsRead;

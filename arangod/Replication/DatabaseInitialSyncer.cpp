@@ -593,7 +593,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
-    VPackValidator validator(&basics::VelocyPackHelper::requestValidationOptions);
+    VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
     try {
       while (p < end) {
@@ -627,7 +627,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
 
     VPackBuilder builder;
-    VPackParser parser(builder, &basics::VelocyPackHelper::requestValidationOptions);
+    VPackParser parser(builder, &basics::VelocyPackHelper::strictRequestValidationOptions);
 
     while (p < end) {
       char const* q = strchr(p, '\n');
@@ -1020,7 +1020,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
                                                   TRI_voc_tick_t maxTick) {
   if (coll->syncByRevision() &&
       (_config.master.majorVersion > 3 ||
-       (_config.master.majorVersion = 3 && _config.master.minorVersion >= 6))) {
+       (_config.master.majorVersion == 3 && _config.master.minorVersion >= 7))) {
     // local collection should support revisions, and master is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if master collection
@@ -1398,7 +1398,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     TRI_voc_rid_t requestResume = ranges[0].first;  // start with beginning
-    TRI_ASSERT(requestResume);
+    TRI_ASSERT(requestResume >= coll->minRevision());
     TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =

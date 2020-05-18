@@ -23,80 +23,33 @@
 #ifndef IRESEARCH_FILTER_VISITOR_H
 #define IRESEARCH_FILTER_VISITOR_H
 
-#include "multiterm_query.hpp"
-#include "formats/formats.hpp"
+#include "shared.hpp"
 
 NS_ROOT
+
+struct sub_reader;
+struct term_reader;
+struct seek_term_iterator;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class filter_visitor
 /// @brief base filter visitor interface
 //////////////////////////////////////////////////////////////////////////////
-struct filter_visitor {
+struct IRESEARCH_API filter_visitor {
+  virtual ~filter_visitor() = default;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const seek_term_iterator& terms) = 0;
+  virtual void prepare(const sub_reader& segment,
+                       const term_reader& field,
+                       const seek_term_iterator& terms) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief applies actions to a current term iterator
   //////////////////////////////////////////////////////////////////////////////
-  virtual void visit() = 0;
-
-  virtual ~filter_visitor() = default;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class multiterm_visitor
-/// @brief filter visitor for multiterm queries
-//////////////////////////////////////////////////////////////////////////////
-template<typename States>
-class multiterm_visitor final : public filter_visitor {
- public:
-  multiterm_visitor(
-      const sub_reader& segment,
-      const term_reader& reader,
-      limited_sample_collector<term_frequency>& collector,
-      States& states)
-    : segment_(segment), reader_(reader),
-      collector_(collector), states_(states) {
-  }
-
-  virtual void prepare(const seek_term_iterator& terms) override {
-    // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    docs_count_ = meta ? &meta->docs_count : &no_docs_;
-
-    // get state for current segment
-    auto& state = states_.insert(segment_);
-    state.reader = &reader_;
-
-    collector_.prepare(segment_, terms, state);
-    key_.offset = 0;
-  }
-
-  virtual void visit() override {
-    // fill scoring candidates
-    assert(docs_count_);
-    key_.frequency = *docs_count_;
-    collector_.collect(key_);
-    ++key_.offset;
-  }
-
- private:
-  const decltype(term_meta::docs_count) no_docs_ = 0;
-  const sub_reader& segment_;
-  const term_reader& reader_;
-  limited_sample_collector<term_frequency>& collector_;
-  States& states_;
-  term_frequency key_;
-  const decltype(term_meta::docs_count)* docs_count_ = nullptr;
-};
+  virtual void visit(boost_t boost) = 0;
+}; // filter_visitor
 
 NS_END
 

@@ -145,11 +145,10 @@ class RocksDBEngine final : public StorageEngine {
   void unprepare() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<TransactionState> createTransactionState(
+  std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -196,9 +195,8 @@ class RocksDBEngine final : public StorageEngine {
   Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
+                    velocypack::Builder& builder) override;
   WalAccess const* walAccess() const override;
 
   // database, collection and index management
@@ -214,8 +212,8 @@ class RocksDBEngine final : public StorageEngine {
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 int& status) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
-  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
+  Result writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
+  Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
@@ -236,6 +234,7 @@ class RocksDBEngine final : public StorageEngine {
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
+  void prepareDropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
@@ -287,6 +286,7 @@ class RocksDBEngine final : public StorageEngine {
   void pruneWalFiles();
 
   double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
+  bool useEdgeCache() const { return _useEdgeCache; }
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const override;
@@ -319,8 +319,7 @@ class RocksDBEngine final : public StorageEngine {
 
   enterprise::RocksDBEngineEEData _eeData;
 
-public:
-  
+ public:
   bool isEncryptionEnabled() const;
   
   std::string const& getEncryptionKey();
@@ -334,19 +333,18 @@ public:
   /// rotate user-provided keys, writes out the internal key files
   Result rotateUserEncryptionKeys();
   
-private:
-  
+ private:
   /// load encryption at rest key from keystore
   Result decryptInternalKeystore();
   /// encrypt the internal keystore with all user keys
   Result encryptInternalKeystore();
   
 #endif
-private:
+ private:
   // activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;
 
-public:
+ public:
   // returns whether sha files are created or not
   bool getCreateShaFiles() { return _createShaFiles; }
   // enabled or disable sha file creation. Requires feature not be started.
@@ -456,8 +454,11 @@ public:
   /// @brief whether or not to use _releasedTick when determining the WAL files to prune
   bool _useReleasedTick;
 
-  // activate rocksdb's debug logging
+  /// @brief activate rocksdb's debug logging
   bool _debugLogging;
+
+  /// @brief whether or not the in-memory cache for edges is used
+  bool _useEdgeCache;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

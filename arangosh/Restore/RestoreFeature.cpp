@@ -851,11 +851,11 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
   auto res =  ::checkHttpResponse(httpClient, response, "check status", body);
   if (res.ok() && response) {
     try {
-        if(!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
-          LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
-                  << "skipping foxx self-healing because Foxx API is disabled";
-          return { };
-        }
+      if (!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
+        LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
+          << "skipping foxx self-healing because Foxx API is disabled";
+        return { };
+      }
     } catch (...) {
       //API Not available because of older version or whatever
     }
@@ -1480,8 +1480,8 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory =
-      std::make_unique<ManagedDirectory>(server(), _options.inputPath, false, false);
+  _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
+                                                  false, false, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_NOT_FOUND:
@@ -1628,7 +1628,8 @@ void RestoreFeature::start() {
       client.setDatabaseName(db.first);
       LOG_TOPIC("36075", INFO, Logger::RESTORE) << "Restoring database '" << db.first << "'";
       _directory = std::make_unique<ManagedDirectory>(
-          server(), basics::FileUtils::buildFilename(_options.inputPath, db.first), false, false);
+          server(), basics::FileUtils::buildFilename(_options.inputPath, db.first),
+          false, false, true);
 
       getDBProperties(*_directory, db.second);
       result = _clientManager.getConnectedClient(httpClient, _options.force,

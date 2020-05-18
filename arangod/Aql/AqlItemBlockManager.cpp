@@ -43,7 +43,7 @@ AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor,
 AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
-SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterCount nrRegs) {
   size_t const targetSize = nrItems * (nrRegs + 1);
 
   AqlItemBlock* block = nullptr;
@@ -52,19 +52,24 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
   int tries = 0;
   do {
     TRI_ASSERT(i < numBuckets);
+    
+    std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
       TRI_ASSERT(block != nullptr);
       TRI_ASSERT(block->numEntries() == 0);
-      block->rescale(nrItems, nrRegs);
       break;
     }
     // try next (bigger) bucket
     ++i;
   } while (i < numBuckets && ++tries < 3);
 
+  // perform potentially expensive allocation/cleanup tasks outside
+  // of the locked section
   if (block == nullptr) {
     block = new AqlItemBlock(*this, nrItems, nrRegs);
+  } else {
+    block->rescale(nrItems, nrRegs);
   }
 
   TRI_ASSERT(block != nullptr);
@@ -93,16 +98,24 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   // buckets!
   block->destroy();
 
-  if (!_buckets[i].full()) {
-    // recycle the block
-    TRI_ASSERT(block->numEntries() == 0);
-    // store block in bucket (this will not fail)
-    _buckets[i].push(block);
-  } else {
+  {
+    std::lock_guard<std::mutex> guard(_buckets[i]._mutex);
+
+    if (!_buckets[i].full()) {
+      // recycle the block
+      TRI_ASSERT(block->numEntries() == 0);
+      // store block in bucket (this will not fail)
+      _buckets[i].push(block);
+      block = nullptr;
+    }
+  }
+
+  // call block destructor outside the lock
+  if (block != nullptr) {
     // bucket is full. simply delete the block
     delete block;
+    block = nullptr;
   }
-  block = nullptr;
 }
 
 SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocypack::Slice slice) {
@@ -162,7 +175,6 @@ bool AqlItemBlockManager::Bucket::full() const noexcept {
 
 AqlItemBlock* AqlItemBlockManager::Bucket::pop() noexcept {
   TRI_ASSERT(!empty());
-  TRI_ASSERT(numItems > 0);
   AqlItemBlock* result = blocks[--numItems];
   TRI_ASSERT(result != nullptr);
   blocks[numItems] = nullptr;

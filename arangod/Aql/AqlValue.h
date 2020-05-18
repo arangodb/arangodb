@@ -104,9 +104,6 @@ struct AqlValueHintInt {
 
 struct AqlValueHintUInt {
   explicit AqlValueHintUInt(uint64_t v) noexcept;
-#ifdef TRI_OVERLOAD_FUNCS_SIZE_T
-  explicit AqlValueHintUInt(size_t v) noexcept : value(uint64_t(v)) {}
-#endif
   uint64_t const value;
 };
 
@@ -214,9 +211,6 @@ struct AqlValue final {
   // construct from Builder, copying contents
   explicit AqlValue(arangodb::velocypack::Builder const& builder);
 
-  // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const* builder);
-
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice const& slice);
 
@@ -252,7 +246,8 @@ struct AqlValue final {
   bool isDocvec() const noexcept;
 
   /// @brief hashes the value
-  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
+//  uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
+  uint64_t hash(uint64_t seed = 0xdeadbeef) const;
 
   /// @brief whether or not the value contains a none value
   bool isNone() const noexcept;
@@ -331,8 +326,8 @@ struct AqlValue final {
 
   /// @brief materializes a value into the builder
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&, bool resolveExternals) const;
-  [[deprecated("Pass VPackOptions instead of the transaction")]]
-  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&, bool resolveExternals) const;
+//  [[deprecated("Pass VPackOptions instead of the transaction")]]
+//  void toVelocyPack(transaction::Methods*, arangodb::velocypack::Builder&, bool resolveExternals) const;
 
   /// @brief materialize a value into a new one. this expands docvecs and
   /// ranges

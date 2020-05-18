@@ -22,6 +22,7 @@
 
 #include <unordered_map>
 #include <functional>
+#include <iomanip>
 
 #if defined(_MSC_VER)
   #pragma warning(disable: 4101)
@@ -67,12 +68,14 @@ const std::string DISTANCE = "distance";
 const std::string LINE_LENGTH = "line-length";
 const std::string TRANSPOSITIONS = "transpositions";
 const std::string COMPRESSION = "compression";
+const std::string NAMEPSACE = "namespace";
 
 int dump(
     irs::byte_type distance,
     bool with_transpositions,
     size_t line_length,
-    irs::compression::compressor::ptr comp) {
+    irs::compression::compressor::ptr comp,
+    const std::string& ns) {
   auto& out = std::cout;
 
   const auto d = irs::make_parametric_description(distance, with_transpositions);
@@ -97,21 +100,33 @@ int dump(
     compressed = raw;
   }
 
-  out << std::hex;
+  if (!ns.empty()) {
+    out << "namespace " << ns << "{\n";
+  }
 
-  out << "{\n  {\n";
+  out << "constexpr size_t PDD_RAW_LEN = " << raw.size() << ";\n";
+  out << "constexpr size_t PDD_COMPRESSED_LEN = " << compressed.size() << ";\n";
+  out << "constexpr unsigned char PDD[] = {";
+
+  out << std::internal
+      << std::setfill('0')
+      << std::hex;
+
   for (auto begin = compressed.begin(), end = compressed.end(); begin != end;) {
-    out << "    \"";
+    out << "\n ";
     auto slice_begin = begin;
     auto slice_end = std::min(begin + line_length, compressed.end());
     for (; slice_begin != slice_end; ++slice_begin) {
-      out << "\\x" << uint32_t(*slice_begin);
+      out << " 0x" << std::setw(2) << uint32_t(*slice_begin) << ",";
     }
-    out << "\"\n";
     begin = slice_end;
   }
   out << std::dec;
-  out << "    , " << compressed.size() << "\n  },\n  " << raw.size() << "\n}\n";
+  out << "\n};";
+
+  if (!ns.empty()) {
+    out << "\n}";
+  }
 
   return 0;
 }
@@ -125,6 +140,7 @@ int dump(const cmdline::parser& args) {
   const size_t items_per_line = args.get<size_t>(LINE_LENGTH);
   const bool with_transpositions = args.get<bool>(TRANSPOSITIONS);
   const std::string compression = args.get<std::string>(COMPRESSION);
+  const std::string ns = args.get<std::string>(NAMEPSACE);
 
   if (distance > irs::parametric_description::MAX_DISTANCE) {
     return 1;
@@ -139,16 +155,17 @@ int dump(const cmdline::parser& args) {
   const irs::compression::options opts{ irs::compression::options::Hint::COMPRESSION };
   auto compressor = irs::compression::get_compressor(compression, opts);
 
-  return dump(static_cast<irs::byte_type>(distance), with_transpositions, items_per_line, compressor);
+  return dump(static_cast<irs::byte_type>(distance), with_transpositions, items_per_line, compressor, ns);
 }
 
 int dump(int argc, char* argv[]) {
   cmdline::parser cmd;
   cmd.add(HELP, '?', "Produce help message");
   cmd.add<size_t>(DISTANCE, 'd', "Maximum edit distance", true, size_t(1));
-  cmd.add<size_t>(LINE_LENGTH, 0, "Items per line", false, size_t(40));
+  cmd.add<size_t>(LINE_LENGTH, 0, "Items per line", false, size_t(16));
   cmd.add<bool>(TRANSPOSITIONS, 't', "Count transpositions", false, false);
   cmd.add<std::string>(COMPRESSION, 0, "compression", false, "iresearch::compression::lz4");
+  cmd.add<std::string>(NAMEPSACE, 'n', "namespace", false, "");
 
   cmd.parse(argc, argv);
 

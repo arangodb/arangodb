@@ -35,16 +35,9 @@ NS_ROOT
 // --SECTION--                                                            score
 // ----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::score)
-
 /*static*/ const irs::score& score::no_score() noexcept {
   return EMPTY_SCORE;
 }
-
-score::score() noexcept
-  : func_([](const score_ctx*, byte_type*){}) {
-}
-
 
 bool score::prepare(const order::prepared& ord,
                     order::prepared::scorers&& scorers) {
@@ -134,7 +127,3 @@ bool score::prepare(const order::prepared& ord,
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

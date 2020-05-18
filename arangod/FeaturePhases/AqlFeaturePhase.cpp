@@ -32,7 +32,6 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -51,7 +50,6 @@ AqlFeaturePhase::AqlFeaturePhase(ApplicationServer& server)
   startsAfter<pregel::PregelFeature>();
   startsAfter<QueryRegistryFeature>();
   startsAfter<SystemDatabaseFeature>();
-  startsAfter<TraverserEngineRegistryFeature>();
 }
 
 }  // namespace application_features
