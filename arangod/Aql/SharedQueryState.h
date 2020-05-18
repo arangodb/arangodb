@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Jan Steemannk
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AQL_SHARED_QUERY_STATE_H
@@ -121,6 +121,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     }
     return queued;
   }
+  
+  void setMaxParallelism(unsigned max);
 
  private:
   /// execute the _continueCallback. must hold _mutex
@@ -142,7 +144,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   unsigned _cbVersion; // increased once callstack is done
   
   // TODO: make configurable
-  const unsigned _maxTasks = 4;
+  const unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

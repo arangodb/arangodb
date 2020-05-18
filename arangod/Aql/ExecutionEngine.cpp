@@ -191,7 +191,7 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? sqs : std::make_shared<SharedQueryState>()),
+      _sharedState((sqs != nullptr) ? sqs : std::make_shared<SharedQueryState>(query)),
       _blocks(),
       _root(nullptr),
       _resultRegister(0),
@@ -666,7 +666,7 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
-  if (_root == nullptr || _wasShutdown) {
+  if (_root == nullptr || _wasShutdown.load(std::memory_order_relaxed)) {
     return {ExecutionState::DONE, _shutdownResult};
   }
   
@@ -683,7 +683,6 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
     }
     
     if (knowsAllQueryIds) {
-      TRI_ASSERT(!_wasShutdown);
       return shutdownDBServerQueries(errorCode);
     }
   }
@@ -694,7 +693,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdown(int errorCode) {
   }
 
   // prevent a duplicate shutdown
-  _wasShutdown = true;
+  _wasShutdown.store(true, std::memory_order_relaxed);
 
   return {state, res};
 }
@@ -841,10 +840,10 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 }
 
 std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int errorCode) {
-  TRI_ASSERT(!_wasShutdown);
   if (_sentShutdownResponse.exchange(true)) {
     return {ExecutionState::WAITING, Result()};
   }
+  TRI_ASSERT(!_wasShutdown);
   
   if (_serverToQueryId.empty()) { // happens during tests
     return {ExecutionState::DONE, Result()};
@@ -920,7 +919,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
     TRI_ASSERT(ss->isValid());
     ss->executeAndWakeup([&] {
-      _wasShutdown = true; // prevent duplicates
+      _wasShutdown.store(std::memory_order_relaxed); // prevent duplicates
       return true;
     });
   });
