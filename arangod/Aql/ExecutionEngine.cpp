@@ -191,7 +191,7 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
                                  std::shared_ptr<SharedQueryState> sqs)
     : _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? sqs : std::make_shared<SharedQueryState>(query)),
+      _sharedState((sqs != nullptr) ? sqs : std::make_shared<SharedQueryState>()),
       _blocks(),
       _root(nullptr),
       _resultRegister(0),
