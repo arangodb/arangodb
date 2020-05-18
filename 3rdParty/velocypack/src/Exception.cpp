@@ -132,6 +132,7 @@ std::vector<void*> Exception::generateBacktrace() {
 
 std::string Exception::formatBacktrace() const {
   std::stringstream ss;
+#ifdef __linux__
   char** syms = backtrace_symbols(_backtrace.data(), _backtrace.size());
 
   for (size_t i = 0; i < _backtrace.size(); i++) {
@@ -139,6 +140,7 @@ std::string Exception::formatBacktrace() const {
   }
 
   free(syms);
+#endif
 
   return std::move(ss).str();
 }
