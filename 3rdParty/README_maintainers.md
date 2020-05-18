@@ -145,8 +145,8 @@ To upgrade to a newer version:
    `#region ArangoDB-specific changes` and `#endregion`
 8. Verify the changes were applied correctly and discard the old copy of `index.html`
 
-To verify the changes were applied correctly, start ArangoDB and
-open the ArangoDB Rest API documentation in the ArangoDB web interface.
+To verify the changes were applied correctly, start the ArangoDB server and
+open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
 Routes can be executed by clicking on them to expand their documentation,
 clicking the _Try it out_ button, filling out any required fields and clicking
 the _Execute_ button.
