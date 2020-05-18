@@ -48,12 +48,6 @@ class ExpressionContext {
 
   virtual ~ExpressionContext() = default;
 
-
-  // in general we always work with latest revision
-  virtual arangodb::AnalyzersRevision::Revision analyzersRevision() const {
-    return arangodb::AnalyzersRevision::LATEST; 
-  }
-
   /// true if the variable we are referring to is set by
   /// a collection enumeration/index enumeration
   virtual bool isDataFromCollection(Variable const* variable) const = 0;

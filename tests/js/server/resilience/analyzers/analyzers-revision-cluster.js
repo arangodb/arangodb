@@ -282,10 +282,73 @@ function analyzersRevisionTestSuite () {
       }
     },
     testAnalyzersCleanupAfterFailedRemoveUpdate: function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugClearFailAt();
+      db._useDatabase("_system");
+      let dbName = "testDbName";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+      	db._createDatabase(dbName);
+        db._useDatabase(dbName);
+      	analyzers.save("TestAnalyzer", "identity");
+      	internal.debugSetFailAt('UpdateAnalyzerForRemove');
+      	try {
+          analyzers.remove("TestAnalyzer", true);
+          fail();
+        } catch(e) {
+          assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
+        }
+        analyzers.save("TestAnalyzer2", "identity"); // to trigger cleanup
+        assertFalse(null === analyzers.analyzer(dbName + "::TestAnalyzer")); // check analyzer still here
+      } finally {
+      	db._useDatabase("_system");
+      	try { db._dropDatabase(dbName); } catch (e) {}
+      	internal.debugRemoveFailAt('UpdateAnalyzerForRemove');
+      }
     },
     testAnalyzersCleanupAfterFailedRemoveCommit: function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugClearFailAt();
+      db._useDatabase("_system");
+      let dbName = "testDbName";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+      	db._createDatabase(dbName);
+        db._useDatabase(dbName);
+      	analyzers.save("TestAnalyzer", "identity");
+      	internal.debugSetFailAt('FinishModifyingAnalyzerCoordinator');
+      	try {
+          analyzers.remove("TestAnalyzer", true);
+          fail();
+        } catch(e) {
+          assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
+        }
+        internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
+        // wait for repair procedures
+        let tries = 0;
+        while (tries < 5) {
+          tries++;
+          global.ArangoClusterInfo.flush();
+          let recovered_revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+          if (recovered_revision.buildingRevision === 0) {
+          	break;
+          }
+          internal.sleep(5);
+        }
+        analyzers.save("TestAnalyzer2", "identity"); // to trigger cleanup and next revision
+        assertFalse(null === analyzers.analyzer(dbName + "::TestAnalyzer")); // check analyzer still here
+      } finally {
+      	db._useDatabase("_system");
+      	try { db._dropDatabase(dbName); } catch (e) {}
+      	internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
+      }
     },
     testAnalyzersInsertOnUpdatedDatabase: function() {
+      //FIXME: add test
     }
   };
 }

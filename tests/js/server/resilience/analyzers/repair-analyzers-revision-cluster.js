@@ -164,7 +164,7 @@ function repairAnalyzersRevisionTestSuite () {
         rebootId = revision.coordinatorRebootId;
       }
       rebootId++;
-      const value2 = {revision: revisionNumber - 1, // revision is going back -> hotbackup restore case
+      const value2 = {revision: revisionNumber - 1, // revision is going back -> hotbackup previous dump restore case
           buildingRevision: revisionNumber,
           coordinator: coordinator,
           coordinatorRebootId: rebootId + 1};

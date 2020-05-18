@@ -66,7 +66,3 @@ transaction::Methods& QueryExpressionContext::trx() const {
 bool QueryExpressionContext::killed() const  {
   return _query.killed();
 }
-
-arangodb::AnalyzersRevision::Revision QueryExpressionContext::analyzersRevision() const {
-  return _query.analyzersRevision();
-}

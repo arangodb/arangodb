@@ -67,6 +67,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -503,9 +504,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
                           : nullptr;
     if (sysVocbase) {
       pool = analyzers.get(name, trx->vocbase(), *sysVocbase,
-                           expressionContext ?
-                             expressionContext->analyzersRevision() :
-                             arangodb::AnalyzersRevision::LATEST); // no context = no query => LATEST is ok
+                           trx->state()->analyzersRevision());
     }
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
@@ -2533,9 +2532,6 @@ Result IResearchAnalyzerFeature::remove(
       }
       _analyzers.erase(itr);
     } else {
-      TRI_IF_FAILURE("UpdateAnalyzerForRemove") {
-        return Result(TRI_ERROR_DEBUG);
-      }
       auto& dbFeature = server().getFeature<DatabaseFeature>();
 
       auto* vocbase = dbFeature.useDatabase(split.first);
@@ -2574,6 +2570,11 @@ Result IResearchAnalyzerFeature::remove(
 
         return result.result;
       }
+
+      TRI_IF_FAILURE("UpdateAnalyzerForRemove") {
+        return Result(TRI_ERROR_DEBUG);
+      }
+
       res = trx.commit();
       if (!res.ok()) {
         return res;
@@ -2582,18 +2583,21 @@ Result IResearchAnalyzerFeature::remove(
       if (res.fail()) {
         return res;
       }
+
       // this is ok. As if we got  there removal is committed into agency
       _analyzers.erase(itr);
       auto cached = _lastLoad.find(split.first);
       TRI_ASSERT(cached != _lastLoad.end());
       if (ADB_LIKELY(cached != _lastLoad.end())) {
+        // we are hodling writelock so nobody should be able reload analyzers and update cache.
+        TRI_ASSERT(cached->second < analyzerModificationTrx->buildingRevision());
         cached->second = analyzerModificationTrx->buildingRevision(); // as we already "updated cache" to this revision
       }
-      res = removeFromCollection(pool->_key, split.first);
+      res = removeFromCollection(split.second, split.first);
       if (res.fail()) {
         // just log this error. Analyzer is already "deleted" for the whole cluster
         // so we must report success. Leftovers will be cleaned up on the next operation
-        LOG_TOPIC("70a8b", WARN, iresearch::TOPIC) << " Failed to finalize analyzer '" << pool->_key << "'"
+        LOG_TOPIC("70a8b", WARN, iresearch::TOPIC) << " Failed to finalize analyzer '" << split.second << "'"
           << " Error Code:" << res.errorNumber() << " Error:" << res.errorMessage();
       }
     }

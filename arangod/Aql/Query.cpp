@@ -277,17 +277,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // we have an AST, optimize the ast
   enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
-  // From this point we need to lock analyzers revision for this query
-  if (_trx->state()->isCoordinator()) {
-    // for cluser operation we need to set analyzersRevision
-    auto const& vocbase = _trx->vocbase();
-    if (vocbase.server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
-      _analyzersRevision = vocbase.server()
-        .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
-        .getAnalyzersRevision(vocbase, true)->getRevision();
-    }
-  }
-
   _ast->validateAndOptimize(*_trx);
 
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
@@ -1322,7 +1311,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                 std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-
+  _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1386,8 +1375,6 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     }
     answerBuilder.close();  // traverserEngines
   }
-  _analyzersRevision = analyzersRevision;
-
   TRI_ASSERT(_trx != nullptr);
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }

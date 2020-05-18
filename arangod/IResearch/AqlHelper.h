@@ -238,8 +238,6 @@ struct QueryContext {
   aql::ExpressionContext* ctx;
   irs::index_reader const* index;
   aql::Variable const* ref;
-  // need to store revision separately as far as for optimization stage we don`t pass ExpressionContext
-  AnalyzersRevision::Revision const analyzers_revision{AnalyzersRevision::MIN};
 };  // QueryContext
 
 ////////////////////////////////////////////////////////////////////////////////

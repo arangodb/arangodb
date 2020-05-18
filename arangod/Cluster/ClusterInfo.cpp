@@ -866,11 +866,6 @@ void ClusterInfo::loadPlan() {
           << "invalid information will be repaired. VelocyPack: "
           << analyzerSlice.toJson();
       }
-      //!!!! Remove me
-      //newDbAnalyzersRevision[databaseName] =  std::make_shared<AnalyzersRevision>(
-      //  revisionSlice.getNumber<AnalyzersRevision::Revision>(),
-      //  buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
-      //  std::move(coordinatorID), rebootID);
     }
   }
   // Immediate children of "Collections" are database names, then ids
@@ -3099,6 +3094,7 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                                        "start modifying analyzer: unknown database name '" + databaseID + "'"),
                                 AnalyzersRevision::LATEST);
         }
+        // FIXME: less possible case - we have just updated database so write EmptyRevision with preconditions 
         continue;
       }
       revision = it->second->getRevision();

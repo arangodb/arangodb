@@ -59,6 +59,7 @@
 #include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb::iresearch;
@@ -316,7 +317,7 @@ arangodb::Result getAnalyzerByName(
     : nullptr;
 
   if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.analyzers_revision);
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.trx->state()->analyzersRevision());
 
     shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
       analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
@@ -1743,7 +1744,8 @@ arangodb::Result fromFuncAnalyzer(
                           : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase, ctx.analyzers_revision);
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase,
+                                     ctx.trx->state()->analyzersRevision());
 
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
           analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
