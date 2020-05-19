@@ -111,7 +111,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
     IniFileParser parser(options.get());
 
-    if (FileUtils::exists(local)) {
+    if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
       LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
@@ -201,7 +201,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   LOG_TOPIC(TRACE, Logger::CONFIG) << "checking override '" << local << "'";
 
-  if (FileUtils::exists(local)) {
+  if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
     if (!parser.parse(local, true)) {
