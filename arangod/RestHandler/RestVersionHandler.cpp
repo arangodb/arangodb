@@ -86,7 +86,9 @@ RestStatus RestVersionHandler::execute() {
   }    // allowInfo
   result.close();
   response()->setAllowCompression(true);
-
+  VPackSlice slice = result.slice();
+  VPackSlice s = slice.get("hanswurst")[0];
+  (void) s;
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

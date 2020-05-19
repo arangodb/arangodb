@@ -464,6 +464,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
   }
 
   try {
+    VPackSlice::emptyArraySlice()[1];
     return handleUseQuery(operation, querySlice);
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());

@@ -372,8 +372,14 @@ static void f() {
 }
 #endif
 
+extern "C" {
+  void* ThreadStarter(void*);
+}
+extern char* mystart;
+
 int main(int argc, char* argv[]) {
 #ifdef __linux__
+  mystart = (char*) &ThreadStarter;
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) { f(); }
 #endif

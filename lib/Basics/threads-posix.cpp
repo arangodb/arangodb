@@ -67,7 +67,8 @@ struct thread_data_t {
 /// @brief starter function for thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static void* ThreadStarter(void* data) {
+extern "C" {
+void* ThreadStarter(void* data) {
   sigset_t all;
   sigfillset(&all);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
@@ -88,6 +89,7 @@ static void* ThreadStarter(void* data) {
   }
 
   return nullptr;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////

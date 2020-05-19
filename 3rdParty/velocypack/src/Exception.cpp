@@ -224,19 +224,8 @@ void* getreturnaddr(int level) {
 #endif
 
 extern "C" {
-uint64_t mystart(void*) {
-  uint64_t i = 0;
-  for (uint64_t j = 0; j < 10000; ++j) {
-    i += j*j + (uint64_t) time(nullptr);
-  }
-  uint64_t k = 0;
-  for (uint64_t j = 0; j < 10000; ++j) {
-    k += j+j * (uint64_t) time(nullptr);
-  }
-  return i + k;
-}
+char* mystart = nullptr;   // will be overwritten by main() in `arangod`
 int main(int argc, char* argv[]);
-uint64_t start(void*) __attribute__ ((weak, alias("mystart")));
 }
 
 std::vector<void*> read_backtrace() {
@@ -244,16 +233,15 @@ std::vector<void*> read_backtrace() {
   trace.resize(40, nullptr);
 
   constexpr size_t main_size = 0x289;   // from nm -S, LOL
-  constexpr size_t start_size = 0x78;   // from nm -S, LOL
+  constexpr size_t start_size = 0x14d;  // from nm -S, LOL
 
   size_t i = 0;
   for (; i < trace.size() - 1; i++) {
     trace[i] = getreturnaddr(i + 1);
-    if ((uint64_t)trace[i] >= (uint64_t)main && (uint64_t)trace[i] < (uint64_t)main + main_size) {
+    if ((char*) trace[i] >= (char*) main && (char*) trace[i] < (char*) main + main_size) {
       break;
     }
-    if ((uint64_t)trace[i] >= (uint64_t)start &&
-        (uint64_t)trace[i] < (uint64_t)start + start_size) {
+    if ((char*) trace[i] >= mystart && trace[i] < mystart + start_size) {
       break;
     }
   }
