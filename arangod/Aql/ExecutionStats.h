@@ -57,7 +57,10 @@ struct ExecutionStats {
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
   void addNode(aql::ExecutionNodeId id, ExecutionNodeStats const&);
-  void addAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
+  void addAlias(aql::ExecutionNodeId from, aql::ExecutionNodeId to) {
+    _nodeAliases.emplace(from, to);
+  }
+  void setAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
 

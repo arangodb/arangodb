@@ -443,7 +443,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
 // Test a softlimit call: no skip, given softlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   AqlCall fullCall{};
-  fullCall.softLimit = 20;
+  fullCall.softLimit = 20u;
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
@@ -468,7 +468,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
 // Test a hardlimit call: no skip, given hardlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   AqlCall fullCall{};
-  fullCall.hardLimit = 20;
+  fullCall.hardLimit = 20u;
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
@@ -521,7 +521,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_only_call) {
   fullCall.offset = 20;
   // This test simulates a simple "skipSome" call on the old API.
   // It is releveant in any intermediate state.
-  fullCall.softLimit = 0;
+  fullCall.softLimit = 0u;
   size_t nrCalls = 0;
 
   // Note here: We skip everything, no produce should be called
@@ -2080,7 +2080,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         skipAsserter.reset();
         // Now trigger fast-forward to move to next subquery
         AqlCall forwardCall{};
-        forwardCall.hardLimit = 0;
+        forwardCall.hardLimit = 0u;
         forwardCall.fullCount = false;
 
         auto forwardStack = buildStack(AqlCall{}, AqlCall{});
@@ -2354,19 +2354,19 @@ static constexpr auto skipCall = []() -> const AqlCall {
 
 static constexpr auto softLimit = []() -> const AqlCall {
   AqlCall res{};
-  res.softLimit = 35;
+  res.softLimit = 35u;
   return res;
 };
 
 static constexpr auto hardLimit = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 76;
+  res.hardLimit = 76u;
   return res;
 };
 
 static constexpr auto fullCount = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 17;
+  res.hardLimit = 17u;
   res.fullCount = true;
   return res;
 };
@@ -2374,33 +2374,33 @@ static constexpr auto fullCount = []() -> const AqlCall {
 static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 16;
-  res.softLimit = 64;
+  res.softLimit = 64u;
   return res;
 };
 
 static constexpr auto skipAndHardLimit = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 32;
-  res.hardLimit = 51;
+  res.hardLimit = 51u;
   return res;
 };
 static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 8;
-  res.hardLimit = 57;
+  res.hardLimit = 57u;
   res.fullCount = true;
   return res;
 };
 static constexpr auto onlyFullCount = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 0;
+  res.hardLimit = 0u;
   res.fullCount = true;
   return res;
 };
 static constexpr auto onlySkipAndCount = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 16;
-  res.hardLimit = 0;
+  res.hardLimit = 0u;
   res.fullCount = true;
   return res;
 };
