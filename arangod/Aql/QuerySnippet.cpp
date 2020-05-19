@@ -199,7 +199,7 @@ bool CloneWorker::before(ExecutionNode* node) {
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
     auto consumer = createConsumerNode(plan, _internalScatter, _distId);
     consumer->isResponsibleForInitializeCursor(false);
-    _nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
+    _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
     _originalToClone.try_emplace(node, consumer);
 
     // Stop here. Note that we do things special here and don't really
@@ -422,8 +422,7 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
-    auto const reservedId =
-        ExecutionNodeId{std::numeric_limits<ExecutionNodeId::BaseType>::max()};
+    auto const reservedId = ExecutionNodeId::InternalNode;
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
     DistributeConsumerNode* prototypeConsumer{nullptr};
@@ -488,27 +487,22 @@ void QuerySnippet::serializeIntoBuilder(
 
       // hook distribute node into stream '0', since that does not happen below
       prototypeConsumer = createConsumerNode(plan, internalScatter, distIds[0]);
-      nodeAliases.try_emplace(prototypeConsumer->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(prototypeConsumer->id(), ExecutionNodeId::InternalNode);
       // now wire up the temporary nodes
 
       TRI_ASSERT(_nodes.size() > 1);
 
       TRI_ASSERT(!remoteParent->hasDependency());
       remoteParent->addDependency(prototypeConsumer);
-    }
+    } else {
+      // TODO: Refactor the code above so that we don't copy and paste
 
-#if 0
-    // hook in the async executor node, if required
-    if (internalGather->parallelism() == GatherNode::Parallelism::Async) {
-      TRI_ASSERT(internalScatter == nullptr);
-      auto async = std::make_unique<AsyncNode>(plan, plan->nextId());
-      async->addDependency(_nodes.front());
-      async->setIsInSplicedSubquery(_nodes.front()->isInSplicedSubquery());
-      async->cloneRegisterPlan(_nodes.front());
-      _nodes.insert(_nodes.begin(), async.get());
-      plan->registerNode(async.release());
+      // Remote is nullptr, so we assume that an optimizer rule
+      // removed the REMOTE/SCATTER bit of our snippet.
+      for (size_t i = 0; i < numberOfShardsToPermutate; i++) {
+        distIds.emplace_back(StringUtils::itoa(i));
+      }
     }
-#endif
 
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
@@ -521,9 +515,11 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(!_nodes.empty());
     auto snippetRoot = _nodes.at(0);
 
+    // make sure we don't explode accessing distIds
+    TRI_ASSERT(numberOfShardsToPermutate == distIds.size());
     for (size_t i = 1; i < numberOfShardsToPermutate; ++i) {
       auto cloneWorker = CloneWorker(snippetRoot, internalGather, internalScatter,
-                                     localExpansions, i, distIds[i], nodeAliases);
+                                     localExpansions, i, distIds.at(i), nodeAliases);
       // Warning, the walkerworker is abused.
       cloneWorker.process();
     }

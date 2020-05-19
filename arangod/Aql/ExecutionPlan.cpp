@@ -89,11 +89,13 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   }
 
   bool done(ExecutionNode* en) override final {
-    if ((!arangodb::ServerState::instance()->isDBServer() &&
-         en->getType() != ExecutionNode::PARALLEL_START) ||
+    if (en->getType() == ExecutionNode::MUTEX &&
+        seen.find(en) != seen.end()) {
+      return true;
+    }
+    if (!arangodb::ServerState::instance()->isDBServer() ||
         (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
-         en->getType() != ExecutionNode::DISTRIBUTE &&
-          en->getType() != ExecutionNode::PARALLEL_START)) {
+         en->getType() != ExecutionNode::DISTRIBUTE)) {
       return WalkerWorker<ExecutionNode>::done(en);
     }
     return false;
@@ -148,9 +150,10 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
   }
 }
 
-std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& query,
+std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
+  aql::QueryContext& query = ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
@@ -158,6 +161,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
   TRI_ASSERT(direction->numMembers() == 2);
 
   auto steps = direction->getMember(1);
+
+  bool invalidDepth = false;
 
   if (steps->isNumericValue()) {
     // Check if a double value is integer
@@ -169,10 +174,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
     options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
 
     if (options->maxDepth < options->minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid traversal depth");
+      invalidDepth = true;
     }
   } else {
+    invalidDepth = true;
+  }
+
+  if (invalidDepth) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
@@ -214,6 +222,12 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::QueryContext& qu
           parseGraphCollectionRestriction(options->edgeCollections, value);
         } else if (name == "vertexCollections") {
           parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == "parallelism") {
+          if (ast->canApplyParallelism()) {
+            // parallelism is only used when there is no usage of V8 in the
+            // query and if the query is not a modification query.
+            options->setParallelism(Ast::validatedParallelism(value));
+          }
         }
       }
     }
@@ -1105,8 +1119,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
       createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
-      createTraversalOptions(getAst()->query(), direction, node->getMember(4));
-
+      createTraversalOptions(getAst(), direction, node->getMember(4));
+  
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
@@ -1337,26 +1351,6 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
     // other variables
     return createCalculation(v, expression, previous);
   }
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST PARALLEL start node
-ExecutionNode* ExecutionPlan::fromNodeParallelStart(ExecutionNode* previous, AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_PARALLEL_START);
-  
-  // at least one sort criterion remained
-  auto en = registerNode(new ParallelStartNode(this, nextId()));
-
-  return addDependency(previous, en);
-}
-
-/// @brief create an execution plan element from an AST PARALLEL end node
-ExecutionNode* ExecutionPlan::fromNodeParallelEnd(ExecutionNode* previous, AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_PARALLEL_END);
-  
-  // at least one sort criterion remained
-  auto en = registerNode(new ParallelEndNode(this, nextId()));
 
   return addDependency(previous, en);
 }
@@ -2058,16 +2052,6 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
       
-      case NODE_TYPE_PARALLEL_START: {
-        en = fromNodeParallelStart(en, member);
-        break;
-      }
-      
-      case NODE_TYPE_PARALLEL_END: {
-        en = fromNodeParallelEnd(en, member);
-        break;
-      }
-
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;
@@ -2144,7 +2128,7 @@ void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<Executio
   }
 }
 
-/// @brief find nodes of a certain types
+/// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     std::vector<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
@@ -2153,6 +2137,22 @@ void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<Executio
     if (contains(type)) {
       // found a node type that is in the plan
       NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
+      root()->walk(finder);
+      // abort, because we were looking for all nodes at the same time
+      return;
+    }
+  }
+}
+
+/// @brief find nodes of certain types
+void ExecutionPlan::findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                                          std::vector<ExecutionNode::NodeType> const& types,
+                                          bool enterSubqueries) {
+  // check if any of the node types is actually present in the plan
+  for (auto const& type : types) {
+    if (contains(type)) {
+      // found a node type that is in the plan
+      UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
       root()->walk(finder);
       // abort, because we were looking for all nodes at the same time
       return;

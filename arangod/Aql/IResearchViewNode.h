@@ -179,16 +179,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
-  [[nodiscard]] auto getOutputVariables() const -> aql::VariableIdSet final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
       std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&) const override;
 
   aql::RegIdSet calcInputRegs() const;
-
-  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
 
   bool isLateMaterialized() const noexcept {
     return _outNonMaterializedDocId != nullptr && _outNonMaterializedColPtr != nullptr;

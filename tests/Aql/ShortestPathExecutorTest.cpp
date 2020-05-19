@@ -453,8 +453,8 @@ class ShortestPathExecutorTest
     // FullCount
     if (ourCall.needsFullCount()) {
       // Emulate being called with a full count
-      ourCall.hardLimit = 0;
-      ourCall.softLimit = 0;
+      ourCall.hardLimit = 0u;
+      ourCall.softLimit = 0u;
       std::tie(state, std::ignore /* stats */, skippedFullCount, std::ignore) =
           testee.skipRowsRange(input, ourCall);
     }
@@ -537,9 +537,9 @@ auto targets = testing::Values(constTarget, regTarget, brokenTarget);
 static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
 auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
 auto calls =
-    testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
-                    AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false}, AqlCall{1, 1, 1},
-                    AqlCall{100, 1, 1}, AqlCall{1000}, AqlCall{0, 0, 0, true},
+    testing::Values(AqlCall{}, AqlCall{0, 0u, 0u, false}, AqlCall{0, 1u, 0u, false},
+                    AqlCall{0, 0u, 1u, false}, AqlCall{0, 1u, 1u, false}, AqlCall{1, 1u, 1u},
+                    AqlCall{100, 1u, 1u}, AqlCall{1000}, AqlCall{0, 0u, 0u, true},
                     AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
 
 auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,

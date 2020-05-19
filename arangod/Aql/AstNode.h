@@ -207,8 +207,6 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_VIEW = 77,
   NODE_TYPE_PARAMETER_DATASOURCE = 78,
   NODE_TYPE_FOR_VIEW = 79,
-  NODE_TYPE_PARALLEL_START = 80,
-  NODE_TYPE_PARALLEL_END = 81,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");

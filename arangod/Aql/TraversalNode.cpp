@@ -497,7 +497,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
                                       it->second.registerId);
   }
-  auto opts = static_cast<TraverserOptions*>(options());
+  TraverserOptions* opts = this->options();
   std::unique_ptr<Traverser> traverser;
 
   if (pruneExpression() != nullptr) {
@@ -579,7 +579,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);
-
+  
   traversalCloneHelper(*plan, *c, withProperties);
 
   if (_optionsBuilt) {
@@ -620,7 +620,12 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    c._conditionVariables.emplace(it->clone());
+//#warning TODO: check if not cloning variables breaks anything
+    if (withProperties) {
+      c._conditionVariables.emplace(it->clone());
+    } else {
+      c._conditionVariables.emplace(it);
+    }
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -694,7 +699,7 @@ void TraversalNode::prepareOptions() {
     }
   }
 
-  auto opts = static_cast<TraverserOptions*>(options());
+  TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;

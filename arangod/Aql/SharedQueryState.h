@@ -25,7 +25,7 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <functional>
+#include <function2.hpp>
 
 namespace arangodb {
 namespace aql {
@@ -35,9 +35,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState()
-    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
-
+  SharedQueryState();
   ~SharedQueryState() = default;
 
   void invalidate();
@@ -60,14 +58,15 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// continues its execution where it left off.
   template <typename F>
   void executeAndWakeup(F&& cb) {
-    std::lock_guard<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(_mutex);
     if (!_valid) {
+      guard.unlock();
       _cv.notify_all();
       return;
     }
 
     if (std::forward<F>(cb)()) {
-      notifyWaiter();
+      notifyWaiter(guard);
     }
   }
   
@@ -95,33 +94,40 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
-    if (num + 1 < _maxTasks) {
-      _numTasks.fetch_sub(1);
-      try {
-        std::forward<F>(cb)(false);
-      } catch(...) {}
+    if (num + 1 > _maxTasks) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
       return false;
     }
-    return queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+    bool queued = queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
       if (self->_valid.load()) {
         try {
           cb(true);
         } catch(...) {}
-        
-        std::lock_guard<std::mutex> guard(self->_mutex);
-        self->notifyWaiter();
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        self->notifyWaiter(guard);
+      } else {  // need to wakeup everybody
+        std::unique_lock<std::mutex> guard(self->_mutex);
+        self->_numTasks.fetch_sub(1); // simon: intentionally under lock
+        guard.unlock();
+        self->_cv.notify_all();
       }
-      
-      self->_numTasks.fetch_sub(1);
     });
+    
+    if (!queued) {
+      _numTasks.fetch_sub(1); // revert
+      std::forward<F>(cb)(false);
+    }
+    return queued;
   }
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  void notifyWaiter();
+  void notifyWaiter(std::unique_lock<std::mutex>& guard);
   void queueHandler();
   
-  bool queueAsyncTask(std::function<void()> const&);
+  bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
   mutable std::mutex _mutex;
