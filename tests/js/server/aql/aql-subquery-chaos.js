@@ -2,7 +2,7 @@
 /*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// 
+///
 /// Fuzzing tests for nested subquery execution. Generates random nested subqueries
 /// and then runs spliced subqueries against "old style" subqueries and compares
 /// results.
@@ -60,7 +60,7 @@ function ahuacatlSubqueryChaos() {
         return from + Math.trunc((to - from) * Math.random());
       }
       throw "randomInt: either an upper bound or both from and to have to be given and be of type number";
-     }
+    }
     return 0;
   };
 
@@ -113,7 +113,7 @@ function ahuacatlSubqueryChaos() {
   };
 
   const randomUpsert = function(indent, bias, variables, collectionName) {
-	  if (coinToss(bias)) {
+    if (coinToss(bias)) {
       return (
         indent +
         " UPSERT {value: " +
@@ -128,9 +128,9 @@ function ahuacatlSubqueryChaos() {
         collectionName +
         "\n"
       );
-	  } else {
-		  return "";
-	  }
+    } else {
+      return "";
+    }
   };
 
   const idGeneratorGenerator = function*() {
@@ -191,8 +191,10 @@ function ahuacatlSubqueryChaos() {
 
       return my_query;
     };
-    return { collectionNames: [],
-	     queryString: query("", { forVariables: [], subqueryVariables: [] }) };
+    return {
+      collectionNames: [],
+      queryString: query("", { forVariables: [], subqueryVariables: [] })
+    };
   };
 
   const createModifyingChaosQuery = function(numberSubqueries) {
@@ -213,7 +215,7 @@ function ahuacatlSubqueryChaos() {
       var variables = {
         forVariables: [...outerVariables.forVariables],
         subqueryVariables: [...outerVariables.subqueryVariables],
-        collectionNames: [...outerVariables.collectionNames],
+        collectionNames: [...outerVariables.collectionNames]
       };
 
       const for_variable = "fv" + idGenerator.next().value;
@@ -250,7 +252,11 @@ function ahuacatlSubqueryChaos() {
       collect = randomCollectWithCount(indent, 0.1);
       if (collect !== "") {
         my_query = my_query + collect;
-        variables = { forVariables: [], collectionNames: variables.collectionNames, subqueryVariables: ["counter"] };
+        variables = {
+          forVariables: [],
+          collectionNames: variables.collectionNames,
+          subqueryVariables: ["counter"]
+        };
       } else {
         variables.forVariables = [for_variable];
       }
@@ -259,7 +265,7 @@ function ahuacatlSubqueryChaos() {
         ...variables.forVariables,
         ...variables.subqueryVariables
       ]
-            .map(x => x + ": UNSET_RECURSIVE(" + x + ',"_rev", "_id", "_key")')
+        .map(x => x + ": UNSET_RECURSIVE(" + x + ',"_rev", "_id", "_key")')
         .join(", ");
 
       my_query = my_query + indent + " RETURN {" + returns + "}";
@@ -273,60 +279,64 @@ function ahuacatlSubqueryChaos() {
       forVariables: [],
       subqueryVariables: [],
       collectionNames: [],
-      modifiableCollectionNames: [],
+      modifiableCollectionNames: []
     });
   };
 
-    testQuery = function(query) {
-      print(`testing query: ${query.queryString}`);
-      for (cn of query.collectionNames) {
-        db._drop(cn);
-        db._createDocumentCollection(cn);
-        db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
-      }
-      const result1 = db._query(query.queryString, {}, {}).toArray();
+  testQuery = function(query) {
+    print(`testing query: ${query.queryString}`);
+    for (cn of query.collectionNames) {
+      db._drop(cn);
+      db._createDocumentCollection(cn);
+      db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
+    }
+    const result1 = db._query(query.queryString, {}, {}).toArray();
 
-      for (cn of query.collectionNames) {
-        db._drop(cn);
-        db._createDocumentCollection(cn);
-        db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
-      }
-      const result2 = db
-        ._query(
-          query.queryString,
-          {},
-          { fullCount: true, optimizer: { rules: ["-splice-subqueries"] } }
-        )
-        .toArray();
+    for (cn of query.collectionNames) {
+      db._drop(cn);
+      db._createDocumentCollection(cn);
+      db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
+    }
+    const result2 = db
+      ._query(
+        query.queryString,
+        {},
+        { fullCount: true, optimizer: { rules: ["-splice-subqueries"] } }
+      )
+      .toArray();
 
-      for (cn of query.collectionNames) {
-        db._drop(cn);
-      }
+    for (cn of query.collectionNames) {
+      db._drop(cn);
+    }
 
-      if(!_.isEqual(result1, result2)) {
-        throw `Results of query
+    if (!_.isEqual(result1, result2)) {
+      throw `Results of query
 	${query.queryString}
         with subquery splicing:
 	${JSON.stringify(result1)}
         without subquery splicing:
         ${JSON.stringify(result2)}
 	do not match!`;
-      }
-    };
-
+    }
+  };
 
   const specificQueries = {
-	  q1: {queryString : `FOR x IN 1..10
+    q1: {
+      queryString: `FOR x IN 1..10
            LET sub = (FOR y in 1..10 RETURN y)
            LIMIT 3, 0
            RETURN sub`,
-		  collectionNames: [] },
-    q2: {queryString: `FOR x IN 1..10
+      collectionNames: []
+    },
+    q2: {
+      queryString: `FOR x IN 1..10
            LET sub = (FOR y in 1..10 RETURN y)
            LIMIT 3, 1
            RETURN sub`,
-	    collectionNames: []},
-    q3: {queryString: `FOR fv62 IN 1..100
+      collectionNames: []
+    },
+    q3: {
+      queryString: `FOR fv62 IN 1..100
           LET sq63 = (FOR fv64 IN 1..100
             LET sq65 = (FOR fv66 IN 1..100
               LET sq67 = (FOR fv68 IN 1..100
@@ -350,8 +360,10 @@ function ahuacatlSubqueryChaos() {
             RETURN {counter})
           LIMIT 6,19
           RETURN {fv62, sq63}`,
-	    collectionNames: []},
-    q4: {queryString: `FOR fv0 IN 1..20
+      collectionNames: []
+    },
+    q4: {
+      queryString: `FOR fv0 IN 1..20
            LET sq1 = (FOR fv2 IN 1..20
              LET sq3 = (FOR fv4 IN 1..20
                LET sq5 = (FOR fv6 IN 1..20
@@ -376,8 +388,9 @@ function ahuacatlSubqueryChaos() {
              RETURN {fv8, sq1, sq9})
            LIMIT 13,14
            RETURN {fv0, sq1, sq7}`,
-	    collectionNames: []}
-    };
+      collectionNames: []
+    }
+  };
   return {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief set up
@@ -401,15 +414,15 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryChaos: function() {
-       for( var i = 0; i < 1000; i++) {
-           testQuery(createChaosQuery(7));
-       }
+      for (var i = 0; i < 1000; i++) {
+        testQuery(createChaosQuery(7));
+      }
     },
 
     testSomeSubqueryModificationChaos: function() {
-       for( var i = 0; i < 1000; i++) {
-         testQuery(createModifyingChaosQuery(7));
-       }
+      for (var i = 0; i < 1000; i++) {
+        testQuery(createModifyingChaosQuery(7));
+      }
     }
   };
 }
