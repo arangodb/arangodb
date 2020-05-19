@@ -1637,9 +1637,13 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           if (revision == AnalyzersRevision::LATEST) {
             break; // we don`t care about specific revision.
           }
-          auto itr = _lastLoad.find(name.first);
-          if (itr != _lastLoad.end() && itr->second >= revision) {
-            break; // expected or later revision is loaded
+          {
+            ReadMutex mutex(_mutex);
+            SCOPED_LOCK(mutex);
+            auto itr = _lastLoad.find(name.first);
+            if (itr != _lastLoad.end() && itr->second >= revision) {
+              break; // expected or later revision is loaded
+            }
           }
           if (TRI_microtime() > endTime) {
             LOG_TOPIC("6a908", WARN, iresearch::TOPIC)
