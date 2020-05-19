@@ -31,6 +31,11 @@
 
 #include <execinfo.h>
 #include <sstream>
+  
+#if defined(__GNUC__) && (__GNUC___ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wframe-address"
+#endif
 
 namespace {
 void* getreturnaddr(int level) {
@@ -214,17 +219,32 @@ void* getreturnaddr(int level) {
   }
 }
 
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
+
 extern "C" {
+uint64_t mystart(void*) {
+  uint64_t i = 0;
+  for (uint64_t j = 0; j < 10000; ++j) {
+    i += j*j + (uint64_t) time(nullptr);
+  }
+  uint64_t k = 0;
+  for (uint64_t j = 0; j < 10000; ++j) {
+    k += j+j * (uint64_t) time(nullptr);
+  }
+  return i + k;
+}
 int main(int argc, char* argv[]);
-void start(void*);
+uint64_t start(void*) __attribute__ ((weak, alias("mystart")));
 }
 
 std::vector<void*> read_backtrace() {
   std::vector<void*> trace;
   trace.resize(40, nullptr);
 
-  constexpr size_t main_size = 200;
-  constexpr size_t start_size = 20;
+  constexpr size_t main_size = 0x289;   // from nm -S, LOL
+  constexpr size_t start_size = 0x78;   // from nm -S, LOL
 
   size_t i = 0;
   for (; i < trace.size() - 1; i++) {
