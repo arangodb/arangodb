@@ -81,7 +81,7 @@ class Exception : public virtual std::exception {
   std::vector<void*> _backtrace;
 
  public:
-  Exception(ExceptionType type, char const* msg) : _type(type), _msg(msg), _backtrace(generateBacktrace()) {}
+  Exception(ExceptionType type, char const* msg);
   explicit Exception(ExceptionType type) : Exception(type, message(type)) {}
   //Exception(Exception const& other) = default;
   Exception(Exception &&) noexcept = default;
