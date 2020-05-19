@@ -195,7 +195,7 @@ class ExecutionEngine {
   bool _initializeCursorCalled;
   
   std::atomic<bool> _wasShutdown;
-  std::atomic<bool> _sentShutdownResponse{false};
+  std::atomic<bool> _sentShutdownResponse;
 };
 }  // namespace aql
 }  // namespace arangodb

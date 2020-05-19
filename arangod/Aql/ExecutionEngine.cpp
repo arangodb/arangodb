@@ -196,7 +196,8 @@ ExecutionEngine::ExecutionEngine(QueryContext& query,
       _root(nullptr),
       _resultRegister(0),
       _initializeCursorCalled(false),
-      _wasShutdown(false) {
+      _wasShutdown(false),
+      _sentShutdownResponse(false) {
   _blocks.reserve(8);
 }
 
@@ -843,7 +844,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   if (_sentShutdownResponse.exchange(true)) {
     return {ExecutionState::WAITING, Result()};
   }
-  TRI_ASSERT(!_wasShutdown);
+  TRI_ASSERT(!_wasShutdown.load(std::memory_order_relaxed));
   
   if (_serverToQueryId.empty()) { // happens during tests
     return {ExecutionState::DONE, Result()};
@@ -919,7 +920,7 @@ std::pair<ExecutionState, Result> ExecutionEngine::shutdownDBServerQueries(int e
   futures::collectAll(std::move(futures)).thenFinal([ss, this](auto&& vals) {
     TRI_ASSERT(ss->isValid());
     ss->executeAndWakeup([&] {
-      _wasShutdown.store(std::memory_order_relaxed); // prevent duplicates
+      _wasShutdown.store(true, std::memory_order_relaxed); // prevent duplicates
       return true;
     });
   });
