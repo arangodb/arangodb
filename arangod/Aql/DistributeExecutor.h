@@ -80,47 +80,66 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 // The DistributeBlock is actually implemented by specializing
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
 class DistributeExecutor {
- public:
-  using Infos = DistributeExecutorInfos;
+  private:
+   class QueueEntry {
+     public:
+     QueueEntry(SkipResult const& skipped, SharedAqlItemBlockPtr block,
+                std::vector<size_t> choosen);
 
-  class ClientBlockData {
-   public:
-    ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
-                    RegisterInfos const& registerInfos);
+     auto numRows() const -> size_t;
 
-    auto clear() -> void;
-    auto addBlock(SharedAqlItemBlockPtr block, std::vector<size_t> usedIndexes) -> void;
+     auto skipResult() const -> SkipResult const&;
 
-    auto addSkipResult(SkipResult const& skipResult) -> void;
-    auto hasDataFor(AqlCall const& call) -> bool;
+     auto block() const -> SharedAqlItemBlockPtr const&;
 
-    auto execute(AqlCallStack callStack, ExecutionState upstreamState)
-        -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+     auto choosen() const -> std::vector<size_t> const&;
 
-   private:
-    /**
-     * @brief This call will join as many blocks as available from the queue
-     *        and return them in a SingleBlock. We then use the IdExecutor
-     *        to hand out the data contained in these blocks
-     *        We do on purpose not give any kind of guarantees on the sizing
-     * of this block to be flexible with the implementation, and find a good
-     *        trade-off between blocksize and block copy operations.
-     *
-     * @return SharedAqlItemBlockPtr a joined block from the queue.
-     *         SkipResult the skip information matching to this block
-     */
-    auto popJoinedBlock() -> std::tuple<SharedAqlItemBlockPtr, SkipResult>;
+    private:
+     SkipResult _skip;
+     SharedAqlItemBlockPtr _block;
+     std::vector<size_t> _choosen;
+   };
 
-   private:
-    AqlItemBlockManager& _blockManager;
-    RegisterInfos const& registerInfos;
+  public:
+   using Infos = DistributeExecutorInfos;
 
-    std::deque<std::pair<SharedAqlItemBlockPtr, std::vector<size_t>>> _queue;
-    SkipResult _skipped{};
+   class ClientBlockData {
+    public:
+     ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
+                     RegisterInfos const& registerInfos);
 
-    // This is unique_ptr to get away with everything being forward declared...
-    std::unique_ptr<ExecutionBlock> _executor;
-    bool _executorHasMore = false;
+     auto clear() -> void;
+     auto addBlock(SkipResult const& skipResult, SharedAqlItemBlockPtr block,
+                   std::vector<size_t> usedIndexes) -> void;
+
+     auto hasDataFor(AqlCall const& call) -> bool;
+
+     auto execute(AqlCallStack callStack, ExecutionState upstreamState)
+         -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+    private:
+     /**
+      * @brief This call will join as many blocks as available from the queue
+      *        and return them in a SingleBlock. We then use the IdExecutor
+      *        to hand out the data contained in these blocks
+      *        We do on purpose not give any kind of guarantees on the sizing
+      * of this block to be flexible with the implementation, and find a good
+      *        trade-off between blocksize and block copy operations.
+      *
+      * @return SharedAqlItemBlockPtr a joined block from the queue.
+      *         SkipResult the skip information matching to this block
+      */
+     auto popJoinedBlock() -> std::tuple<SharedAqlItemBlockPtr, SkipResult>;
+
+    private:
+     AqlItemBlockManager& _blockManager;
+     RegisterInfos const& registerInfos;
+
+     std::deque<QueueEntry> _queue;
+
+     // This is unique_ptr to get away with everything being forward declared...
+     std::unique_ptr<ExecutionBlock> _executor;
+     bool _executorHasMore = false;
   };
 
   DistributeExecutor(DistributeExecutorInfos const& infos);

@@ -116,6 +116,32 @@ auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
   return _logCol->createKey(input);
 }
 
+DistributeExecutor::QueueEntry::QueueEntry(SkipResult const& skipped,
+                                           SharedAqlItemBlockPtr block,
+                                           std::vector<size_t> choosen)
+    : _skip(skipped), _block(block), _choosen(std::move(choosen)) {
+  TRI_ASSERT(_block != nullptr || choosen.empty());
+}
+
+auto DistributeExecutor::QueueEntry::numRows() const -> size_t {
+  if (_block == nullptr) {
+    return 0;
+  }
+  return _block->size();
+}
+
+auto DistributeExecutor::QueueEntry::skipResult() const -> SkipResult const& {
+  return _skip;
+}
+
+auto DistributeExecutor::QueueEntry::block() const -> SharedAqlItemBlockPtr const& {
+  return _block;
+}
+
+auto DistributeExecutor::QueueEntry::choosen() const -> std::vector<size_t> const& {
+  return _choosen;
+}
+
 DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                      ScatterNode const* node,
                                                      RegisterInfos const& registerInfos)
@@ -139,15 +165,10 @@ auto DistributeExecutor::ClientBlockData::clear() -> void {
   _executorHasMore = false;
 }
 
-auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
+auto DistributeExecutor::ClientBlockData::addBlock(SkipResult const& skipResult, SharedAqlItemBlockPtr block,
                                                    std::vector<size_t> usedIndexes) -> void {
-  _queue.emplace_back(block, std::move(usedIndexes));
-}
-
-auto DistributeExecutor::ClientBlockData::addSkipResult(SkipResult const& skipResult) -> void {
-  TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
-             _skipped.subqueryDepth() == skipResult.subqueryDepth());
-  _skipped.merge(skipResult, false);
+  TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
+  _queue.emplace_back(skipResult, block, std::move(usedIndexes));
 }
 
 auto DistributeExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
@@ -172,14 +193,32 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
   // However we might leverage the restriction to stop at ShadowRows
   // at one point anyways, and this Executor has no business with ShadowRows.
   size_t numRows = 0;
-  for (auto const& [block, choosen] : _queue) {
-    numRows += choosen.size();
-    if (numRows >= ExecutionBlock::DefaultBatchSize) {
+  for (auto const& data : _queue) {
+    if (numRows + data.numRows() > ExecutionBlock::DefaultBatchSize) {
       // Avoid to put too many rows into this block.
       break;
     }
+    numRows += data.numRows();
+  }
+  // DO never distribute more then BatchSize many rows.
+  TRI_ASSERT(numRows <= ExecutionBlock::DefaultBatchSize);
+  SkipResult skipRes;
+  if (numRows == 0) {
+    // Special case, we do not have any data to distribute.
+    // But we still may have skip Information.
+    // So we need to distribute at-least this.
+    while (!_queue.empty()) {
+      auto const& entry = _queue.front();
+      skipRes.merge(entry.skipResult(), false);
+      TRI_ASSERT(entry.block() == nullptr);
+      TRI_ASSERT(entry.choosen().empty());
+      _queue.pop_front();
+    }
+    return {nullptr, skipRes};
   }
 
+  // If we do not have rows, we will get an empty block here.
+  // We still need to morege the SkipResults.
   SharedAqlItemBlockPtr newBlock =
       _blockManager.requestBlock(numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
@@ -191,7 +230,11 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct
     TRI_ASSERT(!_queue.empty());
-    auto const& [block, choosen] = _queue.front();
+
+    auto const& entry = _queue.front();
+    skipRes.merge(entry.skipResult(), true);
+    auto const& block = entry.block();
+    auto const& choosen = entry.choosen();
     TRI_ASSERT(output.numRowsLeft() >= choosen.size());
     for (auto const& i : choosen) {
       // We do not really care what we copy. However
@@ -209,9 +252,7 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock()
     // Drop block form queue.
     _queue.pop_front();
   }
-  SkipResult skip = _skipped;
-  _skipped.reset();
-  return {newBlock, skip};
+  return {newBlock, skipRes};
 }
 
 auto DistributeExecutor::ClientBlockData::execute(AqlCallStack callStack, ExecutionState upstreamState)
@@ -228,10 +269,6 @@ auto DistributeExecutor::ClientBlockData::execute(AqlCallStack callStack, Execut
         static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
     TRI_ASSERT(casted != nullptr);
     auto [block, skipped] = popJoinedBlock();
-    // We will at least get one block, otherwise the hasDataFor would
-    // be required to return false!
-    TRI_ASSERT(block != nullptr);
-
     casted->injectConstantBlock(block, skipped);
     _executorHasMore = true;
   }
@@ -264,38 +301,39 @@ auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult
     -> void {
   std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
   choosenMap.reserve(blockMap.size());
-  for (size_t i = 0; i < block->size(); ++i) {
-    if (block->isShadowRow(i)) {
-      // ShadowRows need to be added to all Clients
-      for (auto const& [key, value] : blockMap) {
-        choosenMap[key].emplace_back(i);
-      }
-    } else {
-      auto client = getClient(block, i);
-      // We can only have clients we are prepared for
-      TRI_ASSERT(blockMap.find(client) != blockMap.end());
-      choosenMap[client].emplace_back(i);
-    }
-  }
-  // We cannot have more in choosen than we have blocks
-  TRI_ASSERT(choosenMap.size() <= blockMap.size());
-  for (auto const& [key, value] : choosenMap) {
-    TRI_ASSERT(blockMap.find(key) != blockMap.end());
-    auto target = blockMap.find(key);
-    if (target == blockMap.end()) {
-      // Impossible, just avoid UB.
-      LOG_TOPIC("7bae6", ERR, Logger::AQL)
-          << "Tried to distribute data to shard " << key
-          << " which is not part of the query. Ignoring.";
-      continue;
-    }
-    target->second.addBlock(block, std::move(value));
-  }
 
-  // Add the skipResult to all clients.
-  // It needs to be fetched once for every client.
-  for (auto& [key, map] : blockMap) {
-    map.addSkipResult(skipped);
+  if (block != nullptr) {
+    for (size_t i = 0; i < block->size(); ++i) {
+      if (block->isShadowRow(i)) {
+        // ShadowRows need to be added to all Clients
+        for (auto const& [key, value] : blockMap) {
+          choosenMap[key].emplace_back(i);
+        }
+      } else {
+        auto client = getClient(block, i);
+        // We can only have clients we are prepared for
+        TRI_ASSERT(blockMap.find(client) != blockMap.end());
+        choosenMap[client].emplace_back(i);
+      }
+    }
+
+    // We cannot have more in choosen than we have blocks
+    TRI_ASSERT(choosenMap.size() <= blockMap.size());
+    for (auto& [key, target] : blockMap) {
+      auto value = choosenMap.find(key);
+      if (value != choosenMap.end()) {
+        // we have data in this block
+        target.addBlock(skipped, block, std::move(value->second));
+      } else {
+        // No data, add skipped
+        target.addBlock(skipped, nullptr, {});
+      }
+    }
+  } else {
+    for (auto& [key, target] : blockMap) {
+      // No data, add skipped
+      target.addBlock(skipped, nullptr, {});
+    }
   }
 }
 
