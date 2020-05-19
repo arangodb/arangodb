@@ -79,7 +79,7 @@ struct AqlCall {
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
     AqlCall call;
     call.offset = toSkip;
-    call.softLimit = 0;
+    call.softLimit = 0u;
     call.hardLimit = AqlCall::Infinity{};
     call.fullCount = false;
     return call;

@@ -43,7 +43,7 @@ auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall)
   // Only skip, don't ask for rows
   if (clientCall.getOffset() > 0) {
     auto upstreamCall = clientCall;
-    upstreamCall.softLimit = 0;
+    upstreamCall.softLimit = 0u;
     upstreamCall.hardLimit = AqlCall::Infinity{};
     upstreamCall.fullCount = false;
     return upstreamCall;
