@@ -36,8 +36,22 @@ const _ = require("lodash");
 /// @brief test suite for cross-collection queries
 ////////////////////////////////////////////////////////////////////////////////
 
+// This is a seedable RandomNumberGenerator
+// it is not operfect for Random numbers,
+// but good enough for what we are doing here
+function* randomNumberGenerator (seed) {
+  print("SEEDABLE RANDOM USING SEED: " + seed);
+  while (true) {
+    const nextVal = Math.cos(seed++) * 10000;
+    yield nextVal - Math.floor(nextVal);
+  }
+};
+
+var theRandomNumberGenerator = [];
+
 const myRandomNumberGenerator = function() {
-  return Math.random();
+  // return Math.random();
+  return theRandomNumberGenerator.next().value;
 };
 
 function ahuacatlSubqueryChaos() {
@@ -402,6 +416,8 @@ function ahuacatlSubqueryChaos() {
     setUp: function() {
       db._drop(collName);
       db._create(collName);
+
+      theRandomNumberGenerator = randomNumberGenerator(Math.floor(50000 * Math.random()));
     },
 
     ////////////////////////////////////////////////////////////////////////////////
