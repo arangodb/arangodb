@@ -67,21 +67,23 @@ void ClusterEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   }
 }
   
-ClusterTraverserEdgeCursor::ClusterTraverserEdgeCursor(graph::BaseOptions const* opts)
+ClusterTraverserEdgeCursor::ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts)
     : ClusterEdgeCursor(opts) {}
+
+traverser::TraverserOptions const* ClusterTraverserEdgeCursor::traverserOptions() const {
+  TRI_ASSERT(dynamic_cast<traverser::TraverserOptions const*>(_opts) != nullptr);
+  return dynamic_cast<traverser::TraverserOptions const*>(_opts);
+}
 
 void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId, uint64_t depth) {
   _edgeList.clear();
   _position = 0;
 
   auto trx = _opts->trx();
-  transaction::BuilderLeaser leased(trx);
-  transaction::BuilderLeaser b(trx);
+  TRI_ASSERT(trx != nullptr);
+  TRI_ASSERT(_cache != nullptr);
 
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  Result res = fetchEdgesFromEngines(*trx, _cache->engines(), b->slice(), depth,
-                                     _cache->cache(), _edgeList, _cache->datalake(),
-                                     _cache->filteredDocuments(), _cache->insertedDocuments());
+  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions(), vertexId, depth, _edgeList);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
