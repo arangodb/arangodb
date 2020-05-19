@@ -4095,7 +4095,7 @@ function exampleGraphsSuite() {
       let resArr = res.toArray().sort();
       assertEqual(resArr, expected.sort(), info);
     }
-  } 
+  };
 
   return {
     setUpAll: () => {
