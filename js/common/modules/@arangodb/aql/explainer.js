@@ -6,7 +6,10 @@ var db = require('@arangodb').db,
   _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
+  printf = internal.printf,
+  sprintf = internal.sprintf,
   colors = {};
+var console = require('console');
 
 // max elements to print from array/objects
 const maxMembersToPrint = 20;
@@ -2356,7 +2359,244 @@ function inspectDump(filename, outfile) {
   }
 }
 
+function explainQuerysRegisters(query, explain, planIndex) {
+  const plan = planIndex === undefined
+    ? explain.plan
+    : explain.plans[planIndex];
+  const getNodesById = (planNodes, result = {}) => {
+    for (let node of planNodes) {
+      result[node.id] = node;
+      if (node.type === 'SubqueryNode') {
+        getNodesById(node.subquery.nodes, result);
+      }
+    }
+
+    return result;
+  };
+  const nodesById = getNodesById(plan.nodes);
+  const lineInfo = [];
+
+  const leafNode = plan.nodes.filter(node => node.dependencies.length === 0)[0];
+  //const rootNode = plan.nodes.filter(node => node.parents.length === 0)[0];
+  const rootNode = plan.nodes[plan.nodes.length - 1];
+
+  const subqueryStack = [];
+  for (let node = rootNode; node !== undefined; ) {
+    const current = {node};
+    lineInfo.push(current);
+    if (node.type === 'SubqueryNode') {
+      subqueryStack.push(node);
+      current.direction = 'open';
+      node = node.subquery.nodes[node.subquery.nodes.length - 1];
+    } else if (node.dependencies && node.dependencies.length > 0) {
+      node = nodesById[node.dependencies[0]];
+    } else if (subqueryStack.length > 0) {
+      node = subqueryStack.pop();
+      const current = {node};
+      current.direction = 'close';
+      lineInfo.push(current);
+      node = nodesById[node.dependencies[0]];
+    } else {
+      node = undefined;
+    }
+  }
+
+  // for debugging. TODO remove it or replace it with saner exceptions
+  const assert = (bool) => {
+    if (!bool) {
+      throw new Error();
+    }
+  };
+
+  lineInfo.reverse();
+
+  const rowsMeta = lineInfo.map(
+    line => ({id: line.node.id, type: line.node.type, depth: line.node.depth})
+  );
+  const rowsRegs = lineInfo.map(
+    line => {
+      const node = line.node;
+      const depth = node.depth;
+      const nrRegs = node.nrRegs[depth];
+      const regsToClear = node.regsToClear;
+      const regsToKeepStack = node.regsToKeepStack;
+      const unusedRegsStack = node.unusedRegsStack;
+      const varsSetHere = node.varsSetHere;
+      const regIdByVarId = Object.fromEntries(
+        node.varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+
+      const regs = [...Array(nrRegs)].map(_ => '');
+      const keepOrClear = regs.slice();
+
+      const varName = (variable) => {
+        if (/^[0-9_]/.test(variable.name)) {
+          return '#' + variable.name;
+        }
+        return variable.name;
+      };
+
+      for (const variable of varsSetHere) {
+        assert(regs[regIdByVarId[variable.id]] === '');
+        regs[regIdByVarId[variable.id]] = '→' + varName(variable);
+      }
+
+      for (const reg of regsToClear) {
+        assert(keepOrClear[reg] === '');
+        keepOrClear[reg] = 'clear';
+      }
+
+      // TODO: For spliced SubqueryStart and -End, we need two lines each,
+      //   and one of them needs regsToKeepStack[regsToKeepStack.length - 2]
+      for (const reg of regsToKeepStack[regsToKeepStack.length - 1]) {
+        assert(keepOrClear[reg] === '');
+        keepOrClear[reg] = 'keep';
+      }
+      // TODO: For spliced SubqueryStart and -End, we need two lines each,
+      //   and one of them needs unusedRegsStack[unusedRegsStack.length - 2]
+      for (const reg of unusedRegsStack[unusedRegsStack.length - 1]) {
+        assert(regs[reg] === '');
+        regs[reg] = 'Ø';
+      }
+
+      return {regs, keepOrClear};
+    }
+  );
+
+  const columns = [
+    {name: 'id', alignment: 'r'},
+    {name: 'type', alignment: 'l'},
+    {name: 'depth', alignment: 'r'},
+  ];
+
+  const colWidths = Object.fromEntries(columns.map(col => [col.name, col.name.length]));
+  const regColWidths = [];
+
+  for (const row of rowsMeta) {
+    for (const col of columns) {
+      colWidths[col.name] = Math.max(("" + row[col.name]).length, colWidths[col.name]);
+    }
+  }
+
+  for (const rowRegs of rowsRegs) {
+    assert(rowRegs.regs.length === rowRegs.keepOrClear.length);
+    for (let i = 0; i < rowRegs.regs.length; ++i) {
+      regColWidths[i] = regColWidths[i] || 0;
+      regColWidths[i] = Math.max(
+        rowRegs.regs[i].length,
+        //rowRegs.keepOrClear[i].length,
+        regColWidths[i]
+      );
+    }
+  }
+
+  const getAlignmentModifier = (alignment) => {
+    switch (alignment) {
+      case 'l':
+        return '-';
+      case 'r':
+        return ' ';
+      default:
+        return '';
+    }
+  };
+
+  const formatField = (value, alignment, width) => {
+    const str = '' + value;
+    const paddingWidth = width - str.length;
+
+    switch (alignment) {
+      case 'l':
+        return str + ' '.repeat(paddingWidth);
+      case 'r':
+        return ' '.repeat(paddingWidth) + str;
+      default:
+        const halfPadding = Math.floor(paddingWidth / 2);
+        return ' '.repeat(paddingWidth - halfPadding) + str + ' '.repeat(halfPadding);
+    }
+  };
+
+  print(' ' + columns.map(col =>
+    formatField(col.name, 'c', colWidths[col.name])
+  ).join('|') + ' ');
+  print('-' + Object.values(colWidths).map(w => '-'.repeat(w)).join('+') + '-');
+
+  for (const [rowMeta, rowRegs] of _.zip(rowsMeta, rowsRegs)) {
+    printf(' ');
+    printf(columns.map(col =>
+      formatField(rowMeta[col.name], col.alignment, colWidths[col.name])
+    ).join('|'));
+    printf(' |');
+    printf(rowRegs.regs.map((regs, r) =>
+      formatField(regs, 'l', regColWidths[r])
+    ).join('|'));
+    printf("| \n");
+    printf(' ' + Object.values(colWidths).map(w => ' '.repeat(w)).join('|'));
+    printf(' |');
+    printf(rowRegs.keepOrClear.map((keepOrClear, r) => {
+        switch (keepOrClear) {
+          case 'keep':
+            return formatField('↓', 'c', regColWidths[r]);
+          case 'clear':
+            return formatField('⮾', 'c', regColWidths[r]);
+          default:
+            return ' '.repeat(regColWidths[r]);
+        }
+      }
+    ).join('|'));
+    printf("| \n");
+  }
+}
+
+function explainRegisters(data, options, shouldPrint) {
+  'use strict';
+
+  console.warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
+
+  if (typeof data === 'string') {
+    data = { query: data, options: options };
+  }
+  if (!(data instanceof Object)) {
+    throw 'ArangoStatement needs initial data';
+  }
+
+  if (options === undefined) {
+    options = data.options;
+  }
+  options = options || {};
+  options.verbosePlans = true;
+  options.explainRegisters = true;
+  setColors(options.colors === undefined ? true : options.colors);
+
+  stringBuilder.clearOutput();
+  let stmt = db._createStatement(data);
+  let result = stmt.explain(options);
+  if (options.allPlans) {
+    // multiple plans
+    printQuery(data.query);
+    for (let i = 0; i < result.plans.length; ++i) {
+      if (i > 0) {
+        stringBuilder.appendLine();
+      }
+      stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length));
+      stringBuilder.prefix = ' ';
+      stringBuilder.appendLine();
+      explainQuerysRegisters(data.query, result, i);
+      stringBuilder.prefix = '';
+    }
+  } else {
+    // single plan
+    explainQuerysRegisters(data.query, result, undefined);
+  }
+
+  if (shouldPrint === undefined || shouldPrint) {
+    print(stringBuilder.getOutput());
+  } else {
+    return stringBuilder.getOutput();
+  }
+}
+
 exports.explain = explain;
+exports.explainRegisters = explainRegisters;
 exports.profileQuery = profileQuery;
 exports.debug = debug;
 exports.debugDump = debugDump;

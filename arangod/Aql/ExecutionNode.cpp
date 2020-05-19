@@ -835,6 +835,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
   }
 
+  // SERIALIZE_REGISTER_INFORMATION => SERIALIZE_DETAILS
+  TRI_ASSERT(!ExecutionNode::SERIALIZE_REGISTER_INFORMATION || ExecutionNode::SERIALIZE_DETAILS);
   if (flags & (ExecutionNode::SERIALIZE_DETAILS | ExecutionNode::SERIALIZE_REGISTER_INFORMATION)) {
     nodes.add("depth", VPackValue(_depth));
 
@@ -899,6 +901,15 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           for (auto const& reg : stackEntry) {
             nodes.add(VPackValue(reg));
           }
+        }
+      }
+
+      nodes.add(VPackValue("varsSetHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        auto const& varsSetHere = getVariablesSetHere();
+        for (auto const& oneVar : varsSetHere) {
+          oneVar->toVelocyPack(nodes);
         }
       }
     }
