@@ -24,7 +24,6 @@
 #define ARANGOD_GRAPH_GRAPH_H
 
 #include <velocypack/Buffer.h>
-#include <chrono>
 #include <utility>
 #include <set>
 
@@ -36,6 +35,8 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace graph {
@@ -106,12 +107,14 @@ class Graph {
    *
    * @return A graph object corresponding to the user input
    */
-  static std::unique_ptr<Graph> fromUserInput(std::string&& name,
+  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase, 
+                                              std::string&& name,
                                               velocypack::Slice collectionInformation,
                                               velocypack::Slice options);
 
   // Wrapper for Move constructor
-  static std::unique_ptr<Graph> fromUserInput(std::string const& name,
+  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase,
+                                              std::string const& name,
                                               velocypack::Slice collectionInformation,
                                               velocypack::Slice options);
 
@@ -130,7 +133,7 @@ class Graph {
    * @param info Collection information, including relations and orphans
    * @param options The options to be used for collections
    */
-  Graph(std::string&& graphName, velocypack::Slice const& info,
+  Graph(TRI_vocbase_t& vocbase, std::string&& graphName, velocypack::Slice const& info,
         velocypack::Slice const& options);
 
  public:

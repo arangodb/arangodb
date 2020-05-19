@@ -1283,6 +1283,11 @@ arangodb::Result RocksDBEngine::persistCollection(TRI_vocbase_t& vocbase,
   return {};
 }
 
+void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
+                                          LogicalCollection& coll) {
+  replicationManager()->drop(&coll);
+}
+
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                LogicalCollection& coll) {
   auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());

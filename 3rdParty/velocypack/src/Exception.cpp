@@ -214,13 +214,10 @@ void* getreturnaddr(int level) {
   }
 }
 
-
 extern "C" {
-
-int main(int argc, char *argv[]);
-  void start(void*);
+int main(int argc, char* argv[]);
+void start(void*);
 }
-
 
 std::vector<void*> read_backtrace() {
   std::vector<void*> trace;
@@ -231,11 +228,12 @@ std::vector<void*> read_backtrace() {
 
   size_t i = 0;
   for (; i < trace.size() - 1; i++) {
-    trace[i] = getreturnaddr(i+1);
-    if ((uint64_t) trace[i] >= (uint64_t) main && (uint64_t) trace[i] < (uint64_t) main + main_size) {
+    trace[i] = getreturnaddr(i + 1);
+    if ((uint64_t)trace[i] >= (uint64_t)main && (uint64_t)trace[i] < (uint64_t)main + main_size) {
       break;
     }
-    if ((uint64_t) trace[i] >= (uint64_t) start && (uint64_t) trace[i] < (uint64_t) start + start_size) {
+    if ((uint64_t)trace[i] >= (uint64_t)start &&
+        (uint64_t)trace[i] < (uint64_t)start + start_size) {
       break;
     }
   }

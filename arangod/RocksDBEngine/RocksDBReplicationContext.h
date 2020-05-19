@@ -49,6 +49,8 @@ class Snapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
+class LogicalCollection;
+
 namespace basics {
 class StringBuffer;
 }
@@ -127,6 +129,8 @@ class RocksDBReplicationContext {
 
   /// invalidate all iterators with that vocbase
   void removeVocbase(TRI_vocbase_t&);
+  /// invalidate all iterators with that collection
+  bool removeCollection(LogicalCollection&);
 
   /// remove matching iterator
   void releaseIterators(TRI_vocbase_t&, TRI_voc_cid_t);

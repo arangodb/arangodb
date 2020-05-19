@@ -1835,8 +1835,8 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     'orphanCollections': orphanCollections,
     'edgeDefinitions': edgeDefinitions,
     '_key': graphName,
-    'numberOfShards': options.numberOfShards || 1,
-    'replicationFactor': options.replicationFactor || 1,
+    'numberOfShards': options.numberOfShards || undefined,
+    'replicationFactor': options.replicationFactor || undefined,
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;
