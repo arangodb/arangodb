@@ -2374,7 +2374,7 @@ function explainQuerysRegisters(query, explain, planIndex) {
     return result;
   };
   const nodesById = getNodesById(plan.nodes);
-  const lineInfo = [];
+  const nodesData = [];
 
   const leafNode = plan.nodes.filter(node => node.dependencies.length === 0)[0];
   //const rootNode = plan.nodes.filter(node => node.parents.length === 0)[0];
@@ -2383,7 +2383,7 @@ function explainQuerysRegisters(query, explain, planIndex) {
   const subqueryStack = [];
   for (let node = rootNode; node !== undefined; ) {
     const current = {node};
-    lineInfo.push(current);
+    nodesData.push(current);
     if (node.type === 'SubqueryNode') {
       subqueryStack.push(node);
       current.direction = 'open';
@@ -2394,7 +2394,7 @@ function explainQuerysRegisters(query, explain, planIndex) {
       node = subqueryStack.pop();
       const current = {node};
       current.direction = 'close';
-      lineInfo.push(current);
+      nodesData.push(current);
       node = nodesById[node.dependencies[0]];
     } else {
       node = undefined;
@@ -2408,57 +2408,65 @@ function explainQuerysRegisters(query, explain, planIndex) {
     }
   };
 
-  lineInfo.reverse();
+  nodesData.reverse();
 
-  const rowsMeta = lineInfo.map(
-    line => ({id: line.node.id, type: line.node.type, depth: line.node.depth})
-  );
-  const rowsRegs = lineInfo.map(
-    line => {
-      const node = line.node;
-      const depth = node.depth;
-      const nrRegs = node.nrRegs[depth];
-      const regsToClear = node.regsToClear;
-      const regsToKeepStack = node.regsToKeepStack;
-      const unusedRegsStack = node.unusedRegsStack;
-      const varsSetHere = node.varsSetHere;
-      const regIdByVarId = Object.fromEntries(
-        node.varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+  const rowsInfos = nodesData.flatMap(data => {
+    const node = data.node;
+    const depth = node.depth;
+    const nrRegs = node.nrRegs[depth];
+    const regsToClear = node.regsToClear;
+    const regsToKeepStack = node.regsToKeepStack;
+    const unusedRegsStack = node.unusedRegsStack;
+    const varsSetHere = node.varsSetHere;
+    const regIdByVarId = Object.fromEntries(
+      node.varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
-      const regs = [...Array(nrRegs)].map(_ => '');
-      const keepOrClear = regs.slice();
+    const regSetOrUsed = [...Array(nrRegs)].map(_ => '');
+    const keepOrClear = regSetOrUsed.slice();
 
-      const varName = (variable) => {
-        if (/^[0-9_]/.test(variable.name)) {
-          return '#' + variable.name;
-        }
-        return variable.name;
-      };
-
-      for (const variable of varsSetHere) {
-        assert(regs[regIdByVarId[variable.id]] === '');
-        regs[regIdByVarId[variable.id]] = '→' + varName(variable);
+    const varName = (variable) => {
+      if (/^[0-9_]/.test(variable.name)) {
+        return '#' + variable.name;
       }
+      return variable.name;
+    };
 
-      for (const reg of regsToClear) {
-        assert(keepOrClear[reg] === '');
-        keepOrClear[reg] = 'clear';
-      }
+    for (const variable of varsSetHere) {
+      assert(regSetOrUsed[regIdByVarId[variable.id]] === '');
+      regSetOrUsed[regIdByVarId[variable.id]] = '→' + varName(variable);
+    }
 
-      // TODO: For spliced SubqueryStart and -End, we need two lines each,
-      //   and one of them needs regsToKeepStack[regsToKeepStack.length - 2]
-      for (const reg of regsToKeepStack[regsToKeepStack.length - 1]) {
-        assert(keepOrClear[reg] === '');
-        keepOrClear[reg] = 'keep';
-      }
-      // TODO: For spliced SubqueryStart and -End, we need two lines each,
-      //   and one of them needs unusedRegsStack[unusedRegsStack.length - 2]
-      for (const reg of unusedRegsStack[unusedRegsStack.length - 1]) {
-        assert(regs[reg] === '');
-        regs[reg] = 'Ø';
-      }
+    // TODO depending on passthrough, or maybe the depth increase or similar,
+    //      only one of keep or clear is of interest and the other should be
+    //      ignored in that case.
 
-      return {regs, keepOrClear};
+    for (const reg of regsToClear) {
+      assert(keepOrClear[reg] === '');
+      keepOrClear[reg] = '⮾';
+    }
+
+    // TODO: For spliced SubqueryStart and -End, we need two lines each,
+    //   and one of them needs regsToKeepStack[regsToKeepStack.length - 2]
+    for (const reg of regsToKeepStack[regsToKeepStack.length - 1]) {
+      assert(keepOrClear[reg] === '');
+      keepOrClear[reg] = '↓';
+    }
+    // TODO: For spliced SubqueryStart and -End, we need two lines each,
+    //   and one of them needs unusedRegsStack[unusedRegsStack.length - 2]
+    for (const reg of unusedRegsStack[unusedRegsStack.length - 1]) {
+      assert(regSetOrUsed[reg] === '');
+      regSetOrUsed[reg] = 'Ø';
+    }
+
+    return [{
+      meta: {
+        id: node.id,
+        type: node.type,
+        depth: node.depth,
+      },
+      regSetOrUsed,
+      keepOrClear
+    }];
     }
   );
 
@@ -2471,19 +2479,19 @@ function explainQuerysRegisters(query, explain, planIndex) {
   const colWidths = Object.fromEntries(columns.map(col => [col.name, col.name.length]));
   const regColWidths = [];
 
-  for (const row of rowsMeta) {
+  for (const row of rowsInfos) {
     for (const col of columns) {
-      colWidths[col.name] = Math.max(("" + row[col.name]).length, colWidths[col.name]);
+      colWidths[col.name] = Math.max(("" + row.meta[col.name]).length, colWidths[col.name]);
     }
   }
 
-  for (const rowRegs of rowsRegs) {
-    assert(rowRegs.regs.length === rowRegs.keepOrClear.length);
-    for (let i = 0; i < rowRegs.regs.length; ++i) {
+  for (const rowRegs of rowsInfos) {
+    assert(rowRegs.regSetOrUsed.length === rowRegs.keepOrClear.length);
+    for (let i = 0; i < rowRegs.regSetOrUsed.length; ++i) {
       regColWidths[i] = regColWidths[i] || 0;
       regColWidths[i] = Math.max(
-        rowRegs.regs[i].length,
-        //rowRegs.keepOrClear[i].length,
+        rowRegs.regSetOrUsed[i].length,
+        rowRegs.keepOrClear[i].length,
         regColWidths[i]
       );
     }
@@ -2517,33 +2525,24 @@ function explainQuerysRegisters(query, explain, planIndex) {
 
   print(' ' + columns.map(col =>
     formatField(col.name, 'c', colWidths[col.name])
-  ).join('|') + ' ');
-  print('-' + Object.values(colWidths).map(w => '-'.repeat(w)).join('+') + '-');
+  ).join('│') + ' ');
+  print('─' + Object.values(colWidths).map(w => '─'.repeat(w)).join('┼') + '─');
 
-  for (const [rowMeta, rowRegs] of _.zip(rowsMeta, rowsRegs)) {
+  for (const row of rowsInfos) {
     printf(' ');
     printf(columns.map(col =>
-      formatField(rowMeta[col.name], col.alignment, colWidths[col.name])
-    ).join('|'));
-    printf(' |');
-    printf(rowRegs.regs.map((regs, r) =>
+      formatField(row.meta[col.name], col.alignment, colWidths[col.name])
+    ).join('│'));
+    printf('  │');
+    printf(row.regSetOrUsed.map((regs, r) =>
       formatField(regs, 'l', regColWidths[r])
-    ).join('|'));
-    printf("| \n");
-    printf(' ' + Object.values(colWidths).map(w => ' '.repeat(w)).join('|'));
-    printf(' |');
-    printf(rowRegs.keepOrClear.map((keepOrClear, r) => {
-        switch (keepOrClear) {
-          case 'keep':
-            return formatField('↓', 'c', regColWidths[r]);
-          case 'clear':
-            return formatField('⮾', 'c', regColWidths[r]);
-          default:
-            return ' '.repeat(regColWidths[r]);
-        }
-      }
-    ).join('|'));
-    printf("| \n");
+    ).join('│'));
+    printf("│ \n");
+    printf(' ' + Object.values(colWidths).map(w => ' '.repeat(w)).join('│'));
+    printf('  │');
+    printf(row.keepOrClear.map((keepOrClear, r) => formatField(keepOrClear, 'c', regColWidths[r])
+    ).join('│'));
+    printf("│ \n");
   }
 }
 
