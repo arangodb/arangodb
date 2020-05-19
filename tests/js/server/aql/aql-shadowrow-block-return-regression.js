@@ -204,7 +204,7 @@ function collectionInSubqeryRegressionSuite() {
     },
 
 
-    testEmptyCollections: function () {
+    testEmptyCollections2: function () {
       const query = `
       FOR x IN @@collectionName
         LET sq = (FOR y IN @@collectionName LIMIT 10 RETURN UNSET(y, "_rev"))
