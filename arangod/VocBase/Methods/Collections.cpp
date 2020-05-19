@@ -28,6 +28,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -63,6 +64,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -1012,4 +1015,31 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
   }, 1000);
 
   return trx.finish(res);
+}
+
+arangodb::velocypack::Builder Collections::filterInput(arangodb::velocypack::Slice properties) {
+  return velocypack::Collection::keep(properties,
+      std::unordered_set<std::string>{StaticStrings::DoCompact,
+                                      StaticStrings::DataSourceSystem,
+                                      StaticStrings::DataSourceId,
+                                      "isVolatile",
+                                      StaticStrings::JournalSize,
+                                      StaticStrings::IndexBuckets,
+                                      "keyOptions",
+                                      StaticStrings::WaitForSyncString,
+                                      StaticStrings::CacheEnabled,
+                                      StaticStrings::ShardKeys,
+                                      StaticStrings::NumberOfShards,
+                                      StaticStrings::DistributeShardsLike,
+                                      "avoidServers",
+                                      StaticStrings::IsSmart,
+                                      StaticStrings::ShardingStrategy,
+                                      StaticStrings::GraphSmartGraphAttribute,
+                                      StaticStrings::Schema,
+                                      StaticStrings::SmartJoinAttribute,
+                                      StaticStrings::ReplicationFactor,
+                                      StaticStrings::MinReplicationFactor, // deprecated
+                                      StaticStrings::WriteConcern,
+                                      "servers"
+                                    });
 }
