@@ -83,7 +83,7 @@ struct AsyncAgencyCommResult {
 // switched off. And since warnings are considered to be errors, we must
 // switch the warning off:
 
-#if defined(__GNUC__) && (__GNUC___ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 3))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif

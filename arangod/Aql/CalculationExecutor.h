@@ -66,7 +66,6 @@ struct CalculationExecutorInfos {
   QueryContext& getQuery() const noexcept;
   transaction::Methods* getTrx() const noexcept;
 
-
   Expression& getExpression() const noexcept;
 
   std::vector<Variable const*> const& getExpInVars() const noexcept;
@@ -78,7 +77,7 @@ struct CalculationExecutorInfos {
 
   QueryContext& _query;
   Expression& _expression;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<Variable const*> _expInVars;  // input variables for expression
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 };
 

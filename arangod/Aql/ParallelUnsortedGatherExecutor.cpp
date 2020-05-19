@@ -43,7 +43,7 @@ auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall)
   // Only skip, don't ask for rows
   if (clientCall.getOffset() > 0) {
     auto upstreamCall = clientCall;
-    upstreamCall.softLimit = 0;
+    upstreamCall.softLimit = 0u;
     upstreamCall.hardLimit = AqlCall::Infinity{};
     upstreamCall.fullCount = false;
     return upstreamCall;
@@ -86,7 +86,7 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
     auto& range = input.rangeForDependency(dep);
     while (!output.isFull() && range.hasDataRow()) {
-      auto [state, row] = range.nextDataRow();
+      auto [state, row] = range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
       TRI_ASSERT(row);
       output.copyRow(row);
       output.advanceRow();

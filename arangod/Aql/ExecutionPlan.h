@@ -180,9 +180,13 @@ class ExecutionPlan {
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
-  /// @brief find nodes of a certain types
+  /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+  
+  /// @brief find unique nodes of certain types
+  void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -320,12 +324,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
   
-  /// @brief create an execution plan element from an AST PARALLEL start node
-  ExecutionNode* fromNodeParallelStart(ExecutionNode*, AstNode const*);
-  
-  /// @brief create an execution plan element from an AST PARALLEL end node
-  ExecutionNode* fromNodeParallelEnd(ExecutionNode*, AstNode const*);
-
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
 

@@ -189,7 +189,8 @@ Ast::Ast(QueryContext& query)
       _containsTraversal(false),
       _containsBindParameters(false),
       _containsModificationNode(false),
-      _containsParrallelNode(false) {
+      _containsParallelNode(false),
+      _willUseV8(false) {
   startSubQuery();
 
   TRI_ASSERT(_root != nullptr);
@@ -604,18 +605,6 @@ AstNode* Ast::createNodeSortElement(AstNode const* expression, AstNode const* as
   node->addMember(ascending);
 
   return node;
-}
-
-/// @brief create an AST parallel start
-AstNode* Ast::createNodeParallelStart() {
-  _containsParrallelNode = true;
-  return createNode(NODE_TYPE_PARALLEL_START);
-}
-
-/// @brief create an AST parallel end
-AstNode* Ast::createNodeParallelEnd() {
-  _containsParrallelNode = true;
-  return createNode(NODE_TYPE_PARALLEL_END);
 }
 
 /// @brief create an AST limit node
@@ -1868,6 +1857,41 @@ AstNode* Ast::replaceAttributeAccess(AstNode* node, Variable const* variable,
   return traverseAndModify(node, visitor);
 }
 
+size_t Ast::validatedParallelism(AstNode const* value) {
+  TRI_ASSERT(value != nullptr);
+  TRI_ASSERT(value->isConstant());
+  if (value->isIntValue()) {
+    int64_t p = value->getIntValue();
+    if (p > 0) {
+      return static_cast<size_t>(p);
+    }
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "parallelism: invalid value");
+}
+
+size_t Ast::extractParallelism(AstNode const* optionsNode) {
+  if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
+    size_t n = optionsNode->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = optionsNode->getMemberUnchecked(i);
+
+      if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
+        continue;
+      }
+      auto const name = member->getStringRef();
+      auto value = member->getMember(0);
+      TRI_ASSERT(value->isConstant());
+
+      if (name == "parallelism") {
+        return validatedParallelism(value);
+      }
+    }
+  }
+  // default value
+  return 1;
+}
+
 /// @brief optimizes the AST
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST
@@ -1899,6 +1923,11 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     if (node->type == NODE_TYPE_FILTER) {
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
+    } else if (node->type == NODE_TYPE_TRAVERSAL) {
+      size_t parallelism = extractParallelism(node->getMember(4));
+      if (parallelism > 1) {
+        setContainsParallelNode();
+      }
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
@@ -1907,6 +1936,12 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
         // NOOPT will turn all function optimizations off
         ++(ctx->stopOptimizationRequests);
       }
+      if (node->willUseV8()) {
+        setWillUseV8();
+      }
+    } else if (node->type == NODE_TYPE_FCALL_USER) {
+      // user-defined function. will always use V8
+      setWillUseV8();
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
@@ -3908,16 +3943,26 @@ bool Ast::functionsMayAccessDocuments() const {
   return _functionsMayAccessDocuments;
 }
 
-bool Ast::containsTraversal() const { return _containsTraversal; }
+bool Ast::containsTraversal() const noexcept { return _containsTraversal; }
 
-bool Ast::containsModificationNode() const { return _containsModificationNode; }
+bool Ast::containsModificationNode() const noexcept { return _containsModificationNode; }
 
-void Ast::setContainsModificationNode() {
+void Ast::setContainsModificationNode() noexcept {
   _containsModificationNode = true;
 }
 
-bool Ast::containsParallelNode() const {
-  return _containsParrallelNode;
+void Ast::setContainsParallelNode() noexcept {
+#ifdef USE_ENTERPRISE
+  _containsParallelNode = true;
+#endif
+}
+
+bool Ast::willUseV8() const noexcept {
+  return _willUseV8;
+}
+
+void Ast::setWillUseV8() noexcept {
+  _willUseV8 = true;
 }
 
 AstNode* Ast::createNodeAttributeAccess(AstNode const* node,
