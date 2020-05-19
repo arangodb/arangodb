@@ -36,14 +36,18 @@ const _ = require("lodash");
 /// @brief test suite for cross-collection queries
 ////////////////////////////////////////////////////////////////////////////////
 
+const myRandomNumberGenerator = function() {
+  return Math.random();
+};
+
 function ahuacatlSubqueryChaos() {
   const collName = "SubqueryChaos";
 
   const coinToss = function(bias) {
     if (typeof bias === "number") {
-      return Math.random() < Math.min(bias, 1);
+      return myRandomNumberGenerator() < Math.min(bias, 1);
     } else if (typeof bias === "undefined") {
-      return Math.random() < 0.5;
+      return myRandomNumberGenerator() < 0.5;
     }
     throw "coinToss: bias must be a number if given (actual " +
       typeof bias +
@@ -57,7 +61,7 @@ function ahuacatlSubqueryChaos() {
         from = 0;
       }
       if (typeof to === "number") {
-        return from + Math.trunc((to - from) * Math.random());
+        return from + Math.trunc((to - from) * myRandomNumberGenerator());
       }
       throw "randomInt: either an upper bound or both from and to have to be given and be of type number";
     }
