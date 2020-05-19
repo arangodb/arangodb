@@ -2494,7 +2494,6 @@ function explainQuerysRegisters(query, explain, planIndex) {
         keepOrClear[reg] = '⮾';
       }
 
-      console.log({id, type, regsToKeepStack, depth});
       for (const reg of regsToKeepStack[regsToKeepStack.length - 1 - depth]) {
         assert(keepOrClear[reg] === '');
         keepOrClear[reg] = '↓';
