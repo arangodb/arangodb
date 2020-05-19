@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
 #include <unicode/regex.h>
-#include "Cluster/ClusterTypes.h"
 
 struct TRI_vocbase_t;
 
