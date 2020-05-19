@@ -1622,10 +1622,9 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     if (!name.first.null()) { // check if analyzer is static
       if (!onlyCached) {
         // load analyzers for database
-        unsigned tries = 0;
+        auto const endTime = TRI_microtime() + 5.0; // arbitrary value - give some time to update plan
         do {
           auto const res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(name.first);
-
           if (!res.ok()) {
             LOG_TOPIC("36062", WARN, iresearch::TOPIC)
               << "failure to load analyzers for database '" << name.first
@@ -1636,19 +1635,21 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             return nullptr;
           }
           if (revision == AnalyzersRevision::LATEST) {
-            break;
+            break; // we don`t care about specific revision.
           }
           auto itr = _lastLoad.find(name.first);
           if (itr != _lastLoad.end() && itr->second >= revision) {
-            break;
+            break; // expected or later revision is loaded
           }
-          if (tries >= 2) {
+          if (TRI_microtime() > endTime) {
             LOG_TOPIC("6a908", WARN, iresearch::TOPIC)
               << "Failed to update analyzers cache to revision: '" << revision
               << "' in database '" << name.first << "'";
             break; // do not return error. Maybe requested analyzer was already presented earlier, so we still may succeed
           }
-          ++tries;
+          LOG_TOPIC("6879a", DEBUG, iresearch::TOPIC)
+            << "Failed to update analyzers cache to revision: '" << revision
+            << "' in database '" << name.first << "' Retrying...";
         } while (true);
       }
     }

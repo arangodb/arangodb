@@ -1311,7 +1311,9 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                 std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-  _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+  if (_trx->state()->isDBServer()) {
+    _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+  }
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

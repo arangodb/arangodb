@@ -254,7 +254,7 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add("queryId", VPackValue(query->id()));
   auto analyzersRevision = VelocyPackHelper::getNumericValue<AnalyzersRevision::Revision>(
       querySlice, StaticStrings::ArangoSearchAnalyzersRevision,
-      AnalyzersRevision::LATEST);
+      AnalyzersRevision::MIN);
   query->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
                              variablesSlice, snippetsSlice,
                              traverserSlice, answerBuilder, analyzersRevision);

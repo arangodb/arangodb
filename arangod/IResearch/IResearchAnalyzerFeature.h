@@ -365,7 +365,7 @@ class IResearchAnalyzerFeature final
   ///        the corresponding collection if they have not been loaded yet
   /// @param database the database to load analizers for (nullptr == all)
   /// @note on coordinator and db-server reload is also done if the database has
-  ///       not been reloaded in 'timeout' seconds
+  ///       changed analyzers revision in agency
   //////////////////////////////////////////////////////////////////////////////
   Result loadAnalyzers(irs::string_ref const& database = irs::string_ref::NIL);
 
