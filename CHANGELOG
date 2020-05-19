@@ -1,6 +1,8 @@
 v3.5.6 (XXXX-XX-XX)
 -------------------
 
+* Update arangosync to 0.7.5.
+
 * Do not always loadPlan from agency when collections of a database are listed.
   This is particularly important for arangosync.
 
