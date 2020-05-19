@@ -2360,6 +2360,9 @@ function inspectDump(filename, outfile) {
 }
 
 function explainQuerysRegisters(query, explain, planIndex) {
+  // TODO clean up the parameters. E.g. we currently don't use `query`, and we
+  //      use nothing but the plan from explain, and nothing but the nodes from
+  //      the plan. So maybe just passing plan.nodes suffices.
   const plan = planIndex === undefined
     ? explain.plan
     : explain.plans[planIndex];
@@ -2374,10 +2377,20 @@ function explainQuerysRegisters(query, explain, planIndex) {
     return result;
   };
   const nodesById = getNodesById(plan.nodes);
+  //////////////////////////////////////////////////////////////////////////////
+  // First, we build up the array nodesData. This will (though not while its
+  // being built!) contain all nodes in a linearized fashion in the "canonical"
+  // order, that is, starting from the leaf (singleton) at index 0. Subqueries
+  // are inlined in that way as well. Each subquery node will occur *twice*,
+  // once before and once after the actual subquery.
+  //////////////////////////////////////////////////////////////////////////////
+
   const nodesData = [];
 
-  const leafNode = plan.nodes.filter(node => node.dependencies.length === 0)[0];
+  //const leafNode = plan.nodes.filter(node => node.dependencies.length === 0)[0];
   //const rootNode = plan.nodes.filter(node => node.parents.length === 0)[0];
+  // TODO Check whether its okay to assume that the root node is always the last
+  //      node.
   const rootNode = plan.nodes[plan.nodes.length - 1];
 
   const subqueryStack = [];
@@ -2410,16 +2423,30 @@ function explainQuerysRegisters(query, explain, planIndex) {
 
   nodesData.reverse();
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Second, we build up rowsInfos. Will contain one element per row/line that
+  // shall be printed, with enough information that each field can be printed
+  // and formatted on its own.
+  //////////////////////////////////////////////////////////////////////////////
+  /**
+   * @type {Array<{meta: {depth: number, id: number, type: string}, regSetOrUsed: string[], keepOrClear: string[]}>}
+   */
   const rowsInfos = nodesData.flatMap(data => {
-    const node = data.node;
-    const depth = node.depth;
-    const nrRegs = node.nrRegs[depth];
-    const regsToClear = node.regsToClear;
-    const regsToKeepStack = node.regsToKeepStack;
-    const unusedRegsStack = node.unusedRegsStack;
-    const varsSetHere = node.varsSetHere;
+    /**
+     * @type {number} depth
+     * @type {number} id
+     * @type {number[]} nrRegsArray
+     * @type {number[]} regsToClear
+     * @type {Array<number[]>} regsToKeepStack
+     * @type {string} type
+     * @type {Array<number[]>} unusedRegsStack
+     * @type {Array<{VariableId : number, RegisterId : number, depth : number}>} varInfoList
+     * @type {Array<{id : number, name : string, isDataFromCollection : boolean}>} varsSetHere
+     */
+    const {depth, id, nrRegs: nrRegsArray, regsToClear, regsToKeepStack, type, unusedRegsStack, varInfoList, varsSetHere} = data.node;
+    const nrRegs = nrRegsArray[depth];
     const regIdByVarId = Object.fromEntries(
-      node.varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+      varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
     const regSetOrUsed = [...Array(nrRegs)].map(_ => '');
     const keepOrClear = regSetOrUsed.slice();
@@ -2460,9 +2487,9 @@ function explainQuerysRegisters(query, explain, planIndex) {
 
     return [{
       meta: {
-        id: node.id,
-        type: node.type,
-        depth: node.depth,
+        id: id,
+        type: type,
+        depth: depth,
       },
       regSetOrUsed,
       keepOrClear
@@ -2470,12 +2497,19 @@ function explainQuerysRegisters(query, explain, planIndex) {
     }
   );
 
+  //////////////////////////////////////////////////////////////////////////////
+  // Third, set up additional information we'll need for formatting whole lines,
+  // like the maximum width of all columns.
+  //////////////////////////////////////////////////////////////////////////////
   const columns = [
     {name: 'id', alignment: 'r'},
     {name: 'type', alignment: 'l'},
     {name: 'depth', alignment: 'r'},
   ];
 
+  /**
+   * @type {Object<string, number>}
+   */
   const colWidths = Object.fromEntries(columns.map(col => [col.name, col.name.length]));
   const regColWidths = [];
 
@@ -2497,17 +2531,16 @@ function explainQuerysRegisters(query, explain, planIndex) {
     }
   }
 
-  const getAlignmentModifier = (alignment) => {
-    switch (alignment) {
-      case 'l':
-        return '-';
-      case 'r':
-        return ' ';
-      default:
-        return '';
-    }
-  };
+  //////////////////////////////////////////////////////////////////////////////
+  // Fourth, do the actual formatting of each line and print them.
+  //////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * @param {string} value
+   * @param {'l'|'r'|'c'} alignment
+   * @param {number} width - Must be at least value.length
+   * @returns {string} - Will be exactly `width` chars in length
+   */
   const formatField = (value, alignment, width) => {
     const str = '' + value;
     const paddingWidth = width - str.length;
