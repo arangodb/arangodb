@@ -88,7 +88,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
                           registerInfos.registersToClear());
 
   // receive first 3 of 6 results in total
-  AqlCall myCall{0, AqlCall::Infinity{}, 3, false};
+  AqlCall myCall{0u, AqlCall::Infinity{}, 3u, false};
 
   output.setCall(std::move(myCall));
   EXPECT_EQ(output.numRowsWritten(), 0);
@@ -124,7 +124,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
                           registerInfos.registersToClear());
 
   // receive 6 of 6 results in total
-  AqlCall myCall{0, AqlCall::Infinity{}, 6, false};
+  AqlCall myCall{0u, AqlCall::Infinity{}, 6u, false};
 
   output.setCall(myCall);
   EXPECT_EQ(output.numRowsWritten(), 0);
@@ -240,7 +240,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_2) {
       .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{3, AqlCall::Infinity{}, 2, false})
+      .setCall(AqlCall{3, AqlCall::Infinity{}, 2u, false})
       .expectOutput({1}, {{4}, {5}})
       .expectSkipped(3)
       .expectedState(ExecutionState::DONE)
@@ -254,7 +254,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_3) {
       .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{7, AqlCall::Infinity{}, 3, false})
+      .setCall(AqlCall{7, AqlCall::Infinity{}, 3u, false})
       .expectOutput({1}, {{8}, {9}, {10}})
       .expectSkipped(7)
       .expectedState(ExecutionState::DONE)
@@ -268,7 +268,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_4) {
       .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{5, AqlCall::Infinity{}, 2, true})
+      .setCall(AqlCall{5, AqlCall::Infinity{}, 2u, true})
       .expectOutput({1}, {{6}, {7}})
       .expectSkipped(8)
       .expectedState(ExecutionState::DONE)
@@ -282,7 +282,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_5) {
       .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{7, AqlCall::Infinity{}, 3, true})
+      .setCall(AqlCall{7, AqlCall::Infinity{}, 3u, true})
       .expectOutput({1}, {{8}, {9}, {10}})
       .expectSkipped(7)
       .expectedState(ExecutionState::DONE)
@@ -336,7 +336,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, 3, AqlCall::Infinity{}, false})
+      .setCall(AqlCall{0, 3u, AqlCall::Infinity{}, false})
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
@@ -354,7 +354,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, AqlCall::Infinity{}, 3, false})
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 3u, false})
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
@@ -372,7 +372,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcou
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, AqlCall::Infinity{}, 3, true})
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 3u, true})
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
