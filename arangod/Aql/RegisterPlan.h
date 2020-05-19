@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 
 #include <memory>
+#include <stack>
 #include <unordered_map>
 #include <vector>
 
@@ -66,11 +67,16 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
   void after(T* eb) final;
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
+  bool enterSubquery(T*, T*) final {
     return false;  // do not walk into subquery
   }
 
+  using RegCountStack = std::stack<RegisterCount>;
+
+  RegIdOrderedSetStack unusedRegisters{{}};
+  RegIdSetStack regsToKeepStack{{}};
   std::shared_ptr<RegisterPlanT<T>> plan;
+  RegCountStack previousSubqueryNrRegs{};
 };
 
 template <typename T>
@@ -86,14 +92,14 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   // the entry with index i here is always the sum of all values
   // in nrRegsHere from index 0 to i (inclusively) and the two
   // have the same length:
-  std::vector<RegisterId> nrRegs;
+  std::vector<RegisterCount> nrRegs;
 
   // We collect the subquery nodes to deal with them at the end:
-  std::vector<ExecutionNode*> subQueryNodes;
+  std::vector<T*> subQueryNodes;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = 1000;
+  static constexpr RegisterId MaxRegisterId = RegisterId{1000};
 
  public:
   RegisterPlanT();
@@ -104,38 +110,26 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(VariableId v);
+  void registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
-  void addRegister();
-  void addSubqueryNode(ExecutionNode* subquery);
+  auto addRegister() -> RegisterId;
+  void addSubqueryNode(T* subquery);
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
+  auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+
+  // compatibility function for 3.6. can be removed in 3.8
+  auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
+                      std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;
+
  private:
   unsigned int depth;
-  unsigned int totalNrRegs;
 };
 
-template<typename T>
-std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r) {
-  // level -> variable, info
-  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
-
-  for (auto [id, info] : r.varInfo) {
-    frames[info.depth][id] = info;
-  }
-
-  for (auto [depth, vars] : frames) {
-    os << "depth " << depth << std::endl;
-    os << "------------------------------------" << std::endl;
-
-    for (auto [id, info] : vars) {
-      os << "id = " << id << " register = " << info.registerId << std::endl;
-    }
-  }
-  return os;
-}
+template <typename T>
+std::ostream& operator<<(std::ostream& os, RegisterPlanT<T> const& r);
 
 }  // namespace arangodb::aql
 

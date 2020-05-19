@@ -25,8 +25,9 @@
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/Stats.h"
 
 #include <tuple>
 #include <utility>
@@ -54,16 +55,15 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class ExecutionEngine;
 class ExecutionNode;
-class ExecutorInfos;
+class RegisterInfos;
 class CountStats;
 class OutputAqlItemRow;
 
-class IdExecutorInfos : public ExecutorInfos {
+class IdExecutorInfos {
  public:
-  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear, bool doCount,
-                  RegisterId outputRegister = 0, std::string distributeId = {""},
-                  bool isResponsibleForInitializeCursor = true);
+  explicit IdExecutorInfos(bool doCount, RegisterId outputRegister = 0,
+                           std::string distributeId = {""},
+                           bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;

@@ -27,6 +27,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/RegisterInfos.h"
 #include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
@@ -52,9 +53,9 @@ class SkipResult;
 
 class ClientsExecutorInfos {
  public:
-  ClientsExecutorInfos(std::vector<std::string> clientIds);
+  explicit ClientsExecutorInfos(std::vector<std::string> clientIds);
 
-  ClientsExecutorInfos(ClientsExecutorInfos&&) = default;
+  ClientsExecutorInfos(ClientsExecutorInfos&&) noexcept = default;
   ClientsExecutorInfos(ClientsExecutorInfos const&) = delete;
   ~ClientsExecutorInfos() = default;
 
@@ -67,7 +68,7 @@ class ClientsExecutorInfos {
 
 class BlocksWithClients {
  public:
-  virtual ~BlocksWithClients() {}
+  virtual ~BlocksWithClients() = default;
 
   /// @brief getSomeForShard
   /// @deprecated
@@ -106,11 +107,11 @@ class BlocksWithClients {
 
 template <class Executor>
 class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
-  using Infos = typename Executor::Infos;
+  using ExecutorInfos = typename Executor::Infos;
 
  public:
   BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
-                        typename Executor::Infos infos);
+                        RegisterInfos registerInfos, typename Executor::Infos executorInfos);
 
   ~BlocksWithClientsImpl() override = default;
 
@@ -179,12 +180,14 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   ScatterNode::ScatterType _type;
 
  private:
+  RegisterInfos _registerInfos;
+
   /**
    * @brief This is the working party of this implementation
    *        the template class needs to implement the logic
    *        to produce a single row from the upstream information.
    */
-  Infos _infos;
+  ExecutorInfos _executorInfos;
 
   Executor _executor;
 

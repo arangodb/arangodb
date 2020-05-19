@@ -340,6 +340,15 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
+#ifdef USE_ENTERPRISE
+  // must run before distribute-in-cluster and must not be disabled, as it is necessary
+  // for distributing smart graph operations
+  registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
+               clusterLiftConstantsForDisjointGraphNodes,
+               OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+#endif
+
   registerRule("distribute-in-cluster", distributeInClusterRule,
                OptimizerRule::distributeInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
@@ -355,8 +364,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
-  registerRule("distribute-filtercalc-to-cluster", distributeFilternCalcToClusterRule,
-               OptimizerRule::distributeFilternCalcToClusterRule,
+  registerRule("distribute-filtercalc-to-cluster", distributeFilterCalcToClusterRule,
+               OptimizerRule::distributeFilterCalcToClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
@@ -380,6 +389,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeSatelliteJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
+
+  registerRule("remove-distribute-nodes", removeDistributeNodesRule,
+               OptimizerRule::removeDistributeNodesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
 #endif
 
   registerRule("undistribute-remove-after-enum-coll", undistributeRemoveAfterEnumCollRule,
@@ -399,10 +413,26 @@ void OptimizerRulesFeature::addRules() {
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  
+  registerRule("optimize-count", optimizeCountRule,
+               OptimizerRule::optimizeCountRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   registerRule("parallelize-gather", parallelizeGatherRule, OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
+
+  registerRule("decay-unnecessary-sorted-gather", decayUnnecessarySortedGather,
+               OptimizerRule::decayUnnecessarySortedGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
+#ifdef USE_ENTERPRISE
+  registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
+               OptimizerRule::clusterPushSubqueryToDBServer,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+#endif
 
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
@@ -414,7 +444,7 @@ void OptimizerRulesFeature::addRules() {
                arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
+  
   // add the storage-engine specific rules
   addStorageEngineRules();
 
@@ -426,16 +456,17 @@ void OptimizerRulesFeature::addRules() {
   // It changes the structure of the query plan by "splicing", i.e. replacing
   // every SubqueryNode by a SubqueryStart and a SubqueryEnd node with the
   // subquery's nodes in between, resulting in a linear query plan. If an
-  // optimizer runs after this rule, it has to be aware of SubqueryStartNode and
+  // optimizer rule runs after this rule, it has to be aware of SubqueryStartNode and
   // SubqueryEndNode and would likely be more complicated to write.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
+  
   // finally sort all rules by their level
-  std::sort(_rules.begin(), _rules.end(),
-            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
-              return (lhs.level < rhs.level);
-            });
+  std::sort(
+      _rules.begin(), _rules.end(),
+      [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
+        return (lhs.level < rhs.level);
+      });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // make the rules database read-only from now on

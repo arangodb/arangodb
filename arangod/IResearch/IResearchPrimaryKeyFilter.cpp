@@ -31,8 +31,17 @@
 
 namespace {
 
-::iresearch::type_id typeDefault;
-::iresearch::type_id typeRecovery;
+struct typeDefault {
+  static constexpr irs::string_ref type_name() noexcept {
+    return "::typeDefault";
+  }
+};
+
+struct typeRecovery {
+  static constexpr irs::string_ref type_name() noexcept {
+    return "::typeRecovery";
+  }
+};
 
 }  // namespace
 
@@ -43,10 +52,10 @@ namespace iresearch {
 // --SECTION--                                  PrimaryKeyFilter implementation
 // ----------------------------------------------------------------------------
 
-irs::doc_iterator::ptr PrimaryKeyFilter::execute(irs::sub_reader const& segment,
-                                                 irs::order::prepared const& /*order*/,
-                                                 irs::attribute_view const& /*ctx*/
-                                                 ) const {
+irs::doc_iterator::ptr PrimaryKeyFilter::execute(
+    irs::sub_reader const& segment,
+    irs::order::prepared const& /*order*/,
+    irs::attribute_provider const* /*ctx*/ ) const {
   TRI_ASSERT(!_pkSeen);  // re-execution of a fiter is not expected to ever
                          // occur without a call to prepare(...)
   auto* pkField = segment.field(arangodb::iresearch::DocumentPrimaryKey::PK());
@@ -79,7 +88,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(irs::sub_reader const& segment,
   // entire datastore
   // * recovery should have at most 2 identical live primary keys in the entire
   // datastore
-  if (irs::filter::type() == typeDefault) {  // explicitly check type of instance
+  if (irs::filter::type() == irs::type<typeDefault>::id()) {  // explicitly check type of instance
     TRI_ASSERT(!docs->next());  // primary key duplicates should NOT happen in
                                 // the same segment in regular runtime
     _pkSeen = true;  // already matched 1 primary key (should be at most 1 at runtime)
@@ -99,10 +108,11 @@ size_t PrimaryKeyFilter::hash() const noexcept {
   return seed;
 }
 
-irs::filter::prepared::ptr PrimaryKeyFilter::prepare(irs::index_reader const& /*index*/,
-                                                     irs::order::prepared const& /*ord*/,
-                                                     irs::boost_t /*boost*/,
-                                                     irs::attribute_view const& /*ctx*/) const {
+irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
+    irs::index_reader const& /*index*/,
+    irs::order::prepared const& /*ord*/,
+    irs::boost_t /*boost*/,
+    irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire
   // datastore
@@ -120,11 +130,23 @@ bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   return filter::equals(rhs) && _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
 }
 
-/*static*/ ::iresearch::type_id const& PrimaryKeyFilter::type() {
+/*static*/ irs::type_info PrimaryKeyFilter::type() {
   return arangodb::EngineSelectorFeature::ENGINE &&
                  arangodb::EngineSelectorFeature::ENGINE->inRecovery()
-             ? typeRecovery
-             : typeDefault;
+             ? irs::type<typeRecovery>::get()
+             : irs::type<typeDefault>::get();
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                         PrimaryKeyFilterContainer implementation
+// ----------------------------------------------------------------------------
+
+irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
+    irs::index_reader const& rdr,
+    irs::order::prepared const& ord,
+    irs::boost_t boost,
+    irs::attribute_provider const* ctx) const {
+  return irs::empty().prepare(rdr, ord, boost, ctx);
 }
 
 }  // namespace iresearch

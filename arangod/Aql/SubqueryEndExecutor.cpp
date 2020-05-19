@@ -39,17 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, velocypack::Options const* const options,
-    RegisterId inReg, RegisterId outReg, bool isModificationSubquery)
-    : ExecutorInfos(std::move(readableInputRegisters),
-                    std::move(writeableOutputRegisters), nrInputRegisters,
-                    nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _vpackOptions(options),
+SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* const options,
+                                                   RegisterId inReg, RegisterId outReg,
+                                                   bool isModificationSubquery)
+    : _vpackOptions(options),
       _outReg(outReg),
       _inReg(inReg),
       _isModificationSubquery(isModificationSubquery) {}
@@ -89,10 +82,10 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state{ExecutorState::HASMORE};
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow();
+    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
 
     // We got a data row, put it into the accumulator,
@@ -113,10 +106,10 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   // or in the reporting by the Executor data is requested from
   TRI_ASSERT(input.skippedInFlight() == 0);
   ExecutorState state;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+  InputAqlItemRow inputRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
-    std::tie(state, inputRow) = input.nextDataRow();
+    std::tie(state, inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(inputRow.isInitialized());
   }
   // This is correct since the SubqueryEndExecutor produces one output out
@@ -137,8 +130,18 @@ auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
-  _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
-  _builder = std::make_unique<VPackBuilder>(*_buffer);
+  if (_buffer == nullptr) {
+    // no Buffer present
+    _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+    // we need to recreate the builder even if the old one still exists.
+    // this is because the Builder points to the Buffer
+    _builder = std::make_unique<VPackBuilder>(*_buffer);
+  } else {
+    // Buffer still present. we can get away with reusing and clearing 
+    // the existing Builder, which points to the Buffer
+    TRI_ASSERT(_builder != nullptr);
+    _builder->clear();
+  }
   TRI_ASSERT(_builder != nullptr);
   _builder->openArray();
   _numValues = 0;

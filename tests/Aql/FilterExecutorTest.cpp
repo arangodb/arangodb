@@ -31,10 +31,10 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 
@@ -58,24 +58,25 @@ class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInp
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>>& registersToKeep;
+  RegIdSet outputRegisters;
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(make_shared_unordered_set()),
-        registersToKeep(outputRegisters),
-        infos(0, 1, 1, {}, {}) {}
+        outputRegisters(),
+        infos(0) {}
 
   auto getSplit() -> FilterExecutorSplitType {
     auto [split] = GetParam();
     return split;
   }
 
-  auto buildInfos() -> FilterExecutorInfos {
-    return FilterExecutorInfos{0, 2, 2, {}, {0, 1}};
+  auto buildRegisterInfos() -> RegisterInfos {
+    return RegisterInfos(RegIdSet{0}, {}, 2, 2, {}, {RegIdSet{0, 1}});
+  }
+  auto buildExecutorInfos() -> FilterExecutorInfos {
+    return FilterExecutorInfos{0};
   }
 };
 
@@ -90,11 +91,12 @@ INSTANTIATE_TEST_CASE_P(FilterExecutor, FilterExecutorTest,
                                           splitStep<1>, splitStep<2>));
 
 TEST_P(FilterExecutorTest, empty_input) {
-  auto infos = buildInfos();
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
   AqlCall call{};
   ExecutionStats{};
   makeExecutorTestHelper()
-      .addConsumer<FilterExecutor>(std::move(infos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue({})
       .setInputSplitType(getSplit())
       .setCall(call)
@@ -106,11 +108,12 @@ TEST_P(FilterExecutorTest, empty_input) {
 }
 
 TEST_P(FilterExecutorTest, values) {
-  auto infos = buildInfos();
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
   AqlCall call{};
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(infos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{0, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{0, 4}, RowBuilder<2>{0, 5},
@@ -125,11 +128,12 @@ TEST_P(FilterExecutorTest, values) {
 }
 
 TEST_P(FilterExecutorTest, odd_values) {
-  auto infos = buildInfos();
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
   AqlCall call{};
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(infos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
@@ -145,11 +149,12 @@ TEST_P(FilterExecutorTest, odd_values) {
 }
 
 TEST_P(FilterExecutorTest, skip_and_odd_values) {
-  auto infos = buildInfos();
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
   AqlCall call{3};
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(infos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
                                       RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
                                       RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
@@ -164,13 +169,14 @@ TEST_P(FilterExecutorTest, skip_and_odd_values) {
 }
 
 TEST_P(FilterExecutorTest, hard_limit) {
-  auto infos = buildInfos();
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
   AqlCall call{};
-  call.hardLimit = 0;
+  call.hardLimit = 0u;
   call.fullCount = true;
   ExecutionStats{};
   makeExecutorTestHelper<2, 2>()
-      .addConsumer<FilterExecutor>(std::move(infos))
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
       .setInputValue(MatrixBuilder<2>{})
       .setInputSplitType(getSplit())
       .setCall(call)

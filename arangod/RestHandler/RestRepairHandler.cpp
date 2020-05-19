@@ -117,7 +117,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-    clusterInfo.loadPlan();
+    // WARNING
+    clusterInfo.getPlan();
     std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
@@ -186,7 +187,8 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     generateResult(responseCode, response, errorOccurred);
 
-    clusterInfo.loadPlan();
+    // WARNING
+    clusterInfo.getPlan();
   } catch (basics::Exception const& e) {
     LOG_TOPIC("78521", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
@@ -194,7 +196,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
 
     if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
+      server().getFeature<ClusterFeature>().clusterInfo().getPlan();
     }
   }
   return RestStatus::DONE;
@@ -350,8 +352,10 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
         << "Sending a transaction to the agency";
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
+
+    // THIS_WARNING
     if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
+      server().getFeature<ClusterFeature>().clusterInfo().getPlan();
     }
     if (!result.successful()) {
       std::stringstream errMsg;
@@ -430,10 +434,10 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
 
   std::vector<std::string> paths;
 
-  // apply AgencyCommManager::path on every element and copy to vector
+  // apply AgencyCommHelper::path on every element and copy to vector
   std::transform(agencyKeyArray.begin(), agencyKeyArray.end(),
                  std::back_inserter(paths), [](std::string const& key) {
-                   return AgencyCommManager::path(key);
+                   return AgencyCommHelper::path(key);
                  });
 
   AgencyCommResult result =
@@ -454,7 +458,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     }
 
     std::vector<std::string> agencyPath =
-        basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+        basics::StringUtils::split(AgencyCommHelper::path(agencyKey), '/');
 
     agencyPath.erase(std::remove(agencyPath.begin(), agencyPath.end(), ""),
                      agencyPath.end());
@@ -649,7 +653,8 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
   }
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  clusterInfo.loadPlan();
+  // WARNING
+  clusterInfo.getPlan();
   std::shared_ptr<LogicalCollection> const collection =
       clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();

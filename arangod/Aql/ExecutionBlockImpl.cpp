@@ -37,7 +37,6 @@
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/IResearchViewExecutor.h"
@@ -53,6 +52,7 @@
 #include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/ShortestPathExecutor.h"
@@ -84,7 +84,7 @@ using namespace arangodb::aql;
 
 #define LOG_QUERY(logId, level)            \
   LOG_TOPIC(logId, level, Logger::QUERIES) \
-      << "[query#" << this->_engine->getQuery()->id() << "] "
+    << "[query#" << this->_engine->getQuery().id() << "] "
 
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
@@ -142,27 +142,26 @@ constexpr bool executorHasSideEffects =
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
-                                                 typename Executor::Infos infos)
+                                                 RegisterInfos registerInfos,
+                                                 typename Executor::Infos executorInfos)
     : ExecutionBlock(engine, node),
+      _registerInfos(std::move(registerInfos)),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
-                       infos.getInputRegisters(),
-                       infos.numberOfInputRegisters(), trxVpackOptions()),
+                       _registerInfos.getInputRegisters(),
+                       _registerInfos.numberOfInputRegisters(),
+                       &engine->getQuery().vpackOptions()),
       _rowFetcher(_dependencyProxy),
-      _infos(std::move(infos)),
-      _executor(_rowFetcher, _infos),
+      _executorInfos(std::move(executorInfos)),
+      _executor(_rowFetcher, _executorInfos),
       _outputItemRow(),
-      _query(*engine->getQuery()),
+      _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
-      _lastRange{ExecutorState::HASMORE},
       _execState{ExecState::CHECKCALL},
+      _lastRange{ExecutorState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
       _stackBeforeWaiting{AqlCallList{AqlCall{}}},
       _hasUsedDataRangeBlock{false} {
-  // already insert ourselves into the statistics results
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
-  }
   // Break the stack before waiting.
   // We should not use this here.
   _stackBeforeWaiting.popCall();
@@ -178,27 +177,31 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if (newBlock != nullptr) {
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
-    TRI_ASSERT(newBlock->getNrRegs() == _infos.numberOfOutputRegisters());
+    TRI_ASSERT(newBlock->getNrRegs() == _registerInfos.numberOfOutputRegisters());
     // Check that all output registers are empty.
-    for (auto const& reg : *_infos.getOutputRegisters()) {
+    for (auto const& reg : _registerInfos.getOutputRegisters()) {
       for (size_t row = 0; row < newBlock->size(); row++) {
-        AqlValue const& val = newBlock->getValueReference(row, reg);
-        TRI_ASSERT(val.isEmpty());
+        if (!newBlock->isShadowRow(row)) {
+          AqlValue const& val = newBlock->getValueReference(row, reg);
+          TRI_ASSERT(val.isEmpty());
+        }
       }
     }
   }
 #endif
 
-  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-    return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
-                                              infos().registersToKeep(),
-                                              infos().registersToClear(), call,
-                                              OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
-  } else {
-    return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
-                                              infos().registersToKeep(),
-                                              infos().registersToClear(), call);
-  }
+  constexpr auto copyRowBehaviour = [] {
+    if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+      return OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows;
+    } else {
+      return OutputAqlItemRow::CopyRowBehavior::CopyInputRows;
+    }
+  }();
+
+  return std::make_unique<OutputAqlItemRow>(newBlock, registerInfos().getOutputRegisters(),
+                                            registerInfos().registersToKeep(),
+                                            registerInfos().registersToClear(),
+                                            call, copyRowBehaviour);
 }
 
 template <class Executor>
@@ -207,13 +210,18 @@ Executor& ExecutionBlockImpl<Executor>::executor() {
 }
 
 template <class Executor>
-Query const& ExecutionBlockImpl<Executor>::getQuery() const {
+QueryContext const& ExecutionBlockImpl<Executor>::getQuery() const {
   return _query;
 }
 
 template <class Executor>
-typename ExecutionBlockImpl<Executor>::Infos const& ExecutionBlockImpl<Executor>::infos() const {
-  return _infos;
+auto ExecutionBlockImpl<Executor>::executorInfos() const -> ExecutorInfos const& {
+  return _executorInfos;
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::registerInfos() const -> RegisterInfos const& {
+  return _registerInfos;
 }
 
 namespace arangodb::aql {
@@ -271,7 +279,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // if constexpr (std::is_same_v<Executor, IdExecutor>) {
   //   if (items != nullptr) {
   //     _executor._inputRegisterValues.reset(
-  //         items->slice(pos, *(_executor._infos.registersToKeep())));
+  //         items->slice(pos, *(_executor._registerInfos.registersToKeep())));
   //   }
   // }
 
@@ -299,7 +307,8 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   }
   initOnce();
   auto res = executeWithoutTrace(stack);
-  return traceExecuteEnd(res);
+  traceExecuteEnd(res);
+  return res;
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -346,8 +355,9 @@ template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   SharedAqlItemBlockPtr block =
-      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
-                         infos().numberOfOutputRegisters());
+      input.cloneToBlock(_engine->itemBlockManager(),
+                         registerInfos().registersToKeep().back(),
+                         registerInfos().numberOfOutputRegisters());
   TRI_ASSERT(_skipped.nothingSkipped());
   _skipped.reset();
   // We inject an empty copy of our skipped here,
@@ -442,7 +452,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 template <>
 std::pair<ExecutionState, Result>
 ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
-  if (this->infos().isResponsibleForInitializeCursor()) {
+  if (this->executorInfos().isResponsibleForInitializeCursor()) {
     return ExecutionBlock::shutdown(errorCode);
   }
   return {ExecutionState::DONE, {errorCode}};
@@ -525,7 +535,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call, DataRange
       return createOutputRow(newBlock, std::move(call));
     }
     SharedAqlItemBlockPtr newBlock =
-        _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
+        _engine->itemBlockManager().requestBlock(blockSize, _registerInfos.numberOfOutputRegisters());
     return createOutputRow(newBlock, std::move(call));
   }
 }
@@ -565,7 +575,7 @@ auto ExecutionBlockImpl<Executor>::nextState(AqlCall const& call) const -> ExecS
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
 SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
-                                                                 RegisterId nrRegs) {
+                                                                 RegisterCount nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
@@ -852,7 +862,7 @@ auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(AqlCallStack
     }
   } else {
     // Need to forward the ShadowRows
-    auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
     TRI_ASSERT(shadowRow.isInitialized());
     _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
@@ -892,7 +902,7 @@ auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(AqlCallStack& 
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
-  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
     // We need to consume the row, and write the Aggregate to it.
@@ -953,7 +963,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     return ExecState::DONE;
   }
 
-  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   uint64_t depthSkippingNow = static_cast<uint64_t>(stack.shadowRowDepthToSkip());
   uint64_t shadowDepth = shadowRow.getDepth();
@@ -978,7 +988,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
       skipResult.didSkipSubquery(1, shadowDepth);
     } else if (shadowCall.getLimit() > 0) {
       TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-      _outputItemRow->copyRow(shadowRow);
+      _outputItemRow->moveRow(shadowRow);
       shadowCall.didProduce(1);
       TRI_ASSERT(_outputItemRow->produced());
       _outputItemRow->advanceRow();
@@ -992,7 +1002,7 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(AqlCallStack& s
     // Do proper reporting on it's call.
     AqlCall& shadowCall = stack.modifyCallAtDepth(shadowDepth);
     TRI_ASSERT(!shadowCall.needSkipMore() && shadowCall.getLimit() > 0);
-    _outputItemRow->copyRow(shadowRow);
+    _outputItemRow->moveRow(shadowRow);
     shadowCall.didProduce(1);
 
     TRI_ASSERT(_outputItemRow->produced());
@@ -1033,10 +1043,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack) -> E
     return ExecState::NEXTSUBQUERY;
   }
 
-  auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
 
-  _outputItemRow->copyRow(shadowRow);
+  _outputItemRow->moveRow(shadowRow);
   countShadowRowProduced(stack, shadowRow.getDepth());
 
   if (shadowRow.isRelevant()) {
@@ -1100,7 +1110,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(typename Fetcher::DataRang
       LOG_QUERY("2890e", DEBUG) << printTypeInfo() << " fast forward.";
       // We use a DUMMY Call to simulate fullCount.
       AqlCall dummy;
-      dummy.hardLimit = 0;
+      dummy.hardLimit = 0u;
       dummy.fullCount = true;
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, dummy);
 
@@ -1223,7 +1233,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
   ExecutorState localExecutorState = ExecutorState::DONE;
 
-  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0u}));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
   TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
   if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>, SubqueryExecutor<false>>) {
@@ -1362,7 +1372,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 #endif
         localExecutorState = state;
         _skipped.didSkip(skippedLocal);
-        _engine->_stats += stats;
+        _blockStats += stats;
         // The execute might have modified the client call.
         if (state == ExecutorState::DONE) {
           _execState = ExecState::FASTFORWARD;
@@ -1424,7 +1434,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           std::tie(state, stats, call) = executeProduceRows(_lastRange, *_outputItemRow);
         }
         _executorReturnedDone = state == ExecutorState::DONE;
-        _engine->_stats += stats;
+        _blockStats += stats;
         localExecutorState = state;
 
         if constexpr (!std::is_same_v<Executor, SubqueryEndExecutor>) {
@@ -1478,7 +1488,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
 
         _skipped.didSkip(skippedLocal);
-        _engine->_stats += stats;
+        _blockStats += stats;
         localExecutorState = state;
 
         if (state == ExecutorState::DONE) {
@@ -1702,7 +1712,7 @@ void ExecutionBlockImpl<Executor>::resetExecutor() {
   static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
                 "DistinctCollectExecutor is expected to implement a custom "
                 "initializeCursor method!");
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+  InitializeCursor<customInit>::init(_executor, _rowFetcher, _executorInfos);
   _executorReturnedDone = false;
 }
 
@@ -1723,7 +1733,7 @@ ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
     _state = InternalState::DONE;
   }
   if (shadowRow.isInitialized()) {
-    _outputItemRow->copyRow(shadowRow);
+    _outputItemRow->moveRow(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
     _outputItemRow->advanceRow();
   } else {
@@ -1748,8 +1758,9 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept -> bool 
 
 template <>
 template <>
-RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const noexcept {
-  return _infos.getOutputRegister();
+RegisterId ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::getOutputRegisterId() const
+    noexcept {
+  return _executorInfos.getOutputRegister();
 }
 
 template <class Executor>

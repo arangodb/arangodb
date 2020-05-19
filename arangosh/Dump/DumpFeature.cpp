@@ -35,6 +35,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -662,7 +663,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
       .setIntroducedIn(30402);
 
   options->addOption("--compress-output",
-                     "compress files containing collection contents using gzip format",
+                     "compress files containing collection contents using gzip format (not compatible with encryption)",
                      new BooleanParameter(&_options.useGzip))
                      .setIntroducedIn(30406)
                      .setIntroducedIn(30500);
@@ -709,7 +710,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
 
   uint32_t clamped =
       boost::algorithm::clamp(_options.threadCount, 1,
-                              4 * static_cast<uint32_t>(TRI_numberProcessors()));
+                              4 * static_cast<uint32_t>(NumberOfCores::getValue()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC("0460e", WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
@@ -1189,7 +1190,7 @@ void DumpFeature::start() {
 
         _directory = std::make_unique<ManagedDirectory>(
             server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-            true, true);
+            true, true, _options.useGzip);
 
         if (_directory->status().fail()) {
           res = _directory->status();

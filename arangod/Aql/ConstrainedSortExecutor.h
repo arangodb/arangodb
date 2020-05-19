@@ -45,7 +45,7 @@ class SingleRowFetcher;
 
 class AqlItemMatrix;
 class ConstrainedLessThan;
-class ExecutorInfos;
+class RegisterInfos;
 class InputAqlItemRow;
 class AqlItemBlockInputRange;
 class NoStats;
@@ -116,6 +116,8 @@ class ConstrainedSortExecutor {
   size_t _skippedAfter;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
+  RegIdFlatSetStack _regsToKeep;
+  RegIdSet  _outputRegister = {};
   OutputAqlItemRow _heapOutputRow;
 };
 }  // namespace aql

@@ -241,6 +241,10 @@ struct OptimizerRule {
     clusterOneShardRule,
 #endif
 
+#ifdef USE_ENTERPRISE
+    clusterLiftConstantsForDisjointGraphNodes,
+#endif
+
     // make operations on sharded collections use distribute
     distributeInClusterRule,
 
@@ -255,10 +259,26 @@ struct OptimizerRule {
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule,
 
+#ifdef USE_ENTERPRISE
+    // move traversal on satellite graph to db server and add scatter / gather / remote
+    scatterSatelliteGraphRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // remove any superfluous satellite collection joins...
+    // put it after Scatter rule because we would do
+    // the work twice otherwise
+    removeSatelliteJoinsRule,
+
+    // remove multiple remote <-> distribute snippets if we are able
+    // to combine multiple in only one
+    removeDistributeNodesRule,
+#endif
+
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
-    distributeFilternCalcToClusterRule,
+    distributeFilterCalcToClusterRule,
 
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
@@ -267,16 +287,6 @@ struct OptimizerRule {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule,
-
-#ifdef USE_ENTERPRISE
-    // move traversal on satellite graph to db server and add scatter / gather / remote
-    scatterSatelliteGraphRule,
-
-    // remove any superflous satellite collection joins...
-    // put it after Scatter rule because we would do
-    // the work twice otherwise
-    removeSatelliteJoinsRule,
-#endif
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
@@ -298,8 +308,19 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // operation
+    optimizeCountRule,
+
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
+
+    // reduce a sorted gather to an unsorted gather if only a single shard is affected
+    decayUnnecessarySortedGatherRule,
+
+#ifdef USE_ENTERPRISE
+    clusterPushSubqueryToDBServer,
+#endif
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule

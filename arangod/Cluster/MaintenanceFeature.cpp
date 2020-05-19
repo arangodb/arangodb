@@ -30,12 +30,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateDatabase.h"
@@ -93,7 +95,7 @@ void MaintenanceFeature::init() {
 
   _maintenanceThreadsMax =
       (std::max)(static_cast<uint32_t>(minThreadLimit),
-                 static_cast<uint32_t>(TRI_numberProcessors() / 4 + 1));
+                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
   _secondsActionsBlock = 2;
   _secondsActionsLinger = 3600;
 }  // MaintenanceFeature::init
@@ -301,26 +303,29 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [&am](std::string const& path, uint64_t jobId) -> bool {
-      try {
-        AgencyCommResult result =
-            am.getValues("Target/" + path + "/" + std::to_string(jobId));
-        if (result.successful()) {
-          VPackSlice value = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommManager::path(), "Target",
-                                       path, std::to_string(jobId)});
-          if (value.isObject() && value.hasKey("jobId") &&
-              value.get("jobId").isEqualString(std::to_string(jobId))) {
-            return true;
+    auto checkAgencyPathExists =
+      [cf = &server().getFeature<ClusterFeature>()](
+        std::string const& path, uint64_t jobId) -> bool {
+        try {
+          auto [acb, idx] =
+            cf->agencyCache().read(std::vector<std::string>{
+                AgencyCommHelper::path("Target/" + path + "/" + std::to_string(jobId))});
+          auto result = acb->slice();
+          if (!result.isNone()) {
+            VPackSlice value = result[0].get(
+              std::vector<std::string>{
+                AgencyCommHelper::path(), "Target", path, std::to_string(jobId)});
+            if (value.isObject() && value.hasKey("jobId") &&
+                value.get("jobId").isEqualString(std::to_string(jobId))) {
+              return true;
+            }
           }
-        }
-      } catch (...) {
-        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
+        } catch (...) {
+          LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER)
             << "Exception when checking for job completion";
-      }
-
-      return false;
-    };
+        }
+        return false;
+      };
 
     // we can not test for application_features::ApplicationServer::isRetryOK() because it is never okay in shutdown
     while (clock::now() < endtime) {
@@ -353,7 +358,7 @@ void MaintenanceFeature::stop() {
   // Current workers could be stuck on the condition variable.
   // Let's wake them up now.
   {
-    // Only if we have flagged shutdown this operation is save, all other threads potentially
+    // Only if we have flagged shutdown this operation is safe, all other threads potentially
     // trying to get this mutex get into the shutdown case now, instead of getting into wait state.
     TRI_ASSERT(_isShuttingDown);
     std::unique_lock<std::mutex> guard(_currentCounterLock);
@@ -461,6 +466,8 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction) {
+      LOG_TOPIC("fead2", DEBUG, Logger::MAINTENANCE)
+          << "Did not find action with same hash: " << description << " adding to queue";
       newAction = createAndRegisterAction(description, executeNow);
 
       if (!newAction || !newAction->ok()) {
@@ -469,6 +476,9 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
                      "createAction rejected parameters.");
       }  // if
     } else {
+      LOG_TOPIC("fead3", DEBUG, Logger::MAINTENANCE)
+          << "Found actiondescription with same hash: " << description
+          << " found: " << *curAction << " not adding again";
       // action already exist, need write lock to prevent race
       result.reset(TRI_ERROR_BAD_PARAMETER,
                    "addAction called while similar action already processing.");
@@ -961,7 +971,7 @@ uint64_t MaintenanceFeature::getCurrentCounter() const {
   //    Within PhaseOne this getCurrentCounter is called, but never after.
   //    so getCurrentCounter and increaseCurrentCounter are strictily serialized.
   // 2) waitForLargerCurrentCounter can be called in concurrent threads at any time.
-  //    It is read-only, so it is save to have it concurrent to getCurrentCounter
+  //    It is read-only, so it is safe to have it concurrent to getCurrentCounter
   //    without any locking.
   //    However we need locking for increase and waitFor in order to guarantee
   //    it's functionallity.

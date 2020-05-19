@@ -143,7 +143,7 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testQueryMemoryLimitSufficient : function () {
-      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 }).toArray().length);
+      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 + 4096 }).toArray().length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,6 +431,7 @@ function DatabaseSuite () {
 
     testCreateDatabaseNonSystem : function () {
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -440,6 +441,7 @@ function DatabaseSuite () {
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       // creation of new databases should fail here
       try {
@@ -458,6 +460,7 @@ function DatabaseSuite () {
       }
 
       internal.db._useDatabase("_system");
+      assertTrue(internal.db._isSystem());
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
@@ -567,6 +570,7 @@ function DatabaseSuite () {
 
     testUseDatabase : function () {
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -576,12 +580,15 @@ function DatabaseSuite () {
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       internal.db._useDatabase("_system");
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
 

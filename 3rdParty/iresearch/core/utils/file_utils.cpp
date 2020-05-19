@@ -789,7 +789,6 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
     auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY)), S_IRUSR | S_IWUSR);
     if (fd < 0) {
       IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
-      IR_LOG_STACK_TRACE();
       return handle_t(nullptr);
     }
 #if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && !defined(__APPLE__)
@@ -1276,7 +1275,3 @@ bool visit_directory(
 
 NS_END // file_utils
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

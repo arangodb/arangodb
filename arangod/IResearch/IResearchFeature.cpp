@@ -35,6 +35,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -253,6 +254,9 @@ class IResearchLogTopic final : public arangodb::LogTopic {
                         static_cast<arangoLogLevelType>(arangodb::LogLevel::TRACE) - 1,
                 "inconsistent log level mapping");
 
+  static void log_appender(void* context, const char* function, const char* file, int line,
+                           irs::logger::level_t level, const char* message,
+                           size_t message_len); 
   static void setIResearchLogLevel(arangodb::LogLevel level) {
     if (level == arangodb::LogLevel::DEFAULT) {
       level = DEFAULT_LEVEL;
@@ -263,8 +267,7 @@ class IResearchLogTopic final : public arangodb::LogTopic {
 
     irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
     irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
-
-    irs::logger::output_le(irsLevel, stderr);
+    irs::logger::output_le(irsLevel, log_appender, nullptr);
   }
 };  // IResearchLogTopic
 
@@ -276,7 +279,7 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
   return threads ? threads
                  : std::max(MIN_THREADS,
                             std::min(maxThreads,
-                                     size_t(std::thread::hardware_concurrency()) / 4));
+                                     arangodb::NumberOfCores::getValue() / 4));
 }
 
 bool upgradeSingleServerArangoSearchView0_1(
@@ -481,10 +484,10 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
                                       // <scorer-specific properties>...]);
 
   irs::scorers::visit([&functions, &args](irs::string_ref const& name,
-                                          irs::text_format::type_id const& args_format) -> bool {
+                                          irs::type_info const& args_format) -> bool {
     // ArangoDB, for API consistency, only supports scorers configurable via
     // jSON
-    if (irs::text_format::json != args_format) {
+    if (irs::type<irs::text_format::json>::id() != args_format.id()) {
       return true;
     }
 
@@ -502,6 +505,9 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
                                                arangodb::aql::Function::Flags::CanRunOnDBServer),
             &dummyScorerFunc  // function implementation
         });
+
+    LOG_TOPIC("f42f9", TRACE, arangodb::iresearch::TOPIC)
+        << "registered ArangoSearch scorer '" << upperName << "'";
 
     return true;
   });
@@ -602,6 +608,15 @@ void registerTransactionDataSourceRegistrationCallback() {
 
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
+
+void IResearchLogTopic::log_appender(void* context, const char* function, const char* file, int line,
+                                     irs::logger::level_t level, const char* message,
+                                     size_t message_len) {
+  auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
+  std::string msg = LIBIRESEARCH.displayName();
+  msg.append(message, message_len); 
+  arangodb::Logger::log(function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
+}
 
 }  // namespace
 

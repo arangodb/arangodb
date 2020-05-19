@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
@@ -204,7 +205,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
 #endif
       _useThrottle(true),
       _useReleasedTick(false),
-      _debugLogging(false) {
+      _debugLogging(false),
+      _useEdgeCache(true) {
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -318,6 +320,12 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_debugLogging),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
+  options->addOption("--rocksdb.edge-cache",
+                     "use in-memory cache for edges",
+                     new BooleanParameter(&_useEdgeCache),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30604);
+
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
       "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
@@ -419,7 +427,7 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  transactionOptions.num_stripes = TRI_numberProcessors();
+  transactionOptions.num_stripes = NumberOfCores::getValue();
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
@@ -808,6 +816,10 @@ void RocksDBEngine::start() {
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
+
+  if (!useEdgeCache()) {
+    LOG_TOPIC("46557", INFO, Logger::ENGINES) << "in-memory cache for edges is disabled";
+  }
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -868,15 +880,15 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
   return std::make_unique<transaction::Manager>(feature);
 }
 
-std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
+std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
-  return std::make_unique<RocksDBTransactionState>(vocbase, tid, options);
+  return std::make_shared<RocksDBTransactionState>(vocbase, tid, options);
 }
 
 std::unique_ptr<TransactionCollection> RocksDBEngine::createTransactionCollection(
-    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel) {
+    TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
-      new RocksDBTransactionCollection(&state, cid, accessType, nestingLevel));
+      new RocksDBTransactionCollection(&state, cid, accessType));
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {
@@ -1166,9 +1178,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 }
 
-int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
-  Result res = writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
-  return res.errorNumber();
+Result RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
+  return writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
 }
 
 Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice,
@@ -1208,8 +1219,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   return result.errorNumber();
 }
 
-void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
-                                        bool useWriteMarker, int& status) {
+Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
   VPackBuilder builder;
 
   builder.openObject();
@@ -1219,9 +1229,7 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
   builder.close();
 
   auto log = RocksDBLogValue::DatabaseDrop(vocbase.id());
-  auto res = writeDatabaseMarker(vocbase.id(), builder.slice(), std::move(log));
-
-  status = res.errorNumber();
+  return writeDatabaseMarker(vocbase.id(), builder.slice(), std::move(log));
 }
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
@@ -1258,6 +1266,12 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
     THROW_ARANGO_EXCEPTION(res);
   }
 }
+
+void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
+                                          LogicalCollection& coll) {
+  replicationManager()->drop(&coll);
+}
+
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                LogicalCollection& coll) {
@@ -2382,22 +2396,15 @@ Result RocksDBEngine::firstTick(uint64_t& tick) {
 }
 
 Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
-                                 std::shared_ptr<transaction::Context> transactionContext,
                                  uint64_t tickStart, uint64_t tickEnd,
-                                 std::shared_ptr<VPackBuilder>& builderSPtr) {
+                                 VPackBuilder& builder) {
   bool includeSystem = true;
   size_t chunkSize = 32 * 1024 * 1024;  // TODO: determine good default value?
 
-  // construct vocbase with proper handler
-  auto builder = std::make_unique<VPackBuilder>(transactionContext->getVPackOptions());
-
-  builder->openArray();
-
+  builder.openArray();
   RocksDBReplicationResult rep = rocksutils::tailWal(&vocbase, tickStart, tickEnd, chunkSize,
-                                                     includeSystem, 0, *builder);
-
-  builder->close();
-  builderSPtr = std::move(builder);
+                                                     includeSystem, 0, builder);
+  builder.close();
 
   return std::move(rep).result();
 }

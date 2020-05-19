@@ -31,21 +31,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                                         RegisterId nrOutputRegisters, bool doCount)
-    : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({0}), nrInputRegisters, nrOutputRegisters,
-                    std::unordered_set<RegisterId>{} /*to clear*/,
-                    std::unordered_set<RegisterId>{} /*to keep*/
-                    ),
-      _inputRegisterId(inputRegister),
-      _doCount(doCount) {
-  // For the time beeing return will only write to register 0.
+ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, bool doCount)
+    : _inputRegisterId(inputRegister), _doCount(doCount) {
+  // For the time being return will only write to register 0.
   // It is defined that it can only have exactly 1 output register.
   // We can easily replace this by a different register, if we
   // modify the caller within the ExecutionEngine to ask for the
-  // output register from outside.
-  TRI_ASSERT(nrOutputRegisters == 1);
+  // output register from outside
 }
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
@@ -75,7 +67,7 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     // but this executor will always delegate the skipping
     // to upstream.
     TRI_ASSERT(false);
-    auto [state, input] = inputRange.nextDataRow();
+    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     TRI_IF_FAILURE("ReturnBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -102,7 +94,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   Stats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto [state, input] = inputRange.nextDataRow();
+    auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
     AqlValue val = input.stealValue(_infos.getInputRegisterId());

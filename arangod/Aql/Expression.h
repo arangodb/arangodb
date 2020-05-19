@@ -54,7 +54,7 @@ struct AstNode;
 class AttributeAccessor;
 class ExecutionPlan;
 class ExpressionContext;
-class Query;
+class QueryContext;
 struct Variable;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
@@ -72,10 +72,10 @@ class Expression {
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(ExecutionPlan const* plan, Ast*, AstNode*);
+  Expression(Ast*, AstNode*);
 
   /// @brief constructor, using VPack
-  Expression(ExecutionPlan const* plan, Ast*, arangodb::velocypack::Slice const&);
+  Expression(Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
 
@@ -101,23 +101,23 @@ class Expression {
   bool willUseV8();
 
   /// @brief clone the expression, needed to clone execution plans
-  std::unique_ptr<Expression> clone(ExecutionPlan* plan, Ast* ast);
+  std::unique_ptr<Expression> clone(Ast* ast);
 
   /// @brief return all variables used in the expression
-  void variables(::arangodb::containers::HashSet<Variable const*>&) const;
+  void variables(VarSet&) const;
 
   /// @brief return a VelocyPack representation of the expression
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
 
   /// @brief execute the expression
-  AqlValue execute(transaction::Methods* trx, ExpressionContext* ctx, bool& mustDestroy);
+  AqlValue execute(ExpressionContext* ctx, bool& mustDestroy);
 
   /// @brief get expression type as string
   std::string typeString();
 
   // @brief invoke JavaScript aql functions with args as param.
   static AqlValue invokeV8Function(arangodb::aql::ExpressionContext* expressionContext,
-                                   transaction::Methods* trx, std::string const& jsName,
+                                   std::string const& jsName,
                                    std::string const& ucInvokeFN, char const* AFN,
                                    bool rethrowV8Exception, size_t callArgs,
                                    v8::Handle<v8::Value>* args, bool& mustDestroy);
@@ -153,12 +153,6 @@ class Expression {
 
   void replaceAttributeAccess(Variable const*, std::vector<std::string> const& attribute);
 
-  /// @brief invalidates an expression
-  /// this only has an effect for V8-using functions, which need to be created,
-  /// used and destroyed in the same context. when a V8 function is used across
-  /// multiple V8 contexts, it must be invalidated in between
-  void invalidate();
-
   void setVariable(Variable const* variable, arangodb::velocypack::Slice value);
 
   void clearVariable(Variable const* variable);
@@ -175,12 +169,14 @@ class Expression {
   bool findInArray(AqlValue const&, AqlValue const&, transaction::Methods*,
                    AstNode const*) const;
 
-  /// @brief analyze the expression (determine its type etc.)
-  void initExpression();
+  /// @brief analyze the expression (determine its type)
+  void determineType();
+  
+  /// @brief init the accessor specialization
+  void initAccessor(ExpressionContext* ctx);
 
-  /// @brief build the expression (if appropriate, compile it into
-  /// executable code)
-  void buildExpression(transaction::Methods*);
+  /// @brief prepare the expression for execution
+  void prepareForExecution(transaction::Methods*, ExpressionContext* ctx);
 
   /// @brief execute an expression of type SIMPLE
   AqlValue executeSimpleExpression(AstNode const*, transaction::Methods*,
@@ -270,9 +266,6 @@ class Expression {
                                              bool& mustDestroy);
 
  private:
-  /// @brief the query execution plan. note: this may be a nullptr for
-  /// expressions created in the early optimization stage!
-  ExecutionPlan const* _plan;
 
   /// @brief the AST
   Ast* _ast;

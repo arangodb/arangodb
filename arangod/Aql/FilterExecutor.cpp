@@ -28,9 +28,9 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlockInputRange.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
@@ -39,16 +39,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                                         RegisterId nrOutputRegisters,
-                                         // cppcheck-suppress passedByValue
-                                         std::unordered_set<RegisterId> registersToClear,
-                                         // cppcheck-suppress passedByValue
-                                         std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(inputRegister),
-                    nullptr, nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _inputRegister(inputRegister) {}
+FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister)
+    : _inputRegister(inputRegister) {}
 
 RegisterId FilterExecutorInfos::getInputRegister() const noexcept {
   return _inputRegister;
@@ -63,7 +55,7 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   FilterStats stats{};
   while (inputRange.hasDataRow() && call.needSkipMore()) {
-    auto const [unused, input] = inputRange.nextDataRow();
+    auto const [unused, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     if (!input) {
       TRI_ASSERT(!inputRange.hasDataRow());
       break;
@@ -94,7 +86,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   FilterStats stats{};
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    auto const& [state, input] = inputRange.nextDataRow();
+    auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);

@@ -509,6 +509,11 @@ void H2Connection<T>::startWriting() {
   }
 }
 
+template <SocketType T>
+void H2Connection<T>::terminateActivity() {
+  // TODO: fill in the necessary stuff to fix bugs in this class
+}
+
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2Connection<T>::queueHttp2Requests() {

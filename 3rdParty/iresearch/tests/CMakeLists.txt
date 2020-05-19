@@ -26,10 +26,6 @@ set(IResearchTests_INCLUDE_DIR
   ""
 )
 
-# set required standard version
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 if (USE_SIMDCOMP)
   set(IReSearch_tests_optimized_sources
     ./store/store_utils_optimized_tests.cpp
@@ -82,12 +78,14 @@ set(IReSearch_tests_sources
   ./search/boolean_filter_tests.cpp
   ./search/all_filter_tests.cpp
   ./search/term_filter_tests.cpp
+  ./search/terms_filter_test.cpp
   ./search/prefix_filter_test.cpp
   ./search/range_filter_test.cpp
   ./search/phrase_filter_tests.cpp
   ./search/column_existence_filter_test.cpp
   ./search/same_position_filter_tests.cpp
   ./search/ngram_similarity_filter_tests.cpp
+  ./search/top_terms_collector_test.cpp
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
@@ -268,6 +266,7 @@ include_directories(${IResearchTests_TARGET_NAME}-shared
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${FROZEN_INCLUDE_DIR}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
@@ -278,6 +277,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
+  ${FROZEN_INCLUDE_DIR}
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>

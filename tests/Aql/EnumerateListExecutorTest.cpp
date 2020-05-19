@@ -75,18 +75,20 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
 
   // This is the relevant part of the test
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
-  EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
-  EnumerateListExecutor testee(fetcher, infos);
+  RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {}, {RegIdSet{0, 1, 2, 3}});
+  EnumerateListExecutorInfos executorInfos(3, 4);
+  EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
                                        {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
 
   // receive first 3 of 6 results in total
-  AqlCall myCall{0, AqlCall::Infinity{}, 3, false};
+  AqlCall myCall{0u, AqlCall::Infinity{}, 3u, false};
 
   output.setCall(std::move(myCall));
   EXPECT_EQ(output.numRowsWritten(), 0);
@@ -109,20 +111,22 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
 
   // This is the relevant part of the test
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
-  EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
-  EnumerateListExecutor testee(fetcher, infos);
+  RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {}, {RegIdSet{0, 1, 2, 3}});
+  EnumerateListExecutorInfos executorInfos(3, 4);
+  EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
       buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
                                        {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, 0, inBlock, 0};
-  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
+                          registerInfos.registersToKeep(),
+                          registerInfos.registersToClear());
 
   // receive 6 of 6 results in total
-  AqlCall myCall{0, AqlCall::Infinity{}, 6, false};
+  AqlCall myCall{0u, AqlCall::Infinity{}, 6u, false};
 
-  output.setCall(std::move(myCall));
+  output.setCall(myCall);
   EXPECT_EQ(output.numRowsWritten(), 0);
   {
     // reach the end (edge) of our second row, check that we do not return DONE here!
@@ -140,21 +144,30 @@ using EnumerateListParamType = std::tuple<EnumerateListSplitType>;
 class EnumerateListExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateListParamType, false> {
  protected:
-  EnumerateListExecutorInfos infos;
+  EnumerateListExecutorInfos executorInfos;
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
 
-  EnumerateListExecutorTestProduce() : infos(0, 1, 1, 2, {}, {0}) {}
+  EnumerateListExecutorTestProduce() : executorInfos(0, 1) {}
 
-  auto makeInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
-                 RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
-                 std::unordered_set<RegisterId> regToClear = {},
-                 std::unordered_set<RegisterId> regToKeep = {0}) -> EnumerateListExecutorInfos {
-    EnumerateListExecutorInfos infos{inputRegister,   outputRegister,
-                                     nrInputRegister, nrOutputRegister,
-                                     regToClear,      regToKeep};
+  auto makeRegisterInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
+                         RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
+                         RegIdSet regToClear = {},
+                         RegIdSetStack regToKeep = {RegIdSet{0}}) -> RegisterInfos {
+    auto infos = RegisterInfos{RegIdSet{inputRegister},
+                               RegIdSet{outputRegister},
+                               nrInputRegister,
+                               nrOutputRegister,
+                               std::move(regToClear),
+                               std::move(regToKeep)};
     block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+    return infos;
+  }
+
+  auto makeExecutorInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1)
+      -> EnumerateListExecutorInfos {
+    EnumerateListExecutorInfos infos{inputRegister, outputRegister};
     return infos;
   }
 };
@@ -163,7 +176,7 @@ TEST_P(EnumerateListExecutorTestProduce, empty_array_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([])"}}})
       .setInputSplitType(split)
       .expectOutput({}, {})
@@ -178,7 +191,7 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
 
   try {
     makeExecutorTestHelper<1, 1>()
-        .addConsumer<EnumerateListExecutor>(makeInfos())
+        .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
         .setInputValue({{1}})
         .setInputSplitType(split)
         .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -196,7 +209,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 1, 2])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -210,7 +223,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -224,10 +237,10 @@ TEST_P(EnumerateListExecutorTestProduce, offset_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{3, AqlCall::Infinity{}, 2, false})
+      .setCall(AqlCall{3, AqlCall::Infinity{}, 2u, false})
       .expectOutput({1}, {{4}, {5}})
       .expectSkipped(3)
       .expectedState(ExecutionState::DONE)
@@ -238,10 +251,10 @@ TEST_P(EnumerateListExecutorTestProduce, offset_3) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{7, AqlCall::Infinity{}, 3, false})
+      .setCall(AqlCall{7, AqlCall::Infinity{}, 3u, false})
       .expectOutput({1}, {{8}, {9}, {10}})
       .expectSkipped(7)
       .expectedState(ExecutionState::DONE)
@@ -252,10 +265,10 @@ TEST_P(EnumerateListExecutorTestProduce, offset_4) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{5, AqlCall::Infinity{}, 2, true})
+      .setCall(AqlCall{5, AqlCall::Infinity{}, 2u, true})
       .expectOutput({1}, {{6}, {7}})
       .expectSkipped(8)
       .expectedState(ExecutionState::DONE)
@@ -266,10 +279,10 @@ TEST_P(EnumerateListExecutorTestProduce, offset_5) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<1, 1>()
-      .addConsumer<EnumerateListExecutor>(makeInfos())
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(), makeExecutorInfos())
       .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
       .setInputSplitType(split)
-      .setCall(AqlCall{7, AqlCall::Infinity{}, 3, true})
+      .setCall(AqlCall{7, AqlCall::Infinity{}, 3u, true})
       .expectOutput({1}, {{8}, {9}, {10}})
       .expectSkipped(7)
       .expectedState(ExecutionState::DONE)
@@ -280,7 +293,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_1) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+                                          makeExecutorInfos(3, 4))
       .setInputValue({{1, 2, 3, R"([1, 2, 3])"}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
@@ -296,7 +310,8 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+                                          makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
@@ -316,11 +331,12 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+                                          makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, 3, AqlCall::Infinity{}, false})
+      .setCall(AqlCall{0, 3u, AqlCall::Infinity{}, false})
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
@@ -333,11 +349,12 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+                                          makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, AqlCall::Infinity{}, 3, false})
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 3u, false})
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
@@ -350,11 +367,12 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcou
   auto [split] = GetParam();
 
   makeExecutorTestHelper<4, 5>()
-      .addConsumer<EnumerateListExecutor>(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}))
+      .addConsumer<EnumerateListExecutor>(makeRegisterInfos(3, 4, 4, 5, {}, {RegIdSet{0, 1, 2, 3}}),
+                                          makeExecutorInfos(3, 4))
       .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
                       RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
       .setInputSplitType(split)
-      .setCall(AqlCall{0, AqlCall::Infinity{}, 3, true})
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 3u, true})
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})

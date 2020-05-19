@@ -24,9 +24,9 @@
 #define ARANGOD_AQL_RETURN_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
@@ -37,13 +37,12 @@ class Methods;
 
 namespace aql {
 
-class ExecutorInfos;
+class RegisterInfos;
 class NoStats;
 
-class ReturnExecutorInfos : public ExecutorInfos {
+class ReturnExecutorInfos {
  public:
-  ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters, bool doCount);
+  ReturnExecutorInfos(RegisterId inputRegister, bool doCount);
 
   ReturnExecutorInfos() = delete;
   ReturnExecutorInfos(ReturnExecutorInfos&&) = default;

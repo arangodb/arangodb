@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_INFOS_H
 
 #include "Aql/Collection.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -35,6 +35,8 @@
 
 namespace arangodb {
 namespace aql {
+
+class QueryContext;
 
 struct BoolWrapper {
   explicit BoolWrapper(bool b) { _value = b; }
@@ -61,17 +63,15 @@ struct IgnoreDocumentNotFound : BoolWrapper {
   explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {}
 };
 
-struct ModificationExecutorInfos : public ExecutorInfos {
-  ModificationExecutorInfos(
-      RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
-      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
-      RegisterId outputRegisterId, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
-      OperationOptions options, aql::Collection const* aqlCollection,
-      ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
-      IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-      IgnoreDocumentNotFound ignoreDocumentNotFound);
+struct ModificationExecutorInfos {
+  ModificationExecutorInfos(RegisterId input1RegisterId, RegisterId input2RegisterId,
+                            RegisterId input3RegisterId, RegisterId outputNewRegisterId,
+                            RegisterId outputOldRegisterId, RegisterId outputRegisterId,
+                            arangodb::aql::QueryContext& query, OperationOptions options,
+                            aql::Collection const* aqlCollection, ProducesResults producesResults,
+                            ConsultAqlWriteFilter consultAqlWriteFilter,
+                            IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
+                            IgnoreDocumentNotFound ignoreDocumentNotFound);
 
   ModificationExecutorInfos() = delete;
   ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
@@ -79,7 +79,7 @@ struct ModificationExecutorInfos : public ExecutorInfos {
   ~ModificationExecutorInfos() = default;
 
   /// @brief the variable produced by Return
-  transaction::Methods* _trx;
+  arangodb::aql::QueryContext& _query;
   OperationOptions _options;
   aql::Collection const* _aqlCollection;
   ProducesResults _producesResults;

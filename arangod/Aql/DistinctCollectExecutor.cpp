@@ -26,9 +26,9 @@
 #include "DistinctCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Logger/LogMacros.h"
@@ -40,32 +40,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableInputRegisters,
-    std::pair<RegisterId, RegisterId> groupRegister, transaction::Methods* trxPtr)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _groupRegister(groupRegister),
-      _trxPtr(trxPtr) {}
+DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
+                                                           velocypack::Options const* opts)
+    : _groupRegister(std::move(groupRegister)), _vpackOptions(opts) {}
 
 std::pair<RegisterId, RegisterId> const& DistinctCollectExecutorInfos::getGroupRegister() const {
   return _groupRegister;
 }
 
-transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* DistinctCollectExecutorInfos::vpackOptions() const {
+  return _vpackOptions;
 }
 
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _seen(1024, AqlValueGroupHash(_infos.getTransaction(), 1),
-            AqlValueGroupEqual(_infos.getTransaction())) {}
+      _seen(1024, AqlValueGroupHash(1),
+            AqlValueGroupEqual(_infos.vpackOptions())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
@@ -117,7 +107,7 @@ auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       break;
     }
 
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 
@@ -160,7 +150,7 @@ auto DistinctCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, 
       return {ExecutorState::HASMORE, {}, skipped, {}};
     }
 
-    std::tie(state, input) = inputRange.nextDataRow();
+    std::tie(state, input) = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     INTERNAL_LOG_DC << "inputRange.nextDataRow() = " << state;
     TRI_ASSERT(input.isInitialized());
 

@@ -27,8 +27,8 @@
 #include "SortedCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ConditionalDeleter.h"
@@ -54,7 +54,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
+    aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
@@ -123,30 +123,21 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 }
 
 SortedCollectExecutorInfos::SortedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-    std::vector<std::pair<std::string, RegisterId>>&& variables,
+    std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
-      _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+    velocypack::Options const* opts, bool count)
+    : _aggregateTypes(std::move(aggregateTypes)),
+      _aggregateRegisters(std::move(aggregateRegisters)),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _expressionRegister(expressionRegister),
-      _variables(variables),
+      _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _count(count),
-      _trxPtr(trxPtr) {}
+      _vpackOptions(opts),
+      _count(count) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos), _currentGroup(infos.getCount(), infos) {
@@ -184,18 +175,14 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) 
       groupLength++;
     } else if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getTransaction(), _builder, false);
+      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder, false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
-      for (auto const& pair : infos.getVariables()) {
-        // Only collect input variables, the variable names DO! contain more.
-        // e.g. the group variable name
-        if (pair.second < infos.numberOfInputRegisters()) {
-          _builder.add(VPackValue(pair.first));
-          input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
-        }
+      for (auto const& pair : infos.getInputVariables()) {
+        _builder.add(VPackValue(pair.first));
+        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder, false);
       }
       _builder.close();
     }
@@ -217,7 +204,7 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
     for (auto& it : infos.getGroupRegisters()) {
       // we already had a group, check if the group has changed
       // compare values 1 1 by one
-      int cmp = AqlValue::Compare(infos.getTransaction(), this->groupValues[i],
+      int cmp = AqlValue::Compare(infos.getVPackOptions(), this->groupValues[i],
                                   input.getValue(it.second), false);
 
       if (cmp != 0) {
@@ -234,7 +221,7 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& inp
 void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
-    value.toVelocyPack(infos.getTransaction(), builder, false);
+    value.toVelocyPack(infos.getVPackOptions(), builder, false);
   }
 
   builder.close();
@@ -434,7 +421,6 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
         // if we are in the same group, we can skip this line
         if (_currentGroup.isSameGroup(input)) {
           INTERNAL_LOG_SC << "input is same group";
-          std::ignore = inputRange.nextDataRow();
           /* do nothing */
         } else {
           if (_currentGroup.isValid()) {
@@ -447,8 +433,8 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
 
           INTERNAL_LOG_SC << "group is invalid, creating new group";
           _currentGroup.reset(input);
-          std::ignore = inputRange.nextDataRow();
         }
+        std::ignore = inputRange.nextDataRow();
       }
 
       if (!clientCall.needSkipMore()) {

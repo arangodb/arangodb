@@ -32,8 +32,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/ScatterExecutor.h"
 
 using namespace arangodb;
@@ -53,8 +53,10 @@ class SharedScatterExecutionBlockTest {
 
   SharedScatterExecutionBlockTest() {
     auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
+      std::make_unique<ExecutionEngine>(*fakedQuery,
+                                        itemBlockManager,
+                                        SerializationFormat::SHADOWROWS);
+    /// TODO fakedQuery->setEngine(engine.release());
   }
 
   auto buildStack(AqlCall call, size_t subqueryDepth = 0) -> AqlCallStack {
@@ -81,24 +83,30 @@ class SharedScatterExecutionBlockTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   auto generateNodeDummy() -> ExecutionNode* {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()});
+    auto dummy = std::make_unique<SingletonNode>(
+      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+      ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
   }
 
   auto generateScatterNode() -> ScatterNode* {
-    auto dummy = std::make_unique<ScatterNode>(fakedQuery->plan(), ExecutionNodeId{_execNodes.size()},
-                                               ScatterNode::ScatterType::SHARD);
+    auto dummy = std::make_unique<ScatterNode>(
+            const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+            ExecutionNodeId{_execNodes.size()},
+            ScatterNode::ScatterType::SHARD);
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
   }
 
-  auto generateInfos() const -> ScatterExecutorInfos {
-    auto inputRegs = make_shared_unordered_set({0});
-    auto outputRegs = make_shared_unordered_set({});
-    return {inputRegs, outputRegs, 1, 1, {}, {0}, clientIds};
+  auto generateRegisterInfos() const -> RegisterInfos {
+    return RegisterInfos{RegIdSet{0}, {}, 1, 1, {}, {RegIdSet{0}}};
+  }
+
+  auto generateExecutorInfos() const -> ScatterExecutorInfos {
+    return ScatterExecutorInfos{clientIds};
   }
 
   auto createProducer(SharedAqlItemBlockPtr inputBlock, size_t subqueryDepth = 0)
@@ -113,7 +121,7 @@ class SharedScatterExecutionBlockTest {
                       size_t subqueryDepth = 0) -> WaitingExecutionBlockMock {
     // TODO add input splicing
 
-    return WaitingExecutionBlockMock{fakedQuery->engine(), generateNodeDummy(),
+    return WaitingExecutionBlockMock{fakedQuery->rootEngine(), generateNodeDummy(),
                                      std::move(blockDeque),
                                      WaitingExecutionBlockMock::WaitingBehaviour::NEVER,
                                      subqueryDepth};
@@ -125,12 +133,19 @@ class SharedScatterExecutionBlockTest {
     EXPECT_EQ(actual->size(), expected->size());
     EXPECT_EQ(actual->getNrRegs(), 1);
     for (size_t i = 0; i < (std::min)(actual->size(), expected->size()); ++i) {
-      auto const& x = actual->getValueReference(i, 0);
-      auto const& y = expected->getValueReference(i, 0);
-      EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-          << "Row " << i << " Column " << 0 << " do not agree. "
-          << x.slice().toJson(&vpackOptions) << " vs. "
-          << y.slice().toJson(&vpackOptions);
+      if (actual->isShadowRow(i)) {
+        ASSERT_TRUE(expected->isShadowRow(i))
+            << "Row " << i << " is not supposed to be a shadow row.";
+      } else {
+        EXPECT_FALSE(expected->isShadowRow(i))
+            << "Row " << i << " is supposed to be a shadow row.";
+        auto const& x = actual->getValueReference(i, 0);
+        auto const& y = expected->getValueReference(i, 0);
+        EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
+            << "Row " << i << " Column " << 0 << " do not agree. "
+            << x.slice().toJson(&vpackOptions) << " vs. "
+            << y.slice().toJson(&vpackOptions);
+      }
     }
   }
 };
@@ -168,8 +183,10 @@ TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -187,8 +204,10 @@ TEST_P(RandomOrderTest, all_clients_can_skip_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -208,14 +227,16 @@ TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
   auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};
-    call.hardLimit = 1;
+    call.hardLimit = 1u;
     call.fullCount = true;
     auto stack = buildStack(call);
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
@@ -230,8 +251,10 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
   auto producer = createProducer(inputBlock);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   for (auto const& client : getCallOrder()) {
@@ -247,7 +270,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
     } else if (client == "b") {
       AqlCall call{};
       call.offset = 2;
-      call.hardLimit = 2;
+      call.hardLimit = 2u;
       auto stack = buildStack(call);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
@@ -257,7 +280,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
     } else if (client == "c") {
       {
         AqlCall call{};
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -269,7 +292,7 @@ TEST_P(RandomOrderTest, all_clients_can_have_different_calls) {
         // As we have softLimit we can simply call again
         AqlCall call{};
         call.offset = 1;
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -286,12 +309,14 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
                                   {{3, 0}, {5, 0}});
   auto firstExpectedBlock =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}}, {{3, 0}});
-  auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{0, 0}});
+  auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{1, 0}});
   size_t subqueryDepth = 1;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. reach first shadowrow, but do not jump over it, we do not know
@@ -330,8 +355,10 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_produce) {
   size_t subqueryDepth = 2;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. reach first shadowrow, but do not jump over it, we do not know
@@ -369,8 +396,10 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
   size_t subqueryDepth = 2;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. reach first shadowrow, but do not jump over it, we do not know
@@ -407,8 +436,10 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
   size_t subqueryDepth = 2;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. actually there are only shadowRows following, we would be able
@@ -446,8 +477,10 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
   size_t subqueryDepth = 1;
   auto producer = createProducer(inputBlock, subqueryDepth);
 
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                             generateScatterNode(), generateInfos()};
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                             generateScatterNode(),
+                                             generateRegisterInfos(),
+                                             generateExecutorInfos()};
   testee.addDependency(&producer);
 
   // First call. desired to be stopped at shadowRow
@@ -466,7 +499,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     } else if (client == "b") {
       AqlCall call{};
       call.offset = 2;
-      call.hardLimit = 2;
+      call.hardLimit = 2u;
       auto stack = buildStack(call, subqueryDepth);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -476,7 +509,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     } else if (client == "c") {
       {
         AqlCall call{};
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call, subqueryDepth);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -488,7 +521,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         // As we have softLimit we can simply call again
         AqlCall call{};
         call.offset = 1;
-        call.softLimit = 2;
+        call.softLimit = 2u;
         auto stack = buildStack(call, subqueryDepth);
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
@@ -505,7 +538,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
     if (client == "a") {
       // Just produce all
       AqlCall call{};
-      call.hardLimit = 1;
+      call.hardLimit = 1u;
       auto stack = buildStack(call, subqueryDepth);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
@@ -514,7 +547,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "b") {
       AqlCall call{};
-      call.softLimit = 1;
+      call.softLimit = 1u;
       auto stack = buildStack(call, subqueryDepth);
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::DONE);
@@ -581,8 +614,10 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
   // Now we do all permuation of potentiall call ordering
   do {
     auto producer = createProducer(blockDeque);
-    ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(),
-                                               generateScatterNode(), generateInfos()};
+    ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->rootEngine(),
+                                               generateScatterNode(),
+                                               generateRegisterInfos(),
+                                               generateExecutorInfos()};
     testee.addDependency(&producer);
     for (auto& [c, pair] : expected) {
       // Reset seen position

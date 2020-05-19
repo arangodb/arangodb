@@ -26,11 +26,11 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Aql/InsertModifier.h"
@@ -88,9 +88,8 @@ AqlValue const& ModifierOutput::getNewValue() const {
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
-                                                                      Infos& infos)
-    : _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
+    : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
@@ -105,7 +104,7 @@ auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInpu
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
   while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
-    auto [state, row] = input.nextDataRow();
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     // Make sure we have a valid row
     TRI_ASSERT(row.isInitialized());
@@ -154,7 +153,6 @@ template <typename FetcherType, typename ModifierType>
 [[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
     typename FetcherType::DataRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
-  TRI_ASSERT(_infos._trx);
   AqlCall upstreamCall{};
   if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
                 !std::is_same_v<FetcherType, AllRowsFetcher>) {
@@ -188,7 +186,7 @@ template <typename FetcherType, typename ModifierType>
     upstreamState = input.upstreamState();
   }
   if (_modifier.nrOfOperations() > 0) {
-    _modifier.transact();
+    _modifier.transact(_trx);
 
     if (_infos._doCount) {
       stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
@@ -245,7 +243,7 @@ template <typename FetcherType, typename ModifierType>
     }
 
     if (_modifier.nrOfOperations() > 0) {
-      _modifier.transact();
+      _modifier.transact(_trx);
 
       if (_infos._doCount) {
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());

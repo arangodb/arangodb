@@ -72,11 +72,7 @@ class SharedExecutionBlockImplTest {
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
-  SharedExecutionBlockImplTest() {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
-  }
+  SharedExecutionBlockImplTest() {}
 
   /**
    * @brief Creates and manages a ExecutionNode.
@@ -86,8 +82,8 @@ class SharedExecutionBlockImplTest {
    * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
    */
   ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(),
-                                                 ExecutionNodeId{_execNodes.size()});
+    auto dummy = std::make_unique<SingletonNode>(
+      const_cast<ExecutionPlan*>(fakedQuery->plan()), ExecutionNodeId{_execNodes.size()});
     auto res = dummy.get();
     _execNodes.emplace_back(std::move(dummy));
     return res;
@@ -103,6 +99,40 @@ class SharedExecutionBlockImplTest {
     return stack;
   }
 
+  RegisterInfos makeRegisterInfos(RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
+                                  RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
+    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_LE(inputRegisters, outputRegisters);
+      // We cannot have no output registers here.
+      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
+    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      // Special case: we do not have input registers, but need an output register.
+      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
+      EXPECT_EQ(outputRegisters, 0);
+    }
+
+    auto readAble = RegIdSet{};
+    auto writeAble = RegIdSet{};
+    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= inputRegisters; ++i) {
+        readAble.emplace(i);
+      }
+      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
+        writeAble.emplace(i);
+      }
+    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= outputRegisters; ++i) {
+        writeAble.emplace(i);
+      }
+    }
+    RegIdSetStack registersToKeep = {readAble, readAble, readAble};
+    RegisterId regsToRead =
+        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
+    RegisterId regsToWrite =
+        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
+    return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
+  }
+
   /**
    * @brief Prepare the executor infos for a LambdaExecutor with passthrough.
    *
@@ -111,41 +141,8 @@ class SharedExecutionBlockImplTest {
    * @param outputRegisters highest output register index. RegisterPlan::MaxRegisterId (default) describes there is no output. call is allowed to write any inputRegisters < register <= outputRegisters. Invariant inputRegisters <= outputRegisters
    * @return LambdaExecutorInfos Infos to build the Executor.
    */
-  LambdaExecutorInfos makeInfos(ProduceCall call,
-                                RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-                                RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      EXPECT_LE(inputRegisters, outputRegisters);
-      // We cannot have no output registers here.
-      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      // Special case: we do not have input registers, but need an output register.
-      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
-      EXPECT_EQ(outputRegisters, 0);
-    }
-
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
-        registersToKeep.emplace(i);
-      }
-      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
-      }
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
-      }
-    }
-    RegisterId regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
-    RegisterId regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
-    return LambdaExecutorInfos(readAble, writeAble, regsToRead, regsToWrite, {},
-                               registersToKeep, std::move(call));
+  LambdaExecutorInfos makeExecutorInfos(ProduceCall call) {
+    return LambdaExecutorInfos(std::move(call));
   }
 
   /**
@@ -153,48 +150,11 @@ class SharedExecutionBlockImplTest {
    *
    * @param call produceRows implementation that should be used
    * @param skipCall skipRowsRange implementation that should be used
-   * @param inputRegisters highest input register index. RegisterPlan::MaxRegisterId (default) describes there is no input. call is allowed to read any register <= inputRegisters.
-   * @param outputRegisters highest output register index. RegisterPlan::MaxRegisterId (default) describes there is no output. call is allowed to write any inputRegisters < register <= outputRegisters. Invariant inputRegisters <= outputRegisters
    * @return LambdaExecutorInfos Infos to build the Executor.
    */
-  LambdaSkipExecutorInfos makeSkipInfos(
-      ProduceCall call, SkipCall skipCall,
-      RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-      RegisterId outputRegisters = RegisterPlan::MaxRegisterId,
-      ResetCall reset = []() -> void {}) {
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      EXPECT_LE(inputRegisters, outputRegisters);
-      // We cannot have no output registers here.
-      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      // Special case: we do not have input registers, but need an output register.
-      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
-      EXPECT_EQ(outputRegisters, 0);
-    }
-
-    auto readAble = make_shared_unordered_set();
-    auto writeAble = make_shared_unordered_set();
-    auto registersToKeep = std::unordered_set<RegisterId>{};
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= inputRegisters; ++i) {
-        readAble->emplace(i);
-        registersToKeep.emplace(i);
-      }
-      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
-      }
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= outputRegisters; ++i) {
-        writeAble->emplace(i);
-      }
-    }
-    RegisterId regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
-    RegisterId regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
-    return LambdaSkipExecutorInfos(readAble, writeAble, regsToRead, regsToWrite,
-                                   {}, registersToKeep, std::move(call),
-                                   std::move(skipCall), std::move(reset));
+  LambdaSkipExecutorInfos makeSkipExecutorInfos(
+      ProduceCall call, SkipCall skipCall, ResetCall reset = []() -> void {}) {
+    return LambdaSkipExecutorInfos(std::move(call), std::move(skipCall), std::move(reset));
   }
 
   /**
@@ -337,6 +297,8 @@ class SharedExecutionBlockImplTest {
 class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTest,
                                               public testing::TestWithParam<bool> {
  protected:
+  bool passthrough() const { return GetParam(); }
+
   /**
    * @brief Create a Singleton ExecutionBlock. Just like the original one in the
    * query. it is already initialized and ready to use.
@@ -344,8 +306,11 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
    * @return std::unique_ptr<ExecutionBlock> The singleton ExecutionBlock.
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
+    auto writableOutputRegisters = RegIdSet{0};
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-        fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}, false});
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        RegisterInfos{{}, std::move(writableOutputRegisters), 0, 1, RegIdFlatSet{}, RegIdFlatSetStack{{}}},
+        IdExecutorInfos{false});
     InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
     auto const [state, result] = res->initializeCursor(inputRow);
     EXPECT_EQ(state, ExecutionState::DONE);
@@ -355,19 +320,22 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
                                                       RegisterId nrRegs) {
-    auto readableIn = make_shared_unordered_set({});
-    auto writeableOut = make_shared_unordered_set({});
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
+    auto readableIn = RegIdSet{};
+    auto writeableOut = RegIdSet{};
+    auto registersToClear = RegIdFlatSet{};
+    auto regsToKeepProto = RegIdFlatSet{};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
-      readableIn->emplace(r - 1);
-      registersToKeep.emplace(r - 1);
+      readableIn.emplace(r - 1);
+      regsToKeepProto.emplace(r - 1);
     }
+    RegIdFlatSetStack registersToKeep{regsToKeepProto, regsToKeepProto,
+                                      regsToKeepProto, regsToKeepProto};
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-        fakedQuery->engine(), generateNodeDummy(),
-        ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep},
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
     res->addDependency(dependency);
     return res;
   }
@@ -384,15 +352,17 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
     auto stack = buildStack(call);
     auto singleton = createSingleton();
-    if (GetParam()) {
-      ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(),
+    if (passthrough()) {
+      ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->rootEngine(),
                                                       generateNodeDummy(),
-                                                      makeInfos(prod)};
+                                                      makeRegisterInfos(0, 0),
+                                                      makeExecutorInfos(prod)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
     } else {
-      ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), generateNodeDummy(),
-                                           makeSkipInfos(prod, skip)};
+      ExecutionBlockImpl<LambdaExe> testee{fakedQuery->rootEngine(), generateNodeDummy(),
+                                           makeRegisterInfos(0, 0),
+                                           makeSkipExecutorInfos(prod, skip)};
       testee.addDependency(singleton.get());
       return testee.execute(stack);
     }
@@ -440,11 +410,9 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
       return {inputRange.upstreamState(), NoStats{}, call};
     };
 
-    std::unique_ptr<ExecutionBlock> res =
-        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
-                                                        generateNodeDummy(),
-                                                        makeSkipInfos(prodCall, skipCall,
-                                                                      inReg, outReg));
+    std::unique_ptr<ExecutionBlock> res = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(inReg, outReg),
+        makeSkipExecutorInfos(prodCall, skipCall));
     res->addDependency(dependency);
     return res;
   }
@@ -459,8 +427,8 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
   // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
   // in the executor.
   // Non passthrough does not make an estimate for this, so Batchsize is used.
-  ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall);
+  ProduceCall execImpl = passthrough() ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                                       : generateProduceCall(nrCalls, fullCall);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -475,15 +443,16 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
 // Test a softlimit call: no skip, given softlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   AqlCall fullCall{};
-  fullCall.softLimit = 20;
+  fullCall.softLimit = 20u;
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
   // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
   // in the executor.
   // Non passthrough the available lines (visible to executor) are only the given soft limit.
-  ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall, 0, 20);
+  ProduceCall execImpl = passthrough()
+                             ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                             : generateProduceCall(nrCalls, fullCall, 0, 20);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -499,15 +468,16 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
 // Test a hardlimit call: no skip, given hardlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   AqlCall fullCall{};
-  fullCall.hardLimit = 20;
+  fullCall.hardLimit = 20u;
   size_t nrCalls = 0;
 
   // Note here: passthrough only reserves the correct amount of rows.
   // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
   // in the executor.
   // Non passthrough the available lines (visible to executor) are only the given soft limit.
-  ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
-                                    : generateProduceCall(nrCalls, fullCall, 0, 20);
+  ProduceCall execImpl = passthrough()
+                             ? generateProduceCall(nrCalls, fullCall, 0, 1)
+                             : generateProduceCall(nrCalls, fullCall, 0, 20);
   SkipCall skipCall = generateNeverSkipCall();
   auto [state, skipped, block] = runTest(execImpl, skipCall, fullCall);
 
@@ -551,7 +521,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_only_call) {
   fullCall.offset = 20;
   // This test simulates a simple "skipSome" call on the old API.
   // It is releveant in any intermediate state.
-  fullCall.softLimit = 0;
+  fullCall.softLimit = 0u;
   size_t nrCalls = 0;
 
   // Note here: We skip everything, no produce should be called
@@ -582,11 +552,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_relevant_shadowrow_does_not_f
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   auto subqueryStart = createSubqueryStart(singleton.get(), 0);
   // Produce one full block. The shadowRow has no space left
@@ -627,11 +597,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_in_
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
@@ -683,11 +653,11 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto subqueryOuterStart = createSubqueryStart(singleton.get(), 0);
@@ -727,8 +697,19 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
   }
 }
 
-INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
-                        ExecutionBlockImplExecuteSpecificTest, ::testing::Bool());
+auto printTestCase = [](testing::TestParamInfo<bool> const& paramInfo) -> std::string {
+  using namespace std::string_literals;
+
+  auto const passthrough = paramInfo.param;
+  if (passthrough) {
+    return "passthrough"s;
+  } else {
+    return "noPassthrough"s;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest, ExecutionBlockImplExecuteSpecificTest,
+                        ::testing::Bool(), printTestCase);
 
 enum class CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
 
@@ -1096,10 +1077,10 @@ class ExecutionBlockImplExecuteIntegrationTest
   std::unique_ptr<ExecutionBlock> createSingleton() {
     std::deque<SharedAqlItemBlockPtr> blockDeque;
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
     return std::make_unique<WaitingExecutionBlockMock>(
-        fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+        fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
         doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                       : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
@@ -1178,14 +1159,14 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
-    auto infos = outReg == 0 ? makeSkipInfos(std::move(writeData), skipData,
-                                             RegisterPlan::MaxRegisterId, outReg, resetCall)
-                             : makeSkipInfos(std::move(writeData), skipData,
-                                             outReg - 1, outReg, resetCall);
+    auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg - 1;
+    auto registerInfos = makeRegisterInfos(inReg, outReg);
+    auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
     auto producer =
-        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
+        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
                                                         generateNodeDummy(),
-                                                        std::move(infos));
+                                                        std::move(registerInfos),
+                                                        std::move(executorInfos));
     producer->addDependency(dependency);
     return producer;
   }
@@ -1215,8 +1196,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->engine(), generateNodeDummy(),
-        makeInfos(std::move(forwardData), maxReg, maxReg));
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        makeExecutorInfos(std::move(forwardData)));
     producer->addDependency(dependency);
     return producer;
   }
@@ -1266,7 +1247,7 @@ class ExecutionBlockImplExecuteIntegrationTest
         call.didSkip(1);
       }
       // Do forward a softLimit call only.
-      // Do not oeverfetch here.
+      // Do not overfetch here.
       AqlCall request{};
       if (call.getOffset() > 0) {
         request.softLimit = call.getOffset();
@@ -1275,27 +1256,27 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->engine(), generateNodeDummy(),
-        makeSkipInfos(std::move(forwardData), std::move(skipData), maxReg, maxReg));
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
   }
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
                                                       RegisterId nrRegs) {
-    auto readableIn = make_shared_unordered_set({});
-    auto writeableOut = make_shared_unordered_set({});
-    std::unordered_set<RegisterId> registersToClear{};
-    std::unordered_set<RegisterId> registersToKeep{};
+    auto readableIn = RegIdSet{};
+    auto writeableOut = RegIdSet{};
+    RegIdSet registersToClear{};
     for (RegisterId r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
-      readableIn->emplace(r - 1);
-      registersToKeep.emplace(r - 1);
+      readableIn.emplace(r - 1);
     }
+    RegIdSetStack registersToKeep{readableIn, readableIn, readableIn};
 
     auto res = std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-        fakedQuery->engine(), generateNodeDummy(),
-        ExecutorInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
+        fakedQuery->rootEngine(), generateNodeDummy(),
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep},
+        RegisterInfos{readableIn, writeableOut, nrRegs, nrRegs, registersToClear, registersToKeep});
     res->addDependency(dependency);
     return res;
   }
@@ -1395,17 +1376,17 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
     MatrixBuilder<1> matrix;
     matrix.reserve(250);
     builder->openArray();
-    for (size_t i = 0; i < 250; ++i) {
+    for (int i = 0; i < 250; ++i) {
       builder->add(VPackValue(i));
       matrix.emplace_back(RowBuilder<1>{i});
     }
     builder->close();
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), std::move(matrix));
     blockDeque.push_back(std::move(block));
   }
 
-  WaitingExecutionBlockMock testee{fakedQuery->engine(), generateNodeDummy(),
+  WaitingExecutionBlockMock testee{fakedQuery->rootEngine(), generateNodeDummy(),
                                    std::move(blockDeque),
                                    doesWaiting()
                                        ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
@@ -1621,8 +1602,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->engine(), generateNodeDummy(),
-      makeSkipInfos(std::move(forwardCall), std::move(forwardSkipCall), outReg, outReg));
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg, outReg),
+      makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 
   auto const& call = getCall();
@@ -1652,16 +1633,16 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
-  for (size_t i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 1000; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder->add(VPackValue(i));
   }
   builder->close();
 
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1705,16 +1686,16 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
-  for (size_t i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 1000; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder->add(VPackValue(i));
   }
   builder->close();
 
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1832,9 +1813,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   VPackBuilder builder;
   builder.openArray();
-  for (size_t i = 0; i < 3; ++i) {
+  for (int i = 0; i < 3; ++i) {
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{i}});
     blockDeque.push_back(std::move(block));
     builder.add(VPackValue(0));
   }
@@ -1842,7 +1823,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
 
   // We have 3 consecutive shadowRows of Depth 0
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1867,8 +1848,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
     return {input.upstreamState(), NoStats{}, call.getSkipCount(), call};
   };
   auto filterData = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(),
-      makeSkipInfos(std::move(filterAllCallback), std::move(skipAllCallback), 0, 0));
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(0, 0),
+      makeSkipExecutorInfos(std::move(filterAllCallback), std::move(skipAllCallback)));
   filterData->addDependency(subqueryStart.get());
 
   RegisterId outReg = 0;
@@ -1921,11 +1902,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -1975,11 +1956,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   {
     SharedAqlItemBlockPtr block =
-        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+        buildBlock<0>(fakedQuery->rootEngine()->itemBlockManager(), {{}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -2035,17 +2016,17 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
   {
     // First subquery
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{1}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{1}});
     blockDeque.push_back(std::move(block));
   }
   {
     // Second subquery
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{2}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{2}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -2099,7 +2080,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
         skipAsserter.reset();
         // Now trigger fast-forward to move to next subquery
         AqlCall forwardCall{};
-        forwardCall.hardLimit = 0;
+        forwardCall.hardLimit = 0u;
         forwardCall.fullCount = false;
 
         auto forwardStack = buildStack(AqlCall{}, AqlCall{});
@@ -2148,11 +2129,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     // 1 query with 0 row + 1 ShadowRows (depth 0)
     // 1 query with 0 row + 2 ShadowRow (depth 0, depth 1)
     SharedAqlItemBlockPtr block =
-        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{3}, {6}});
+        buildBlock<1>(fakedQuery->rootEngine()->itemBlockManager(), {{3}, {6}});
     blockDeque.push_back(std::move(block));
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
       doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ONCE
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
@@ -2203,8 +2184,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   };
 
   auto producerDepth0 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(),
-      makeSkipInfos(std::move(produceDepth0), std::move(skipDepth0), 0, 1));
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(0, 1),
+      makeSkipExecutorInfos(std::move(produceDepth0), std::move(skipDepth0)));
   producerDepth0->addDependency(subqueryOuterStart.get());
 
   auto subqueryInnerStart = createSubqueryStart(producerDepth0.get(), 2);
@@ -2244,8 +2225,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   };
 
   auto producerDepth1 = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-      fakedQuery->engine(), generateNodeDummy(),
-      makeSkipInfos(std::move(produceDepth1), std::move(skipDepth1), 1, 2));
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(1, 2),
+      makeSkipExecutorInfos(std::move(produceDepth1), std::move(skipDepth1)));
   producerDepth1->addDependency(subqueryInnerStart.get());
 
   CallAsserter getAsserter{getCall()};
@@ -2373,19 +2354,19 @@ static constexpr auto skipCall = []() -> const AqlCall {
 
 static constexpr auto softLimit = []() -> const AqlCall {
   AqlCall res{};
-  res.softLimit = 35;
+  res.softLimit = 35u;
   return res;
 };
 
 static constexpr auto hardLimit = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 76;
+  res.hardLimit = 76u;
   return res;
 };
 
 static constexpr auto fullCount = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 17;
+  res.hardLimit = 17u;
   res.fullCount = true;
   return res;
 };
@@ -2393,33 +2374,33 @@ static constexpr auto fullCount = []() -> const AqlCall {
 static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 16;
-  res.softLimit = 64;
+  res.softLimit = 64u;
   return res;
 };
 
 static constexpr auto skipAndHardLimit = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 32;
-  res.hardLimit = 51;
+  res.hardLimit = 51u;
   return res;
 };
 static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 8;
-  res.hardLimit = 57;
+  res.hardLimit = 57u;
   res.fullCount = true;
   return res;
 };
 static constexpr auto onlyFullCount = []() -> const AqlCall {
   AqlCall res{};
-  res.hardLimit = 0;
+  res.hardLimit = 0u;
   res.fullCount = true;
   return res;
 };
 static constexpr auto onlySkipAndCount = []() -> const AqlCall {
   AqlCall res{};
   res.offset = 16;
-  res.hardLimit = 0;
+  res.hardLimit = 0u;
   res.fullCount = true;
   return res;
 };

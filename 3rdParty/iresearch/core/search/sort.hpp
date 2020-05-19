@@ -27,26 +27,36 @@
 #include <vector>
 
 #include "utils/attributes.hpp"
-#include "utils/attributes_provider.hpp"
+#include "utils/attribute_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
 NS_ROOT
 
-struct data_output; // forward declaration
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief represents a boost related to the particular query
-//////////////////////////////////////////////////////////////////////////////
-typedef float_t boost_t;
-
-constexpr boost_t no_boost() noexcept { return 1.f; }
-
 struct collector;
+struct data_output;
+struct order_bucket;
 struct index_reader;
 struct sub_reader;
 struct term_reader;
-struct order_bucket;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief represents no boost value
+//////////////////////////////////////////////////////////////////////////////
+constexpr boost_t no_boost() noexcept { return 1.f; }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class filter_boost
+/// @brief represents an addition to score from filter specific to a particular
+///        document. May vary from document to document.
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API filter_boost final : attribute {
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::filter_boost";
+  }
+
+  boost_t value{no_boost()};
+}; // filter_boost
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stateful object used for computing the document score based on the
@@ -96,8 +106,12 @@ class IRESEARCH_API sort {
      ////////////////////////////////////////////////////////////////////////////
      virtual void collect(
        const sub_reader& segment,
-       const term_reader& field
-     ) = 0;
+       const term_reader& field) = 0;
+
+     ////////////////////////////////////////////////////////////////////////////
+     /// @brief clear collected stats
+     ////////////////////////////////////////////////////////////////////////////
+     virtual void reset() = 0;
 
      ///////////////////////////////////////////////////////////////////////////
      /// @brief collect field related statistics from a serialized
@@ -145,8 +159,12 @@ class IRESEARCH_API sort {
     virtual void collect(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_view& term_attrs
-    ) = 0;
+      const attribute_provider& term_attrs) = 0;
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief clear collected stats
+    ////////////////////////////////////////////////////////////////////////////
+    virtual void reset() = 0;
 
     ///////////////////////////////////////////////////////////////////////////
     /// @brief collect term related statistics from a serialized
@@ -197,10 +215,7 @@ class IRESEARCH_API sort {
     /// @brief helper function retuns merge function by a specified type
     //////////////////////////////////////////////////////////////////////////////
     template<MergeType type>
-#if IRESEARCH_CXX >= IRESEARCH_CXX_14
-    constexpr
-#endif
-    static merge_f merge_func(const prepared& bucket) noexcept {
+    constexpr static merge_f merge_func(const prepared& bucket) noexcept {
       switch (type) {
         case MergeType::AGGREGATE:
           return bucket.aggregate_func();
@@ -265,7 +280,7 @@ class IRESEARCH_API sort {
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
-      const attribute_view& doc_attrs,
+      const attribute_provider& doc_attrs,
       boost_t boost) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
@@ -324,28 +339,15 @@ class IRESEARCH_API sort {
     merge_f max_func_;
   }; // prepared
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id
-  //////////////////////////////////////////////////////////////////////////////
-  class type_id: public iresearch::type_id, util::noncopyable {
-   public:
-    type_id(const string_ref& name): name_(name) {}
-    operator const type_id*() const { return this; }
-    const string_ref& name() const { return name_; }
-
-   private:
-    string_ref name_;
-  }; // type_id
-
-  explicit sort(const type_id& id) noexcept;
+  explicit sort(const type_info& type) noexcept;
   virtual ~sort() = default;
 
-  const type_id& type() const { return *type_; }
+  constexpr type_info::type_id type() const noexcept { return type_; }
 
   virtual prepared::ptr prepare() const = 0;
 
  private:
-  const type_id* type_;
+  type_info::type_id type_;
 }; // sort
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -497,7 +499,7 @@ template<typename ScoreType,
   ////////////////////////////////////////////////////////////////////////////////
   virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
     static_assert(
-      alignof(score_t) <= alignof(MAX_ALIGN_T),
+      alignof(score_t) <= alignof(std::max_align_t),
       "alignof(score_t) must be <= alignof(std::max_align_t)"
     );
 
@@ -514,7 +516,7 @@ template<typename ScoreType,
   ////////////////////////////////////////////////////////////////////////////////
   virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
     static_assert(
-      alignof(stats_t) <= alignof(MAX_ALIGN_T),
+      alignof(stats_t) <= alignof(std::max_align_t),
       "alignof(stats_t) must be <= alignof(std::max_align_t)"
     );
 
@@ -752,9 +754,8 @@ class IRESEARCH_API order final {
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats,
-        const attribute_view& doc,
-        boost_t boost
-      );
+        const attribute_provider& doc,
+        boost_t boost);
       scorers(scorers&& other) noexcept; // function definition explicitly required by MSVC
 
       scorers& operator=(scorers&& other) noexcept; // function definition explicitly required by MSVC
@@ -858,6 +859,16 @@ class IRESEARCH_API order final {
       return prepared_order_t::const_iterator(order_.end());
     }
 
+    const order_bucket& front() const noexcept {
+      assert(!order_.empty());
+      return order_.front();
+    }
+
+    const order_bucket& back() const noexcept {
+      assert(!order_.empty());
+      return order_.back();
+    }
+
     const order_bucket& operator[](size_t i) const noexcept {
       return order_[i];
     }
@@ -891,7 +902,7 @@ class IRESEARCH_API order final {
         const sub_reader& segment,
         const term_reader& field,
         const byte_type* stats_buf,
-        const attribute_view& doc,
+        const attribute_provider& doc,
         irs::boost_t boost) const {
       return scorers(order_, segment, field, stats_buf, doc, boost);
     }
@@ -1012,7 +1023,7 @@ class IRESEARCH_API order final {
     remove(type::type());
   }
 
-  void remove(const type_id& id);
+  void remove(type_info::type_id type);
   void clear() noexcept { order_.clear(); }
 
   size_t size() const noexcept { return order_.size(); }
@@ -1029,147 +1040,6 @@ class IRESEARCH_API order final {
   order_t order_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
-
-////////////////////////////////////////////////////////////////////////////
-/// @brief a convinience class for filters to invoke collector functions
-///        on collectors in each order bucket
-////////////////////////////////////////////////////////////////////////////
-template<typename T> using FixedContainer = std::vector<T>;
-template<typename T> using VariadicContainer = std::vector<std::vector<T>>;
-
-template<template<typename...> class T>
-class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
- public:
-  collectors(const order::prepared& buckets);
-  collectors(collectors&& other) noexcept; // function definition explicitly required by MSVC
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief collect field related statistics, i.e. field used in the filter
-  /// @param segment the segment being processed (e.g. for columnstore)
-  /// @param field the field matched by the filter in the 'segment'
-  /// @note called once for every field matched by a filter per each segment
-  /// @note always called on each matched 'field' irrespective of if it
-  ///       contains a matching 'term'
-  //////////////////////////////////////////////////////////////////////////
-  void collect(const sub_reader& segment, const term_reader& field) const;
-
-  void empty_finish(byte_type* stats_buf, const index_reader& index) const;
-
- protected:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  const order::prepared& buckets_;
-  std::vector<sort::field_collector::ptr> field_collectors_; // size == buckets_.size()
-  mutable T<sort::term_collector::ptr> term_collectors_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-};
-
-////////////////////////////////////////////////////////////////////////////
-/// @brief create an index statistics compound collector for all buckets
-/// @param terms_count number of term_collectors to allocate
-///        0 == collect only field level statistics e.g. by_column_existence
-////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API fixed_terms_collectors : public collectors<FixedContainer> {
- public:
-  using collectors<FixedContainer>::collect;
-
-  fixed_terms_collectors(const order::prepared& buckets, size_t terms_count);
-  fixed_terms_collectors(fixed_terms_collectors&& other) noexcept; // function definition explicitly required by MSVC
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief collect term related statistics, i.e. term used in the filter
-  /// @param segment the segment being processed (e.g. for columnstore)
-  /// @param field the field matched by the filter in the 'segment'
-  /// @param term_offset offset of term, value < constructor 'terms_count'
-  /// @param term_attributes the attributes of the matched term in the field
-  /// @note called once for every term matched by a filter in the 'field'
-  ///       per each segment
-  /// @note only called on a matched 'term' in the 'field' in the 'segment'
-  //////////////////////////////////////////////////////////////////////////
-  void collect(
-    const sub_reader& segment,
-    const term_reader& field,
-    size_t term_offset,
-    const attribute_view& term_attrs
-  ) const;
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief store collected index statistics into 'stats' of the
-  ///        current 'filter'
-  /// @param stats out-parameter to store statistics for later use in
-  ///        calls to score(...)
-  /// @param index the full index to collect statistics on
-  /// @note called once on the 'index' for every term matched by a filter
-  ///       calling collect(...) on each of its segments
-  /// @note if not matched terms then called exactly once
-  //////////////////////////////////////////////////////////////////////////
-  void finish(byte_type* stats, const index_reader& index) const;
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief add collectors for another term
-  /// @return term_offset
-  //////////////////////////////////////////////////////////////////////////
-  size_t push_back();
-
-  // term_collectors_; size == buckets_.size() * terms_count, layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-};
-
-class IRESEARCH_API variadic_terms_collectors : public collectors<VariadicContainer> {
- public:
-  using collectors<VariadicContainer>::collect;
-
-  variadic_terms_collectors(const order::prepared& buckets, size_t terms_count);
-  variadic_terms_collectors(variadic_terms_collectors&& other) noexcept; // function definition explicitly required by MSVC
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief collect term related statistics, i.e. term used in the filter
-  /// @param segment the segment being processed (e.g. for columnstore)
-  /// @param field the field matched by the filter in the 'segment'
-  /// @param term_offset offset of term, value < constructor 'terms_count'
-  /// @param term_attributes the attributes of the matched term in the field
-  /// @note called once for every term matched by a filter in the 'field'
-  ///       per each segment
-  /// @note only called on a matched 'term' in the 'field' in the 'segment'
-  //////////////////////////////////////////////////////////////////////////
-  void collect(
-    const sub_reader& segment,
-    const term_reader& field,
-    size_t term_offset,
-    const attribute_view& term_attrs
-  ) const;
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief store collected index statistics into 'stats' of the
-  ///        current 'filter'
-  /// @param stats out-parameter to store statistics for later use in
-  ///        calls to score(...)
-  /// @param index the full index to collect statistics on
-  /// @note called once on the 'index' for every term matched by a filter
-  ///       calling collect(...) on each of its segments
-  /// @note if not matched terms then called exactly once
-  //////////////////////////////////////////////////////////////////////////
-  void finish(byte_type* stats, const index_reader& index) const;
-
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief add collectors for another term
-  /// @return term_offset
-  //////////////////////////////////////////////////////////////////////////
-  size_t push_back();
-
-  // term_collectors_; size == buckets_.size(), inner size == terms count
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class filter_boost
-/// @brief represents an addition to score from filter specific to a particular 
-///        document. May vary from document to document.
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
-  DECLARE_ATTRIBUTE_TYPE();
-  filter_boost() noexcept;
-
-  void clear() { value = 1.f; }
-};
-
 
 NS_END
 

@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstdint>
+#include <mutex>
 
 namespace arangodb {
 
@@ -55,7 +56,7 @@ class AqlItemBlockManager {
 
  public:
   /// @brief request a block with the specified size
-  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
   /// @brief request a block and initialize it from the slice
   TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
@@ -92,6 +93,7 @@ class AqlItemBlockManager {
   struct Bucket {
     std::array<AqlItemBlock*, numBlocksPerBucket> blocks;
     size_t numItems;
+    mutable std::mutex _mutex;
 
     Bucket();
     ~Bucket();

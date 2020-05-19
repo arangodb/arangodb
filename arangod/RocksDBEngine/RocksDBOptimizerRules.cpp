@@ -80,7 +80,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  ::arangodb::containers::HashSet<Variable const*> vars;
+  VarSet vars;
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {
@@ -210,10 +210,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        auto trx = plan->getAst()->query()->trx();
+        auto& trx = plan->getAst()->query().trxForOptimization();
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
-        if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+        if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
           indexes = en->collection()->getCollection()->getIndexes();
         }
 
@@ -308,10 +308,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      auto trx = plan->getAst()->query()->trx();
+      auto& trx = plan->getAst()->query().trxForOptimization();
       std::shared_ptr<Index> picked;
       std::vector<std::shared_ptr<Index>> indexes;
-      if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+      if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
         indexes = en->collection()->getCollection()->getIndexes();
       }
 

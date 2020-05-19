@@ -108,7 +108,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<Variable const*> getVariablesSetHere() const final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const final;
@@ -120,8 +120,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// the projection attributes (if any)
   void initIndexCoversProjections();
 
-  void planNodeRegisters(aql::RegisterPlan& registerPlan) const;
-
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
                !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
@@ -131,8 +129,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   bool canApplyLateDocumentMaterializationRule() const {
     return isProduceResult() && coveringIndexAttributePositions().empty();
   }
-
-  [[nodiscard]] auto getOutputVariables() const -> VariableIdSet final;
 
   struct IndexVariable {
     size_t indexFieldNum;
@@ -152,15 +148,14 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
  private:
   void initializeOnce(bool& hasV8Expression, std::vector<Variable const*>& inVars,
                       std::vector<RegisterId>& inRegs,
-                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
-                      transaction::Methods* trxPtr) const;
+                      std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions) const;
 
   bool isProduceResult() const {
-    return isVarUsedLater(_outVariable) || _filter != nullptr;
+    return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
   }
-
+  
   /// @brief adds a UNIQUE() to a dynamic IN condition
-  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;
+  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 
  private:
   /// @brief the index

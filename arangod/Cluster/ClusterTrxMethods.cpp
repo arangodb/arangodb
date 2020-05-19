@@ -198,6 +198,7 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid, transaction::Status desS
 Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
   arangodb::TransactionState* state = trx.state();
   TRI_ASSERT(state->isRunning());
+  TRI_ASSERT(trx.isMainTransaction());
 
   if (state->knownServers().empty()) {
     return Result();

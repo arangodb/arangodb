@@ -31,7 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -46,19 +46,14 @@ namespace aql {
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class DistinctCollectExecutorInfos : public ExecutorInfos {
+class DistinctCollectExecutorInfos {
  public:
-  DistinctCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep,
-                               std::unordered_set<RegisterId>&& readableInputRegisters,
-                               std::unordered_set<RegisterId>&& writeableInputRegisters,
-                               std::pair<RegisterId, RegisterId> groupRegister,
-                               transaction::Methods* trxPtr);
+  DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
+                               velocypack::Options const* opts);
 
   DistinctCollectExecutorInfos() = delete;
   DistinctCollectExecutorInfos(DistinctCollectExecutorInfos&&) = default;
@@ -67,14 +62,14 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
 
  public:
   [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister() const;
-  transaction::Methods* getTransaction() const;
+  velocypack::Options const* vpackOptions() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
   std::pair<RegisterId, RegisterId> _groupRegister;
 
   /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
+  velocypack::Options const* _vpackOptions;
 };
 
 /**

@@ -27,8 +27,8 @@
 #define ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -43,19 +43,15 @@ namespace aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
-class ExecutorInfos;
+class RegisterInfos;
 class OutputAqlItemRow;
 class NoStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateListExecutorInfos : public ExecutorInfos {
+class EnumerateListExecutorInfos {
  public:
-  // cppcheck-suppress passedByValue
-  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep);
+  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;

@@ -92,7 +92,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
 }
 
 TEST(index_meta_tests, memory_directory_read_write_11) {
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_1", "1_0");
   ASSERT_NE(nullptr, codec);
   irs::memory_directory dir;
   auto writer = codec->get_index_meta_writer();
@@ -202,7 +202,3 @@ TEST(index_meta_tests, last_generation) {
   ASSERT_TRUE(index_exists);
   EXPECT_EQ(expected_seg_file, last_seg_file);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -23,8 +23,9 @@
 #ifndef ARANGOD_AQL_NORESULTS_EXECUTOR_H
 #define ARANGOD_AQL_NORESULTS_EXECUTOR_H
 
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/types.h"
 
 #include <memory>
 
@@ -37,7 +38,7 @@ namespace aql {
 
 template <BlockPassthrough>
 class SingleRowFetcher;
-class ExecutorInfos;
+class RegisterInfos;
 class NoStats;
 struct AqlCall;
 class OutputAqlItemRow;
@@ -51,9 +52,9 @@ class NoResultsExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = EmptyExecutorInfos;
   using Stats = NoStats;
-  NoResultsExecutor(Fetcher&, ExecutorInfos&);
+  NoResultsExecutor(Fetcher&, Infos&);
   ~NoResultsExecutor();
 
   /**
