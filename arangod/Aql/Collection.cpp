@@ -104,9 +104,6 @@ size_t Collection::count(transaction::Methods* trx, transaction::CountType type)
   return static_cast<size_t>(res.slice().getUInt());
 }
 
-/// @brief returns the collection's plan id
-TRI_voc_cid_t Collection::getPlanId() const { return getCollection()->id(); }
-
 std::unordered_set<std::string> Collection::responsibleServers() const {
   std::unordered_set<std::string> result;
   auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
@@ -154,7 +151,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(getPlanId()));
+  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
@@ -287,6 +284,12 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   ensureCollection();
   TRI_ASSERT(_collection != nullptr);
   return _collection;
+}
+  
+/// @brief whether or not we have a collection object underneath (true for
+/// existing collections, false for non-existing collections and for views).
+bool Collection::hasCollectionObject() const noexcept {
+  return _collection != nullptr;
 }
 
 /// @brief throw if the underlying collection has not been set

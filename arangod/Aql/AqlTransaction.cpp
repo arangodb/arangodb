@@ -79,19 +79,16 @@ AqlTransaction::AqlTransaction(
 
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
-  TRI_voc_cid_t cid = 0;
-  if (!_state->isCoordinator()) {
-    // TODO: check if we still need this resolving here, or if we can 
-    // reuse existing data from the collection object (which will be
-    // empty for views, which probably needs to be handled here)
-    auto col = resolver()->getCollection(collection->name());
+  if (collection->hasCollectionObject()) {
+    // we should get here for all existing collections/shards, but
+    // not for views.
+    auto c = collection->getCollection();
+    // note that c->name() and collection->name() may differ if the collection
+    // is accessed in a query by its id instead of its name.
+    return addCollection(c->id(), c->name(), collection->accessType());
+  }
 
-    if (col != nullptr) {
-      cid = col->id();
-    }
-  }
-  if (cid == 0) {
-    cid = resolver()->getCollectionId(collection->name());
-  }
+  // views
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collection->name());
   return addCollection(cid, collection->name(), collection->accessType());
 }

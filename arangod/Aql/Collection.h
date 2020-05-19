@@ -81,9 +81,6 @@ struct Collection {
   /// @brief count the number of documents in the collection
   size_t count(transaction::Methods* trx, transaction::CountType type) const;
 
-  /// @brief returns the collection's plan id
-  TRI_voc_cid_t getPlanId() const;
-
   /// @brief returns the responsible servers for the collection
   std::unordered_set<std::string> responsibleServers() const;
 
@@ -151,6 +148,10 @@ struct Collection {
   /// that means getCollection() must not be called on non-existing collections or
   /// views
   std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
+
+  /// @brief whether or not we have a collection object underneath (true for
+  /// existing collections, false for non-existing collections and for views).
+  bool hasCollectionObject() const noexcept;
   
  private:
   /// @brief throw if the underlying collection has not been set
