@@ -1,5 +1,9 @@
 devel
 -----
+
+* Fixed issue #11525: Address security vulnerability by updating Swagger-UI
+  dependency (upgraded Swagger UI to 3.25.1).
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.
@@ -70,11 +74,6 @@ devel
 * Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
   edges. The option is turned on by default. This normally helps with
   performance in read-only and read-mostly workloads.
-
-* Fixed issue #11525: Address security vulnerability by updating
-  Swagger-UI dependency
-
-  Upgraded Swagger UI to 3.25.1
 
 * Fixed a bug in Maintenance which could prevent collection creation from
   working (made CreateCollection action idempotent).
