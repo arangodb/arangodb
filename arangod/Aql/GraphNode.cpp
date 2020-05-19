@@ -522,7 +522,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
-  nodes.add("isSatelliteNode", VPackValue(isSatelliteNode()));
+  nodes.add("isLocalGraphNode", VPackValue(isLocalGraphNode()));
   nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
 
   // Graph Definition
@@ -791,7 +791,7 @@ bool GraphNode::isEligibleAsSatelliteTraversal() const {
 
 bool GraphNode::isUsedAsSatellite() const { return false; }
 
-bool GraphNode::isSatelliteNode() const { return false; }
+bool GraphNode::isLocalGraphNode() const { return false; }
 
 void GraphNode::waitForSatelliteIfRequired(ExecutionEngine const* engine) const {}
 
