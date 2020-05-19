@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed ability to edit graph edge in Graph Viewer of web UI.
+
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
 * Added feature: DisjointSmartGraphs
 
   SmartGraphs have been extended to a new subtype, called **DisjointSmartGraphs**.

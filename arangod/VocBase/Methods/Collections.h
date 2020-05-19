@@ -136,6 +136,9 @@ struct Collections {
   static arangodb::Result checksum(LogicalCollection& collection,
                                    bool withRevisions, bool withData,
                                    uint64_t& checksum, TRI_voc_rid_t& revId);
+
+  /// @brief filters properties for collection creation
+  static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
 };
 #ifdef USE_ENTERPRISE
 Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,
