@@ -2385,6 +2385,9 @@ function explainQuerysRegisters(query, explain, planIndex) {
   // once before and once after the actual subquery.
   //////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * @type {Array<{node:*,?current:('open'|'close')}>}
+   */
   const nodesData = [];
 
   //const leafNode = plan.nodes.filter(node => node.dependencies.length === 0)[0];
@@ -2429,7 +2432,11 @@ function explainQuerysRegisters(query, explain, planIndex) {
   // and formatted on its own.
   //////////////////////////////////////////////////////////////////////////////
   /**
-   * @type {Array<{meta: {depth: number, id: number, type: string}, regSetOrUsed: string[], keepOrClear: string[]}>}
+   * @type {Array<(
+   *         {separator: string}
+   *         | {meta: {depth: number, id: number, type: string}, regSetOrUsed: string[]},
+   *         | {keepOrClear: string[]},
+   *       )>}
    */
   const rowsInfos = nodesData.flatMap(data => {
     /**
@@ -2442,58 +2449,110 @@ function explainQuerysRegisters(query, explain, planIndex) {
      * @type {Array<number[]>} unusedRegsStack
      * @type {Array<{VariableId : number, RegisterId : number, depth : number}>} varInfoList
      * @type {Array<{id : number, name : string, isDataFromCollection : boolean}>} varsSetHere
+     * @type ?{'open'|'close'} direction
      */
-    const {depth, id, nrRegs: nrRegsArray, regsToClear, regsToKeepStack, type, unusedRegsStack, varInfoList, varsSetHere} = data.node;
+    const {
+      node: {
+        depth, id, nrRegs: nrRegsArray, regsToClear, regsToKeepStack, type,
+        unusedRegsStack, varInfoList, varsSetHere
+      },
+      direction
+    } = data;
     const nrRegs = nrRegsArray[depth];
     const regIdByVarId = Object.fromEntries(
       varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
-    const regSetOrUsed = [...Array(nrRegs)].map(_ => '');
-    const keepOrClear = regSetOrUsed.slice();
+    const meta = {id, type, depth};
+    const result = [];
 
-    const varName = (variable) => {
-      if (/^[0-9_]/.test(variable.name)) {
-        return '#' + variable.name;
+    /**
+     * @param {number} depth
+     */
+    const getRegInfosInDepth = (depth) => {
+      assert(depth === 0 || depth === 1);
+      const regSetOrUsed = [...Array(nrRegs)].map(_ => '');
+      const keepOrClear = regSetOrUsed.slice();
+
+      const varName = (variable) => {
+        if (/^[0-9_]/.test(variable.name)) {
+          return '#' + variable.name;
+        }
+        return variable.name;
+      };
+
+      for (const variable of varsSetHere) {
+        assert(regSetOrUsed[regIdByVarId[variable.id]] === '');
+        regSetOrUsed[regIdByVarId[variable.id]] = '→' + varName(variable);
       }
-      return variable.name;
+
+      // TODO depending on passthrough, or maybe the depth increase or similar,
+      //      only one of keep or clear is of interest and the other should maybe
+      //      ignored in that case.
+
+      for (const reg of regsToClear) {
+        assert(keepOrClear[reg] === '');
+        keepOrClear[reg] = '⮾';
+      }
+
+      console.log({id, type, regsToKeepStack, depth});
+      for (const reg of regsToKeepStack[regsToKeepStack.length - 1 - depth]) {
+        assert(keepOrClear[reg] === '');
+        keepOrClear[reg] = '↓';
+      }
+
+      for (const reg of unusedRegsStack[unusedRegsStack.length - 1]) {
+        assert(regSetOrUsed[reg] === '');
+        regSetOrUsed[reg] = 'Ø';
+      }
+      return {regSetOrUsed, keepOrClear};
     };
 
-    for (const variable of varsSetHere) {
-      assert(regSetOrUsed[regIdByVarId[variable.id]] === '');
-      regSetOrUsed[regIdByVarId[variable.id]] = '→' + varName(variable);
+    switch (type) {
+      case 'SubqueryStartNode': {
+        let {regSetOrUsed, keepOrClear} = getRegInfosInDepth(1);
+        result.push({
+          meta: {id: meta.id, depth: meta.depth, type: meta.type + ' (outside)'},
+          regSetOrUsed,
+        });
+        result.push({keepOrClear});
+        result.push({separator: '↘'});
+        ({regSetOrUsed, keepOrClear} = getRegInfosInDepth(0));
+        result.push({
+          meta: {id: meta.id, depth: meta.depth, type: meta.type + ' (inside)'},
+          regSetOrUsed,
+        });
+        result.push({keepOrClear});
+      }
+        break;
+      case 'SubqueryEndNode': {
+        // TODO ?
+        result.push({separator: '↙'});
+        const {regSetOrUsed, keepOrClear} = getRegInfosInDepth(0);
+        result.push({
+          meta: {id: meta.id, depth: meta.depth, type: meta.type},
+          regSetOrUsed,
+        });
+        result.push({keepOrClear});
+      }
+        break;
+      case 'SubqueryNode': {
+        // TODO
+        const {regSetOrUsed, keepOrClear} = getRegInfosInDepth(0);
+        const separator = direction === 'open' ? '↘': '↙';
+        result.push({meta, regSetOrUsed});
+        result.push({separator});
+        result.push({meta, regSetOrUsed});
+        result.push({keepOrClear});
+      }
+        break;
+      default: {
+        const {regSetOrUsed, keepOrClear} = getRegInfosInDepth(0);
+        result.push({meta, regSetOrUsed});
+        result.push({keepOrClear});
+      }
     }
 
-    // TODO depending on passthrough, or maybe the depth increase or similar,
-    //      only one of keep or clear is of interest and the other should be
-    //      ignored in that case.
-
-    for (const reg of regsToClear) {
-      assert(keepOrClear[reg] === '');
-      keepOrClear[reg] = '⮾';
-    }
-
-    // TODO: For spliced SubqueryStart and -End, we need two lines each,
-    //   and one of them needs regsToKeepStack[regsToKeepStack.length - 2]
-    for (const reg of regsToKeepStack[regsToKeepStack.length - 1]) {
-      assert(keepOrClear[reg] === '');
-      keepOrClear[reg] = '↓';
-    }
-    // TODO: For spliced SubqueryStart and -End, we need two lines each,
-    //   and one of them needs unusedRegsStack[unusedRegsStack.length - 2]
-    for (const reg of unusedRegsStack[unusedRegsStack.length - 1]) {
-      assert(regSetOrUsed[reg] === '');
-      regSetOrUsed[reg] = 'Ø';
-    }
-
-    return [{
-      meta: {
-        id: id,
-        type: type,
-        depth: depth,
-      },
-      regSetOrUsed,
-      keepOrClear
-    }];
+    return result;
     }
   );
 
@@ -2514,20 +2573,28 @@ function explainQuerysRegisters(query, explain, planIndex) {
   const regColWidths = [];
 
   for (const row of rowsInfos) {
-    for (const col of columns) {
-      colWidths[col.name] = Math.max(("" + row.meta[col.name]).length, colWidths[col.name]);
+    if (row.hasOwnProperty('meta')) {
+      for (const col of columns) {
+        colWidths[col.name] = Math.max(("" + row.meta[col.name]).length, colWidths[col.name]);
+      }
     }
-  }
-
-  for (const rowRegs of rowsInfos) {
-    assert(rowRegs.regSetOrUsed.length === rowRegs.keepOrClear.length);
-    for (let i = 0; i < rowRegs.regSetOrUsed.length; ++i) {
-      regColWidths[i] = regColWidths[i] || 0;
-      regColWidths[i] = Math.max(
-        rowRegs.regSetOrUsed[i].length,
-        rowRegs.keepOrClear[i].length,
-        regColWidths[i]
-      );
+    if (row.hasOwnProperty('regSetOrUsed')) {
+      for (let i = 0; i < row.regSetOrUsed.length; ++i) {
+        regColWidths[i] = regColWidths[i] || 0;
+        regColWidths[i] = Math.max(
+          row.regSetOrUsed[i].length,
+          regColWidths[i]
+        );
+      }
+    }
+    if (row.hasOwnProperty('keepOrClear')) {
+      for (let i = 0; i < row.keepOrClear.length; ++i) {
+        regColWidths[i] = regColWidths[i] || 0;
+        regColWidths[i] = Math.max(
+          row.keepOrClear[i].length,
+          regColWidths[i]
+        );
+      }
     }
   }
 
@@ -2562,20 +2629,35 @@ function explainQuerysRegisters(query, explain, planIndex) {
   print('─' + Object.values(colWidths).map(w => '─'.repeat(w)).join('┼') + '─');
 
   for (const row of rowsInfos) {
-    printf(' ');
-    printf(columns.map(col =>
-      formatField(row.meta[col.name], col.alignment, colWidths[col.name])
-    ).join('│'));
-    printf('  │');
-    printf(row.regSetOrUsed.map((regs, r) =>
-      formatField(regs, 'l', regColWidths[r])
-    ).join('│'));
-    printf("│ \n");
-    printf(' ' + Object.values(colWidths).map(w => ' '.repeat(w)).join('│'));
-    printf('  │');
-    printf(row.keepOrClear.map((keepOrClear, r) => formatField(keepOrClear, 'c', regColWidths[r])
-    ).join('│'));
-    printf("│ \n");
+    // print meta table
+    if (row.hasOwnProperty('meta')) {
+      printf(' ');
+      printf(columns.map(col =>
+        formatField(row.meta[col.name], col.alignment, colWidths[col.name])
+      ).join('│'));
+      printf(' ');
+    } else if (row.hasOwnProperty('separator')) {
+      const widths = Object.values(colWidths);
+      const width = _.sum(widths) + widths.length + 1;
+      printf(row.separator.repeat(width));
+    } else {
+      printf(' ' + Object.values(colWidths).map(w => ' '.repeat(w)).join('│'));
+    }
+    // print register table
+    if (row.hasOwnProperty('regSetOrUsed')) {
+      printf(' │');
+      printf(row.regSetOrUsed.map((regs, r) =>
+        formatField(regs, 'l', regColWidths[r])
+      ).join('│'));
+      printf('│ ');
+    }
+    else if (row.hasOwnProperty('keepOrClear')) {
+      printf('  │');
+      printf(row.keepOrClear.map((keepOrClear, r) => formatField(keepOrClear, 'c', regColWidths[r])
+      ).join('│'));
+      printf('│ ');
+    }
+    printf("\n");
   }
 }
 
