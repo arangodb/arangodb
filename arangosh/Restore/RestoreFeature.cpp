@@ -1363,7 +1363,7 @@ void RestoreFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(_options.inputPath, false, false);
+  _directory = std::make_unique<ManagedDirectory>(_options.inputPath, false, false, true);
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_NOT_FOUND:
