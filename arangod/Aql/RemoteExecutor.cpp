@@ -357,8 +357,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   }
 
   if (_lastError.fail()) {
-    //    _didReceiveShutdownRequest = true;
-
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = std::move(_lastError);
     _lastError.reset();

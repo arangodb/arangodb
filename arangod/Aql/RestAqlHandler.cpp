@@ -65,6 +65,29 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
+std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptionsWithTTL(
+    VPackSlice const& optionsSlice) const {
+  auto options = std::make_shared<VPackBuilder>();
+  double ttl = _queryRegistry->defaultTTL();
+  {
+    VPackObjectBuilder guard(options.get());
+    TRI_ASSERT(optionsSlice.isObject());
+    for (auto pair : VPackObjectIterator(optionsSlice)) {
+      if (pair.key.isEqualString("ttl")) {
+        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
+        ttl = _request->parsedValue<double>("ttl", ttl);
+        if (ttl <= 0) {
+          ttl = _queryRegistry->defaultTTL();
+        }
+        options->add("ttl", VPackValue(ttl));
+      } else {
+        options->add(pair.key.stringRef(), pair.value);
+      }
+    }
+  }
+  return std::make_pair(ttl, options);
+}
+
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
 // This route sets-up all the query engines required
@@ -90,30 +113,6 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
 //    traverserEngines: [ <infos for traverser engines> ],
 //    variables: [ <variables> ]
 //  }
-
-std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptionsWithTTL(
-    VPackSlice const& optionsSlice) const {
-  auto options = std::make_shared<VPackBuilder>();
-  double ttl = _queryRegistry->defaultTTL();
-  {
-    VPackObjectBuilder guard(options.get());
-    TRI_ASSERT(optionsSlice.isObject());
-    for (auto pair : VPackObjectIterator(optionsSlice)) {
-      if (pair.key.isEqualString("ttl")) {
-        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
-        ttl = _request->parsedValue<double>("ttl", ttl);
-        if (ttl <= 0) {
-          ttl = _queryRegistry->defaultTTL();
-        }
-        options->add("ttl", VPackValue(ttl));
-      } else {
-        options->add(pair.key.stringRef(), pair.value);
-      }
-    }
-  }
-  return std::make_pair(ttl, options);
-}
-
 void RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.

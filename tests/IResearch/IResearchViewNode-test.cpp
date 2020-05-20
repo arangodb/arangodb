@@ -2439,8 +2439,8 @@ TEST_F(IResearchViewNodeTest, collections) {
                              nullptr, arangodb::velocypack::Parser::fromJson("{}"));
 
   // register collections with the query
-  query.collections().add(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ);
-  query.collections ().add(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ);
+  query.collections().add(std::to_string(collection0->id()), arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None);
+  query.collections().add(std::to_string(collection1->id()), arangodb::AccessMode::Type::READ, arangodb::aql::Collection::Hint::None);
 
   // prepare query
   query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
