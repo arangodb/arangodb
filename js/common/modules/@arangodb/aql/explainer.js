@@ -6,7 +6,6 @@ var db = require('@arangodb').db,
   _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
-  printf = internal.printf,
   output = internal.output,
   colors = {};
 var console = require('console');
@@ -2359,7 +2358,9 @@ function inspectDump(filename, outfile) {
   }
 }
 
-function explainQuerysRegisters(query, explain, planIndex) {
+function explainQuerysRegisters(plan) {
+  // Currently, we need nothing but the nodes from plan.
+  const {nodes} = plan;
   const symbols = {
     clearRegister: '⮾',
     keepRegister: '↓',
@@ -2371,12 +2372,6 @@ function explainQuerysRegisters(query, explain, planIndex) {
   };
   Object.freeze(symbols);
 
-  // TODO clean up the parameters. E.g. we currently don't use `query`, and we
-  //      use nothing but the plan from explain, and nothing but the nodes from
-  //      the plan. So maybe just passing plan.nodes suffices.
-  const plan = planIndex === undefined
-    ? explain.plan
-    : explain.plans[planIndex];
   const getNodesById = (planNodes, result = {}) => {
     for (let node of planNodes) {
       result[node.id] = node;
@@ -2387,7 +2382,7 @@ function explainQuerysRegisters(query, explain, planIndex) {
 
     return result;
   };
-  const nodesById = getNodesById(plan.nodes);
+  const nodesById = getNodesById(nodes);
   //////////////////////////////////////////////////////////////////////////////
   // First, we build up the array nodesData. This will (though not while its
   // being built!) contain all nodes in a linearized fashion in the "canonical"
@@ -2397,15 +2392,13 @@ function explainQuerysRegisters(query, explain, planIndex) {
   //////////////////////////////////////////////////////////////////////////////
 
   /**
-   * @type {Array<{node:*,?current:('open'|'close')}>}
+   * @type {Array<{node:*, current:('open'|'close'|undefined)}>}
    */
   const nodesData = [];
 
-  //const leafNode = plan.nodes.filter(node => node.dependencies.length === 0)[0];
-  //const rootNode = plan.nodes.filter(node => node.parents.length === 0)[0];
   // TODO Check whether its okay to assume that the root node is always the last
   //      node.
-  const rootNode = plan.nodes[plan.nodes.length - 1];
+  const rootNode = nodes[nodes.length - 1];
 
   const subqueryStack = [];
   for (let node = rootNode; node !== undefined; ) {
@@ -2464,7 +2457,7 @@ function explainQuerysRegisters(query, explain, planIndex) {
      * @type {Array<number[]>} unusedRegsStack
      * @type {Array<{VariableId : number, RegisterId : number, depth : number}>} varInfoList
      * @type {Array<{id : number, name : string, isDataFromCollection : boolean}>} varsSetHere
-     * @type ?{'open'|'close'} direction
+     * @type {?('open'|'close')} direction
      */
     const {
       node: {
@@ -2545,32 +2538,20 @@ function explainQuerysRegisters(query, explain, planIndex) {
         assert(regsToKeepStack.length >= 2);
         let regsToKeep = regsToKeepStack[regsToKeepStack.length - 2];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({
-          meta,
-          registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs})
-        });
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
         result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
         regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
-        result.push({
-          meta,
-          registerFields: createRegisterFields(nrRegs),
-        });
+        result.push({meta, registerFields: createRegisterFields(nrRegs)});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToKeep})});
       }
         break;
       case 'SubqueryEndNode': {
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({
-          meta,
-          registerFields: createRegisterFields(nrRegs, {unusedRegs}),
-        });
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {unusedRegs})});
         result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
         const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
-        result.push({
-          meta,
-          registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere}),
-        });
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
       }
         break;
@@ -2694,7 +2675,21 @@ function explainQuerysRegisters(query, explain, planIndex) {
     output("\n");
   }
 
-  // TODO write a legend!
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Print a legend
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO Should this be optional?
+
+  print(``);
+  print(` Legend:`);
+  print(` [ ${symbols.clearRegister} ]: Clear register`);
+  print(` [ ${symbols.keepRegister} ]: Keep register`);
+  print(` [ ${symbols.writeRegister} ]: Write register`);
+  print(` [ ${symbols.readRegister} ]: Read register (not yet used!)`);
+  print(` [ ${symbols.unusedRegister} ]: Register is unused`);
+  print(` [ ${symbols.subqueryBegin} ]: Entering a subquery`);
+  print(` [ ${symbols.subqueryEnd} ]: Leaving a subquery`);
 }
 
 function explainRegisters(data, options, shouldPrint) {
@@ -2730,12 +2725,12 @@ function explainRegisters(data, options, shouldPrint) {
       stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length));
       stringBuilder.prefix = ' ';
       stringBuilder.appendLine();
-      explainQuerysRegisters(data.query, result, i);
+      explainQuerysRegisters(result.plans[i]);
       stringBuilder.prefix = '';
     }
   } else {
     // single plan
-    explainQuerysRegisters(data.query, result, undefined);
+    explainQuerysRegisters(result.plan);
   }
 
   if (shouldPrint === undefined || shouldPrint) {
