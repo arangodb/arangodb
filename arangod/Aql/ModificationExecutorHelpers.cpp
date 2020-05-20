@@ -151,6 +151,14 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const&
 
 void ModificationExecutorHelpers::throwOperationResultException(
     ModificationExecutorInfos const& infos, OperationResult const& result) {
+
+  // A "higher level error" happened (such as the transaction being aborted,
+  // replication being refused, etc ), and we do not have errorCounter or
+  // similar so we throw.
+  if (!result.ok()) {
+    THROW_ARANGO_EXCEPTION(result);
+  }
+
   auto const& errorCounter = result.countErrorCodes;
 
   // Early escape if we are ignoring errors.
