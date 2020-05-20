@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix bug which caused failing modification operations to lead to random
+  crashes.
+
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
   dependency (upgraded Swagger UI to 3.25.1).
 
