@@ -4,6 +4,8 @@ v3.6.4 (XXXX-XX-XX)
 * Fixed issue ES-545: failing modification operations led to random crashes with
   "Index out of bound" error message.
 
+* Fixed edge cases in RocksDB primary index range lookups for operators >= and <.
+
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
   dependency (upgraded Swagger UI to 3.25.1).
 
