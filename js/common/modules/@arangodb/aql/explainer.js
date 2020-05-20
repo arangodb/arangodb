@@ -7,7 +7,7 @@ var db = require('@arangodb').db,
   systemColors = internal.COLORS,
   print = internal.print,
   printf = internal.printf,
-  sprintf = internal.sprintf,
+  output = internal.output,
   colors = {};
 var console = require('console');
 
@@ -2360,6 +2360,17 @@ function inspectDump(filename, outfile) {
 }
 
 function explainQuerysRegisters(query, explain, planIndex) {
+  const symbols = {
+    clearRegister: '⮾',
+    keepRegister: '↓',
+    writeRegister: '→',
+    readRegister: '←',
+    unusedRegister: 'Ø',
+    subqueryBegin: '↘',
+    subqueryEnd: '↙',
+  };
+  Object.freeze(symbols);
+
   // TODO clean up the parameters. E.g. we currently don't use `query`, and we
   //      use nothing but the plan from explain, and nothing but the nodes from
   //      the plan. So maybe just passing plan.nodes suffices.
@@ -2402,14 +2413,14 @@ function explainQuerysRegisters(query, explain, planIndex) {
     nodesData.push(current);
     if (node.type === 'SubqueryNode') {
       subqueryStack.push(node);
-      current.direction = 'open';
+      current.direction = 'close';
       node = node.subquery.nodes[node.subquery.nodes.length - 1];
     } else if (node.dependencies && node.dependencies.length > 0) {
       node = nodesById[node.dependencies[0]];
     } else if (subqueryStack.length > 0) {
       node = subqueryStack.pop();
       const current = {node};
-      current.direction = 'close';
+      current.direction = 'open';
       nodesData.push(current);
       node = nodesById[node.dependencies[0]];
     } else {
@@ -2431,12 +2442,16 @@ function explainQuerysRegisters(query, explain, planIndex) {
   // shall be printed, with enough information that each field can be printed
   // and formatted on its own.
   //////////////////////////////////////////////////////////////////////////////
+
   /**
-   * @type {Array<(
-   *         {separator: string}
-   *         | {meta: {depth: number, id: number, type: string}, regSetOrUsed: string[]},
-   *         | {keepOrClear: string[]},
-   *       )>}
+   * @typedef RowInfo
+   * @type { { registerFields: string[], separator: string }
+   *       | { registerFields: string[], meta: {depth: number, id: number, type: string} }
+   *       | { registerFields: string[] }
+   *       }
+   */
+  /**
+   * @type {Array<RowInfo>} rowsInfos
    */
   const rowsInfos = nodesData.flatMap(data => {
     /**
@@ -2465,89 +2480,122 @@ function explainQuerysRegisters(query, explain, planIndex) {
     const meta = {id, type, depth};
     const result = [];
 
+    const varName = (variable) => {
+      if (/^[0-9_]/.test(variable.name)) {
+        return '#' + variable.name;
+      }
+      return variable.name;
+    };
+
+    const regIdToVarNameSetHere = Object.fromEntries(
+      varsSetHere.map(variable => [regIdByVarId[variable.id], varName(variable)]));
+
+    // TODO used vars/registers are still missing
+
     /**
-     * @param {number} depth
+     * @param {number} nrRegs
+     * @param { { regIdToVarNameSetHere: (undefined|!Object<number, string>), unusedRegs: (undefined|!number[]) }
+     *          | { regsToClear: (undefined|!number[]), regsToKeep: (undefined|!number[]) } } regInfo
+     * @return { !Array<string> }
      */
-    const getRegInfosInDepth = (depth) => {
-      assert(depth === 0 || depth === 1);
-      const regSetOrUsed = [...Array(nrRegs)].map(_ => '');
-      const keepOrClear = regSetOrUsed.slice();
+    const createRegisterFields = (nrRegs, regInfo = {}) => {
+      const registerFields = [...Array(nrRegs)].map(_ => '');
 
-      const varName = (variable) => {
-        if (/^[0-9_]/.test(variable.name)) {
-          return '#' + variable.name;
+      const hasRegIdToVarNameSetHere = regInfo.hasOwnProperty('regIdToVarNameSetHere');
+      const hasUnusedRegs = regInfo.hasOwnProperty('unusedRegs');
+      const hasRegsToClear = regInfo.hasOwnProperty('regsToClear');
+      const hasRegsToKeep = regInfo.hasOwnProperty('regsToKeep');
+
+      assert(!((hasRegIdToVarNameSetHere || hasUnusedRegs) && (hasRegsToClear || hasRegsToKeep)));
+      if (hasRegIdToVarNameSetHere && hasUnusedRegs) {
+        assert(_.intersection(Object.keys(regInfo.regIdToVarNameSetHere), regInfo.unusedRegs)
+          .length === 0);
+      }
+      if (hasRegsToClear && hasRegsToKeep) {
+        assert(_.intersection(regInfo.regsToClear, regInfo.regsToKeep)
+          .length === 0);
+      }
+
+      if (hasRegIdToVarNameSetHere) {
+        for (const [regId, varName] of Object.entries(regInfo.regIdToVarNameSetHere)) {
+          registerFields[regId] = symbols.writeRegister + varName;
         }
-        return variable.name;
-      };
-
-      for (const variable of varsSetHere) {
-        assert(regSetOrUsed[regIdByVarId[variable.id]] === '');
-        regSetOrUsed[regIdByVarId[variable.id]] = '→' + varName(variable);
+      }
+      if (hasUnusedRegs) {
+        for (const regId of regInfo.unusedRegs) {
+          registerFields[regId] = symbols.unusedRegister;
+        }
+      }
+      if (hasRegsToClear) {
+        for (const regId of regInfo.regsToClear) {
+          registerFields[regId] = symbols.clearRegister;
+        }
+      }
+      if (hasRegsToKeep) {
+        for (const regId of regInfo.regsToKeep) {
+          registerFields[regId] = symbols.keepRegister;
+        }
       }
 
-      // TODO depending on passthrough, or maybe the depth increase or similar,
-      //      only one of keep or clear is of interest and the other should maybe
-      //      ignored in that case.
-
-      for (const reg of regsToClear) {
-        assert(keepOrClear[reg] === '');
-        keepOrClear[reg] = '⮾';
-      }
-
-      for (const reg of regsToKeepStack[regsToKeepStack.length - 1 - depth]) {
-        assert(keepOrClear[reg] === '');
-        keepOrClear[reg] = '↓';
-      }
-
-      for (const reg of unusedRegsStack[unusedRegsStack.length - 1]) {
-        assert(regSetOrUsed[reg] === '');
-        regSetOrUsed[reg] = 'Ø';
-      }
-      return {regSetOrUsed, keepOrClear};
+      return registerFields;
     };
 
     switch (type) {
       case 'SubqueryStartNode': {
-        let {regSetOrUsed, keepOrClear} = getRegInfosInDepth(1);
+        assert(regsToKeepStack.length >= 2);
+        let regsToKeep = regsToKeepStack[regsToKeepStack.length - 2];
+        const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
         result.push({
-          meta: {id: meta.id, depth: meta.depth, type: meta.type + ' (outside)'},
-          regSetOrUsed,
+          meta,
+          registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs})
         });
-        result.push({keepOrClear});
-        result.push({separator: '↘'});
-        ({regSetOrUsed, keepOrClear} = getRegInfosInDepth(0));
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+        result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
+        regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
         result.push({
-          meta: {id: meta.id, depth: meta.depth, type: meta.type + ' (inside)'},
-          regSetOrUsed,
+          meta,
+          registerFields: createRegisterFields(nrRegs),
         });
-        result.push({keepOrClear});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToKeep})});
       }
         break;
       case 'SubqueryEndNode': {
-        // TODO ?
-        result.push({separator: '↙'});
-        const {regSetOrUsed, keepOrClear} = getRegInfosInDepth(0);
+        const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
         result.push({
-          meta: {id: meta.id, depth: meta.depth, type: meta.type},
-          regSetOrUsed,
+          meta,
+          registerFields: createRegisterFields(nrRegs, {unusedRegs}),
         });
-        result.push({keepOrClear});
+        result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
+        const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+        result.push({
+          meta,
+          registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere}),
+        });
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
       }
         break;
       case 'SubqueryNode': {
-        // TODO
-        const {regSetOrUsed, keepOrClear} = getRegInfosInDepth(0);
-        const separator = direction === 'open' ? '↘': '↙';
-        result.push({meta, regSetOrUsed});
-        result.push({separator});
-        result.push({meta, regSetOrUsed});
-        result.push({keepOrClear});
+        switch (direction) {
+          case 'open': {
+            result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
+          }
+            break;
+          case 'close': {
+            const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+            const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
+            result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
+            result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs})});
+            result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+          }
+            break;
+        }
       }
         break;
       default: {
-        const {regSetOrUsed, keepOrClear} = getRegInfosInDepth(0);
-        result.push({meta, regSetOrUsed});
-        result.push({keepOrClear});
+        const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
+        const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
       }
     }
 
@@ -2577,23 +2625,11 @@ function explainQuerysRegisters(query, explain, planIndex) {
         colWidths[col.name] = Math.max(("" + row.meta[col.name]).length, colWidths[col.name]);
       }
     }
-    if (row.hasOwnProperty('regSetOrUsed')) {
-      for (let i = 0; i < row.regSetOrUsed.length; ++i) {
+    if (row.hasOwnProperty('registerFields')) {
+      row.registerFields.forEach((value, i) => {
         regColWidths[i] = regColWidths[i] || 0;
-        regColWidths[i] = Math.max(
-          row.regSetOrUsed[i].length,
-          regColWidths[i]
-        );
-      }
-    }
-    if (row.hasOwnProperty('keepOrClear')) {
-      for (let i = 0; i < row.keepOrClear.length; ++i) {
-        regColWidths[i] = regColWidths[i] || 0;
-        regColWidths[i] = Math.max(
-          row.keepOrClear[i].length,
-          regColWidths[i]
-        );
-      }
+        regColWidths[i] = Math.max(value.length, regColWidths[i]);
+      });
     }
   }
 
@@ -2618,7 +2654,9 @@ function explainQuerysRegisters(query, explain, planIndex) {
         return ' '.repeat(paddingWidth) + str;
       default:
         const halfPadding = Math.floor(paddingWidth / 2);
-        return ' '.repeat(paddingWidth - halfPadding) + str + ' '.repeat(halfPadding);
+        const otherHalf = paddingWidth - halfPadding;
+        // halfPadding <= otherHalf <= halfPadding + 1
+        return ' '.repeat(halfPadding) + str + ' '.repeat(otherHalf);
     }
   };
 
@@ -2630,34 +2668,33 @@ function explainQuerysRegisters(query, explain, planIndex) {
   for (const row of rowsInfos) {
     // print meta table
     if (row.hasOwnProperty('meta')) {
-      printf(' ');
-      printf(columns.map(col =>
+      output(' ');
+      output(columns.map(col =>
         formatField(row.meta[col.name], col.alignment, colWidths[col.name])
       ).join('│'));
-      printf(' ');
+      output(' ');
     } else if (row.hasOwnProperty('separator')) {
       const widths = Object.values(colWidths);
       const width = _.sum(widths) + widths.length + 1;
-      printf(row.separator.repeat(width));
+      output(row.separator.repeat(width));
     } else {
-      printf(' ' + Object.values(colWidths).map(w => ' '.repeat(w)).join('│'));
+      output(' ');
+      output(Object.values(colWidths).map(w => ' '.repeat(w)).join('│'));
+      output(' ');
     }
+    output('  ');
     // print register table
-    if (row.hasOwnProperty('regSetOrUsed')) {
-      printf(' │');
-      printf(row.regSetOrUsed.map((regs, r) =>
-        formatField(regs, 'l', regColWidths[r])
+    if (row.hasOwnProperty('registerFields')) {
+      output('│');
+      output(row.registerFields.map((value, r) =>
+        formatField(value, 'c', regColWidths[r])
       ).join('│'));
-      printf('│ ');
+      output('│');
     }
-    else if (row.hasOwnProperty('keepOrClear')) {
-      printf('  │');
-      printf(row.keepOrClear.map((keepOrClear, r) => formatField(keepOrClear, 'c', regColWidths[r])
-      ).join('│'));
-      printf('│ ');
-    }
-    printf("\n");
+    output("\n");
   }
+
+  // TODO write a legend!
 }
 
 function explainRegisters(data, options, shouldPrint) {

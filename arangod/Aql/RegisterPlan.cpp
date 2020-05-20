@@ -172,6 +172,11 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       regsToKeepStack.pop_back();
     } break;
     default: {
+      // IMPORTANT NOTE:
+      // Note that in case of mayReuseRegisterImmediately, these registers can
+      // be reused, but are *still* set in regsToClear! This is *only* okay
+      // because regsToClear is only ever used in passthrough-blocks, but
+      // nodes that can create those may *not* reuse registers immediately.
       auto regsToClear = calculateRegistersToClear(en);
       unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
       // We need to delete those variables that have been used here but are not
