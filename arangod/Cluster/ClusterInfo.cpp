@@ -1282,7 +1282,6 @@ void ClusterInfo::loadCurrent() {
 /// If it is not found in the cache, the cache is reloaded once
 /// if the collection is not found afterwards, this method will throw an
 /// exception
-
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& databaseID,
                                                               CollectionID const& collectionID) {
   auto c = getCollectionNT(databaseID, collectionID);
@@ -1291,9 +1290,8 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    getCollectionNotFoundMsg(databaseID, collectionID)  // message
     );
-  } else {
-    return c;
   }
+  return c;
 }
 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const& databaseID,
