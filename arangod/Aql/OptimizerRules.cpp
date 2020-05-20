@@ -2345,7 +2345,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       }
     } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -2420,7 +2420,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       } else if (accessed->type == NODE_TYPE_ARRAY) {
         int64_t position;
@@ -2434,7 +2434,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           if (!valid) {
             // invalid index
             modifiedNode = true;
-            return Ast::createNodeValueNull();
+            return p->getAst()->createNodeValueNull();
           }
         } else {
           // numeric index, e.g. [123]
@@ -2461,7 +2461,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
         // index out of bounds
         modifiedNode = true;
-        return Ast::createNodeValueNull();
+        return p->getAst()->createNodeValueNull();
       }
     }
 
@@ -7367,7 +7367,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       if (std::get<2>(sq)) {
         Ast* ast = plan->getAst();
         // generate a calculation node that only produces "true"
-        auto expr = std::make_unique<Expression>(ast, Ast::createNodeValueBool(true));
+        auto expr = std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
