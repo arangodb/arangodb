@@ -290,34 +290,20 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
-
 class AnalyzerModificationTransaction {
  public:
   using Ptr = std::unique_ptr<AnalyzerModificationTransaction>;
 
-  AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup)
-    : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
-    TRI_ASSERT(_clusterInfo);
-  }
+  AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup);
 
   AnalyzerModificationTransaction(AnalyzerModificationTransaction const&) = delete;
   AnalyzerModificationTransaction& operator=(AnalyzerModificationTransaction const&) = delete;
 
-  ~AnalyzerModificationTransaction() {
-    try {
-      abort();
-    } catch (...) {} // force no exceptions
-    TRI_ASSERT(!_rollbackCounter && !_rollbackRevision);
-  }
+  ~AnalyzerModificationTransaction();
 
-  static int32_t getPendingCount() noexcept {
-    return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
-  }
+  static int32_t getPendingCount() noexcept;
 
-  AnalyzersRevision::Revision buildingRevision() const noexcept {
-    TRI_ASSERT(_buildingRevision != AnalyzersRevision::LATEST); // unstarted transation access
-    return _buildingRevision;
-  }
+  AnalyzersRevision::Revision buildingRevision() const noexcept;
 
   Result start();
   Result commit();

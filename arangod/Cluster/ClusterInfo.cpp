@@ -3104,7 +3104,12 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
               {{anPath, AgencyValueOperationType::SET, emptyRevision.slice()},
                {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
               {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
-          ac.sendTransactionWithFailover(transaction);
+          auto const res = ac.sendTransactionWithFailover(transaction);
+          auto results = res.slice().get("results");
+          if (results.isArray() && results.length() > 0) {
+            readLocker.unlock(); // we want to wait for plan to load - release reader
+            waitForPlan(results[0].getNumber<uint64_t>()).get();
+          }
         }
         continue;
       }
@@ -3154,12 +3159,15 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
                                    " error message: " + res.errorMessage() +
                                    " error details: " + res.errorDetails() + " body: " + res.body()),
                             AnalyzersRevision::LATEST);
-    }
+    } else {
+      auto results = res.slice().get("results");
+      if (results.isArray() && results.length() > 0) {
+        waitForPlan(results[0].getNumber<uint64_t>()).get();
+      }
+    } 
     break;
   } while (true);
 
-  // Update our cache
-  loadPlan();
   return std::make_pair(Result(TRI_ERROR_NO_ERROR), revision + 1); // as INCREMENT_OP succeeded
 }
 
@@ -3245,7 +3253,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
         }
 
         continue;
-      } else {
+      } else if (restore) {
         break; // failed precondition means our revert is indirectly successful!
       }
 
@@ -3255,22 +3263,11 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
               " HTTP code: " + std::to_string(res.httpCode()) +
               " error message: " + res.errorMessage() +
               " error details: " + res.errorDetails() + " body: " + res.body());
-    }
-    if (!restore) {
-      // ensure at least our coordinator sees self-made changes immediately.
-      auto const endTimeReload = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
-      do {
-        auto loadedRevision = getAnalyzersRevision(databaseID, true);
-        if (loadedRevision && loadedRevision->getRevision() >= revision) {
-          break; // ok, our cache is actually updated.
-        }
-        if (TRI_microtime() > endTimeReload) {
-          LOG_TOPIC("ca3cb", WARN, Logger::CLUSTER)
-            << "Failed to update analyzers cache to revision: '" << revision
-            << "' in database '" << databaseID << "'";
-          break;
-        }
-      } while (true);
+    } else {
+      auto results = res.slice().get("results");
+      if (results.isArray() && results.length() > 0) {
+        waitForPlan(results[0].getNumber<uint64_t>()).get();
+      }
     }
     break;
   } while (true);
@@ -5442,6 +5439,29 @@ void ClusterInfo::triggerWaiting(
 
 }
 
+AnalyzerModificationTransaction::AnalyzerModificationTransaction(
+    DatabaseID const& database, ClusterInfo* ci, bool cleanup)
+  : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
+  TRI_ASSERT(_clusterInfo);
+}
+
+AnalyzerModificationTransaction::~AnalyzerModificationTransaction() {
+  try {
+    abort();
+  }
+  catch (...) {} // force no exceptions
+  TRI_ASSERT(!_rollbackCounter && !_rollbackRevision);
+}
+
+int32_t AnalyzerModificationTransaction::getPendingCount() noexcept {
+  return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+}
+
+AnalyzersRevision::Revision AnalyzerModificationTransaction::buildingRevision() const noexcept {
+  TRI_ASSERT(_buildingRevision != AnalyzersRevision::LATEST); // unstarted transation access
+  return _buildingRevision;
+}
+
 Result AnalyzerModificationTransaction::start() {
   auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
   int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
@@ -5466,7 +5486,6 @@ Result AnalyzerModificationTransaction::start() {
   _rollbackCounter = true; // from now on we must release our counter
 
   if (_cleanupTransaction) {
-    _rollbackRevision = true; // we just need to revert our revision
     _buildingRevision = _clusterInfo->getAnalyzersRevision(_database, false)->getRevision();
     TRI_ASSERT(_clusterInfo->getAnalyzersRevision(_database, false)->getBuildingRevision() != _buildingRevision);
     return {};
@@ -5479,7 +5498,7 @@ Result AnalyzerModificationTransaction::start() {
 }
 
 Result AnalyzerModificationTransaction::commit() {
-  TRI_ASSERT(_rollbackCounter && _rollbackRevision);
+  TRI_ASSERT(_rollbackCounter && (_rollbackRevision || _cleanupTransaction));
   auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
   _rollbackRevision = res.fail() && !_cleanupTransaction;
   // if succesful revert mark our transaction as completed (otherwise postpone it to abort call).
@@ -5497,9 +5516,10 @@ Result AnalyzerModificationTransaction::abort() {
   }
   Result res{};
   try {
-    if (_rollbackRevision && !_cleanupTransaction) { // cleanup transaction has nothing to rollback
-      res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
+    if (_rollbackRevision) {
+      TRI_ASSERT(!_cleanupTransaction); // cleanup transaction has nothing to rollback
       _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
+      res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
     }
   }
   catch (...) { // let`s be as safe as possible
