@@ -1543,7 +1543,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -1856,7 +1857,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
@@ -2142,7 +2144,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
@@ -2386,7 +2389,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION));
@@ -2481,9 +2485,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // this operation to succeed, we simply return with a refusal
       // error (note that we use the follower version, since we have
       // lost leadership):
-      if (findRefusal(responses)) {
-        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
-      }
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
@@ -2505,6 +2506,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }
+      }
+      if (findRefusal(responses)) {
+        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
     }
   }
