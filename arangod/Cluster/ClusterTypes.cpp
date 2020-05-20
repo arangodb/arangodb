@@ -33,8 +33,8 @@ std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
 namespace arangodb {
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
-  static auto ptr =  std::make_shared<AnalyzersRevision::Ptr::element_type>(
-      AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0, Key());
+  static auto ptr =  std::shared_ptr<AnalyzersRevision::Ptr::element_type>(
+      new AnalyzersRevision(AnalyzersRevision::MIN, AnalyzersRevision::MIN, "", 0));
   return ptr;
 }
 

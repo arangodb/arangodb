@@ -92,18 +92,6 @@ struct AnalyzersRevision {
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
 
-  struct Key { // passkey idiom
-   private:
-    friend struct AnalyzersRevision;
-    Key() {}
-    Key(Key const&) = default;
-  };
-
-  AnalyzersRevision(Revision revision, Revision buildingRevision,
-    ServerID&& serverID, uint64_t rebootID, Key const&) noexcept
-    : _revision(revision), _buildingRevision(buildingRevision),
-    _serverID(std::move(serverID)), _rebootID(rebootID) {}
-
   AnalyzersRevision(AnalyzersRevision const&) = delete;
   AnalyzersRevision& operator=(AnalyzersRevision const&) = delete;
 
@@ -129,6 +117,12 @@ struct AnalyzersRevision {
 
   static Ptr getEmptyRevision();
  private:
+
+  AnalyzersRevision(Revision revision, Revision buildingRevision,
+    ServerID&& serverID, uint64_t rebootID) noexcept
+    : _revision(revision), _buildingRevision(buildingRevision),
+    _serverID(std::move(serverID)), _rebootID(rebootID) {}
+
   Revision _revision;
   Revision _buildingRevision;
   ServerID _serverID;
