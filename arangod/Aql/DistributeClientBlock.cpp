@@ -39,10 +39,7 @@ DistributeClientBlock::QueueEntry::QueueEntry(SkipResult const& skipped,
 }
 
 auto DistributeClientBlock::QueueEntry::numRows() const -> size_t {
-  if (_block == nullptr) {
-    return 0;
-  }
-  return _block->size();
+  return _choosen.size();
 }
 
 auto DistributeClientBlock::QueueEntry::skipResult() const -> SkipResult const& {
