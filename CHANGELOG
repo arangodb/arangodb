@@ -1,8 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Fix bug which caused failing modification operations to lead to random
-  crashes.
+* Fixed issue ES-545: failing modification operations led to random crashes with
+  "Index out of bound" error message.
 
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
   dependency (upgraded Swagger UI to 3.25.1).
