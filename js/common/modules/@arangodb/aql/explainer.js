@@ -2569,7 +2569,8 @@ function explainQuerysRegisters(plan) {
       case 'SubqueryNode': {
         switch (direction) {
           case 'open': {
-            result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere})});
+            // We could print regIdToVarNameUsedHere here...
+            result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
           }
             break;
           case 'close': {
