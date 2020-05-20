@@ -435,6 +435,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _options = BaseOptions::createOptionsFromSlice(_plan->getAst()->query(), opts);
   // set traversal-translations
   _options->setCollectionToShard(_collectionToShard);  // could be moved as it will only be used here
+  if (_options->parallelism() > 1) {
+    _plan->getAst()->setContainsParallelNode();
+  }
 }
 
 /// @brief Internal constructor to clone the node.

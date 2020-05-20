@@ -1273,7 +1273,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice traverserSlice,
                                        VPackBuilder& answerBuilder) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "Query::prepareQuerySnippets"
+                                             << "ClusterQuery::prepareClusterQuery"
                                              << " this: " << (uintptr_t)this;
   
   init();
@@ -1383,8 +1383,8 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   
   LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
        << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before _trx->commit"
-       << " this: " << (uintptr_t)this;
+       << "Query::finalizeSnippets: before _trx->commit, errorCode: "
+       << errorCode << ", this: " << (uintptr_t)this;
   
   for (auto& [eId, engine] : _snippets) {
     engine->setShutdown(); // no need to pass through shutdown
@@ -1404,11 +1404,6 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
     }
   }
 
-   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
-       << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before cleanupPlanAndEngine"
-       << " this: " << (uintptr_t)this;
-
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
   stats.requests += _numRequests.load(std::memory_order_relaxed);
@@ -1417,6 +1412,11 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   
   _snippets.clear();
   _traversers.clear();
+  
+  LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
+      << TRI_microtime() - _startTime << " "
+      << "ClusterQuery::finalizeClusterQuery: done"
+      << " this: " << (uintptr_t)this;
   
   return finishResult;
 }

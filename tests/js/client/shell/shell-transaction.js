@@ -2056,6 +2056,39 @@ function transactionOperationsSuite () {
 
       assertEqual(1, c1.count());
       assertEqual([ 'foo' ], sortedKeys(c1));
+    },
+
+    testAQLDocumentModify: function() {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
+      c1.save({_key:"1"});
+
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        trx.query(`LET g = NOOPT(DOCUMENT("${cn1}/1")) UPDATE g WITH {"updated":1} IN ${cn1}`);
+
+        let doc = tc1.document("1");
+        assertEqual(doc.updated, 1);
+
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {   
+        if (trx) {
+          trx.commit();
+        }
+      }
+      assertEqual(1, c1.count());
+      let doc = c1.document("1");
+      assertEqual(doc.updated, 1);
     }
 
   };
