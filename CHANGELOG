@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fix edge cases in RocksDB primary index range lookups for operators >= and <.
+
 * Updated arangosync to 0.7.5.
 
 * Fixed ability to edit graph edge in Graph Viewer of web UI.
