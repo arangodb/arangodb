@@ -28,8 +28,6 @@ std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
   return r.print(o);
 }
 
-
-
 namespace arangodb {
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
@@ -91,9 +89,9 @@ AnalyzersRevision::Ptr AnalyzersRevision::fromVelocyPack(VPackSlice const& slice
     }
     rebootID = rebootIDSlice.getNumber<uint64_t>();
   }
-  return std::make_shared<AnalyzersRevision::Ptr::element_type>(
-      revisionSlice.getNumber<AnalyzersRevision::Revision>(), 
-      buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
-      std::move(coordinatorID), rebootID, Key());
+  return std::shared_ptr<AnalyzersRevision::Ptr::element_type>(
+      new AnalyzersRevision(revisionSlice.getNumber<AnalyzersRevision::Revision>(), 
+                            buildingRevisionSlice.getNumber<AnalyzersRevision::Revision>(),
+                            std::move(coordinatorID), rebootID));
 }
 }  // namespace arangodb
