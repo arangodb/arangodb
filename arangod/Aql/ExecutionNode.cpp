@@ -912,6 +912,16 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           oneVar->toVelocyPack(nodes);
         }
       }
+
+      nodes.add(VPackValue("varsUsedHere"));
+      {
+        VPackArrayBuilder guard(&nodes);
+        auto varsUsedHere = VarSet{};
+        getVariablesUsedHere(varsUsedHere);
+        for (auto const& oneVar : varsUsedHere) {
+          oneVar->toVelocyPack(nodes);
+        }
+      }
     }
 
     nodes.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
