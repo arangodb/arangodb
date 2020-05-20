@@ -1,4 +1,4 @@
-<!-- swagger-ui 3.22.1 -->
+<!-- swagger-ui 3.25.1 -->
 <!-- HTML for static distribution bundle build -->
 <!DOCTYPE html>
 <html lang="en">
@@ -86,7 +86,7 @@
         ],
         layout: "StandaloneLayout",
         //#region ArangoDB-specific changes
-        // Expand the API documentation by default.
+        validatorUrl: null,
         docExpansion: "list",
         requestInterceptor: function (request) {
           var jwt = sessionStorage.getItem("jwt");

@@ -1,7 +1,10 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Fix edge cases in RocksDB primary index range lookups for operators >= and <.
+* Fixed edge cases in RocksDB primary index range lookups for operators >= and <.
+
+* Fixed issue #11525: Address security vulnerability by updating Swagger-UI
+  dependency (upgraded Swagger UI to 3.25.1).
 
 * Updated arangosync to 0.7.5.
 
