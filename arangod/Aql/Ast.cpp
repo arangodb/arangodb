@@ -143,24 +143,6 @@ LogicalDataSource::Category const* injectDataSourceInQuery(
 
 }  // namespace
 
-/// @brief initialize a singleton no-op node instance
-AstNode const Ast::NopNode{NODE_TYPE_NOP};
-
-/// @brief initialize a singleton null node instance
-AstNode const Ast::NullNode{AstNodeValue()};
-
-/// @brief initialize a singleton false node instance
-AstNode const Ast::FalseNode{AstNodeValue(false)};
-
-/// @brief initialize a singleton true node instance
-AstNode const Ast::TrueNode{AstNodeValue(true)};
-
-/// @brief initialize a singleton zero node instance
-AstNode const Ast::ZeroNode{AstNodeValue(int64_t(0))};
-
-/// @brief initialize a singleton empty string node instance
-AstNode const Ast::EmptyStringNode{AstNodeValue("", uint32_t(0))};
-
 /// @brief inverse comparison operators
 std::unordered_map<int, AstNodeType> const Ast::NegatedOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_NE},
@@ -179,6 +161,37 @@ std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LE},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GT},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GE}};
+
+Ast::SpecialNodes::SpecialNodes() 
+  : NopNode{NODE_TYPE_NOP},
+    NullNode{AstNodeValue()},
+    FalseNode{AstNodeValue(false)},
+    TrueNode{AstNodeValue(true)},
+    ZeroNode{AstNodeValue(int64_t(0))},
+    EmptyStringNode{AstNodeValue("", uint32_t(0))} {
+
+  NopNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
+  NullNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
+  FalseNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
+  TrueNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
+  ZeroNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
+  EmptyStringNode.setFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
+
+  // the const-away casts are necessary API-wise. however, we are never ever modifying
+  // the computed values for these special nodes.
+  NullNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::nullSlice().begin()));
+  FalseNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::falseSlice().begin()));
+  TrueNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::trueSlice().begin()));
+  ZeroNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::zeroSlice().begin()));
+  EmptyStringNode.setComputedValue(const_cast<uint8_t*>(VPackSlice::emptyStringSlice().begin()));
+  
+  TRI_ASSERT(NopNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  TRI_ASSERT(NullNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  TRI_ASSERT(FalseNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  TRI_ASSERT(TrueNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  TRI_ASSERT(ZeroNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  TRI_ASSERT(EmptyStringNode.hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+}
 
 /// @brief create the AST
 Ast::Ast(QueryContext& query)
@@ -272,7 +285,7 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   AstNode* variable = createNodeVariable(variableName, nameLength, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
-  node->addMember(&NopNode);
+  node->addMember(&_specialNodes.NopNode);
 
   return node;
 }
@@ -286,7 +299,7 @@ AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression,
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   AstNode* v = createNode(NODE_TYPE_VARIABLE);
@@ -313,7 +326,7 @@ AstNode* Ast::createNodeForView(Variable* variable, AstNode const* expression,
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   AstNode* variableNode = createNode(NODE_TYPE_VARIABLE);
@@ -414,7 +427,7 @@ AstNode* Ast::createNodeRemove(AstNode const* expression,
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   node->addMember(options);
@@ -432,7 +445,7 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   bool returnOld = false;
@@ -461,7 +474,7 @@ AstNode* Ast::createNodeUpdate(AstNode const* keyExpression, AstNode const* docE
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   node->addMember(options);
@@ -471,7 +484,7 @@ AstNode* Ast::createNodeUpdate(AstNode const* keyExpression, AstNode const* docE
   if (keyExpression != nullptr) {
     node->addMember(keyExpression);
   } else {
-    node->addMember(&NopNode);
+    node->addMember(&_specialNodes.NopNode);
   }
 
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
@@ -488,7 +501,7 @@ AstNode* Ast::createNodeReplace(AstNode const* keyExpression, AstNode const* doc
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   node->addMember(options);
@@ -498,7 +511,7 @@ AstNode* Ast::createNodeReplace(AstNode const* keyExpression, AstNode const* doc
   if (keyExpression != nullptr) {
     node->addMember(keyExpression);
   } else {
-    node->addMember(&NopNode);
+    node->addMember(&_specialNodes.NopNode);
   }
 
   node->addMember(createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
@@ -518,7 +531,7 @@ AstNode* Ast::createNodeUpsert(AstNodeType type, AstNode const* docVariable,
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   node->addMember(options);
@@ -551,7 +564,7 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   node->addMember(options);
@@ -562,9 +575,9 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   agg->addMember(aggregates);  // may be an empty array
   node->addMember(agg);
 
-  node->addMember(into != nullptr ? into : &NopNode);
-  node->addMember(intoExpression != nullptr ? intoExpression : &NopNode);
-  node->addMember(keepVariables != nullptr ? keepVariables : &NopNode);
+  node->addMember(into != nullptr ? into : &_specialNodes.NopNode);
+  node->addMember(intoExpression != nullptr ? intoExpression : &_specialNodes.NopNode);
+  node->addMember(keepVariables != nullptr ? keepVariables : &_specialNodes.NopNode);
 
   return node;
 }
@@ -577,7 +590,7 @@ AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
 
   if (options == nullptr) {
     // no options given. now use default options
-    options = &NopNode;
+    options = &_specialNodes.NopNode;
   }
 
   node->addMember(options);
@@ -1039,7 +1052,7 @@ AstNode* Ast::createNodeValueNull() {
   // performance optimization:
   // return a pointer to the singleton null node
   // note: this node is never registered nor freed
-  return const_cast<AstNode*>(&NullNode);
+  return const_cast<AstNode*>(&_specialNodes.NullNode);
 }
 
 /// @brief create an AST bool value node
@@ -1048,10 +1061,10 @@ AstNode* Ast::createNodeValueBool(bool value) {
   // return a pointer to the singleton bool nodes
   // note: these nodes are never registered nor freed
   if (value) {
-    return const_cast<AstNode*>(&TrueNode);
+    return const_cast<AstNode*>(&_specialNodes.TrueNode);
   }
 
-  return const_cast<AstNode*>(&FalseNode);
+  return const_cast<AstNode*>(&_specialNodes.FalseNode);
 }
 
 /// @brief create an AST int value node
@@ -1060,7 +1073,7 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
     // performance optimization:
     // return a pointer to the singleton zero node
     // note: these nodes are never registered nor freed
-    return const_cast<AstNode*>(&ZeroNode);
+    return const_cast<AstNode*>(&_specialNodes.ZeroNode);
   }
 
   AstNode* node = createNode(NODE_TYPE_VALUE);
@@ -1095,7 +1108,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
     // performance optimization:
     // return a pointer to the singleton empty string node
     // note: these nodes are never registered nor freed
-    return const_cast<AstNode*>(&EmptyStringNode);
+    return const_cast<AstNode*>(&_specialNodes.EmptyStringNode);
   }
 
   AstNode* node = createNode(NODE_TYPE_VALUE);
@@ -1470,7 +1483,7 @@ AstNode const* Ast::createNodeOptions(AstNode const* options) const {
   if (options != nullptr) {
     return options;
   }
-  return &NopNode;
+  return &_specialNodes.NopNode;
 }
 
 /// @brief create an AST function call node
@@ -1541,10 +1554,7 @@ AstNode* Ast::createNodeRange(AstNode const* start, AstNode const* end) {
 }
 
 /// @brief create an AST nop node
-AstNode* Ast::createNodeNop() { return const_cast<AstNode*>(&NopNode); }
-
-/// @brief get the AST nop node
-AstNode* Ast::getNodeNop() { return const_cast<AstNode*>(&NopNode); }
+AstNode* Ast::createNodeNop() { return const_cast<AstNode*>(&_specialNodes.NopNode); }
 
 /// @brief create an AST n-ary operator node
 AstNode* Ast::createNodeNaryOperator(AstNodeType type) {
@@ -1555,9 +1565,7 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type) {
 
 /// @brief create an AST n-ary operator node
 AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND || type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  AstNode* node = createNode(type);
+  AstNode* node = createNodeNaryOperator(type);
   node->addMember(child);
 
   return node;
@@ -2458,6 +2466,9 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
 /// @brief copies node payload from node into copy. this is *not* copying
 /// the subnodes
 void Ast::copyPayload(AstNode const* node, AstNode* copy) const {
+  TRI_ASSERT(!copy->hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  TRI_ASSERT(copy->computedValue() == nullptr);
+
   AstNodeType const type = node->type;
 
   if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER ||
@@ -2517,14 +2528,15 @@ AstNode* Ast::clone(AstNode const* node) {
     // nop node is a singleton
     return const_cast<AstNode*>(node);
   }
-
+  
   AstNode* copy = createNode(type);
   TRI_ASSERT(copy != nullptr);
 
-  // copy flags
+  // copy flags, but nothing const-related
   copy->flags = node->flags;
+  copy->removeFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
   TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
-
+  
   // special handling for certain node types
   // copy payload...
   copyPayload(node, copy);
@@ -2550,7 +2562,9 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
   TRI_ASSERT(copy != nullptr);
 
   // copy flags
-  copy->flags = (node->flags & ~AstNodeFlagType::FLAG_FINALIZED);
+  copy->flags = node->flags;
+  copy->removeFlag(AstNodeFlagType::FLAG_FINALIZED);
+  copy->removeFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
 
   // special handling for certain node types
   // copy payload...
@@ -2757,7 +2771,7 @@ AstNode* Ast::createArithmeticResultNode(double value) {
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
     _query.warnings().registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-    return const_cast<AstNode*>(&NullNode);
+    return const_cast<AstNode*>(&_specialNodes.NullNode);
   }
 
   return createNodeValueDouble(value);
@@ -2783,7 +2797,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   AstNode const* converted = operand->castToNumber(this);
 
   if (converted->isNullValue()) {
-    return const_cast<AstNode*>(&ZeroNode);
+    return const_cast<AstNode*>(&_specialNodes.ZeroNode);
   }
 
   if (converted->value.type != VALUE_TYPE_INT && converted->value.type != VALUE_TYPE_DOUBLE) {
@@ -2810,7 +2824,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
         // if the architecture does not use IEEE754 values then this shouldn't
         // do
         // any harm either
-        return const_cast<AstNode*>(&ZeroNode);
+        return const_cast<AstNode*>(&_specialNodes.ZeroNode);
       }
 
       return createNodeValueDouble(value);
@@ -3099,7 +3113,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         if (r == 0) {
           _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&NullNode);
+          return const_cast<AstNode*>(&_specialNodes.NullNode);
         }
 
         // check if the result would overflow
@@ -3113,7 +3127,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
       if (right->getDoubleValue() == 0.0) {
         _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&NullNode);
+        return const_cast<AstNode*>(&_specialNodes.NullNode);
       }
 
       return createArithmeticResultNode(left->getDoubleValue() / right->getDoubleValue());
@@ -3128,7 +3142,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
         if (r == 0) {
           _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-          return const_cast<AstNode*>(&NullNode);
+          return const_cast<AstNode*>(&_specialNodes.NullNode);
         }
 
         // check if the result would overflow
@@ -3142,7 +3156,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 
       if (right->getDoubleValue() == 0.0) {
         _query.warnings().registerWarning(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
-        return const_cast<AstNode*>(&NullNode);
+        return const_cast<AstNode*>(&_specialNodes.NullNode);
       }
 
       return createArithmeticResultNode(
@@ -3621,7 +3635,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 }
 
 /// @brief resolve an attribute access
-AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
+AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node, bool& isValid) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
@@ -3639,6 +3653,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
 
   while (which > 0) {
     if (node->type == NODE_TYPE_PARAMETER) {
+      isValid = true;
       return original;
     }
 
@@ -3663,6 +3678,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
           node = member->getMember(0);
           if (which == 0) {
             // we found what we looked for
+            isValid = true;
             return node;
           }
           // we found the correct attribute but there is now an attribute
@@ -3678,6 +3694,19 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
     }
   }
 
+  // attribute not found or non-array
+  isValid = false;
+  return nullptr;
+}
+
+AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
+  bool isValid;
+  node = resolveConstAttributeAccess(node, isValid);
+  if (isValid) {
+    return node;
+  }
   // attribute not found or non-array
   return createNodeValueNull();
 }
