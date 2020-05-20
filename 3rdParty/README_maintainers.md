@@ -1,7 +1,11 @@
 3rd Party components and what to do on update
 =============================================
 
-** EDIT ../LICENSES-OTHER-COMPONENTS.md **
+---
+
+**Do not forget to update `../LICENSES-OTHER-COMPONENTS.md`!**
+
+---
 
 ## boost
 
@@ -141,8 +145,8 @@ To upgrade to a newer version:
    `#region ArangoDB-specific changes` and `#endregion`
 8. Verify the changes were applied correctly and discard the old copy of `index.html`
 
-To verify the changes were applied correctly, start ArangoDB and
-open the ArangoDB Rest API documentation in the ArangoDB web interface.
+To verify the changes were applied correctly, start the ArangoDB server and
+open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
 Routes can be executed by clicking on them to expand their documentation,
 clicking the _Try it out_ button, filling out any required fields and clicking
 the _Execute_ button.
@@ -170,6 +174,11 @@ the _Execute_ button.
   The API documentation should NOT look obviously "broken" or "ugly".
 
   This indicates the stylistic CSS changes were applied correctly.
+
+* Scroll to the very end of the page and check the bottom right corner.
+  There should be NO badge reading _INVALID_.
+
+  This confirms that validation is disabled correctly (`validatorUrl`).
 
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
