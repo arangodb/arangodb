@@ -75,10 +75,9 @@ TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
-    : EdgeConditionBuilder(other->_modCondition), _tn(tn) {
+   : EdgeConditionBuilder(tn->_plan->getAst(), *other), _tn(tn) {
   _fromCondition = other->_fromCondition;
   _toCondition = other->_toCondition;
-  _containsCondition = other->_containsCondition;
 }
 
 void TraversalNode::TraversalEdgeConditionBuilder::buildFromCondition() {
@@ -93,7 +92,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::buildToCondition() {
 
 void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& builder,
                                                                 bool verbose) {
-  if (_containsCondition) {
+
+  if(_containsCondition) {
     _modCondition->removeMemberUnchecked(_modCondition->numMembers() - 1);
     _containsCondition = false;
   }
