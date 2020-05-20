@@ -150,8 +150,17 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const&
 }
 
 void ModificationExecutorHelpers::throwOperationResultException(
-    ModificationExecutorInfos const& infos, OperationResult const& result) {
-  auto const& errorCounter = result.countErrorCodes;
+    ModificationExecutorInfos const& infos, OperationResult const& operationResult) {
+
+  // A "higher level error" happened (such as the transaction being aborted,
+  // replication being refused, etc ), and we do not have errorCounter or
+  // similar so we throw.
+  if (!operationResult.ok()) {
+    // inside OperationResult hides a small result.
+    THROW_ARANGO_EXCEPTION(operationResult.result);
+  }
+
+  auto const& errorCounter = operationResult.countErrorCodes;
 
   // Early escape if we are ignoring errors.
   if (infos._ignoreErrors == true || errorCounter.empty()) {
@@ -168,7 +177,7 @@ void ModificationExecutorHelpers::throwOperationResultException(
     auto const errorCode = p.first;
     if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
-      for (auto doc : VPackArrayIterator(result.slice())) {
+      for (auto doc : VPackArrayIterator(operationResult.slice())) {
         if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
             doc.get(StaticStrings::ErrorNum).getInt() == errorCode) {
           VPackSlice s = doc.get(StaticStrings::ErrorMessage);
