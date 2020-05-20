@@ -1,6 +1,10 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed an issue with truncate of a collection after a dbserver was restarted
+  very quickly. This could block arangosync from making progress because the
+  _jobs collection could no longer be truncated.
+
 * Fixed issue ES-545: failing modification operations led to random crashes with
   "Index out of bound" error message.
 
