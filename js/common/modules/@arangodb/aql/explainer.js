@@ -2380,7 +2380,6 @@ function explainQuerysRegisters(plan) {
 
   // Currently, we need nothing but the nodes from plan.
   const {nodes} = plan;
-  console.log(nodes);
   const symbols = {
     clearRegister: '⮾',
     keepRegister: '↓',
