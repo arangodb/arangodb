@@ -247,7 +247,7 @@ function collectionInSubqeryRegressionSuite() {
       const splicedRes = db._query(query, bindVars, activateSplicing).toArray();
       const nosplicedRes = db._query(query, bindVars, deactivateSplicing).toArray();
       deepAssertElements(splicedRes, nosplicedRes, "result");
-    },
+    }
   };
 }
 ////////////////////////////////////////////////////////////////////////////////
