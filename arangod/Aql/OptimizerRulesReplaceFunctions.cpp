@@ -194,7 +194,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   
   aql::Collection* coll = ast->query().collections().get(params.collection);
   if (!coll) {
-    coll = aql::addCollectionToQuery(ast->query(), params.collection, false);
+    coll = aql::addCollectionToQuery(ast->query(), params.collection, "NEAR OR WITHIN");
   }
 
   for (auto& idx : coll->indexes()) {
@@ -261,12 +261,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   // )
 
   //// enumerate collection
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
-  if (!aqlCollection) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        "collection used in NEAR or WITHIN not found");
-  }
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, "NEAR OR WITHIN");
 
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eEnumerate = plan->registerNode(
@@ -402,18 +397,12 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
   // check for suitable indexes
   std::string cname = coll->getString();
   
-  aql::Collection* collection;
+  aql::Collection* collection = aql::addCollectionToQuery(ast->query(), cname, "WITHIN_RECTANGLE");
+
   if (coll->type != NODE_TYPE_COLLECTION) {
-    collection = aql::addCollectionToQuery(ast->query(), cname, false);
     auto const& resolver = ast->query().resolver();
     coll = ast->createNodeCollection(resolver, coll->getStringValue(),
                                      coll->getStringLength(), AccessMode::Type::READ);
-  } else {
-    collection = aql::addCollectionToQuery(ast->query(), cname, false);
-  }
-  
-  if (!collection) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   
   std::shared_ptr<arangodb::Index> index;
@@ -522,7 +511,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   
   aql::Collection* coll = query.collections().get(params.collection);
   if (!coll) {
-    coll = addCollectionToQuery(query, params.collection);
+    coll = addCollectionToQuery(query, params.collection, "FULLTEXT");
   }
   
   for (auto& idx : coll->indexes()) {
@@ -541,11 +530,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   }
 
   // index part 2 - get remaining vars required for index creation
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
-  if (!aqlCollection) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                                   "collection used in FULLTEXT not found");
-  }
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, "FULLTEXT");
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(funAstNode);
   condition->normalize(plan);
