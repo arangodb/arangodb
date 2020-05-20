@@ -2300,7 +2300,7 @@ exception from the GPL license:
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.9.0
+* Version: 3.25.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://github.com/swagger-api/swagger-ui/blob/master/README.md

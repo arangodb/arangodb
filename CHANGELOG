@@ -1,6 +1,12 @@
 v3.6.4-preview.1 (2020-05-19)
 -----------------------------
 
+* Fix bug which caused failing modification operations to lead to random
+  crashes.
+
+* Fixed issue #11525: Address security vulnerability by updating Swagger-UI
+  dependency (upgraded Swagger UI to 3.25.1).
+
 * Updated arangosync to 0.7.5.
 
 * Fixed ability to edit graph edge in Graph Viewer of web UI.
