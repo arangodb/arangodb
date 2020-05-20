@@ -527,6 +527,11 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
         state = mtrx.state;
         break;
       }
+      if (!ServerState::instance()->isDBServer()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_LOCKED,
+                                       std::string("transaction '") + std::to_string(tid) +
+                                           "' is already in use");
+      }
     } else {
       if (mtrx.rwlock.tryReadLock()) {
         state = mtrx.state;
@@ -540,8 +545,13 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
 
     writeLocker.unlock();  // failure;
     allTransactionsLocker.unlock();
-    std::this_thread::yield();
 
+    // we should not be here unless some one does a bulk write
+    // within a el-cheapo / V8 transaction into multiple shards
+    // on the same server (Then its bad though).
+    TRI_ASSERT(ServerState::instance()->isDBServer());
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
