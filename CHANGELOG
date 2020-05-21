@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Update OpenLDAP to 2.4.50.
+
 * Fixed issue ES-545: failing modification operations led to random crashes with
   "Index out of bound" error message.
 
