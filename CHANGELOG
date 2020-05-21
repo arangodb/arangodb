@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue ES-545: failing modification operations led to random crashes with
+  "Index out of bound" error message.
+
 * Fix edge cases in RocksDB primary index range lookups for operators >= and <.
 
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
