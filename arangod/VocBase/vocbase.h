@@ -189,6 +189,7 @@ struct TRI_vocbase_t {
   std::uint32_t replicationFactor() const;
   std::uint32_t writeConcern() const;
   std::string const& sharding() const;
+  bool isShardingSingle() const;
   TRI_vocbase_type_e type() const { return _type; }
 
   void toVelocyPack(arangodb::velocypack::Builder& result) const;

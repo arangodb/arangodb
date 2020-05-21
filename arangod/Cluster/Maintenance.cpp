@@ -433,7 +433,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         actions.emplace_back(
             ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                                {std::string(DATABASE), std::string(dbname)}},
-                              HIGHER_PRIORITY));
+                              HIGHER_PRIORITY,
+                              std::make_shared<VPackBuilder>(pdb.value)));
       } else {
         LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";
