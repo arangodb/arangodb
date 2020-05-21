@@ -213,6 +213,14 @@ class IResearchAnalyzerFeature final
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Loads (or reloads if necessary) analyzers available for use in context
+  /// of specified database.
+  /// @param dbName database name
+  /// @return overall load result
+  //////////////////////////////////////////////////////////////////////////////
+  Result loadAvailableAnalyzers(irs::string_ref const& dbName);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// Checks if analyzer db (identified by db name prefix extracted from analyzer 
   /// name) could be reached from specified db.
   /// Properly handles special cases (e.g. NIL and EMPTY)       
@@ -313,11 +321,11 @@ class IResearchAnalyzerFeature final
   AnalyzersRevision::Ptr getAnalyzersRevision(const TRI_vocbase_t& vocbase, bool forceLoadPlan = false) const;
 
   ///////////////////////////////////////////////////////////////////////////////
-/// @brief return current known analyzers revision
-/// @param vocbase name to get revision for
-/// @param forceLoadPlan force request to get latest available revision
-/// @return revision number. always 0 for single server and before plan is loaded
-///////////////////////////////////////////////////////////////////////////////
+  /// @brief return current known analyzers revision
+  /// @param vocbase name to get revision for
+  /// @param forceLoadPlan force request to get latest available revision
+  /// @return revision number. always 0 for single server and before plan is loaded
+  ///////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
 
   virtual void prepare() override;
