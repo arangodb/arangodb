@@ -1,6 +1,8 @@
 devel
 -----
 
+* Update OpenLDAP to 2.4.50.
+
 * Fixed issue ES-554: failed to build filter while querying ArangoSearch view.
 
   This change provides global fix for ArangoSearch analyzers distribution and
