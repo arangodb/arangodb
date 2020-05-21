@@ -31,12 +31,23 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+SharedQueryState::SharedQueryState()
+  : _wakeupCb(nullptr), _numWakeups(0),
+    _cbVersion(0), _numTasks(0), _valid(true) {}
+
 void SharedQueryState::invalidate() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _wakeupCb = nullptr;
-  _cbVersion++;
-  _valid = false;
-  _cv.notify_all();
+  {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _wakeupCb = nullptr;
+    _cbVersion++;
+    _valid = false;
+  }
+  _cv.notify_all(); // wakeup everyone else
+  
+  if (_numTasks.load() > 0) {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _cv.wait(guard, [&] { return _numTasks.load() == 0; });
+  }
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
@@ -75,11 +86,17 @@ void SharedQueryState::resetNumWakeups() {
 }
 
 /// execute the _continueCallback. must hold _mutex,
-void SharedQueryState::notifyWaiter() {
-  TRI_ASSERT(_valid);
+void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
+  TRI_ASSERT(guard);
+  if (!_valid) {
+    guard.unlock();
+    _cv.notify_all();
+    return;
+  }
+  
   unsigned n = _numWakeups++;
-
   if (!_wakeupCb) {
+    guard.unlock();
     _cv.notify_one();
     return;
   }
@@ -140,16 +157,10 @@ void SharedQueryState::queueHandler() {
   }
 }
 
-bool SharedQueryState::queueAsyncTask(std::function<void()> const& cb) {
-  
-  bool queued = false;
+bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler) {
-    queued = scheduler->queue(RequestLane::CLIENT_AQL, cb);
+    return scheduler->queue(RequestLane::CLIENT_AQL, std::move(cb));
   }
-  if (!queued) {
-    cb();
-    return false;
-  }
-  return true;
+  return false;
 }

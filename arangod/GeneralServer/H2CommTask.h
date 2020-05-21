@@ -53,7 +53,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   bool readCallback(asio_ns::error_code ec) override;
 
-  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics* stat) override;
+  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics::Item stat) override;
 
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 

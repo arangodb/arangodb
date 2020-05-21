@@ -1,5 +1,40 @@
 devel
 -----
+
+* Fixed issue ES-554: failed to build filter while querying ArangoSearch view.
+
+  This change provides global fix for ArangoSearch analyzers distribution and
+  management within a cluster.
+
+* Fixed issue ES-545: failing modification operations led to random crashes with
+  "Index out of bound" error message.
+
+* Fix edge cases in RocksDB primary index range lookups for operators >= and <.
+
+* Fixed issue #11525: Address security vulnerability by updating Swagger-UI
+  dependency (upgraded Swagger UI to 3.25.1).
+
+* Updated arangosync to 0.7.5.
+
+* Fixed ability to edit graph edge in Graph Viewer of web UI.
+
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
+* Added feature: DisjointSmartGraphs
+
+  SmartGraphs have been extended to a new subtype, called **DisjointSmartGraphs**.
+  A DisjointSmartGraph prohibits edges between different SmartGraph components. 
+  In case the graph schema can be represented without the need of connected 
+  SmartGraph components, a DisjointSmartGraph should be used as this knowledge 
+  can be used by the internal optimizer to gain even better query traversal 
+  execution times.
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Fixed a lockup in dropCollection due to a mutex being held for too long.
+
 * Add an optimizer rule that enables execution of certain subqueries on a
   DB Server. For this optimization to work, the subquery must contain exactly
   one DISTRIBUTE/GATHER pair and only access at most one collection.
@@ -7,6 +42,10 @@ devel
   This proves particularly useful for traversals, shortest path, and k-shortest
   paths queries on disjoint smart graphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
+
+* ClusterInfo does its own updating of plan / current caches.
+
+* Properly forward requests based on the transaction header.
 
 * Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
 
@@ -59,15 +98,15 @@ devel
   query, e.g. `FOR ... IN ... GRAPH abc`. Previously, the graph name had
   to be a bind parameter or a string enclosed in quotes.
 
-* loadPlan and loadCurrent have been fixed to not miss out on increments. 
+* loadPlan and loadCurrent have been fixed to not miss out on increments.
 
 * ClusterInfo and all data definition changes use the local agency cache.
 
-* Coordinators and DB servers cache the agency's read key value store. 
+* Coordinators and DB servers cache the agency's read key value store.
 
 * Agency offers the new poll API to subscribe to the Raft log stream.
 
-* Added option `--rocksdb.edge-cache` to toggle in-memory caching for 
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for
   edges. The option is turned on by default. This normally helps with
   performance in read-only and read-mostly workloads.
 

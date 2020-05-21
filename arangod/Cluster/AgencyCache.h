@@ -58,6 +58,9 @@ public:
   void beginShutdown() override;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
+  consensus::query_t const dump() const;
+
+  /// @brief Get velocypack from node downward. AgencyCommHelper::path is prepended
   std::tuple <consensus::query_t, consensus::index_t> const get(
     std::string const& path = std::string("/")) const;
 
@@ -95,13 +98,13 @@ private:
   void invokeAllCallbacks() const;
 
   /// @brief invoke given callbacks
-  void invokeCallbacks(std::unordered_set<uint64_t> const&) const;
+  void invokeCallbacks(std::vector<uint64_t> const&) const;
 
   /// @brief invoke given callbacks
   void invokeCallbackNoLock(uint64_t, std::string const& = std::string()) const;
 
   /// @brief handle callbacks for specific log document
-  void handleCallbacksNoLock(VPackSlice slice, std::unordered_set<uint64_t>& toCall);
+  void handleCallbacksNoLock(VPackSlice, std::unordered_set<uint64_t>&, std::vector<uint64_t>&);
 
   /// @brief trigger all waiting call backs for index <= _commitIndex
   ///        caller must hold lock

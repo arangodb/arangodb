@@ -650,24 +650,6 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable, IndexId 
   }
 }
 
-VariableIdSet IndexNode::getOutputVariables() const {
-  VariableIdSet vars;
-  if (isLateMaterialized()) {
-    TRI_ASSERT(_outNonMaterializedDocId != nullptr);
-    vars.insert(_outNonMaterializedDocId->id);
-    // plan registers for index references
-    for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
-      TRI_ASSERT(fieldVar.first != nullptr);
-      vars.insert(fieldVar.first->id);
-    }
-  } else {
-    TRI_ASSERT(_outVariable != nullptr);
-    vars.insert(_outVariable->id);
-  }
-
-  return vars;
-}
-
 NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
                                        std::vector<size_t>&& idxPath)
     : expression(std::move(exp)), indexPath(std::move(idxPath)) {}

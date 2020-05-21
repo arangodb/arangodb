@@ -828,23 +828,23 @@ using EN = arangodb::aql::ExecutionNode;
 namespace arangodb {
 namespace aql {
 
-// TODO cleanup this f-ing aql::Collection(s) mess
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert) {
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context) {
   aql::Collection* coll = nullptr;
 
   if (!cname.empty()) {
-    coll = query.collections().add(cname, AccessMode::Type::READ);
+    coll = query.collections().add(cname, AccessMode::Type::READ, aql::Collection::Hint::Collection);
     // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
     // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      coll->setCollection(query.vocbase().lookupCollection(cname));
       query.trxForOptimization().addCollectionAtRuntime(cname, AccessMode::Type::READ);
     }
   }
 
-  if (assert) {
-    TRI_ASSERT(coll != nullptr);
+  if (coll == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        std::string("collection '") + cname + "' used in " + context + " not found");
   }
 
   return coll;
@@ -1645,10 +1645,6 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
         break;
       }
 
-      if (current->getType() == EN::PARALLEL_START || current->getType() == EN::PARALLEL_END) {
-        break;
-      }
-
       if (current->getType() == EN::LIMIT) {
         if (!arangodb::ServerState::instance()->isCoordinator()) {
           // do not move calculations beyond a LIMIT on a single server,
@@ -1759,10 +1755,6 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
 
       auto const currentType = current->getType();
       
-      if (currentType == EN::PARALLEL_START || currentType == EN::PARALLEL_END) {
-        break;
-      }
-
       if (currentType == EN::FILTER || currentType == EN::SORT ||
           currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
         // we found something interesting that justifies moving our node down
@@ -2353,7 +2345,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       }
     } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -2428,7 +2420,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       } else if (accessed->type == NODE_TYPE_ARRAY) {
         int64_t position;
@@ -2442,7 +2434,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           if (!valid) {
             // invalid index
             modifiedNode = true;
-            return Ast::createNodeValueNull();
+            return p->getAst()->createNodeValueNull();
           }
         } else {
           // numeric index, e.g. [123]
@@ -2469,7 +2461,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
         // index out of bounds
         modifiedNode = true;
-        return Ast::createNodeValueNull();
+        return p->getAst()->createNodeValueNull();
       }
     }
 
@@ -3282,8 +3274,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::GATHER:
       case EN::REMOTE:
       case EN::LIMIT:  // LIMIT is criterion to stop
-      case EN::PARALLEL_START:
-      case EN::PARALLEL_END:
         return true;   // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.
@@ -4790,8 +4780,6 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::PARALLEL_START:
-        case EN::PARALLEL_END:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4826,6 +4814,7 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
         case EN::ASYNC: // should be added much later
+        case EN::MUTEX:
         case EN::MAX_NODE_TYPE_VALUE: {
           // should not reach this point
           TRI_ASSERT(false);
@@ -7117,8 +7106,6 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       return true;
     case ExecutionNode::GATHER:
       // sorting gather is allowed
@@ -7152,6 +7139,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
       return false;
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
@@ -7379,7 +7367,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       if (std::get<2>(sq)) {
         Ast* ast = plan->getAst();
         // generate a calculation node that only produces "true"
-        auto expr = std::make_unique<Expression>(ast, Ast::createNodeValueBool(true));
+        auto expr = std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
@@ -7962,8 +7950,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::PARALLEL_START:
-    case ExecutionNode::PARALLEL_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
     case ExecutionNode::NORESULTS:
@@ -7971,6 +7957,7 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* n
     case ExecutionNode::COLLECT:
       // These nodes are fine
       return false;
+    case ExecutionNode::MUTEX:
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }

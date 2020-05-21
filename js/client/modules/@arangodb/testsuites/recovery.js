@@ -83,7 +83,6 @@ function runArangodRecovery (params) {
     }
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
-      'wal.reserve-logfiles': 1,
       'rocksdb.wal-file-timeout-initial': 10,
       'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
@@ -121,7 +120,6 @@ function runArangodRecovery (params) {
       Object.assign(params.args,
                     {
                       'log.foreground-tty': 'true',
-                      'wal.ignore-logfile-errors': 'true',
                       'database.ignore-datafile-errors': 'false', // intentionally false!
                       'javascript.script-parameter': 'recovery'
                     }

@@ -28,6 +28,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
+#include "Aql/AsyncExecutor.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
@@ -48,9 +49,9 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
-#include "Aql/ParallelStartExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
@@ -121,8 +122,7 @@ std::unordered_map<int, std::string const> const typeNames{
      "DistributeConsumer"},
     {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
-    {static_cast<int>(ExecutionNode::PARALLEL_START), "ParallelStartNode"},
-    {static_cast<int>(ExecutionNode::PARALLEL_END), "ParallelEndNode"},
+    {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
 };
 }  // namespace
 
@@ -350,12 +350,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
-//    case ASYNC:
-//      return new AsyncNode(plan, slice);
-    case PARALLEL_START:
-      return new ParallelStartNode(plan, slice);
-    case PARALLEL_END:
-      return new ParallelEndNode(plan, slice);
+    case ASYNC:
+      return new AsyncNode(plan, slice);
+    case MUTEX:
+      return new MutexNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -640,6 +638,16 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClo
   }
 }
 
+void ExecutionNode::cloneRegisterPlan(ExecutionNode* dependency) {
+  TRI_ASSERT(hasDependency());
+  TRI_ASSERT(getFirstDependency() == dependency);
+  _registerPlan = dependency->getRegisterPlan();
+  _depth = dependency->getDepth();
+  setVarsUsedLater(dependency->getVarsUsedLaterStack());
+  setVarsValid(dependency->getVarsValidStack());
+  setVarUsageValid();
+}
+
 bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
   std::function<bool(ExecutionNode* const, ExecutionNode* const)> comparator =
       [](ExecutionNode* const l, ExecutionNode* const r) {
@@ -674,16 +682,12 @@ CostEstimate ExecutionNode::getCost() const {
 }
 
 /// @brief functionality to walk an execution plan recursively
-bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  // Only do every node exactly once
-  // note: this check is not required normally because execution
-  // plans do not contain cycles
+bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
 #endif
-
   if (worker.before(this)) {
     return true;
   }
@@ -721,16 +725,12 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
 ///  - after that recurses on its dependencies.
 /// This is in contrast to walk(), which recurses on the dependencies before
 /// recursing into the subquery.
-bool ExecutionNode::walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  // Only do every node exactly once
-  // note: this check is not required normally because execution
-  // plans do not contain cycles
+bool ExecutionNode::walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (worker.done(this)) {
     return false;
   }
 #endif
-
   if (worker.before(this)) {
     return true;
   }
@@ -960,15 +960,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
     sq->getSubquery()->planRegisters(s);
   }
   walker.reset();
-}
-
-RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
-  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
-  auto const it = varInfo.find(var.id);
-  TRI_ASSERT(it != varInfo.end());
-  RegisterId const reg = it->second.registerId;
-
-  return reg;
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1324,6 +1315,9 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case MATERIALIZE:
+
+    case SUBQUERY_START:
+    case SUBQUERY_END:
       return true;
 
     default:
@@ -1371,8 +1365,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SCATTER:
     case GATHER:
     case ASYNC:
-    case PARALLEL_START:
-    case PARALLEL_END:
+    case MUTEX:
       return false;
     case MAX_NODE_TYPE_VALUE:
       TRI_ASSERT(false);
@@ -1393,9 +1386,17 @@ void ExecutionNode::setVarsValid(VarSetStack varStack) {
   _varsValidStack = std::move(varStack);
 }
 
+auto ExecutionNode::getVarsUsedLater() const noexcept -> VarSet const& {
+  return getVarsUsedLaterStack().back();
+}
+
 auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
   TRI_ASSERT(_varUsageValid);
   return _varsUsedLaterStack;
+}
+
+auto ExecutionNode::getVarsValid() const noexcept -> VarSet const& {
+  return getVarsValidStack().back();
 }
 
 auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
@@ -1440,8 +1441,6 @@ SingletonNode::SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     : ExecutionNode(plan, base) {}
 
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
-
-VariableIdSet SingletonNode::getOutputVariables() const { return {}; }
 
 EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
                                                  arangodb::velocypack::Slice const& base)
@@ -1523,10 +1522,6 @@ bool EnumerateCollectionNode::isDeterministic() { return !_random; }
 
 std::vector<Variable const*> EnumerateCollectionNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
-}
-
-VariableIdSet EnumerateCollectionNode::getOutputVariables() const {
-  return {_outVariable->id};
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1679,10 +1674,6 @@ Variable const* EnumerateListNode::inVariable() const { return _inVariable; }
 
 Variable const* EnumerateListNode::outVariable() const { return _outVariable; }
 
-VariableIdSet EnumerateListNode::getOutputVariables() const {
-  return {_outVariable->id};
-}
-
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),
@@ -1753,8 +1744,6 @@ bool LimitNode::fullCount() const noexcept { return _fullCount; }
 size_t LimitNode::offset() const { return _offset; }
 
 size_t LimitNode::limit() const { return _limit; }
-
-auto LimitNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -1927,10 +1916,6 @@ bool CalculationNode::isDeterministic() {
   return _expression->isDeterministic();
 }
 
-VariableIdSet CalculationNode::getOutputVariables() const {
-  return {_outVariable->id};
-}
-
 SubqueryNode::SubqueryNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _subquery(nullptr),
@@ -2020,7 +2005,7 @@ bool SubqueryNode::mayAccessCollections() {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
-  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2111,7 +2096,7 @@ CostEstimate SubqueryNode::estimateCost() const {
 }
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
+struct SubqueryVarUsageFinder final : public UniqueWalkerWorker<ExecutionNode> {
   VarSet _usedLater;
   VarSet _valid;
 
@@ -2164,7 +2149,7 @@ void SubqueryNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 /// @brief is the node determistic?
-struct DeterministicFinder final : public WalkerWorker<ExecutionNode> {
+struct DeterministicFinder final : public UniqueWalkerWorker<ExecutionNode> {
   bool _isDeterministic = true;
 
   DeterministicFinder() : _isDeterministic(true) {}
@@ -2211,10 +2196,6 @@ void SubqueryNode::setSubquery(ExecutionNode* subquery, bool forceOverwrite) {
 
 std::vector<Variable const*> SubqueryNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
-}
-
-VariableIdSet SubqueryNode::getOutputVariables() const {
-  return {_outVariable->id};
 }
 
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -2291,8 +2272,6 @@ void FilterNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 Variable const* FilterNode::inVariable() const { return _inVariable; }
-
-auto FilterNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -2399,8 +2378,6 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
-auto ReturnNode::getOutputVariables() const -> VariableIdSet { return {}; }
-
 /// @brief toVelocyPack, for NoResultsNode
 void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                        std::unordered_set<ExecutionNode const*>& seen) const {
@@ -2443,8 +2420,6 @@ ExecutionNode* NoResultsNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::make_unique<NoResultsNode>(plan, _id),
                      withDependencies, withProperties);
 }
-
-auto NoResultsNode::getOutputVariables() const -> VariableIdSet { return {}; }
 
 SortElement::SortElement(Variable const* v, bool asc)
     : var(v), ascending(asc) {}
@@ -2513,33 +2488,9 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
   return allEqual;
 }
 
-ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, ExecutionNodeId id)
-    : ExecutionNode(plan, id) {}
-
-ParallelStartNode::ParallelStartNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base) {}
-
-ExecutionNode::NodeType ParallelStartNode::getType() const { return PARALLEL_START; }
-
-ExecutionNode* ParallelStartNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
-  return cloneHelper(std::make_unique<ParallelStartNode>(plan, _id),
-                     withDependencies, withProperties);
-}
-
-void ParallelStartNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLaterStack());
-  setVarsValid(dependency->getVarsValidStack());
-  setVarUsageValid();
-}
-
-/// @brief toVelocyPack, for ParallelStartNode
-void ParallelStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                           std::unordered_set<ExecutionNode const*>& seen) const {
+/// @brief toVelocyPack, for AsyncNode
+void AsyncNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
@@ -2548,86 +2499,35 @@ void ParallelStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 }
 
 /// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> ParallelStartNode::createBlock(
+std::unique_ptr<ExecutionBlock> AsyncNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
-
-  auto regsToKeep = getRegsToKeepStack();
-  auto regsToClear = getRegsToClear();
-
-  // Everything that is cleared here could and should have been cleared before
-  TRI_ASSERT(regsToClear.empty());
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "Parallel Start is not implemented");
-
-//  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-//                      std::move(regsToKeep));
-//
-//  return std::make_unique<ExecutionBlockImpl<ParallelStartExecutor>>(&engine, this, std::move(infos));
-}
-
-/// @brief estimateCost, the cost of a NoResults is nearly 0
-CostEstimate ParallelStartNode::estimateCost() const {
-  if (_dependencies.empty()) {
-    return aql::CostEstimate::empty();
-  }
-  CostEstimate estimate = CostEstimate::empty();
-  return estimate;
-}
-
-auto ParallelStartNode::getOutputVariables() const -> VariableIdSet { return {}; }
-
-ParallelEndNode::ParallelEndNode(ExecutionPlan* plan, ExecutionNodeId id)
-    : ExecutionNode(plan, id) {}
-
-ParallelEndNode::ParallelEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base) {}
-
-ExecutionNode::NodeType ParallelEndNode::getType() const { return PARALLEL_END; }
-
-ExecutionNode* ParallelEndNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                      bool withProperties) const {
-  return cloneHelper(std::make_unique<ParallelEndNode>(plan, _id),
-                     withDependencies, withProperties);
-}
-
-void ParallelEndNode::cloneRegisterPlan(ExecutionNode* dependency) {
-  TRI_ASSERT(hasDependency());
-  TRI_ASSERT(getFirstDependency() == dependency);
-  _registerPlan = dependency->getRegisterPlan();
-  _depth = dependency->getDepth();
-  setVarsUsedLater(dependency->getVarsUsedLaterStack());
-  setVarsValid(dependency->getVarsValidStack());
-  setVarUsageValid();
-}
-
-/// @brief toVelocyPack, for ParallelEndNode
-void ParallelEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
-                                         std::unordered_set<ExecutionNode const*>& seen) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
-  // And close it
-  nodes.close();
-}
-
-/// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> ParallelEndNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "createBlock not implemented for ParallelEndNode");
+  return std::make_unique<ExecutionBlockImpl<AsyncExecutor>>(&engine, this);
 }
 
 /// @brief estimateCost
-CostEstimate ParallelEndNode::estimateCost() const {
+CostEstimate AsyncNode::estimateCost() const {
   if (_dependencies.empty()) {
+    // we should always have dependency as we need input here...
+    TRI_ASSERT(false);
     return aql::CostEstimate::empty();
   }
-  CostEstimate estimate = CostEstimate::empty();
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
 }
 
-auto ParallelEndNode::getOutputVariables() const -> VariableIdSet { return {}; }
+AsyncNode::AsyncNode(ExecutionPlan* plan, ExecutionNodeId id)
+    : ExecutionNode(plan, id) {}
+
+AsyncNode::AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base) {}
+
+ExecutionNode::NodeType AsyncNode::getType() const { return ASYNC; }
+
+ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                    bool withProperties) const {
+  return cloneHelper(std::make_unique<AsyncNode>(plan, _id),
+                     withDependencies, withProperties);
+}
 
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";
@@ -2849,8 +2749,4 @@ ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan* plan, bool withDepend
                                                    *inNonMaterializedDocId, *outVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
-}
-
-auto materialize::MaterializeNode::getOutputVariables() const -> VariableIdSet {
-  return {_outVariable->id};
 }

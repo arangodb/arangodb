@@ -143,10 +143,15 @@ class ExecutionEngine {
   ExecutionStats& globalStats() { return _execStats; }
   
   void setShutdown() {
-    _wasShutdown = true;
+    _wasShutdown.store(true, std::memory_order_relaxed);
   }
   
   bool waitForSatellites(aql::QueryContext& query, Collection const* collection) const;
+  
+#ifdef USE_ENTERPRISE
+  static void parallelizeTraversals(aql::Query& query, ExecutionPlan& plan,
+                                    std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
+#endif
   
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   std::vector<ExecutionBlock*> const& blocksForTesting() const {
@@ -189,9 +194,8 @@ class ExecutionEngine {
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
   
-  bool _wasShutdown;
-  
-  std::atomic<bool> _sentShutdownResponse{false};
+  std::atomic<bool> _wasShutdown;
+  std::atomic<bool> _sentShutdownResponse;
 };
 }  // namespace aql
 }  // namespace arangodb

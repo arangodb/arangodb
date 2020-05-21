@@ -716,9 +716,11 @@ Result RestReplicationHandler::testPermissions() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair("", false)};
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
+
   auto res = testPermissions();
   if (!res.ok()) {
     return res;
@@ -1206,7 +1208,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.add("id", VPackValue(newId));
 
   if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-      _vocbase.sharding() == "single") {
+      _vocbase.isShardingSingle()) {
     auto const isSatellite =
         VelocyPackHelper::getStringRef(parameters, StaticStrings::ReplicationFactor,
                                        velocypack::StringRef{""}) == StaticStrings::Satellite;

@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTIONS_H 1
 
 #include "Aql/types.h"
+#include "Aql/Collection.h"
 #include "VocBase/AccessMode.h"
 
 #include <functional>
@@ -42,7 +43,6 @@ class Builder;
 }
 
 namespace aql {
-struct Collection;
 
 class Collections {
  public:
@@ -56,7 +56,7 @@ class Collections {
  public:
   Collection* get(std::string_view name) const;
 
-  Collection* add(std::string const& name, AccessMode::Type accessType);
+  Collection* add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint);
 
   std::vector<std::string> collectionNames() const;
 
