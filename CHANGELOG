@@ -1,6 +1,8 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
 
+* Update OpenLDAP to 2.4.50.
+
 * Fixed issue #11525: Address security vulnerability by updating Swagger-UI
   dependency (upgraded Swagger UI to 3.25.1).
 
