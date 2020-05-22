@@ -191,7 +191,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     // First refresh our analyzers cache to see all latest changes in analyzers
     TRI_GET_GLOBALS();
     auto res = v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-      .loadAvailableAnalyzers(vocbase.name());
+                           .loadAvailableAnalyzers(vocbase.name());
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
@@ -593,7 +593,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
     auto& vocbase = GetContextVocBase(isolate);
     TRI_GET_GLOBALS();
     auto res = v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-      .loadAvailableAnalyzers(vocbase.name());
+                           .loadAvailableAnalyzers(vocbase.name());
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());

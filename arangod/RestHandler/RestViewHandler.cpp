@@ -207,7 +207,7 @@ void RestViewHandler::createView() {
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
     auto res = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                         .loadAvailableAnalyzers(_vocbase.name());
+                       .loadAvailableAnalyzers(_vocbase.name());
 
     if (res.fail()) {
       generateError(res);
@@ -287,7 +287,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     // First refresh our analyzers cache to see all latest changes in analyzers
     auto const analyzersRes = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-      .loadAvailableAnalyzers(_vocbase.name());
+                                      .loadAvailableAnalyzers(_vocbase.name());
     if (analyzersRes.fail()) {
       generateError(analyzersRes);
       return;
