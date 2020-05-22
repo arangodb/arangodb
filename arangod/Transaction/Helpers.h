@@ -25,6 +25,7 @@
 #define ARANGOD_TRANSACTION_HELPERS_H 1
 
 #include "Basics/Common.h"
+#include "Cluster/ResultT.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/voc-types.h"
@@ -96,6 +97,9 @@ OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> c
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
                              VPackSlice const& idPart, VPackSlice const& keyPart);
+
+ResultT<velocypack::StringRef> validatedOperationInputDocumentKey(LogicalCollection const& collection, VPackSlice const& value);
+
 };  // namespace helpers
 
 /// @brief basics::StringBuffer leaser

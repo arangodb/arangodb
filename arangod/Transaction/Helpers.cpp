@@ -30,8 +30,11 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/KeyGenerator.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 
@@ -419,6 +422,24 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   resolved.push_back('/');
   resolved.append(p, static_cast<size_t>(keyLength));
   return resolved;
+}
+
+/// @brief takes the input for an insert, remove, update, or replace operation and creates
+///        valid information for continuing, or returns an error.
+ResultT<velocypack::StringRef> transaction::helpers::validatedOperationInputDocumentKey(LogicalCollection const& collection, VPackSlice const& value) {
+
+  if (value.isObject()) {
+    VPackSlice keySlice = value.get(StaticStrings::KeyString);
+    if (keySlice.isString()) {
+      velocypack::StringRef keyRef{keySlice};
+      if (collection.keyGenerator()->validateKey(keyRef.data(), keyRef.length())) {
+        // This is the only "ok" case!
+        return arangodb::ResultT<velocypack::StringRef>::success(keyRef);
+      }
+    }
+  }
+
+  return arangodb::ResultT<velocypack::StringRef>::error(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
 }
 
 // ============== StringBufferLeaser ==============
