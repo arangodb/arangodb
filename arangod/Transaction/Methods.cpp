@@ -73,6 +73,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
+#include "VocBase/KeyGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::transaction;
@@ -1045,7 +1046,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     LocalDocumentId oldDocumentId;
     TRI_voc_rid_t oldRevisionId = 0;
     VPackSlice key;
-    
+
     Result res;
 
     if (options.isOverwriteModeSet() && 
@@ -1503,6 +1504,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(std::string cons
 }
 #endif
 
+
 /// @brief remove one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -1565,25 +1567,14 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   ManagedDocumentResult previous;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
-    transaction::BuilderLeaser builder(this);
-    arangodb::velocypack::StringRef key;
-    if (value.isString()) {
-      key = value;
-      size_t pos = key.find('/');
-      if (pos != std::string::npos) {
-        key = key.substr(pos + 1);
-        builder->add(VPackValuePair(key.data(), key.length(), VPackValueType::String));
-        value = builder->slice();
-      }
-    } else if (value.isObject()) {
-      VPackSlice keySlice = value.get(StaticStrings::KeyString);
-      if (!keySlice.isString()) {
-        return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-      }
-      key = keySlice;
-    } else {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+
+    auto validatedKey = transaction::helpers::validatedOperationInputDocumentKey(*collection, value);
+
+    if (!validatedKey.ok()) {
+      return validatedKey.result();
     }
+
+    arangodb::velocypack::StringRef key{validatedKey.get()};
 
     previous.clear();
 
