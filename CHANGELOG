@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed issue ES-554: failed to build filter while querying ArangoSearch view.
+
+  This change provides global fix for ArangoSearch analyzers distribution and
+  management within a cluster.
+
 * Fixed issue ES-545: failing modification operations led to random crashes with
   "Index out of bound" error message.
 
