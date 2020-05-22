@@ -1351,10 +1351,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   auto workForOneDocument = [this, &operation, &options, &collection,
                              &resultBuilder, &cid, &previous,
                              &result](VPackSlice const newVal, bool isBabies) -> Result {
-    Result res;
-    if (!newVal.isObject()) {
-      res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-      return res;
+
+    auto validatedKey = transaction::helpers::validatedOperationInputDocumentKey(*collection, newVal);
+
+    if (!validatedKey.ok()) {
+      return validatedKey.result();
     }
 
     result.clear();
@@ -1364,6 +1365,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // single document operations. We need to have a lock here already.
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
+    Result res;
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, previous);
     } else {
