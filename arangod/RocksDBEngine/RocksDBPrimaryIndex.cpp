@@ -47,6 +47,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
@@ -67,7 +68,7 @@ using namespace arangodb;
 
 namespace {
 std::string const lowest;            // smallest possible key
-std::string const highest = "\xFF";  // greatest possible key
+std::string const highest(KeyGenerator::maxKeyLength, std::numeric_limits<std::string::value_type>::max());  // greatest possible key
 }  // namespace
 
 // ================ Primary Index Iterators ================
@@ -818,7 +819,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       } else {
         if (type == aql::NODE_TYPE_OPERATOR_BINARY_LT && !value.empty()) {
-          value.back() -= 0x01U;  // modify upper bound so that it is not included
+          // modify upper bound so that it is not included
+          // primary keys are ASCII only, so we don't need to care about UTF-8 characters here
+          if (value.back() >= static_cast<std::string::value_type>(0x02)) {
+            value.back() -= 0x01;  
+            value.append(::highest);
+          }
         }
         if (!upperFound || value < upper) {
           upper = std::move(value);
@@ -836,7 +842,12 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       } else {
         if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE && !value.empty()) {
-          value.back() -= 0x01U;  // modify lower bound so it is included
+          // modify lower bound so it is included in the results
+          // primary keys are ASCII only, so we don't need to care about UTF-8 characters here
+          if (value.back() >= static_cast<std::string::value_type>(0x02)) {
+            value.back() -= 0x01;  
+            value.append(::highest);
+          }
         }
         if (!lowerFound || value > lower) {
           lower = std::move(value);
