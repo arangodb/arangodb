@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed internal issue #650: Added analyzer cache update before ArangoSearch View
+  creation/update
 
 * Update OpenLDAP to 2.4.50.
 

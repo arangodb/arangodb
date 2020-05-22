@@ -1907,6 +1907,25 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
   return {};
 }
 
+Result IResearchAnalyzerFeature::loadAvailableAnalyzers(irs::string_ref const& dbName) {
+  if (!ServerState::instance()->isCoordinator()) {
+    // Single-servers will load analyzers they need in regular get call.
+    // DbServer receives analyzers definitions from coordinators in ddl requests
+    // and dbservers never should start ddl by themselves.
+    return {};
+  }
+  auto res = loadAnalyzers(dbName);
+  if (res.fail()) {
+    return res;
+  }
+  if (dbName != arangodb::StaticStrings::SystemDatabase) {
+    // System is available for all other databases. So reload it`s analyzers too
+    res = loadAnalyzers(arangodb::StaticStrings::SystemDatabase);
+  }
+  return res;
+}
+
+
 Result IResearchAnalyzerFeature::loadAnalyzers(
     irs::string_ref const& database /*= irs::string_ref::NIL*/) {
   if (!server().hasFeature<DatabaseFeature>()) {
