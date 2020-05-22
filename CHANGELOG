@@ -1,5 +1,7 @@
 devel
 -----
+* Fixed internal issue #650: Added analyzer cache update before ArangoSearch View
+  creation/update
 
 * Fixed issue ES-554: failed to build filter while querying ArangoSearch view.
 
