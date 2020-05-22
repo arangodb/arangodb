@@ -39,10 +39,24 @@ if (typeof global === 'undefined' && typeof window !== 'undefined') {
 
 global.Buffer = require('buffer').Buffer;
 global.process = require('process');
-global.setInterval = global.setInterval || function () {};
-global.clearInterval = global.clearInterval || function () {};
-global.setTimeout = global.setTimeout || function () {};
-global.clearTimeout = global.clearTimeout || function () {};
+
+const { ArangoError, errors } = require('@arangodb');
+global.setInterval = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': setInterval()'
+})};
+global.clearInterval = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': clearInterval()'
+})};
+global.setTimeout = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': setTimeout()'
+})};
+global.clearTimeout = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': clearTimeout()'
+})};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief start paging

@@ -56,10 +56,24 @@
 global.console = require('console');
 global.Buffer = require('buffer').Buffer;
 global.process = require('process');
-global.setInterval = function () {};
-global.clearInterval = function () {};
-global.setTimeout = function () {};
-global.clearTimeout = function () {};
+
+const { ArangoError, errors } = require('@arangodb');
+global.setInterval = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': setInterval()'
+})};
+global.clearInterval = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': clearInterval()'
+})};
+global.setTimeout = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': setTimeout()'
+})};
+global.clearTimeout = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': clearTimeout()'
+})};
 
 // template string generator for building an AQL query
 global.aqlQuery = require('@arangodb').aql;
