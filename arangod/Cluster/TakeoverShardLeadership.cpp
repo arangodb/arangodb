@@ -249,7 +249,7 @@ bool TakeoverShardLeadership::first() {
 
       TRI_ASSERT(coll);
       LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
-          << "trying to become leader of shard '" << database << "/" << shard;
+          << "handling leadership of shard '" << database << "/" << shard;
       // We adjust local leadership, note that the planned
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only

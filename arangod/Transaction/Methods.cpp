@@ -296,7 +296,7 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
       _transactionContext(transactionContext),
       _mainTransaction(false) {
   TRI_ASSERT(transactionContext != nullptr);
-    
+
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
@@ -491,7 +491,7 @@ Future<Result> transaction::Methods::commitAsync() {
   if (!_mainTransaction) {
     return futures::makeFuture(Result());
   }
-  
+
   auto f = futures::makeFuture(Result());
   if (_state->isRunningInCluster()) {
     // first commit transaction on subordinate servers
@@ -521,7 +521,7 @@ Future<Result> transaction::Methods::abortAsync() {
     return Result(TRI_ERROR_TRANSACTION_INTERNAL,
                   "transaction not running on abort");
   }
-  
+
   if (!_mainTransaction) {
     return futures::makeFuture(Result());
   }
@@ -591,7 +591,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&) {
 
 /// @brief fetches documents in a collection in random order, local
 OperationResult transaction::Methods::anyLocal(std::string const& collectionName) {
-  
+
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
@@ -636,12 +636,12 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(TRI_voc_cid_t cid,
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     collection = trxCollection(cid);
     if (collection == nullptr) {
       throwCollectionNotFound(cname.c_str());
     }
-      
+
   } else {
     AccessMode::Type collectionAccessType = collection->accessType();
     if (AccessMode::isRead(collectionAccessType) && !AccessMode::isRead(type)) {
@@ -1041,14 +1041,14 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     docResult.clear();
     prevDocResult.clear();
-    
+
     LocalDocumentId oldDocumentId;
     TRI_voc_rid_t oldRevisionId = 0;
     VPackSlice key;
-    
+
     Result res;
 
-    if (options.isOverwriteModeSet() && 
+    if (options.isOverwriteModeSet() &&
         options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
@@ -1062,7 +1062,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         }
       }
     }
-        
+
     bool const isPrimaryKeyConstraintViolation = oldDocumentId.isSet();
     TRI_ASSERT(!isPrimaryKeyConstraintViolation || !key.isNone());
 
@@ -1821,14 +1821,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
 
       auto responses = futures::collectAll(futures).get();
-      // If any would-be-follower refused to follow there must be a
-      // new leader in the meantime, in this case we must not allow
-      // this operation to succeed, we simply return with a refusal
-      // error (note that we use the follower version, since we have
-      // lost leadership):
-      if (findRefusal(responses)) {
-        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
-      }
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
@@ -1850,6 +1842,14 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }
+      }
+      // If any would-be-follower refused to follow there must be a
+      // new leader in the meantime, in this case we must not allow
+      // this operation to succeed, we simply return with a refusal
+      // error (note that we use the follower version, since we have
+      // lost leadership):
+      if (findRefusal(responses)) {
+        return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
     }
   }
@@ -1947,7 +1947,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(std::string const& collectionName,
                                                  transaction::CountType type) {
-  
+
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
@@ -1990,7 +1990,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
   }
-  
+
   // TODO: an extra optimizer rule could make this unnecessary
   if (isInaccessibleCollection(idx->collection().name())) {
     return std::make_unique<EmptyIndexIterator>(&idx->collection(), this);
@@ -2012,7 +2012,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
-  
+
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
@@ -2022,7 +2022,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
 
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
-  
+
   // TODO: an extra optimizer rule could make this unnecessary
   if (isInaccessibleCollection(collectionName)) {
     return std::make_unique<EmptyIndexIterator>(logical.get(), this);
@@ -2190,7 +2190,109 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
-  return Result(trxColl->unlockRecursive(type));
+  return Result(trxColl->unlockRecursive(type, _state->nestingLevel()));
+}
+
+/// @brief get list of indexes for a collection
+std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
+    std::string const& collectionName) {
+  if (_state->isCoordinator()) {
+    return indexesForCollectionCoordinator(collectionName);
+  }
+  // For a DBserver we use the local case.
+
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
+  std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
+
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
+  return indexes;
+}
+
+/// @brief Lock all collections. Only works for selected sub-classes
+int transaction::Methods::lockCollections() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+/// @brief Get all indexes for a collection name, coordinator case
+std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
+    std::string const& name, std::string const& id) const {
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
+  TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
+  return collection->lookupIndex(iid);
+}
+
+/// @brief Get all indexes for a collection name, coordinator case
+std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCoordinator(
+    std::string const& name) const {
+  auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto collection = ci.getCollection(vocbase().name(), name);
+
+  // update selectivity estimates if they were expired
+  if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
+    collection->clusterIndexEstimates(true, _state->id() + 1);
+  } else {
+    collection->clusterIndexEstimates(true);
+  }
+
+  std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
+
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
+  return indexes;
+}
+
+/// @brief get the index by it's identifier. Will either throw or
+///        return a valid index. nullptr is impossible.
+transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
+    std::string const& collectionName, std::string const& idxId) {
+
+  if (idxId.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
+
+  if (!arangodb::Index::validateId(idxId.c_str())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+
+  if (_state->isCoordinator()) {
+    std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, idxId);
+    if (idx == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                     "Could not find index '" + idxId +
+                                         "' in collection '" + collectionName +
+                                         "'.");
+    }
+
+    // We have successfully found an index with the requested id.
+    return IndexHandle(idx);
+  }
+
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
+
+
+  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(idxId);
+  std::shared_ptr<arangodb::Index> idx = document->lookupIndex(iid);
+
+  if (idx == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                   "Could not find index '" + idxId +
+                                       "' in collection '" + collectionName +
+                                       "'.");
+  }
+
+  // We have successfully found an index with the requested id.
+  return IndexHandle(idx);
 }
 #endif
 
