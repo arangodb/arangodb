@@ -1911,7 +1911,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(irs::string_ref const& d
   if (!ServerState::instance()->isCoordinator()) {
     // single-servers will load anythign they need in regular get
     // dbserver receives analyzers definitions from coordinators in ddl requests
-    // and dbservers never should start ddl by themselves. 
+    // and dbservers never should start ddl by themselves.
     return {};
   }
   auto res = loadAnalyzers(dbName);
