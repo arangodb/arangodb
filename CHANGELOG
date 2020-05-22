@@ -1,4 +1,4 @@
-v3.6.4-preview.1 (2020-05-19)
+v3.6.4-preview.3 (2020-05-22)
 -----------------------------
 
 * Fix bug which caused failing modification operations to lead to random
