@@ -262,9 +262,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
             if (ao.value.hasKey("precondition")) {
               auto const precondition = ao.value.get("precondition");
-              preconditions.push_back(AgencyPrecondition(precondition.keyAt(0).copyString(),
-                                                         AgencyPrecondition::Type::VALUE,
-                                                         precondition.valueAt(0)));
+              for (auto pair : VPackObjectIterator(precondition)) {
+                preconditions.push_back(
+                    AgencyPrecondition(pair.key.copyString(),
+                                       AgencyPrecondition::Type::VALUE, pair.value));
+              }
             }
 
             if (op == "set") {

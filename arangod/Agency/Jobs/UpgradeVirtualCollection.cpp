@@ -241,6 +241,54 @@ arangodb::consensus::JOB_STATUS childStatus(arangodb::consensus::Node const& sna
 
   return arangodb::consensus::JOB_STATUS::NOTFOUND;
 }
+
+void prepareReleaseTransaction(arangodb::velocypack::Builder& trx, std::string const& database,
+                               std::string const& collection, std::string const& jobId) {
+  using namespace arangodb::velocypack;
+
+  std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
+  std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
+  {
+    ArrayBuilder listofTransactions(&trx);
+    {
+      ObjectBuilder mutations(&trx);
+
+      // unlock collection
+      trx.add(Value(collectionLock));
+      {
+        ObjectBuilder lock(&trx);
+        trx.add("op", Value("delete"));
+      }
+
+      // remove the upgrade flag
+      trx.add(Value(collectionPath + "/" + arangodb::maintenance::UPGRADE_STATUS));
+      {
+        ObjectBuilder status(&trx);
+        trx.add("op", Value("delete"));
+      }
+
+      // make sure we don't try to rewrite history
+      arangodb::consensus::Job::addIncreasePlanVersion(trx);
+    }
+    {
+      ObjectBuilder preconditions(&trx);
+
+      // collection exists
+      trx.add(Value(collectionPath));
+      {
+        ObjectBuilder collection(&trx);
+        trx.add("oldEmpty", Value(false));
+      }
+
+      // and we can write lock it
+      trx.add(Value(collectionLock));
+      {
+        ObjectBuilder lock(&trx);
+        trx.add(arangodb::consensus::PREC_IS_WRITE_LOCKED, Value(jobId));
+      }
+    }
+  }
+}
 }  // namespace
 
 namespace arangodb::consensus {
@@ -363,6 +411,11 @@ JOB_STATUS UpgradeVirtualCollection::status() {
   }
 
   if (haveFailure) {
+    velocypack::Builder trx;
+    ::prepareReleaseTransaction(trx, _database, _collection, _jobId);
+    std::string const messageIfError =
+        "could not clean up after failed virtual collection upgrade";
+    [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
     abort("one or more child jobs failed");
   }
 

@@ -812,6 +812,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
       {
         std::unique_lock<std::mutex> lock(collection->upgradeStatusLock());
         auto& upgradeStatus = collection->upgradeStatus();
+        upgradeStatus = LogicalCollection::UpgradeStatus::fetch(*collection);
         if (!upgradeStatus.map().empty()) {
           upgradeStatus.toVelocyPack(ret, true);
         }
@@ -834,12 +835,13 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
 }
 
 bool equivalent(VPackSlice const& local, VPackSlice const& current) {
-  for (auto const& i : VPackObjectIterator(local)) {
-    if (!VPackNormalizedCompare::equals(i.value, current.get(i.key.copyString()))) {
-      return false;
+  return VPackNormalizedCompare::equals(local, current);
+  /*for (auto const& i : VPackObjectIterator(local)) {
+    if (!VPackNormalizedCompare::equals(i.value,
+  current.get(i.key.copyString()))) { return false;
     }
   }
-  return true;
+  return true;*/
 }
 
 static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
@@ -985,7 +987,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               VPackObjectBuilder p(&report);
               report.add(PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
                          thePlanList);
-              report.add("/Current/Version", cur.get("Version"));
+              report.add("Current/Version", cur.get("Version"));
             }
           }
         }

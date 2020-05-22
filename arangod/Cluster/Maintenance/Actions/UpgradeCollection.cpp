@@ -202,6 +202,10 @@ void writeStatusToCurrent(arangodb::LogicalCollection& collection,
   if (!result.successful()) {
     throw std::runtime_error(
         "failed to send and execute transaction to set shard upgrade status");
+  } else {
+    auto& feature = collection.vocbase().server().getFeature<arangodb::ClusterFeature>();
+    auto& ci = feature.clusterInfo();
+    ci.invalidateCurrent();
   }
 }
 
@@ -225,13 +229,17 @@ void removeStatusFromCurrent(arangodb::LogicalCollection& collection,
   if (!result.successful()) {
     throw std::runtime_error(
         "failed to send and execute transaction to set shard upgrade status");
+  } else {
+    auto& feature = collection.vocbase().server().getFeature<arangodb::ClusterFeature>();
+    auto& ci = feature.clusterInfo();
+    ci.invalidateCurrent();
   }
 }
 
 std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
-    arangodb::LogicalCollection& collection) {
+    arangodb::LogicalCollection& collection, std::unique_lock<std::mutex>& lock) {
+  TRI_ASSERT(lock.owns_lock());
   std::unordered_map<::UpgradeState, std::vector<std::string>> map;
-  std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
 
   arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
   for (auto& it : status.map()) {
@@ -390,9 +398,9 @@ bool UpgradeCollection::next() {
       {
         std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
         if (targetPhase == ::UpgradeState::Rollback && !_inRollback) {
-          _inRollback = true;
           ::setStatusesForRollback(*config.collection, lock);
           ::writeStatusToCurrent(*config.collection, _description, lock);
+          _inRollback = true;
         }
       }
 
@@ -409,67 +417,70 @@ bool UpgradeCollection::next() {
       auto& ci = feature.clusterInfo();
       {
         std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
-        std::tie(res, localChanges) =
-            ::updateStatusFromCurrent(ci, *config.collection, shard, lock);
-      }
-      TRI_IF_FAILURE("UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
-        res.reset(TRI_ERROR_INTERNAL, "could not update status from current");
-      }
-      if (res.fail()) {
-        setError(*config.collection, res.errorMessage());
-        return true;
-      }
-      if (localChanges && targetPhase != ::UpgradeState::Cleanup) {
-        // make sure it's written back out to Current with up-to-date server list
-        std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
-        ::writeStatusToCurrent(*config.collection, _description, lock);
-      }
+        {
+          std::tie(res, localChanges) =
+              ::updateStatusFromCurrent(ci, *config.collection, shard, lock);
+        }
+        TRI_IF_FAILURE("UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
+          res.reset(TRI_ERROR_INTERNAL, "could not update status from current");
+        }
+        if (res.fail()) {
+          setError(*config.collection, res.errorMessage());
+          return true;
+        }
+        if (localChanges) {
+          // make sure it's written back out to Current with up-to-date server list
+          ::writeStatusToCurrent(*config.collection, _description, lock);
+        }
 
-      std::unordered_map<::UpgradeState, std::vector<std::string>> servers =
-          ::serversByStatus(*config.collection);
-      switch (targetPhase) {
-        case ::UpgradeState::Prepare: {
-          [[maybe_unused]] bool haveServers =
-              processPhase(servers, ::UpgradeState::ToDo, targetPhase, *config.collection);
-          break;
-        }
-        case ::UpgradeState::Finalize: {
-          // first prepare any servers that are still ToDo
-          bool haveServers = processPhase(servers, ::UpgradeState::ToDo,
-                                          ::UpgradeState::Prepare, *config.collection);
-          // if everything was already prepared, proceed to finalize
-          if (!haveServers && !::haveError(*config.collection)) {
-            haveServers = processPhase(servers, ::UpgradeState::Prepare,
-                                       targetPhase, *config.collection);
+        std::unordered_map<::UpgradeState, std::vector<std::string>> servers =
+            ::serversByStatus(*config.collection, lock);
+        switch (targetPhase) {
+          // TODO run each time to pick up fulfilled futures for servers which
+          // have now been categorized as target phase, to make sure we don't
+          // get stuck!
+          case ::UpgradeState::Prepare: {
+            [[maybe_unused]] bool haveServers =
+                processPhase(servers, ::UpgradeState::ToDo, targetPhase,
+                             *config.collection, lock);
+            break;
           }
-          break;
+          case ::UpgradeState::Finalize: {
+            // first prepare any servers that are still ToDo
+            bool haveServers =
+                processPhase(servers, ::UpgradeState::ToDo,
+                             ::UpgradeState::Prepare, *config.collection, lock);
+            // if everything was already prepared, proceed to finalize
+            if (!haveServers && !::haveError(*config.collection)) {
+              haveServers = processPhase(servers, ::UpgradeState::Prepare,
+                                         targetPhase, *config.collection, lock);
+            }
+            break;
+          }
+          case ::UpgradeState::Rollback: {
+            [[maybe_unused]] bool haveServers =
+                processPhase(servers, ::UpgradeState::Finalize, targetPhase,
+                             *config.collection, lock);
+            break;
+          }
+          case ::UpgradeState::Cleanup: {
+            // send cleanup for all non-Cleanup server states, even ToDo, since
+            // it might have started Prepare and encountered an error
+            [[maybe_unused]] bool haveServers =
+                processPhase(servers, ::UpgradeState::ToDo, targetPhase,
+                             *config.collection, lock);
+            haveServers = processPhase(servers, ::UpgradeState::Prepare,
+                                       targetPhase, *config.collection, lock);
+            haveServers = processPhase(servers, ::UpgradeState::Finalize,
+                                       targetPhase, *config.collection, lock);
+            haveServers = processPhase(servers, ::UpgradeState::Rollback,
+                                       targetPhase, *config.collection, lock);
+            break;
+          }
+          case ::UpgradeState::ToDo:
+          default:
+            break;
         }
-        case ::UpgradeState::Rollback: {
-          [[maybe_unused]] bool haveServers =
-              processPhase(servers, ::UpgradeState::Finalize, targetPhase,
-                           *config.collection);
-          break;
-        }
-        case ::UpgradeState::Cleanup: {
-          // send cleanup for all non-Cleanup server states, even ToDo, since it
-          // might have started Prepare and encountered an error
-          [[maybe_unused]] bool haveServers =
-              processPhase(servers, ::UpgradeState::ToDo,
-                           ::UpgradeState::Cleanup, *config.collection);
-          haveServers = processPhase(servers, ::UpgradeState::Prepare,
-                                     targetPhase, *config.collection);
-          haveServers = processPhase(servers, ::UpgradeState::Finalize,
-                                     targetPhase, *config.collection);
-          haveServers = processPhase(servers, ::UpgradeState::Rollback,
-                                     targetPhase, *config.collection);
-          // and process the reponses from cleanup requests
-          haveServers = processPhase(servers, ::UpgradeState::Cleanup,
-                                     targetPhase, *config.collection);
-          break;
-        }
-        case ::UpgradeState::ToDo:
-        default:
-          break;
       }
     } else {
       std::stringstream error;
@@ -548,9 +559,11 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
 
         // okay, we executed this operation successfully, let everyone know
         {
+          LOG_DEVEL << "success " << config.collection->name() << " for " << server;
           std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
           if (!self->_inRollback || phase == ::UpgradeState::Rollback ||
               phase == ::UpgradeState::Cleanup) {
+            LOG_DEVEL << "report " << config.collection->name() << " for " << server;
             arangodb::LogicalCollection::UpgradeStatus& status =
                 config.collection->upgradeStatus();
             status.set(server, phase);
@@ -579,7 +592,9 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
 
 bool UpgradeCollection::processPhase(
     std::unordered_map<::UpgradeState, std::vector<std::string>> servers,
-    ::UpgradeState searchPhase, ::UpgradeState targetPhase, LogicalCollection& collection) {
+    ::UpgradeState searchPhase, ::UpgradeState targetPhase,
+    LogicalCollection& collection, std::unique_lock<std::mutex>& lock) {
+  TRI_ASSERT(searchPhase != targetPhase);
   std::size_t serverCount = 0;
   decltype(servers)::const_iterator it = servers.find(searchPhase);
   if (it != servers.end() && !it->second.empty()) {
@@ -587,7 +602,9 @@ bool UpgradeCollection::processPhase(
     for (auto const& server : it->second) {
       decltype(_futures)::iterator f = _futures.find(server);
       bool mustSendRequest = false;
-      if (f == _futures.end() && searchPhase != targetPhase) {
+      if (f == _futures.end()) {
+        LOG_DEVEL << "marking " << collection.name() << " must send to "
+                  << server << " as missing";
         mustSendRequest = true;
       } else {
         auto& [phase, future] = f->second;
@@ -601,10 +618,12 @@ bool UpgradeCollection::processPhase(
               } else {
                 // this future is from a previous phase, go ahead and mark to
                 // send so we don't have a missed update
+                LOG_DEVEL << "marking " << collection.name() << " must send to "
+                          << server << " as previous round";
                 mustSendRequest = true;
               }
             } else {
-              std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
+              TRI_ASSERT(lock.owns_lock());
               if (!_inRollback || phase == ::UpgradeState::Rollback ||
                   phase == ::UpgradeState::Cleanup) {
                 setError(collection, r.errorMessage(), lock);
@@ -629,6 +648,7 @@ bool UpgradeCollection::processPhase(
         }
       }
       if (mustSendRequest) {
+        LOG_DEVEL << "sending request " << collection.name() << " for " << server;
         futures::Future<Result> future = sendRequest(collection, server, targetPhase);
         _futures.emplace(server, std::make_pair(targetPhase, std::move(future)));
       }

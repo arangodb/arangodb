@@ -56,7 +56,7 @@ class UpgradeCollection : public ActionBase,
   bool processPhase(std::unordered_map<LogicalCollection::UpgradeStatus::State, std::vector<std::string>> servers,
                     LogicalCollection::UpgradeStatus::State searchPhase,
                     LogicalCollection::UpgradeStatus::State targetPhase,
-                    LogicalCollection& collection);
+                    LogicalCollection& collection, std::unique_lock<std::mutex>& lock);
 
   bool refreshPlanStatus();
 
