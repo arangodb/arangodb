@@ -275,13 +275,12 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     }
     if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
-
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
-          << ", leader id: " << leaderId << ", my id: " << serverId << ", should be leader: "
-          << (shouldBeLeading ? std::string() : std::string("id=") + leaderId)
-          << "leaderTouched = " << (leaderTouched ? "yes" : "no");
+          << ", leader id: " << leaderId << ", my id: " << serverId
+          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId)
+          << ", leaderTouched = " << (leaderTouched ? "yes" : "no");
       actions.emplace_back(ActionDescription(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
@@ -289,7 +288,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {COLLECTION, colname},
               {SHARD, shname},
               {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-              {LOCAL_LEADER, leaderTouched ? std::string(localLeader) : std::string()},
+              {LOCAL_LEADER, std::string(localLeader)},
               {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
           LEADER_PRIORITY));
     }
