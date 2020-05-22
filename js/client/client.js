@@ -58,6 +58,18 @@ global.clearTimeout = function () { throw new ArangoError({
   errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': clearTimeout()'
 })};
 
+let noPromises = function () { throw new ArangoError({
+  errorNum: errors.ERROR_NOT_IMPLEMENTED.code,
+  errorMessage: errors.ERROR_NOT_IMPLEMENTED.message + ': Promises'
+})};
+global.Promise = noPromises;
+global.Promise.all = noPromises;
+global.Promise.allSettled = noPromises;
+global.Promise.any = noPromises;
+global.Promise.race = noPromises;
+global.Promise.reject = noPromises;
+global.Promise.resolve = noPromises;
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief start paging
 // //////////////////////////////////////////////////////////////////////////////
