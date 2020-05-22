@@ -15,8 +15,8 @@
 
 struct PerfectKeywordHashTableEntry { const char* name; Token::Value value; };
 %%
-async, Token::ASYNC
-await, Token::AWAIT
+async, Token::ILLEGAL
+await, Token::ILLEGAL
 break, Token::BREAK
 case, Token::CASE
 catch, Token::CATCH
