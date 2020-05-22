@@ -1296,9 +1296,7 @@ function IResearchFeatureDDLTestSuite () {
       db._useDatabase("_system");
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
-      try { analyzers.remove(analyzerName, true); } catch (e) {}
       try {
-        db._analyzers.save({type:"identity", name: analyzerName});
         db._createDatabase(dbName);
         db._useDatabase(dbName);
         db._analyzers.save({type:"identity", name: analyzerName});
@@ -1315,7 +1313,6 @@ function IResearchFeatureDDLTestSuite () {
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
-        try { analyzers.remove(analyzerName, true); } catch (e) {}
       }
     },
     testAutoLoadAnalyzerOnViewUpdate : function() {
@@ -1324,9 +1321,7 @@ function IResearchFeatureDDLTestSuite () {
       db._useDatabase("_system");
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
-      try { analyzers.remove(analyzerName, true); } catch (e) {}
       try {
-        db._analyzers.save({type:"identity", name: analyzerName});
         db._createDatabase(dbName);
         db._useDatabase(dbName);
         db._analyzers.save({type:"identity", name: analyzerName});
@@ -1345,7 +1340,6 @@ function IResearchFeatureDDLTestSuite () {
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
-        try { analyzers.remove(analyzerName, true); } catch (e) {}
       }
     }
   };
