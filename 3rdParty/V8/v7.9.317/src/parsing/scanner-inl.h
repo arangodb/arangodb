@@ -17,8 +17,8 @@ namespace internal {
 
 #define KEYWORDS(KEYWORD_GROUP, KEYWORD)                    \
   KEYWORD_GROUP('a')                                        \
-  KEYWORD("async", Token::ASYNC)                            \
-  KEYWORD("await", Token::AWAIT)                            \
+  KEYWORD("async", Token::ILLEGAL)                          \
+  KEYWORD("await", Token::ILLEGAL)                          \
   KEYWORD_GROUP('b')                                        \
   KEYWORD("break", Token::BREAK)                            \
   KEYWORD_GROUP('c')                                        \
