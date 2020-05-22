@@ -36,6 +36,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "V8Server/V8Context.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Builder.h>
 
@@ -318,7 +319,8 @@ class ClusterQuery final : public Query {
                            arangodb::velocypack::Slice variables,
                            arangodb::velocypack::Slice snippets,
                            arangodb::velocypack::Slice traversals,
-                           arangodb::velocypack::Builder& answer);
+                           arangodb::velocypack::Builder& answer,
+                           arangodb::AnalyzersRevision::Revision analyzersRevision);
   
   Result finalizeClusterQuery(ExecutionStats& stats, int errorCode);
 
