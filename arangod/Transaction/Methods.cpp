@@ -2532,7 +2532,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           }
         }
       }
-      if (findRefusal(responses) && collectionName != "_statisticsRaw" && collectionName != "_statistics15" && collectionName != "_statistics") {
+      if (findRefusal(responses)) {
         return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
     }
