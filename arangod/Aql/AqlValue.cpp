@@ -1374,7 +1374,7 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
     }
     _data.internal[0] = 0x1fU + vSize;
     int i = 1;
-    while (vSize-- > 0) {
+    while (vSize-- > 0 && i < 16) {
       _data.internal[i] = x & 0xffU;
       ++i;
       x >>= 8;
