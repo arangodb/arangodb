@@ -25,6 +25,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -54,6 +55,18 @@ namespace {
 /// @brief gets the physical memory size
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 uint64_t physicalMemoryImpl() {
+#ifdef __linux__
+  static std::string cgroupMemFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+  if (basics::FileUtils::exists(cgroupMemFile)) {
+    std::string memstr;
+    auto rv = basics::FileUtils::slurp(cgroupMemFile, memstr);
+    if (rv.ok() && memstr.len() > 0) {
+      return std::strtoull(memstr);
+// else fall back to the physical memory
+    }
+  }
+#endif
+
   int mib[2];
 
   // Get the Physical memory size
@@ -67,7 +80,7 @@ uint64_t physicalMemoryImpl() {
   int64_t physicalMemory;
   sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
 
-  return static_cast<uint64_t>(physicalMemory);
+   return static_cast<uint64_t>(physicalMemory);
 }
 
 #else
