@@ -1315,6 +1315,9 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case MATERIALIZE:
+
+    case SUBQUERY_START:
+    case SUBQUERY_END:
       return true;
 
     default:
@@ -1383,9 +1386,17 @@ void ExecutionNode::setVarsValid(VarSetStack varStack) {
   _varsValidStack = std::move(varStack);
 }
 
+auto ExecutionNode::getVarsUsedLater() const noexcept -> VarSet const& {
+  return getVarsUsedLaterStack().back();
+}
+
 auto ExecutionNode::getVarsUsedLaterStack() const noexcept -> VarSetStack const& {
   TRI_ASSERT(_varUsageValid);
   return _varsUsedLaterStack;
+}
+
+auto ExecutionNode::getVarsValid() const noexcept -> VarSet const& {
+  return getVarsValidStack().back();
 }
 
 auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {

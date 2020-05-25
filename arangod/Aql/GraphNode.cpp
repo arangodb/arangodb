@@ -358,7 +358,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   auto getAqlCollectionFromName = [&](std::string const& name) -> aql::Collection* {
     // if the collection was already existent in the query, addCollection will
     // just return it.
-    return query.collections().add(name, AccessMode::Type::READ);
+    return query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Collection);
   };
 
   auto vPackDirListIter = VPackArrayIterator(dirList);

@@ -66,6 +66,7 @@
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -1567,6 +1568,7 @@ template <bool search_semantics>
 AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
+  TRI_ASSERT(ctx);
   if (args.size() < 3) {
     registerWarning(ctx, AFN,
                     arangodb::Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
@@ -1633,6 +1635,7 @@ AqlValue Functions::NgramPositionalSimilarity(ExpressionContext* ctx,
 /// Executes NGRAM_MATCH based on binary ngram similarity
 AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
+  TRI_ASSERT(ctx);
   static char const* AFN = "NGRAM_MATCH";
 
   auto const argc = args.size();
@@ -1702,7 +1705,8 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
     arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
-  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase);
+  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase, 
+                                      trx->state()->analyzersRevision());
   if (!analyzer) {
     arangodb::aql::registerWarning(
         ctx, AFN,

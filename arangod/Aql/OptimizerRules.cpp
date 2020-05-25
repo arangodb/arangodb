@@ -828,23 +828,23 @@ using EN = arangodb::aql::ExecutionNode;
 namespace arangodb {
 namespace aql {
 
-// TODO cleanup this f-ing aql::Collection(s) mess
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert) {
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context) {
   aql::Collection* coll = nullptr;
 
   if (!cname.empty()) {
-    coll = query.collections().add(cname, AccessMode::Type::READ);
+    coll = query.collections().add(cname, AccessMode::Type::READ, aql::Collection::Hint::Collection);
     // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
     // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      coll->setCollection(query.vocbase().lookupCollection(cname));
       query.trxForOptimization().addCollectionAtRuntime(cname, AccessMode::Type::READ);
     }
   }
 
-  if (assert) {
-    TRI_ASSERT(coll != nullptr);
+  if (coll == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        std::string("collection '") + cname + "' used in " + context + " not found");
   }
 
   return coll;
@@ -2345,7 +2345,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       }
     } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -2420,7 +2420,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       } else if (accessed->type == NODE_TYPE_ARRAY) {
         int64_t position;
@@ -2434,7 +2434,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           if (!valid) {
             // invalid index
             modifiedNode = true;
-            return Ast::createNodeValueNull();
+            return p->getAst()->createNodeValueNull();
           }
         } else {
           // numeric index, e.g. [123]
@@ -2461,7 +2461,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
         // index out of bounds
         modifiedNode = true;
-        return Ast::createNodeValueNull();
+        return p->getAst()->createNodeValueNull();
       }
     }
 
@@ -7367,7 +7367,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       if (std::get<2>(sq)) {
         Ast* ast = plan->getAst();
         // generate a calculation node that only produces "true"
-        auto expr = std::make_unique<Expression>(ast, Ast::createNodeValueBool(true));
+        auto expr = std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
@@ -7479,15 +7479,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
 
         current = filterParent;
         modified = true;
+        continue;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
         auto expr = calculationNode->expression();
         if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
-          break;
-        }
-
-        if (expr->node() == nullptr) {
           break;
         }
 

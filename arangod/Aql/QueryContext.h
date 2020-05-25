@@ -33,7 +33,6 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
-
 #include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
@@ -97,7 +96,7 @@ class QueryContext {
   TRI_voc_tick_t id() const { return _queryId; }
   
   aql::Ast* ast();
- 
+
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
