@@ -24,7 +24,7 @@ if (LINUX)
   set(LIBUNWIND_CC_TMP "${CMAKE_C_COMPILER}")
   set(LIBUNWIND_CXX_TMP "${CMAKE_CXX_COMPILER}")
 
-  set(LIBUNWIND_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/libunwind.a")
+  set(LIBUNWIND_LIB "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}/src/.libs/libunwind.a")
   ExternalProject_Add(
     libunwind_build
     SOURCE_DIR
@@ -37,11 +37,13 @@ if (LINUX)
                   CFLAGS=${CMAKE_C_FLAGS}
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
-                  --enable-shared=no --enable-static=yes --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --enable-cxx-exceptions
+                  --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --enable-cxx-exceptions
     BUILD_COMMAND
-      $(MAKE)
+      $(MAKE) 
     BUILD_IN_SOURCE
       1
+    INSTALL_COMMAND
+      $(MAKE) install prefix=${CMAKE_CURRENT_BINARY_DIR} DESTDIR=${CMAKE_CURRENT_BINARY_DIR}
     STEP_TARGETS
       ${LIBUNWIND_LIB} libunwind
   )
