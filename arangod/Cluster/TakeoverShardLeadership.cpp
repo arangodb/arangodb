@@ -174,7 +174,7 @@ static void handleLeadership(LogicalCollection& collection, std::string const& l
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
-      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("5632f", DEBUG, Logger::MAINTENANCE)
       << "handling leadership of shard '" << databaseName << "/"
       << collection.name() << ": becoming leader";
 
@@ -224,7 +224,7 @@ static void handleLeadership(LogicalCollection& collection, std::string const& l
       // agency. If this list would be empty, then the supervision
       // would be very angry with us!
 
-      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("5632e", DEBUG, Logger::MAINTENANCE)
           << "handling leadership of shard '" << databaseName << "/"
           << collection.name() << ": following " << plannedLeader;
 
