@@ -289,7 +289,7 @@ void crashHandler(int signal, siginfo_t* info, void*) {
               
           if (frame >= skipFrames) {
             length = p - &buffer[0];
-            LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+            LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
           }
               
           ++frame;
