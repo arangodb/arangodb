@@ -7479,15 +7479,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
 
         current = filterParent;
         modified = true;
+        continue;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
         auto expr = calculationNode->expression();
         if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
-          break;
-        }
-
-        if (expr->node() == nullptr) {
           break;
         }
 
