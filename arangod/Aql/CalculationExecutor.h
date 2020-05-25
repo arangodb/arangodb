@@ -123,7 +123,7 @@ class CalculationExecutor {
 
  private:
   transaction::Methods _trx;
-  aql::AqlFunctionsInternalCache _regexCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;

@@ -38,7 +38,7 @@ using namespace arangodb::aql;
 AqlFunctionsInternalCache::~AqlFunctionsInternalCache() { clear(); }
 
 void AqlFunctionsInternalCache::clear() noexcept {
-  _regexCache.clear();
+  _aqlFunctionsInternalCache.clear();
   _likeCache.clear();
 }
 
@@ -46,7 +46,7 @@ icu::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(char const* ptr,
                                                  bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
-  return fromCache(_temp, _regexCache);
+  return fromCache(_temp, _aqlFunctionsInternalCache);
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(char const* ptr, size_t length,
@@ -93,8 +93,6 @@ icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(AqlValue const& 
 }
 
 arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(VPackSlice const& validatorParams) {
-
-  // insert into cache, no matter if pattern is valid or not
   auto matcherIter = _schemaCache.try_emplace(
         validatorParams.hash(),
         arangodb::lazyConstruct([&]{
@@ -103,7 +101,6 @@ arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(VPackSlice co
       ).first;
 
   return matcherIter->second.get();
-
 };
 
 /// @brief get matcher from cache, or insert a new matcher for the specified

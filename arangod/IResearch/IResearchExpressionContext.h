@@ -54,7 +54,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
                                      aql::QueryContext* query,
                                      aql::AqlFunctionsInternalCache* cache)
-  : ExpressionContext(), _trx(trx), _query(query), _regexCache(cache)  {}
+  : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
   
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
@@ -78,7 +78,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 protected:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _query;
-  arangodb::aql::AqlFunctionsInternalCache* _regexCache;
+  arangodb::aql::AqlFunctionsInternalCache* _aqlFunctionsInternalCache;
 };                              // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////

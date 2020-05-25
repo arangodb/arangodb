@@ -382,7 +382,7 @@ class IResearchViewExecutorBase {
 
  protected:
   transaction::Methods _trx;
-  AqlFunctionsInternalCache _regexCache;
+  AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;

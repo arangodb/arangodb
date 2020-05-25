@@ -117,10 +117,10 @@ struct DocumentProducingFunctionContext {
   
   bool hasFilter() const noexcept;
   
-  aql::AqlFunctionsInternalCache& regexCache() { return _regexCache; }
+  aql::AqlFunctionsInternalCache& regexCache() { return _aqlFunctionsInternalCache; }
 
  private:
-  aql::AqlFunctionsInternalCache _regexCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   bool checkFilter(ExpressionContext& ctx);
 

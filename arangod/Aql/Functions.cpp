@@ -7569,16 +7569,19 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
   }
   auto* validator = expressionContext->buildValidator(schemaValue.slice());
 
-  //store and restore validatin level this is cheaper than modifying the vpack
-  auto storedLevel =  validator->level();
-  validator->setLevel(ValidationLevel::Strict); //override level so the validation will be executed no matter what
+  //store and restore validation level this is cheaper than modifying the VPack
+  auto storedLevel = validator->level();
+
+  //override level so the validation will be executed no matter what
+  validator->setLevel(ValidationLevel::Strict);
 
   Result res;
   {
     arangodb::ScopeGuard guardi([storedLevel, &validator]{
         validator->setLevel(storedLevel);
     });
-    auto res = validator->validateOne(docValue.slice(), vpackOptions);
+
+    res = validator->validateOne(docValue.slice(), vpackOptions);
   }
 
   transaction::BuilderLeaser resultBuilder(trx);

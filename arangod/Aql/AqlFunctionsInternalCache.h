@@ -84,7 +84,7 @@ class AqlFunctionsInternalCache final {
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
-  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _regexCache;
+  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _aqlFunctionsInternalCache;
   /// @brief cache for compiled regexes (LIKE function)
   std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _likeCache;
   /// @brief a reusable string object for pattern generation

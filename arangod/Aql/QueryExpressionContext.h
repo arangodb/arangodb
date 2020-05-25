@@ -38,7 +38,7 @@ class QueryExpressionContext : public ExpressionContext {
                                   QueryContext& query,
                                   AqlFunctionsInternalCache& cache)
       : ExpressionContext(),
-        _trx(trx), _query(query), _regexCache(cache) {}
+        _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
@@ -60,7 +60,7 @@ class QueryExpressionContext : public ExpressionContext {
  private:
   transaction::Methods& _trx;
   QueryContext& _query;
-  AqlFunctionsInternalCache& _regexCache;
+  AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
 };
 }  // namespace aql
 }  // namespace arangodb

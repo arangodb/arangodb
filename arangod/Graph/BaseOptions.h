@@ -158,7 +158,7 @@ struct BaseOptions {
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
   
-  aql::AqlFunctionsInternalCache& regexCache() { return _regexCache; }
+  aql::AqlFunctionsInternalCache& regexCache() { return _aqlFunctionsInternalCache; }
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
   
@@ -189,7 +189,7 @@ struct BaseOptions {
  protected:
   
   mutable arangodb::transaction::Methods _trx;
-  arangodb::aql::AqlFunctionsInternalCache _regexCache; // needed for expression evaluation
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
   arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
