@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed bug during startup for follower shards. Follower will be set correctly resulting in less resynchronization.
+
 * Fixed internal issue #650: Added analyzer cache update before ArangoSearch
   view creation/update.
 
