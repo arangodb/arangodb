@@ -1,7 +1,11 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6 
+* Fixed an issue with truncate of a collection after a dbserver was restarted
+  very quickly. This could block arangosync from making progress because the
+  _jobs collection could no longer be truncated.
+
+* Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6
   (FilterNode) while planning registers.
 
 * Update OpenLDAP to 2.4.50.
