@@ -237,6 +237,7 @@ target_link_libraries(arango
 
 if (USE_LIBUNWIND)
   add_dependencies(arango libunwind_build)
+  target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
   target_link_libraries(arango ${LIBUNWIND_LIB})
 endif ()
 

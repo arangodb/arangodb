@@ -42,10 +42,6 @@ if (LINUX)
       $(MAKE)
     BUILD_IN_SOURCE
       1
-      #    INSTALL_COMMAND
-      #$(MAKE) install
-      #     && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-      #     && ${CMAKE_COMMAND} -E copy ${LIBUNWIND_BINARY_DIR}/lib/libunwind.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
       ${LIBUNWIND_LIB} libunwind
   )
