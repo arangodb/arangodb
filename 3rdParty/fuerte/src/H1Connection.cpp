@@ -521,7 +521,7 @@ template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   this->_reading = false;
   // Do not cancel timeout now, because we might be going on to read!
-  if (ec) {
+  if (ec || _item == nullptr) {
     this->_proto.timer.cancel();
 
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
