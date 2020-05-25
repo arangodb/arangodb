@@ -283,10 +283,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)
                 << "Error reporting to agency: _statusCode: " << r.errorCode()
                 << " message: " << r.errorMessage() << ". This can be ignored, since it will be retried automatically.";
-          } else {
-            LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
-                << "Invalidating current in ClusterInfo";
-            clusterInfo.invalidateCurrent();
           }
         }
       }

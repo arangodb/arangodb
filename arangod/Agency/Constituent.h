@@ -30,6 +30,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "RestServer/MetricsFeature.h"
 
 #include <list>
 
@@ -151,6 +152,7 @@ class Constituent : public Thread {
   aql::QueryRegistry* _queryRegistry;
 
   term_t _term;  // term number
+  Gauge<term_t>& _gterm;  // term number
 
   std::string _leaderID;  // Current leader
   std::string _id;        // My own id

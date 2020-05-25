@@ -540,6 +540,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Counter& _read_no_leader;
   Histogram<log_scale_t<float>>& _write_hist_msec;
   Histogram<log_scale_t<float>>& _commit_hist_msec;
+  Histogram<log_scale_t<float>>& _append_hist_msec;
+  Histogram<log_scale_t<float>>& _compaction_hist_msec;
+  Gauge<uint64_t>& _local_index;
 
 };
 }  // namespace consensus

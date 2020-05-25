@@ -51,6 +51,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -545,14 +546,21 @@ static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
 
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
-  uint64_t newPlanVersion;
+  uint64_t newPlanVersion = 0;
 
-  newPlanVersion = 0;
-  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
+  auto& clusterFeature = _server.getFeature<ClusterFeature>();
+  auto& databaseFeature = _server.getFeature<DatabaseFeature>();
+  auto& metricsFeature = _server.getFeature<MetricsFeature>();
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& timer = metricsFeature.histogram(
+    "load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10), "Plan loading tuntimes [ms]");
+  auto start = clock::now();
+  auto& agencyCache = clusterFeature.agencyCache();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto tStart = TRI_microtime();
@@ -1100,12 +1108,16 @@ void ClusterInfo::loadPlan() {
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, idx);
-    auto heartbeatThread = _server.getFeature<ClusterFeature>().heartbeatThread();
+    auto heartbeatThread = clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
   }
+
+  timer.count(
+    duration<float,std::milli>(clock::now()-start).count());
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1117,9 +1129,18 @@ static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
 
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newCurrentVersion = 0;
+
+  auto& metricsFeature = _server.getFeature<MetricsFeature>();
+
+  auto& timer = metricsFeature.histogram(
+    "load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10), "Current loading tuntimes [ms]");
+  auto start = clock::now();
 
   // We need to update ServersKnown to notice rebootId changes for all servers.
   // To keep things simple and separate, we call loadServers here instead of
@@ -1276,6 +1297,10 @@ void ClusterInfo::loadCurrent() {
       heartbeatThread->notify();
     }
   }
+
+  timer.count(
+    duration<float,std::milli>(clock::now()-start).count());
+
 }
 
 /// @brief ask about a collection
@@ -4400,17 +4425,6 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate plan
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidatePlan() {
-/*  {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-    }*/
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current coordinators
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4431,28 +4445,6 @@ void ClusterInfo::invalidateCurrentMappings() {
     _mappingsProt.isValid = false;
   }
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate current
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidateCurrent() {
-/*  {
-    WRITE_LOCKER(writeLocker, _serversProt.lock);
-    _serversProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _DBServersProt.lock);
-    _DBServersProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _currentProt.lock);
-    _currentProt.isValid = false;
-  }
-  invalidateCurrentCoordinators();
-  invalidateCurrentMappings();*/
-}
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get current "Plan" structure
@@ -5001,7 +4993,7 @@ bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
 void ClusterInfo::SyncerThread::beginShutdown() {
 
   using namespace std::chrono_literals;
-  
+
   // set the shutdown state in parent class
   Thread::beginShutdown();
   {

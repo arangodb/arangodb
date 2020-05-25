@@ -33,6 +33,7 @@
 #include <thread>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
@@ -59,16 +60,20 @@ using namespace arangodb::rest;
 using namespace arangodb::basics;
 
 /// Constructor:
-State::State()
-    : _agent(nullptr),
-      _vocbase(nullptr),
-      _ready(false),
-      _collectionsChecked(false),
-      _collectionsLoaded(false),
-      _nextCompactionAfter(0),
-      _lastCompactionAt(0),
-      _queryRegistry(nullptr),
-      _cur(0) {}
+State::State(application_features::ApplicationServer& server)
+  : _server(server),
+    _agent(nullptr),
+    _vocbase(nullptr),
+    _ready(false),
+    _collectionsChecked(false),
+    _collectionsLoaded(false),
+    _nextCompactionAfter(0),
+    _lastCompactionAt(0),
+    _queryRegistry(nullptr),
+    _cur(0),
+    _log_size(
+      _server.getFeature<MetricsFeature>().gauge(
+        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")) {}
 
 /// Default dtor
 State::~State() = default;
@@ -293,8 +298,9 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
                               bool leading, bool reconfiguration) {
   _logLock.assertLockedByCurrentThread();
 
+  auto byteSize = slice.byteSize();
   auto buf = std::make_shared<Buffer<uint8_t>>();
-  buf->append((char const*)slice.begin(), slice.byteSize());
+  buf->append((char const*)slice.begin(), byteSize);
 
   bool success = reconfiguration ? persistconf(idx, term, millis, slice, clientId)
     : persist(idx, term, millis, slice, clientId);
@@ -306,6 +312,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
   }
 
   logEmplaceBackNoLock(log_t(idx, term, buf, clientId, millis));
+  _log_size += byteSize;
 
   return _log.back().index;
 }
@@ -536,8 +543,11 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
 
+  uint64_t delSize = 0;
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
+    delSize += lit->entry->byteSize();
     if (!clientId.empty()) {
       auto ret = _clientIdLookupTable.equal_range(clientId);
       for (auto it = ret.first; it != ret.second;) {
@@ -551,6 +561,8 @@ void State::logEraseNoLock(
   }
 
   _log.erase(rbegin, rend);
+  TRI_ASSERT(delSize <= _log_size.load());
+  _log_size -= delSize;
 
 }
 
@@ -806,6 +818,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
       _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string(), epoch_millis));
+      _log_size += value.byteSize();
       persist(0, 0, epoch_millis, value, std::string());
     }
     _ready = true;
@@ -921,6 +934,7 @@ bool State::loadCompacted() {
     try {
       _cur = StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
+      _log_size = 0;
       _clientIdLookupTable.clear();
       // Schedule next compaction:
       _lastCompactionAt = _cur;
@@ -1108,6 +1122,7 @@ bool State::loadRemaining() {
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.emplace_back(log_t(i, term, buf, std::string()));
+            _log_size += value.byteSize();
             // This has empty clientId, so we do not need to adjust
             // _clientIdLookupTable.
             lastIndex = i;
@@ -1392,6 +1407,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   // volatile logs
   _log.clear();
+  _log_size = 0;
   _clientIdLookupTable.clear();
   _cur = index;
   // This empty log should soon be rectified!

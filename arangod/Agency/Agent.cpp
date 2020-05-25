@@ -61,10 +61,11 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(ApplicationServer& server, config_t const& config)
+Agent::Agent(application_features::ApplicationServer& server, config_t const& config)
     : Thread(server, "Agent"),
       _constituent(server),
       _supervision(server),
+      _state(server),
       _config(config),
       _commitIndex(0),
       _spearhead(server, this),
@@ -77,24 +78,35 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _loaded(false),
       _write_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_write_ok", 0, "Agency write ok")),
+          "arangodb_agency_write_ok", 0, "Agency write ok")),
       _write_no_leader(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_write_no_leader", 0, "Agency write no leader")),
+          "arangodb_agency_write_no_leader", 0, "Agency write no leader")),
       _read_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_read_ok", 0, "Agency read ok")),
+          "arangodb_agency_read_ok", 0, "Agency read ok")),
       _read_no_leader(
         _server.getFeature<arangodb::MetricsFeature>().counter(
-          "agency_agent_read_no_leader", 0, "Agency read no leader")),
+          "arangodb_agency_read_no_leader", 0, "Agency read no leader")),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "agency_agent_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),
+          "arangodb_agency_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),
           "Agency write histogram [ms]")),
       _commit_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "agency_agent_commit_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency RAFT commit histogram [ms]")) {
+          "arangodb_agency_commit_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "Agency RAFT commit histogram [ms]")),
+      _append_hist_msec(
+        _server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_agency_append_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "Agency RAFT follower append histogram [ms]")),
+      _compaction_hist_msec(
+        _server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_agency_compaction_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
+          "Agency compaction histogram [ms]")),
+      _local_index(
+        _server.getFeature<arangodb::MetricsFeature>().gauge(
+          "arangodb_agency_local_commit_index", uint64_t(0), "This agent's commit index")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -413,9 +425,14 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
                                            index_t prevIndex, term_t prevTerm,
                                            index_t leaderCommitIndex,
                                            query_t const& queries) {
-  LOG_TOPIC("62f43", DEBUG, Logger::AGENCY)
-      << "Got AppendEntriesRPC from " << leaderId << " with term " << term;
 
+  using namespace std::chrono;
+  using clock = high_resolution_clock;
+
+  LOG_TOPIC("62f43", DEBUG, Logger::AGENCY)
+    << "Got AppendEntriesRPC from " << leaderId << " with term " << term;
+
+  auto start = clock::now();
   term_t t(this->term());
   if (!ready()) {  // We have not been able to put together our configuration
     LOG_TOPIC("7e96c", DEBUG, Logger::AGENCY) << "Agent is not ready yet.";
@@ -492,6 +509,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
       logsForTrigger();
     }
     _commitIndex = tmp;
+    _local_index = tmp;
     _waitForCV.broadcast();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
         payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
@@ -501,6 +519,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
   LOG_TOPIC("83504", DEBUG, Logger::AGENCY)
       << "Finished AppendEntriesRPC from " << leaderId << " with term " << term;
+
+  _append_hist_msec.count(
+    duration<float,std::milli>(high_resolution_clock::now()-start).count());
 
   return priv_rpc_ret_t(ok, t);
 }
@@ -845,6 +866,8 @@ void Agent::advanceCommitIndex() {
                               _commitIndex, t, true);
 
       _commitIndex = index;
+      _local_index = index;
+
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db, done";
@@ -1795,6 +1818,7 @@ void Agent::rebuildDBs() {
   }
 
   _commitIndex = lastCompactionIndex;
+  _local_index = lastCompactionIndex;
   _waitForCV.broadcast();
 
   // Apply logs from last applied index to leader's commit index
@@ -1825,14 +1849,21 @@ void Agent::compact() {
     commitIndex = _commitIndex;
   }
 
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   if (commitIndex >= _state.nextCompactionAfter()) {
     // This check needs to be here, because the compactor thread wakes us
     // up every 5 seconds.
     // Note that it is OK to compact anywhere before or at _commitIndex.
+    auto const start = clock::now();
     if (!_state.compact(commitIndex, _config.compactionKeepSize())) {
       LOG_TOPIC("70234", WARN, Logger::AGENCY)
-          << "Compaction for index " << commitIndex << " with keep size "
-          << _config.compactionKeepSize() << " did not work.";
+        << "Compaction for index " << commitIndex << " with keep size "
+        << _config.compactionKeepSize() << " did not work.";
+    } else {
+      _compaction_hist_msec.count(
+        duration<float,std::milli>(clock::now()-start).count());
     }
   }
 }
@@ -1924,6 +1955,7 @@ void Agent::setPersistedState(VPackSlice const& compaction) {
     _readDB = compaction;
     _commitIndex =
         arangodb::basics::StringUtils::uint64(compaction.get("_key").copyString());
+    _local_index = _commitIndex;
     _waitForCV.broadcast();
   } catch (std::exception const& e) {
     LOG_TOPIC("70844", ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;

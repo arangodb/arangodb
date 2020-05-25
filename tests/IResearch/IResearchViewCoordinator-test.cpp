@@ -2147,8 +2147,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // get current plan version
   auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
-  ci.loadCurrent();
-
   // create view
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "

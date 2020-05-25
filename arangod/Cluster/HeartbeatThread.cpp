@@ -651,8 +651,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
             << "Found currentVersion " << currentVersion
             << " which is newer than " << _lastCurrentVersionNoticed;
         _lastCurrentVersionNoticed = currentVersion;
-
-        ci.invalidateCurrent();
         _invalidateCoordinators = false;
       }
     }
