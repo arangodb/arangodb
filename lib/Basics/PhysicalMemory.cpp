@@ -55,18 +55,6 @@ namespace {
 /// @brief gets the physical memory size
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 uint64_t physicalMemoryImpl() {
-#ifdef __linux__
-  static std::string cgroupMemFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
-  if (basics::FileUtils::exists(cgroupMemFile)) {
-    std::string memstr;
-    auto rv = basics::FileUtils::slurp(cgroupMemFile, memstr);
-    if (rv.ok() && memstr.len() > 0) {
-      return std::strtoull(memstr);
-// else fall back to the physical memory
-    }
-  }
-#endif
-
   int mib[2];
 
   // Get the Physical memory size
@@ -86,6 +74,16 @@ uint64_t physicalMemoryImpl() {
 #else
 #ifdef TRI_HAVE_SC_PHYS_PAGES
 uint64_t physicalMemoryImpl() {
+  static std::string cgroupMemFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+  if (basics::FileUtils::exists(cgroupMemFile)) {
+    std::string memstr;
+    auto rv = basics::FileUtils::slurp(cgroupMemFile, memstr);
+    if (rv.ok() && memstr.length() > 0) {
+      return std::strtoull(memstr.c_str(), nullptr ,0);
+// else fall back to the physical memory
+    }
+  }
+
   long pages = sysconf(_SC_PHYS_PAGES);
   long page_size = sysconf(_SC_PAGE_SIZE);
 
