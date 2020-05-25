@@ -303,7 +303,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       // Index errors are checked in `compareIndexes`. THe loop below only
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
-        for (auto const&& index : VPackArrayIterator(difference.slice())) {
+        for (auto&& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(ActionDescription(
               {{NAME, "EnsureIndex"},
                {DATABASE, dbname},
