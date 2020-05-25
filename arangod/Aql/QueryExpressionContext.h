@@ -29,13 +29,13 @@
 namespace arangodb {
 namespace aql {
 class QueryContext;
-class RegexCache;
+class AqlFunctionsInternalCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
   explicit QueryExpressionContext(transaction::Methods& trx,
                                   QueryContext& query,
-                                  RegexCache& cache)
+                                  AqlFunctionsInternalCache& cache)
       : ExpressionContext(),
         _trx(trx), _query(query), _regexCache(cache) {}
 
@@ -57,7 +57,7 @@ class QueryExpressionContext : public ExpressionContext {
  private:
   transaction::Methods& _trx;
   QueryContext& _query;
-  RegexCache& _regexCache;
+  AqlFunctionsInternalCache& _regexCache;
 };
 }  // namespace aql
 }  // namespace arangodb

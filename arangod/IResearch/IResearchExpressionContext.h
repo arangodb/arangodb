@@ -37,7 +37,7 @@ class AqlItemBlock;
 struct AstNode;
 class ExecutionEngine;
 class QueryContext;
-class RegexCache;
+class AqlFunctionsInternalCache;
 }  // namespace aql
 
 namespace iresearch {
@@ -53,7 +53,7 @@ class IResearchViewNode;
 struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
                                      aql::QueryContext* query,
-                                     aql::RegexCache* cache)
+                                     aql::AqlFunctionsInternalCache* cache)
   : ExpressionContext(), _trx(trx), _query(query), _regexCache(cache)  {}
   
   void registerWarning(int errorCode, char const* msg) override final;
@@ -76,7 +76,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 protected:
   arangodb::transaction::Methods* _trx;
   arangodb::aql::QueryContext* _query;
-  arangodb::aql::RegexCache* _regexCache;
+  arangodb::aql::AqlFunctionsInternalCache* _regexCache;
 };                              // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
 
   ViewExpressionContext(arangodb::transaction::Methods& trx,
                         aql::QueryContext& query,
-                        aql::RegexCache& cache, aql::Variable const& outVar,
+                        aql::AqlFunctionsInternalCache& cache, aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),

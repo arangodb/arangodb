@@ -25,7 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;

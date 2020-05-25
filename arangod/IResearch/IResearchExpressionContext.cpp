@@ -24,7 +24,7 @@
 #include "IResearchExpressionContext.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/QueryContext.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"

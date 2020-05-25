@@ -340,7 +340,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QueryWarnings.cpp
   Aql/Range.cpp
   Aql/RemoveModifier.cpp
-  Aql/RegexCache.cpp
+  Aql/AqlFunctionsInternalCache.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
   Aql/RestAqlHandler.cpp

@@ -40,7 +40,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -1912,7 +1912,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     std::unordered_set<std::string> writeCollectionsSeen;
     std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
-    RegexCache regexCache;
+    AqlFunctionsInternalCache regexCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
     int64_t nestingLevel = 0;
@@ -2945,7 +2945,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node, bool canModifyResultT
 
 /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
 AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
-                                               RegexCache& regex,
+                                               AqlFunctionsInternalCache& regex,
                                                AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
@@ -3244,7 +3244,7 @@ AstNode* Ast::optimizeAttributeAccess(
 
 /// @brief optimizes a call to a built-in function
 AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
-                                   RegexCache& regex, AstNode* node) {
+                                   AqlFunctionsInternalCache& regex, AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3308,7 +3308,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
       std::string unescapedPattern;
       bool wildcardFound;
       bool wildcardIsLastChar;
-      std::tie(wildcardFound, wildcardIsLastChar) = RegexCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
+      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
 
       if (!wildcardFound) {
         TRI_ASSERT(!wildcardIsLastChar);
