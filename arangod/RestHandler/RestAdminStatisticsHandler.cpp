@@ -56,6 +56,9 @@ RestStatus RestAdminStatisticsHandler::execute() {
   }
 
   if (_request->requestPath() == "/_admin/statistics") {
+    if (_request->value("dont-count-this-request") == "true") {
+      _statistics.SET_IGNORE();
+    }
     getStatistics();
   } else if (_request->requestPath() == "/_admin/statistics-description") {
     getStatisticsDescription();
