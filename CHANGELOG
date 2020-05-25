@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* clang 11 build warnings removed
+
 * Fixed an issue with truncate of a collection after a dbserver was restarted
   very quickly. This could block arangosync from making progress because the
   _jobs collection could no longer be truncated.
