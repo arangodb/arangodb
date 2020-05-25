@@ -870,6 +870,10 @@ target_link_libraries(arango_cache arango::validation)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
 
+target_include_directories(arango_cluster_engine
+    PUBLIC ${IRESEARCH_INCLUDE}
+)
+
 target_link_libraries(arango_cluster_methods arango)
 target_link_libraries(arango_cluster_methods arango_network)
 

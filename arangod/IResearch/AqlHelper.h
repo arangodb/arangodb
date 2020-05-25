@@ -29,6 +29,7 @@
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
+#include "Cluster/ClusterInfo.h"
 
 #ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
 #define ARANGOD_IRESEARCH__AQL_HELPER_H 1

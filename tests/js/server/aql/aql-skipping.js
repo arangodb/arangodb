@@ -477,7 +477,7 @@ function aqlSkippingIResearchTestsuite () {
       };
       v.properties(meta);
 
-      db._drop("CompoundView");
+      db._dropView("CompoundView");
       v2 = db._createView("CompoundView", "arangosearch",
         { links : {
           UnitTestsCollection: { includeAllFields: true },

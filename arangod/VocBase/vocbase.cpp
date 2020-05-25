@@ -1673,6 +1673,10 @@ std::string const& TRI_vocbase_t::sharding() const {
   return _info.sharding();
 }
 
+bool TRI_vocbase_t::isShardingSingle() const {
+  return _info.sharding() == StaticStrings::ShardingSingle;
+}
+
 std::uint32_t TRI_vocbase_t::replicationFactor() const {
   return _info.replicationFactor();
 }

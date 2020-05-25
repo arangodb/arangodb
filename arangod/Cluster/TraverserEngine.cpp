@@ -116,7 +116,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     TRI_ASSERT(shardList.isArray());
     for (VPackSlice const shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
-      _query.collections().add(shard.copyString(), AccessMode::Type::READ);
+      _query.collections().add(shard.copyString(), AccessMode::Type::READ, aql::Collection::Hint::Collection);
     }
   }
 
@@ -128,7 +128,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
       std::string name = shard.copyString();
-      _query.collections().add(name, AccessMode::Type::READ);
+      _query.collections().add(name, AccessMode::Type::READ, aql::Collection::Hint::Shard);
       shards.emplace_back(std::move(name));
     }
     _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
@@ -136,7 +136,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
 
 #ifdef USE_ENTERPRISE
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
-      _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
+    _trx = new transaction::IgnoreNoAccessMethods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
   } else {
     _trx = new transaction::Methods(_query.newTrxContext(), _query.queryOptions().transactionOptions);
   }

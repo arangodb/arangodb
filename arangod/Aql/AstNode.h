@@ -78,6 +78,8 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
                                // set and checked in maintainer mode
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
+  
+  FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
 };
 
 /// @brief enumeration of AST node value types
@@ -562,6 +564,9 @@ struct AstNode {
   /// it is marked already and exits early; otherwise it will finalize the node
   /// and recurse on its subtree.
   static void markFinalized(AstNode* subtreeRoot);
+
+  /// @brief sets the computed value pointer.
+  void setComputedValue(uint8_t* data);
 
  public:
   /// @brief the node type
