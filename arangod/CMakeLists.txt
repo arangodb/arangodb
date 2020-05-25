@@ -1027,6 +1027,10 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
 endif ()
+if (USE_LIBUNWIND)
+  add_dependencies(arangod libunwind_build)
+endif ()
+
 
 foreach(TARGET
   arango_agency

@@ -235,16 +235,15 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
 )
 
-if (USE_LIBUNWIND)
-  add_dependencies(arango libunwind_build)
-  target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
-  target_link_libraries(arango ${LIBUNWIND_LIB})
-endif ()
-
 add_dependencies(arango snappy-static)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 include_directories(${SNAPPY_INCLUDE_DIR})
+
+if (USE_LIBUNWIND)
+  include_directories(SYSTEM "${LIBUNWIND_HOME}/include")
+  add_dependencies(arango libunwind_build)
+endif ()
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built
