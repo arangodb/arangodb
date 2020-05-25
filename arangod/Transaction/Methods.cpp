@@ -2190,6 +2190,7 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
   }
   TransactionCollection* trxColl = trxCollection(cid, type);
   TRI_ASSERT(trxColl != nullptr);
+  return Result(trxColl->unlockRecursive(type));
 }
 #endif
 
