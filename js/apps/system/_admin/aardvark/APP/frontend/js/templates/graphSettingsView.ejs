@@ -1,0 +1,122 @@
+
+  <% var genClass = 'pure-u-1-3'; %>
+  <% var genClass2 = 'pure-u-2-3'; %>
+
+  <% var formatName = function(name) { %>
+    <% return name.charAt(0).toUpperCase() + string.slice(1);%>
+  <% }; %>
+
+  <div id="graphSettingsView" class="innerContent">
+    
+    <div class="pure-g" style="margin-top: -13px">
+      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
+    
+        <div class="pure-g pure-table pure-table-body">
+
+          <% _.each(general, function(val, key) { %>
+            <% if (val.type === 'divider') { %>
+              <div class="pure-u-1-1 left heading"><%=val.name%></div>
+            <% } else { %>
+            <div class="<%= genClass %> left">
+              <%=val.name%>
+            </div>
+            <div class="<%= genClass2 %> left">
+
+              <% if (val.type === 'select') { %>
+                  <select id="g_<%=key%>">
+                    <% _.each(val, function(option, optKey) { %>
+                      <% if (option.name) { %>
+                        <option value="<%=option.val%>"> <%=option.name%> </option>
+                      <% } %>
+                    <% }); %>
+                  </select>
+              <% } %>
+
+              <% if (val.type === 'string') { %>
+                <input id="g_<%=key%>" type="text" placeholder="attribute"></input>
+              <% } %>
+
+              <% if (val.type === 'number') { %>
+                <input id="g_<%=key%>" type="text" id="<%=val %>" value="<%=val.value %>" placeholder=""></input>
+              <% } %>
+
+              <% if (val.type === 'range') { %>
+                <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
+              <% } %>
+
+              <% if (val.type === 'color') { %>
+                <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
+              <% } %>
+
+              <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+              </div>
+            <% } %>
+
+          <% }); %>
+        </div>
+
+      </div>
+
+      <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-1">
+    
+        <div class="pure-g pure-table pure-table-body">
+          <% _.each(specific, function(val, key) { %>
+
+            <% if (val.hide !== 'true') { %>
+              <% if (val.type === 'divider') { %>
+                <div class="pure-u-1-1 left heading"><%=val.name%></div>
+              <% } else { %>
+                <div class="<%= genClass %> left">
+                  <%=val.name%>
+                </div>
+
+                <div class="<%= genClass2 %> left">
+
+                  <% var VALUE; %>
+                  <% if (val.value) { %>
+                    <% VALUE = val.value %>
+                  <% } else { %>
+                    <% VALUE = val.default %>
+                  <% } %>
+
+                  <% if (val.type === 'string') { %>
+                    <input id="g_<%=key%>" type="text" placeholder="attribute"></input>
+                  <% } %>
+
+                  <% if (val.type === 'number') { %>
+                    <input id="g_<%=key%>" type="text" placeholder="number"></input>
+                  <% } %>
+
+                  <% if (val.type === 'color') { %>
+                    <input id="g_<%=key%>" type='color' name='color' value="<%=VALUE%>"/>
+                  <% } %>
+
+                  <% if (val.type === 'range') { %>
+                    <label id="g_<%=key%>_label" class="rangeLabel">1</label>
+                    <input id="g_<%=key%>" type='range' min="0" max="9" val="1"/>
+                  <% } %>
+
+                  <% if (val.type === 'select') { %>
+                    <select id="g_<%=key%>">
+                      <% _.each(val, function(option, optKey) { %>
+                        <% if (option.name) { %>
+                          <option value="<%=option.val%>"> <%=option.name%> </option>
+                        <% } %>
+                      <% }); %>
+                    </select>
+                  <% } %>
+                  <i title="<%=val.desc%>" class="fa fa-info-circle gv-tooltips" aria-hidden="true"></i>
+                </div>
+              <% } %>
+            <% } %>
+          <% }); %>
+        </div>
+
+        <div class="pure-u-1-1">
+          <button id="saveGraphSettings" style="margin-top: 20px; margin-right: 10px;" class="button-success pull-right">Save</button>
+          <button id="restoreGraphSettings" style="margin-top: 20px;" class="button-success pull-right">Restore defaults</button>
+        </div>
+      </div>
+  </div>
+

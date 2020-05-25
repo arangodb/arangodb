@@ -1,0 +1,9 @@
+  <% if (warnings.length > 0) { %>
+    <div>
+      <ul>
+        <% console.log(warnings); _.each(warnings, function(w) { console.log(w);%>
+          <li><b><%=w.code%></b>: <%=w.message%></li>
+        <% }); %>
+      </ul>
+    </div>
+  <% } %>
