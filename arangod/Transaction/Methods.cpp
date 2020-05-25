@@ -1544,6 +1544,9 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
@@ -1858,6 +1861,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -2145,6 +2151,10 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
+
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -2390,6 +2400,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
