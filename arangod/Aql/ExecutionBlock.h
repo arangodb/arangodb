@@ -125,16 +125,6 @@ class ExecutionBlock {
   
  protected:
   
-  // Trace the start of a getSome call
-   void traceGetSomeBegin(size_t atMost);
-
-   // Trace the end of a getSome call, potentially with result
-   void traceGetSomeEnd(ExecutionState state, SharedAqlItemBlockPtr const& result);
-
-   void traceSkipSomeBegin(size_t atMost);
-
-   void traceSkipSomeEnd(ExecutionState state, size_t skipped);
-  
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
                          std::string const& clientId = "");

@@ -1324,6 +1324,12 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
+      builder.add(VPackValue("Analyzers"));
+      {
+        VPackObjectBuilder d(&builder);
+        builder.add(VPackValue("_system"));
+        buildInitialAnalyzersSlice(builder);
+      }
     }
 
     builder.add(VPackValue("Sync"));  // Sync ----------------------------------
@@ -1457,4 +1463,8 @@ bool AgencyComm::shouldInitializeStructure() {
   }
 
   return false;
+}
+
+void AgencyComm::buildInitialAnalyzersSlice(VPackBuilder& builder) {
+  AnalyzersRevision::getEmptyRevision()->toVelocyPack(builder);
 }

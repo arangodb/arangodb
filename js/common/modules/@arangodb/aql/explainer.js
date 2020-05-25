@@ -1363,6 +1363,9 @@ function processQuery(query, explain, planIndex) {
         if (node.isSatelliteNode) {
           rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
         }
+        if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
+          rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
+        }
 
         return rc;
       case 'ShortestPathNode': {
@@ -1827,7 +1830,11 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'MutexNode':
+        return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
+      case 'AsyncNode':
+        return keyword('ASYNC') + '   ' + annotation('/* begin async execution */');
     }
 
     return 'unhandled node type (' + node.type + ')';

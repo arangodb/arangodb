@@ -82,7 +82,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   }
 
   VPackSlice value;
-
+  
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {

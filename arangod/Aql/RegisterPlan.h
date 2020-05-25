@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 
 #include <memory>
+#include <stack>
 #include <unordered_map>
 #include <vector>
 
@@ -89,10 +90,14 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
     return false;  // do not walk into subquery
   }
 
+  using RegCountStack = std::stack<RegisterCount>;
+
   RegIdOrderedSetStack unusedRegisters{{}};
   RegIdSetStack regsToKeepStack{{}};
   std::shared_ptr<RegisterPlan> plan;
   bool explain = false;
+  std::shared_ptr<RegisterPlanT<T>> plan;
+  RegCountStack previousSubqueryNrRegs{};
 };
 
 template <typename T>
@@ -108,7 +113,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   // the entry with index i here is always the sum of all values
   // in nrRegsHere from index 0 to i (inclusively) and the two
   // have the same length:
-  std::vector<RegisterId> nrRegs;
+  std::vector<RegisterCount> nrRegs;
 
   // We collect the subquery nodes to deal with them at the end:
   std::vector<T*> subQueryNodes;
@@ -129,12 +134,10 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(VariableId v, std::set<RegisterId>& unusedRegisters);
-  void registerVariable(VariableId v);  // used by iresearch-tests
+  void registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);
-  auto getTotalNrRegs() -> unsigned int;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
@@ -147,7 +150,6 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
  private:
   unsigned int depth;
-  unsigned int totalNrRegs;
 };
 
 template <typename T>

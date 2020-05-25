@@ -82,7 +82,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     auto& callback = _readDocumentContext._callback;
     auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
     T collectionSource = _readDocumentContext._infos->collectionSource();
-    auto const [state, input] = inputRange.nextDataRow();
+    auto const [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     arangodb::LogicalCollection const* collection = nullptr;
     if constexpr (std::is_same<T, std::string const&>::value) {

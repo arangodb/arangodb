@@ -164,8 +164,6 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
-    {static_cast<int>(NODE_TYPE_PARALLEL_START), "parallel start"},
-    {static_cast<int>(NODE_TYPE_PARALLEL_END), "parallel end"},
 };
 
 /// @brief names for AST node value types
@@ -263,15 +261,17 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
   TRI_ASSERT(lhs != nullptr);
   TRI_ASSERT(rhs != nullptr);
 
+  bool isValid = true;
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    lhs = Ast::resolveConstAttributeAccess(lhs);
+    lhs = Ast::resolveConstAttributeAccess(lhs, isValid);
   }
+  VPackValueType const lType = isValid ? getNodeCompareType(lhs) : VPackValueType::Null;
+  
+  isValid = true;
   if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    rhs = Ast::resolveConstAttributeAccess(rhs);
+    rhs = Ast::resolveConstAttributeAccess(rhs, isValid);
   }
-
-  auto lType = getNodeCompareType(lhs);
-  auto rType = getNodeCompareType(rhs);
+  VPackValueType const rType = isValid ? getNodeCompareType(rhs) : VPackValueType::Null;
 
   if (lType != rType) {
     if (lType == VPackValueType::Int && rType == VPackValueType::Double) {
@@ -591,8 +591,6 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
-    case NODE_TYPE_PARALLEL_START:
-    case NODE_TYPE_PARALLEL_END:
       break;
   }
 
@@ -606,7 +604,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
         int t = it.get("typeID").getNumericValue<int>();
         if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
           // special handling for nop as it is a singleton
-          addMember(Ast::getNodeNop());
+          addMember(ast->createNodeNop());
         } else {
           addMember(new AstNode(ast, it));
         }
@@ -713,9 +711,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_WITH:
-    case NODE_TYPE_FOR_VIEW: 
-    case NODE_TYPE_PARALLEL_START:
-    case NODE_TYPE_PARALLEL_END: {
+    case NODE_TYPE_FOR_VIEW: { 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -902,6 +898,8 @@ VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
   TRI_ASSERT(isConstant());
 
   if (_computedValue == nullptr) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
     if (builder == nullptr) {
       VPackBuilder b;
       computeValue(b);
@@ -916,10 +914,11 @@ VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
   return VPackSlice(_computedValue);
 }
 
-/// @brief internal function for actual computing the constant value
+/// @brief internal function for actually computing the constant value
 /// and storing it
 void AstNode::computeValue(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isEmpty());
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   toVelocyPackValue(builder);
 
   TRI_ASSERT(_computedValue == nullptr);
@@ -1187,7 +1186,7 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
 /// boolean value node
 AstNode const* AstNode::castToBool(Ast* ast) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return Ast::resolveConstAttributeAccess(this)->castToBool(ast);
+    return ast->resolveConstAttributeAccess(this)->castToBool(ast);
   }
 
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT);
@@ -1224,7 +1223,7 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
 /// numeric value node
 AstNode const* AstNode::castToNumber(Ast* ast) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return Ast::resolveConstAttributeAccess(this)->castToNumber(ast);
+    return ast->resolveConstAttributeAccess(this)->castToNumber(ast);
   }
 
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT);
@@ -1311,8 +1310,10 @@ double AstNode::getDoubleValue() const {
 /// @brief whether or not the node value is trueish
 bool AstNode::isTrue() const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
-    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
-    return resolved->isTrue();
+    bool isValid;
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this, isValid);
+    // TO_BOOL(null) => false, so isTrue(false) => false
+    return isValid ? resolved->isTrue() : false;
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -1353,8 +1354,10 @@ bool AstNode::isTrue() const {
 /// @brief whether or not the node value is falsey
 bool AstNode::isFalse() const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
-    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
-    return resolved->isFalse();
+    bool isValid;
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this, isValid);
+    // TO_BOOL(null) => false, so isFalse(false) => true
+    return isValid ? resolved->isFalse() : true;
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -1443,7 +1446,7 @@ bool AstNode::isAttributeAccessForVariable(
 
       // check if the expansion uses a projection. if yes, we cannot use an
       // index for it
-      if (node->getMember(4) != Ast::getNodeNop()) {
+      if (node->getMember(4) != nullptr && node->getMember(4)->type != NODE_TYPE_NOP) {
         // [* RETURN projection]
         result.second.clear();
         return false;
@@ -2129,19 +2132,19 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     buffer->appendChar(',');
 
     auto filterNode = getMember(2);
-    if (filterNode != nullptr && filterNode != Ast::getNodeNop()) {
+    if (filterNode != nullptr && filterNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
-    if (limitNode != nullptr && limitNode != Ast::getNodeNop()) {
+    if (limitNode != nullptr && limitNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
-    if (returnNode != nullptr && returnNode != Ast::getNodeNop()) {
+    if (returnNode != nullptr && returnNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->stringify(buffer, verbose, failIfLong);
     }
@@ -2393,8 +2396,6 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
-    case NODE_TYPE_PARALLEL_START:
-    case NODE_TYPE_PARALLEL_END:
       break;
   }
 
@@ -2571,8 +2572,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_FOR_VIEW:
-    case NODE_TYPE_PARALLEL_START:
-    case NODE_TYPE_PARALLEL_END:
       break;
   }
   return ret;
@@ -2649,7 +2648,10 @@ bool AstNode::hasFlag(AstNodeFlagType flag) const {
   return ((flags & static_cast<decltype(flags)>(flag)) != 0);
 }
 
-void AstNode::clearFlags() { flags = 0; }
+void AstNode::clearFlags() { 
+  // clear all flags but this one
+  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST; 
+}
 
 void AstNode::setFlag(AstNodeFlagType flag) const { flags |= flag; }
 
@@ -2819,6 +2821,7 @@ void AstNode::clearMembers() {
 void AstNode::setExcludesNull(bool v) {
   TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
              type == NODE_TYPE_OPERATOR_BINARY_EQ);
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   value.value._bool = v;
 }
 
@@ -2830,6 +2833,7 @@ bool AstNode::getExcludesNull() const noexcept {
 
 void AstNode::setValueType(AstNodeValueType t) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   value.type = t;
 }
 
@@ -2841,19 +2845,25 @@ bool AstNode::getBoolValue() const noexcept { return value.value._bool; }
 
 void AstNode::setBoolValue(bool v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
   freeComputedValue();
   value.value._bool = v;
 }
 
 int64_t AstNode::getIntValue(bool) const noexcept { return value.value._int; }
+
 void AstNode::setIntValue(int64_t v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
   freeComputedValue();
   value.value._int = v;
 }
 
 void AstNode::setDoubleValue(double v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
   freeComputedValue();
   value.value._double = v;
 }
@@ -2865,6 +2875,7 @@ size_t AstNode::getStringLength() const {
 
 void AstNode::setStringValue(char const* v, size_t length) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
 
   freeComputedValue();
   // note: v may contain the NUL byte and is not necessarily
@@ -2896,21 +2907,27 @@ void* AstNode::getData() const { return value.value._data; }
 
 void AstNode::setData(void* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
   freeComputedValue();
   value.value._data = v;
 }
 
 void AstNode::setData(void const* v) {
-  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  freeComputedValue();
-  value.value._data = const_cast<void*>(v);
+  setData(const_cast<void*>(v));
 }
 
 void AstNode::freeComputedValue() {
-  if (_computedValue != nullptr) {
+  if (_computedValue != nullptr && !hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST)) {
     delete[] _computedValue;
     _computedValue = nullptr;
   }
+}
+
+void AstNode::setComputedValue(uint8_t* data) {
+  TRI_ASSERT(isConstant());
+  TRI_ASSERT(hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  _computedValue = data;
 }
 
 /// @brief append the AstNode to an output stream

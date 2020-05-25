@@ -211,7 +211,7 @@ std::pair<ExecutionState, InputAqlItemRow> MultiDependencySingleRowFetcher::fetc
              depInfo._rowIndex < depInfo._currentBlock->size());
 
   ExecutionState rowState;
-  InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
   if (depInfo._currentBlock == nullptr) {
     TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
     rowState = ExecutionState::DONE;

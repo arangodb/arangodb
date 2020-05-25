@@ -564,8 +564,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
   ExecutionPlan const* plan = &infos().plan();
-
-  iresearch::QueryContext const queryCtx = {&_trx, plan, plan->getAst(),
+  iresearch::QueryContext const queryCtx = { &_trx, plan, plan->getAst(),
                                             &_ctx, _reader.get(), &infos().outVariable()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`

@@ -70,6 +70,7 @@ extern std::string const plannedServers;
 extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
 extern std::string const asyncReplTransientPrefix;
+extern std::string const planAnalyzersPrefix;
 
 struct Job {
   struct shard_t {
