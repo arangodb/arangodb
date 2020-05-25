@@ -1547,6 +1547,12 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
       leaderTouched = true;
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
@@ -1864,6 +1870,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
       leaderTouched = true;
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -2154,7 +2166,12 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
       leaderTouched = true;
     }
-
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -2403,6 +2420,12 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
       leaderTouched = true;
     }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
     if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
