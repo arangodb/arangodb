@@ -96,7 +96,6 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   RegIdSetStack regsToKeepStack{{}};
   std::shared_ptr<RegisterPlan> plan;
   bool explain = false;
-  std::shared_ptr<RegisterPlanT<T>> plan;
   RegCountStack previousSubqueryNrRegs{};
 };
 

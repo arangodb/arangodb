@@ -1214,7 +1214,7 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync,
       plan->findVarUsage();
 
       statsBuilder->add(VPackValue("plan"));
-      plan->toVelocyPack(*statsBuilder, _ast.get(), false);
+      plan->toVelocyPack(*statsBuilder, _ast.get(), false, ExplainRegisterPlan::No);
       // needed to happen before plan cleanup
     }
   }
