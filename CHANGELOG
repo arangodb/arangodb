@@ -1,6 +1,8 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
+* Web UI is now using pre-compiled templates.
+
 * Fixed an issue with truncate of a collection after a dbserver was restarted
   very quickly. This could block arangosync from making progress because the
   _jobs collection could no longer be truncated.
