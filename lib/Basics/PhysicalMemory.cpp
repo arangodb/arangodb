@@ -80,7 +80,7 @@ uint64_t physicalMemoryImpl() {
   int64_t physicalMemory;
   sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
 
-   return static_cast<uint64_t>(physicalMemory);
+  return static_cast<uint64_t>(physicalMemory);
 }
 
 #else
