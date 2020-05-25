@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RegexCache.h"
+#include "AqlFunctionsInternalCache.h"
 
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/StringUtils.h"
@@ -35,28 +35,28 @@
 
 using namespace arangodb::aql;
 
-RegexCache::~RegexCache() { clear(); }
+AqlFunctionsInternalCache::~AqlFunctionsInternalCache() { clear(); }
 
-void RegexCache::clear() noexcept {
+void AqlFunctionsInternalCache::clear() noexcept {
   _regexCache.clear();
   _likeCache.clear();
 }
 
-icu::RegexMatcher* RegexCache::buildRegexMatcher(char const* ptr, size_t length,
+icu::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(char const* ptr, size_t length,
                                                  bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _regexCache);
 }
 
-icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length,
+icu::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(char const* ptr, size_t length,
                                                 bool caseInsensitive) {
   buildLikePattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
 }
 
-icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression,
+icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(AqlValue const& splitExpression,
                                                  arangodb::velocypack::Options const* opts,
                                                  bool& isEmptyExpression) {
   std::string rx;
@@ -92,9 +92,23 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
   return fromCache(rx, _likeCache);
 }
 
+arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(VPackSlice const& validatorParams) {
+
+  // insert into cache, no matter if pattern is valid or not
+  auto matcherIter = _schemaCache.try_emplace(
+        validatorParams.hash(),
+        arangodb::lazyConstruct([&]{
+          return std::unique_ptr<arangodb::ValidatorBase>(new arangodb::ValidatorJsonSchema(validatorParams));
+        })
+      ).first;
+
+  return matcherIter->second.get();
+
+};
+
 /// @brief get matcher from cache, or insert a new matcher for the specified
 /// pattern
-icu::RegexMatcher* RegexCache::fromCache(
+icu::RegexMatcher* AqlFunctionsInternalCache::fromCache(
     std::string const& pattern,
     std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
 
@@ -109,7 +123,7 @@ icu::RegexMatcher* RegexCache::fromCache(
 }
 
 /// @brief compile a REGEX pattern from a string
-void RegexCache::buildRegexPattern(std::string& out, char const* ptr,
+void AqlFunctionsInternalCache::buildRegexPattern(std::string& out, char const* ptr,
                                    size_t length, bool caseInsensitive) {
   out.clear();
   if (caseInsensitive) {
@@ -121,7 +135,7 @@ void RegexCache::buildRegexPattern(std::string& out, char const* ptr,
 }
 
 /// @brief compile a LIKE pattern from a string
-void RegexCache::buildLikePattern(std::string& out, char const* ptr,
+void AqlFunctionsInternalCache::buildLikePattern(std::string& out, char const* ptr,
                                   size_t length, bool caseInsensitive) {
   out.clear();
   out.reserve(length + 8);  // reserve some room
@@ -192,7 +206,7 @@ void RegexCache::buildLikePattern(std::string& out, char const* ptr,
 ///   complete string
 /// - second: true if the found wildcard is the last byte in the pattern,
 ///   false otherwise. can only be true if first is also true
-std::pair<bool, bool> RegexCache::inspectLikePattern(std::string& out,
+std::pair<bool, bool> AqlFunctionsInternalCache::inspectLikePattern(std::string& out,
                                                      char const* ptr, size_t length) {
   out.reserve(length);
   bool escaped = false;

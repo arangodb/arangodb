@@ -26,9 +26,12 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/Common.h"
+#include <VocBase/Validators.h>
 
 #include <unicode/regex.h>
 #include <memory>
+
+
 
 namespace arangodb {
 
@@ -39,13 +42,13 @@ class Methods;
 namespace aql {
 
 /// cache for parsed regexes, not thread safe
-class RegexCache final {
+class AqlFunctionsInternalCache final {
  public:
-  RegexCache(RegexCache const&) = delete;
-  RegexCache& operator=(RegexCache const&) = delete;
+  AqlFunctionsInternalCache(AqlFunctionsInternalCache const&) = delete;
+  AqlFunctionsInternalCache& operator=(AqlFunctionsInternalCache const&) = delete;
 
-  RegexCache() = default;
-  ~RegexCache();
+  AqlFunctionsInternalCache() = default;
+  ~AqlFunctionsInternalCache();
 
   void clear() noexcept;
 
@@ -54,6 +57,8 @@ class RegexCache final {
   icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression);
+
+  arangodb::ValidatorBase* buildValidator(VPackSlice const& validatorDescription);
 
   /// @brief inspect a LIKE pattern from a string, and remove all
   /// of its escape characters. will stop at the first wildcards found.
@@ -82,6 +87,8 @@ class RegexCache final {
   std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _regexCache;
   /// @brief cache for compiled regexes (LIKE function)
   std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _likeCache;
+  /// @brief a reusable string object for pattern generation
+  std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>> _schemaCache;
   /// @brief a reusable string object for pattern generation
   std::string _temp;
 };
