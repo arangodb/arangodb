@@ -27,6 +27,7 @@
 #include "ExpressionContext.h"
 
 namespace arangodb {
+class ValidatorBase;
 namespace aql {
 class QueryContext;
 class AqlFunctionsInternalCache;
@@ -48,6 +49,8 @@ class QueryExpressionContext : public ExpressionContext {
                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
+
+  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms

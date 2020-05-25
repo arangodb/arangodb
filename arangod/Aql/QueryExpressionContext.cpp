@@ -55,6 +55,10 @@ icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpre
   return _regexCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
 }
 
+arangodb::ValidatorBase* QueryExpressionContext::buildValidator(arangodb::velocypack::Slice const& params) {
+  return _regexCache.buildValidator(params);
+}
+
 TRI_vocbase_t& QueryExpressionContext::vocbase() const {
   return _trx.vocbase();
 }

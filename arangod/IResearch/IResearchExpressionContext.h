@@ -66,6 +66,8 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression, velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
+  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
+
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
