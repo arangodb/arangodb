@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI is now using pre-compiled templates.
+
 * Fixed internal issue #650: Added analyzer cache update before ArangoSearch
   view creation/update.
 
