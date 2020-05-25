@@ -64,6 +64,7 @@ std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
+std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
 
 }  // namespace consensus
 }  // namespace arangodb
