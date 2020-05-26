@@ -1,7 +1,9 @@
 devel
 -----
 
-* Fixed bug during startup for follower shards. Follower will be set correctly resulting in less resynchronization.
+* Fixed an issue with truncate of a collection after a dbserver was restarted
+  very quickly. This could block arangosync from making progress because the
+  _jobs collection could no longer be truncated.
 
 * Fixed internal issue #650: Added analyzer cache update before ArangoSearch
   view creation/update.
