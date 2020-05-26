@@ -1,4 +1,4 @@
-v3.7.1-alpha.2 (XXXX-XX-XX)
+v3.7.1-alpha.2 (2020-05-27)
 ---------------------------
 
 * Fixed an issue with truncate of a collection after a dbserver was restarted
