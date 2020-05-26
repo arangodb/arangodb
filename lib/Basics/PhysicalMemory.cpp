@@ -74,13 +74,22 @@ uint64_t physicalMemoryImpl() {
 #else
 #ifdef TRI_HAVE_SC_PHYS_PAGES
 uint64_t physicalMemoryImpl() {
-  static std::string cgroupMemFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+  std::string const cgroupMemFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+  
   if (basics::FileUtils::exists(cgroupMemFile)) {
-    std::string memstr;
-    auto rv = basics::FileUtils::slurp(cgroupMemFile, memstr);
-    if (rv.ok() && memstr.length() > 0) {
-      return std::strtoull(memstr.c_str(), nullptr ,0);
-// else fall back to the physical memory
+    try {
+      std::string memstr;
+      auto rv = basics::FileUtils::slurp(cgroupMemFile, memstr);
+      if (rv.ok() && !memstr.empty()) {
+        // std::strtoull can throw if the input is malformed
+        return std::strtoull(memstr.c_str(), nullptr ,0);
+      }
+    } catch (...) {
+      // ignore errors due to wrong file access permissions, 
+      // malformed input etc.
+      // in this case we simply fall back to using the available
+      // physical memory. this should not be an issue as the
+      // amount of memory detected is always logged at startup.
     }
   }
 
