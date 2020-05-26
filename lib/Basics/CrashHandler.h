@@ -26,8 +26,14 @@
 namespace arangodb {
 class CrashHandler {
  public:
+  /// @brief logs a fatal message and crashes the program
+  [[noreturn]] static void crash(char const* context);
+
+  /// @brief logs an assertion failure and crashes the program
+  [[noreturn]] static void assertionFailure(char const* file, int line, char const* context);
+
+  /// @brief installs the crash handler globally
   static void installCrashHandler();
-  static void setTempFilename();
 };
 
 }  // namespace arangodb

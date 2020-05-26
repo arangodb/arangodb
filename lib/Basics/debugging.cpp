@@ -30,6 +30,7 @@
 
 #include "debugging.h"
 
+#include "Basics/CrashHandler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
@@ -99,7 +100,8 @@ std::set<std::string, ::Comparer> failurePoints(comparer);
 void TRI_TerminateDebugging(char const* message) {
   LOG_TOPIC("bde58", WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
-  TRI_FlushDebugging();
+  Logger::flush();
+  Logger::shutdown();
 
   // and now crash
 #ifdef _WIN32
@@ -290,18 +292,10 @@ void TRI_LogBacktrace() {
 #endif
 }
 
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging() {
-  Logger::flush();
-  Logger::shutdown();
-}
-
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG_TOPIC("36a91", FATAL, arangodb::Logger::FIXME)
-      << "assertion failed in " << file << ":" << line << ": " << message;
-  Logger::flush();
-  Logger::shutdown();
+/// @brief logs an assertion failure, flushes the logger, shuts it down
+/// and terminates the program
+void TRI_AssertAndAbort(char const* file, int line, char const* message) {
+  CrashHandler::assertionFailure(file, line, message);
 }
 
 template<> char const conpar<true>::open = '{';

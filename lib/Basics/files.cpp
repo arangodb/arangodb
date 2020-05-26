@@ -64,7 +64,6 @@
 
 #include "files.h"
 
-#include "Basics/CrashHandler.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadWriteLock.h"
@@ -2366,7 +2365,6 @@ std::string TRI_GetTempPath() {
     }
 
     SystemTempPathSweeperInstance.init(SystemTempPath.get());
-    CrashHandler::setTempFilename();
   }
 
   return std::string(path);

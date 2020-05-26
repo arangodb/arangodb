@@ -32,11 +32,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#ifndef _WIN32
-#include <execinfo.h>
-#endif
-
 #include <atomic>
+#include <exception>
 #include <thread>
 
 #include "CrashHandler.h"
@@ -111,8 +108,24 @@ CrashHandlerStackInitializer stackInitializer;
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
 
-/// @brief filename that we will use to write a backtrace into
-std::string crashFilename;
+/// @brief kills the process with the given signal
+[[noreturn]] void killProcess(int signal) {
+  // restore default signal action, so that we can write a core dump and crash "properly"
+  struct sigaction act;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
+  act.sa_handler = SIG_DFL;
+  sigaction(signal, &act, nullptr);
+
+#ifdef _WIN32
+  exit(255 + signal);
+#else
+  // resend signal to ourselves to invoke default action for the signal (e.g. coredump)
+  ::kill(::getpid(), signal);
+#endif
+  
+  std::abort();
+}
 
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
@@ -123,20 +136,11 @@ void appendNullTerminatedString(char const* src, char*& dst) {
   *dst = '\0';
 }
 
-/// @brief appends int value to dst
-/// advances dst pointer by len
-void appendIntValue(int value, size_t len, char*& dst) {
-  if (value >= 100) {
-    *dst++ = char((value / 100) % 10 + '0');
-  } else {
-    *dst++ = ' ';
-  }
-  if (value >= 10) {
-    *dst++ = char((value / 10) % 10 + '0');
-  } else {
-    *dst++ = ' ';
-  }
-  *dst++ = char(value % 10 + '0');
+void appendNullTerminatedString(char const* src, size_t maxLength, char*& dst) {
+  size_t len = std::min(strlen(src), maxLength);
+  memcpy(static_cast<void*>(dst), src, len);
+  dst += len;
+  *dst = '\0';
 }
 
 /// @brief appends null-terminated hex string value to dst
@@ -158,7 +162,7 @@ void appendHexValue(unsigned char const* src, size_t len, char*& dst) {
 /// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
 /// (4096 bytes should be more than enough).
-size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize) {
+size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info) {
   // build a crash message
   char* p = s;
   appendNullTerminatedString("ArangoDB ", p);
@@ -176,13 +180,15 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
     appendNullTerminatedString(name, p);
     appendNullTerminatedString("]", p);
   }
+
   appendNullTerminatedString(" caught unexpected signal ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
   appendNullTerminatedString(" (", p);
   appendNullTerminatedString(arangodb::signals::name(signal), p);
   appendNullTerminatedString(")", p);
   
-  if (signal == SIGSEGV || signal == SIGBUS) {
+  if (info != nullptr && 
+      (signal == SIGSEGV || signal == SIGBUS)) {
     // dump address that was accessed when the failure occurred (this is somewhat likely
     // a nullptr)
     appendNullTerminatedString(" accessing address 0x", p);
@@ -190,11 +196,107 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
     appendHexValue(s, sizeof(unsigned char const*), p);
   }
+  
+  appendNullTerminatedString(": ", p);
+  appendNullTerminatedString(context, p);
 
-  if (stackSize > 0) {
-    appendNullTerminatedString(". displaying stack frames...", p);
-  } 
   return p - s;
+}
+
+void logBacktrace(char const* context, int signal, siginfo_t* info) try {
+  // buffer for constructing temporary log messages (to avoid malloc)
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  char* p = &buffer[0];
+  size_t length = buildLogMessage(p, context, signal, info);
+  // note: LOG_TOPIC() can allocate memory
+  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+  arangodb::Logger::flush();
+   
+  // number of frames to skip in backtrace output
+  static constexpr int skipFrames = 1;
+  // maximum number of stack traces to show
+  static constexpr int maxFrames = 50;
+
+#ifdef ARANGODB_HAVE_LIBUNWIND
+  // log backtrace, of up to maxFrames depth 
+  { 
+    unw_cursor_t cursor;
+    // unw_word_t ip, sp;
+    unw_context_t uc;
+
+    unw_getcontext(&uc);
+    unw_init_local(&cursor, &uc);
+    // the following call is recommended by libunwind's manual when the
+    // calling function is known to be a signal handler. but on x86_64,
+    // the code in libunwind is no different if the flag is set or not.
+    //  unw_init_local2(&cursor, &uc, UNW_INIT_SIGNAL_FRAME);
+
+    // unwind frames one by one, going up the frame stack.
+    int frame = 0;
+
+    do {
+      unw_word_t pc;
+      unw_get_reg(&cursor, UNW_REG_IP, &pc);
+      if (pc == 0) {
+        break;
+      }
+      
+      if (frame >= skipFrames) {
+        // this is a stack frame we want to display
+        memset(&buffer[0], 0, sizeof(buffer));
+        p = &buffer[0];
+        appendNullTerminatedString("frame ", p);
+        p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
+        appendNullTerminatedString(" [0x", p);
+        appendHexValue(reinterpret_cast<unsigned char const*>(&pc), sizeof(decltype(pc)), p);
+        appendNullTerminatedString("]: ", p);
+
+        size_t avail = sizeof(buffer) - (p - &buffer[0]); 
+        unw_word_t offset;
+        if (unw_get_proc_name(&cursor, p, avail, &offset) == 0) {
+          // find end of generated proc name
+          char const* e = &buffer[0] + sizeof(buffer) - 1;
+          while (p < e && *p != '\0') {
+            ++p;
+          } 
+          appendNullTerminatedString(" (+0x", p); 
+          appendHexValue(reinterpret_cast<unsigned char const*>(&offset), sizeof(decltype(offset)), p);
+          appendNullTerminatedString(")", p); 
+        } else {
+          appendNullTerminatedString("*no symbol name available for this frame", p); 
+        }
+
+        length = p - &buffer[0];
+        LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+      }
+    } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
+    // flush logs as early as possible
+    arangodb::Logger::flush();
+  }
+#endif
+
+  // log info about the current process
+  {
+    auto processInfo = TRI_ProcessInfoSelf();
+    memset(&buffer[0], 0, sizeof(buffer));
+    p = &buffer[0];
+    appendNullTerminatedString("available physical memory: ", p);
+    p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
+    appendNullTerminatedString(", rss usage: ", p);
+    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
+    appendNullTerminatedString(", vsz usage: ", p);
+    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
+    appendNullTerminatedString(", threads: ", p);
+    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
+
+    LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+    // flush logs as early as possible
+    arangodb::Logger::flush();
+  }
+} catch (...) {
+  // we better not throw an exception from inside a signal handler
 }
 
 /// @brief the actual function that is invoked for a deadly signal
@@ -217,183 +319,9 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
 /// - Windows is currently not supported.
 void crashHandler(int signal, siginfo_t* info, void*) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    try {
-      // buffer for constructing temporary log messages (to avoid malloc)
-      char buffer[4096];
-      memset(&buffer[0], 0, sizeof(buffer));
-
-      // acquire backtrace
-      static constexpr int maxFrames = 100;
-      void* traces[maxFrames];
-      int skipFrames = 0;
-#ifdef ARANGODB_HAVE_LIBUNWIND
-      int numFrames = unw_backtrace(traces, maxFrames);
-#else
-      int numFrames = 0;
-#endif
-    
-      char* p = &buffer[0];
-      size_t length = buildLogMessage(p, signal, info, numFrames >= skipFrames ? numFrames - skipFrames : 0);
-      // note: LOG_TOPIC() can allocate memory
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
-      arangodb::Logger::flush();
-
-      if (numFrames > 0) { 
-#ifdef ARANGODB_HAVE_LIBUNWIND
-        unw_cursor_t cursor;
-       // unw_word_t ip, sp;
-        unw_context_t uc;
-
-        unw_getcontext(&uc);
-        unw_init_local(&cursor, &uc);
-        // the following call is recommended by libunwind's manual when the
-        // calling function is known to be a signal handler. but on x86_64,
-        // the code in libunwind is no different if the flag is set or not.
-        //  unw_init_local2(&cursor, &uc, UNW_INIT_SIGNAL_FRAME);
-    
-        // unwind frames one by one, going up the frame stack.
-        int frame = 0;
-        do {
-          unw_word_t pc;
-          unw_get_reg(&cursor, UNW_REG_IP, &pc);
-          if (pc == 0) {
-            break;
-          }
-         
-          memset(&buffer[0], 0, sizeof(buffer));
-          p = &buffer[0];
-          appendNullTerminatedString("frame ", p);
-          appendIntValue(frame, 3, p);
-          appendNullTerminatedString(" [0x", p);
-          appendHexValue(reinterpret_cast<unsigned char const*>(&pc), sizeof(decltype(pc)), p);
-          appendNullTerminatedString("]: ", p);
-
-          if (unw_is_signal_frame(&cursor) > 0) {
-            appendNullTerminatedString("(signal) ", p);
-          }
-
-          size_t avail = sizeof(buffer) - (p - &buffer[0]); 
-          unw_word_t offset;
-          if (unw_get_proc_name(&cursor, p, avail, &offset) == 0) {
-            // find end of generated proc name
-            char const* e = &buffer[0] + sizeof(buffer) - 1;
-            while (p < e && *p != '\0') {
-              ++p;
-            } 
-            appendNullTerminatedString(" (+0x", p); 
-            appendHexValue(reinterpret_cast<unsigned char const*>(&offset), sizeof(decltype(offset)), p);
-            appendNullTerminatedString(")", p); 
-          } else {
-            appendNullTerminatedString("no symbol name available for this frame", p); 
-          }
-              
-          if (frame >= skipFrames) {
-            length = p - &buffer[0];
-            LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
-          }
-              
-          ++frame;
-          if (frame >= numFrames) {
-            break;
-          }
-        } while (unw_step(&cursor) > 0);
-#endif
-
-#if 0
-        // open crash file to write backtrace information into it
-        int fd = TRI_CREATE(::crashFilename.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
-
-        if (fd >= 0) {
-          // actually write backtrace information into file. this does not malloc!
-          backtrace_symbols_fd(traces, numFrames, fd);
-          TRI_CLOSE(fd);
-
-          // reopen the file for reading it
-          fd = TRI_OPEN(::crashFilename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-          if (fd >= 0) {
-            // fill buffer with \n bytes, so we can simplify the following logic
-            memset(&buffer[0], '\n', sizeof(buffer));
-            // also make sure it is always null-terminated
-            buffer[sizeof(buffer) - 1] = '\0';
-
-            p = &buffer[0];
-            size_t bytesLeft = sizeof(buffer) - 2;
-            while (bytesLeft > 0) {
-              TRI_read_return_t n = TRI_READ(fd, p, static_cast<TRI_read_t>(bytesLeft));
-              if (n <= 0) {
-                *p = '\0';
-                break;
-              }
-              TRI_ASSERT(bytesLeft >= static_cast<size_t>(n));
-              bytesLeft -= n;
-              p += n;
-            }
-
-            int frame = 0;
-            length = p - &buffer[0]; 
-            p = &buffer[0];
-            char* e = p + length;
-            while (p < e) {
-              char* split = strchr(p, '\n');
-              if (split != nullptr) {
-                length = split - p;
-              } else {
-                length = e - p;
-              }
-              if (length <= 1) {
-                break;
-              }
-              TRI_ASSERT(length > 0);
-
-              if (frame >= skipFrames) {
-                LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(p, length);
-              }
-              
-              ++frame;
-
-              if (frame >= numFrames) {
-                break;
-              }
-
-              if (split != nullptr) {
-                p = split + 1;
-              } else {
-                // reached the end
-                p = e;
-              }
-            }
-            TRI_CLOSE(fd);
-          }
-
-        }
-#endif
-        arangodb::Logger::flush();
-      }
-     
-      {
-        auto processInfo = TRI_ProcessInfoSelf();
-        memset(&buffer[0], 0, sizeof(buffer));
-        p = &buffer[0];
-        appendNullTerminatedString("available physical memory: ", p);
-        p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
-        appendNullTerminatedString(", rss usage: ", p);
-        p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
-        appendNullTerminatedString(", vsz usage: ", p);
-        p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
-        appendNullTerminatedString(", threads: ", p);
-        p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
-        
-        // note: LOG_TOPIC() will allocate memory
-        LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
-        arangodb::Logger::flush();
-      }
-        
-
-      arangodb::Logger::shutdown();
-    } catch (...) {
-      // we better not throw an exception from inside a signal handler
-    }
-    
+    ::logBacktrace("signal handler invoked", signal, info);
+    arangodb::Logger::flush();
+    arangodb::Logger::shutdown();
   } else {
     // signal handler was already entered by another thread...
     // there is not so much we can do here except waiting and then finally let it crash
@@ -402,20 +330,8 @@ void crashHandler(int signal, siginfo_t* info, void*) {
     // signal handler and while being in there, caught yet another signal.
     std::this_thread::sleep_for(std::chrono::seconds(5));
   }
-    
-  // restore default signal action, so that we can write a core dump and crash "properly"
-  struct sigaction act;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
-  act.sa_handler = SIG_DFL;
-  sigaction(signal, &act, nullptr);
 
-#ifdef _WIN32
-  exit(255 + signal);
-#else
-  // resend signal to ourselves to invoke default action for the signal (e.g. coredump)
-  ::kill(::getpid(), signal);
-#endif
+  killProcess(signal);
 }
 
 } // namespace
@@ -423,6 +339,35 @@ void crashHandler(int signal, siginfo_t* info, void*) {
 
 namespace arangodb {
 
+/// @brief logs a fatal message and crashes the program
+void CrashHandler::crash(char const* context) {
+  ::logBacktrace(context, SIGABRT, nullptr);
+  Logger::flush();
+  Logger::shutdown();
+
+  // crash from here
+  ::killProcess(SIGABRT);
+}
+
+/// @brief logs an assertion failure and crashes the program
+void CrashHandler::assertionFailure(char const* file, int line, char const* context) {
+  // assemble an "assertion failured in file:line: message" string
+  char buffer[512];
+  memset(&buffer[0], 0, sizeof(buffer));
+  
+  char* p = &buffer[0];
+  appendNullTerminatedString("assertion failed in ", p);
+  appendNullTerminatedString(file, 128, p);
+  appendNullTerminatedString(":", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(line), p);
+  appendNullTerminatedString(": ", p);
+  appendNullTerminatedString(context, 256, p);
+
+  // call other crash function with our buffer
+  crash(&buffer[0]);
+}
+
+/// @brief installs the crash handler globally
 void CrashHandler::installCrashHandler() {
 #ifndef _WIN32
   // install signal handlers for the following signals
@@ -436,25 +381,40 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
 #endif
-}
 
-void CrashHandler::setTempFilename() {
-#if 0
-#ifndef _WIN32
-  if (!::crashHandlerInvoked.exchange(true)) {
-    // create a temporary filename. This filename is used later when writing
-    // crash reports. we build the filename now to not have to call malloc and
-    // such from within the signal handler.
-    long int unusedError;
-    std::string unusedMessage;
-    int res = TRI_GetTempName(nullptr, ::crashFilename, false, unusedError, unusedMessage);
-    if (res != TRI_ERROR_NO_ERROR) {
-      ::crashFilename.clear();
+  // install handler for std::terminate()
+  std::set_terminate([]() {
+    char buffer[256];
+    memset(&buffer[0], 0, sizeof(buffer));
+    char* p = &buffer[0];
+
+    if (auto ex = std::current_exception()) {
+      // there is an active exception going on...
+      try {
+        // rethrow so we can get the exception type and its message
+        std::rethrow_exception(ex);
+      } catch (std::exception const& ex) {
+        char const* msg = "handler for std::terminate() invoked with an std::exception: ";
+        appendNullTerminatedString(msg, p);
+        char const* e = ex.what();
+        if (strlen(e) > 100) {
+          memcpy(p, e, 100);
+          p += 100;
+          appendNullTerminatedString(" (truncated)", p);
+        } else {
+          appendNullTerminatedString(e, p);
+        }
+      } catch (...) {
+        char const* msg = "handler for std::terminate() invoked with an unknown exception";
+        appendNullTerminatedString(msg, p);
+      }
+    } else {
+      char const* msg = "handler for std::terminate() invoked without active exception";
+      appendNullTerminatedString(msg, p);
     }
-    ::crashHandlerInvoked.store(false);
-  }
-#endif
-#endif
+
+    CrashHandler::crash(&buffer[0]);
+  });
 }
 
 }  // namespace arangodb
