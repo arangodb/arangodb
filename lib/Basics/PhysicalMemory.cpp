@@ -47,6 +47,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include <algorithm>
 
 using namespace arangodb;
 
@@ -74,12 +75,30 @@ uint64_t physicalMemoryImpl() {
 #else
 #ifdef TRI_HAVE_SC_PHYS_PAGES
 uint64_t physicalMemoryImpl() {
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+
+  auto mem = static_cast<uint64_t>(pages * page_size);
   try {
+    uint64_t cGroupLimitInBytes = 0;
+    uint64_t cGroupSoftLimitInBytes = 0;
     auto memstr = basics::FileUtils::slurp("/sys/fs/cgroup/memory/memory.limit_in_bytes");
     if (!memstr.empty()) {
       // std::strtoull can throw if the input is malformed
-      return std::strtoull(memstr.c_str(), nullptr ,0);
+      cGroupLimitInBytes = std::strtoull(memstr.c_str(), nullptr ,0);
+      if (cGroupLimitInBytes == 0) {
+        cGroupLimitInBytes = mem;
+      }
     }
+    memstr = basics::FileUtils::slurp("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
+    if (!memstr.empty()) {
+      // std::strtoull can throw if the input is malformed
+      cGroupSoftLimitInBytes = std::strtoull(memstr.c_str(), nullptr ,0);
+      if (cGroupSoftLimitInBytes == 0) {
+        cGroupSoftLimitInBytes = mem;
+      }
+    }
+    return std::min(mem, std::min(cGroupLimitInBytes, cGroupSoftLimitInBytes));
   } catch (...) {
     // ignore errors due to wrong file access permissions, 
     // malformed input etc.
@@ -87,11 +106,7 @@ uint64_t physicalMemoryImpl() {
     // physical memory. this should not be an issue as the
     // amount of memory detected is always logged at startup.
   }
-
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
-
-  return static_cast<uint64_t>(pages * page_size);
+  return mem;
 }
 
 #else
