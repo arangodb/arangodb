@@ -553,7 +553,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
     message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "9.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support g++ 10.0 yet.")
+    message(WARNING "ArangoDB doesn't support g++ 10.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -760,7 +760,7 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif()
 
@@ -990,7 +990,7 @@ else ()
   else ()
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
   endif ()
-  string(REGEX MATCH  
+  string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
             ARANGODB_REQUIRED_OPENSSL_VERSION
             "${ARANGODB_VERSIONS_CONTENT}")
