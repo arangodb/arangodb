@@ -40,7 +40,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -1912,7 +1912,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     std::unordered_set<std::string> writeCollectionsSeen;
     std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
-    RegexCache regexCache;
+    AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
     int64_t nestingLevel = 0;
@@ -2075,7 +2075,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
         node->type == NODE_TYPE_OPERATOR_BINARY_LE || node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return this->optimizeBinaryOperatorRelational(ctx->trx, ctx->regexCache, node);
+      return this->optimizeBinaryOperatorRelational(ctx->trx, ctx->aqlFunctionsInternalCache, node);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -2117,7 +2117,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(ctx->trx, ctx->regexCache, node);
+        return this->optimizeFunctionCall(ctx->trx, ctx->aqlFunctionsInternalCache, node);
       }
       // optimization not allowed
       return node;
@@ -2945,7 +2945,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node, bool canModifyResultT
 
 /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
 AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
-                                               RegexCache& regex,
+                                               AqlFunctionsInternalCache& aqlFunctionsInternalCache,
                                                AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
@@ -2975,7 +2975,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
                                         rhs->getMember(0));
       }
       // and optimize ourselves...
-      return optimizeBinaryOperatorRelational(trx, regex, node);
+      return optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache, node);
     }
     // intentionally falls through
   }
@@ -3018,7 +3018,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
 
   Expression exp(this, node);
-  FixedVarExpressionContext context(trx, _query, regex);
+  FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
   bool mustDestroy;
 
   AqlValue a = exp.execute(&context, mustDestroy);
@@ -3244,7 +3244,7 @@ AstNode* Ast::optimizeAttributeAccess(
 
 /// @brief optimizes a call to a built-in function
 AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
-                                   RegexCache& regex, AstNode* node) {
+                                   AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3308,7 +3308,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
       std::string unescapedPattern;
       bool wildcardFound;
       bool wildcardIsLastChar;
-      std::tie(wildcardFound, wildcardIsLastChar) = RegexCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
+      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
 
       if (!wildcardFound) {
         TRI_ASSERT(!wildcardIsLastChar);
@@ -3360,7 +3360,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
   }
 
   Expression exp(this, node);
-  FixedVarExpressionContext context(trx, _query, regex);
+  FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
   bool mustDestroy;
 
   AqlValue a = exp.execute(&context, mustDestroy);
