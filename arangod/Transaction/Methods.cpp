@@ -2386,17 +2386,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
-    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
-      leaderTouched = true;
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (isMock) {
-      leaderTouched = true;
-    }
-#endif
-    if (theLeader.empty() && leaderTouched) {
+    if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION));
