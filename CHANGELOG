@@ -1,6 +1,8 @@
 devel
 -----
 
+* Web UI is now using pre-compiled templates.
+
 * Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6 
   (FilterNode) while planning registers.
 
