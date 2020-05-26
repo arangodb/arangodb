@@ -2945,7 +2945,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node, bool canModifyResultT
 
 /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
 AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
-                                               AqlFunctionsInternalCache& regex,
+                                               AqlFunctionsInternalCache& aqlFunctionsInternalCache,
                                                AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
@@ -2975,7 +2975,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
                                         rhs->getMember(0));
       }
       // and optimize ourselves...
-      return optimizeBinaryOperatorRelational(trx, regex, node);
+      return optimizeBinaryOperatorRelational(trx, aqlFunctionsInternalCache, node);
     }
     // intentionally falls through
   }
@@ -3018,7 +3018,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(transaction::Methods& trx,
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
 
   Expression exp(this, node);
-  FixedVarExpressionContext context(trx, _query, regex);
+  FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
   bool mustDestroy;
 
   AqlValue a = exp.execute(&context, mustDestroy);
@@ -3244,7 +3244,7 @@ AstNode* Ast::optimizeAttributeAccess(
 
 /// @brief optimizes a call to a built-in function
 AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
-                                   AqlFunctionsInternalCache& regex, AstNode* node) {
+                                   AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3360,7 +3360,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
   }
 
   Expression exp(this, node);
-  FixedVarExpressionContext context(trx, _query, regex);
+  FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
   bool mustDestroy;
 
   AqlValue a = exp.execute(&context, mustDestroy);
