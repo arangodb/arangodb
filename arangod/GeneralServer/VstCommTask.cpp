@@ -252,13 +252,6 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     }
     stat.SET_REQUEST_TYPE(req->requestType());
 
-    // process OPTIONS requests similar to how it is done for HTTP
-    if (req->requestType() == rest::RequestType::OPTIONS) {
-      const auto origin = req->header(StaticStrings::Origin);
-      this->processCorsOptions(std::move(req), origin);
-      return true;
-    }
-
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
