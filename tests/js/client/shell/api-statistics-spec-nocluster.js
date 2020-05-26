@@ -1,4 +1,8 @@
 /* global describe, it, beforeEach */
+
+// ATM these tests are disabled for clusters because of the internal foxx-queue requests,
+// which can cause test failures due to unexpected changes in the request counters.
+
 'use strict';
 
 const expect = require('chai').expect;
