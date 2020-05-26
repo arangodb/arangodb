@@ -89,6 +89,8 @@
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
 #include "Basics/voc-errors.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
@@ -2958,6 +2960,34 @@ static void JS_GetPid(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_GetAvailableResources(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  if (v8security.isInternalModuleHardened(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to provide this information");
+  }
+
+  // check arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getAvailableResources()");
+  }
+
+  auto context = TRI_IGETC;
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "memory"),
+              v8::Number::New(isolate, arangodb::PhysicalMemory::getValue())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "cpus"),
+              v8::Number::New(isolate, arangodb::NumberOfCores::getValue())).FromMaybe(false);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a random number using OpenSSL
 ///
@@ -5712,6 +5742,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
                                JS_ProcessStatisticsSelf);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_PID"), JS_GetPid);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_AVAILABLE_RESOURCES"),
+                               JS_GetAvailableResources);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
   TRI_AddGlobalFunctionVocbase(isolate,
