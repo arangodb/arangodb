@@ -197,7 +197,11 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
   if (ldb.hasKey(shname)) {  // Have local collection with that name
 
     auto const lcol = ldb.get(shname);
+#ifdef VELOCYPACK_HAS_STRING_VIEW
     std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
+#else
+    std::string const localLeader = lcol.get(THE_LEADER).copyString();
+#endif
     bool const leaderTouched = localLeader != LEADER_NOT_YET_KNOWN;
     bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
