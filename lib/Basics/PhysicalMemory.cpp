@@ -75,7 +75,6 @@ uint64_t physicalMemoryImpl() {
 #ifdef TRI_HAVE_SC_PHYS_PAGES
 uint64_t physicalMemoryImpl() {
   try {
-    std::string memstr;
     auto memstr = basics::FileUtils::slurp("/sys/fs/cgroup/memory/memory.limit_in_bytes");
     if (!memstr.empty()) {
       // std::strtoull can throw if the input is malformed
