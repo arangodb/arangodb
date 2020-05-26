@@ -1,0 +1,82 @@
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="graphManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <i id="graphManagementSearchSubmit" class="fa fa-search"></i>
+      <!-- <img id="graphManagementSearchSubmit" class="search-submit-icon"> -->
+    </div>
+     <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="graphManagementToggle" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Settings"></span>
+            </a>
+          </li>
+        </ul>
+      </div>
+  </div>
+
+
+  <div id="graphManagementDropdown2" class="headerDropdown">
+
+    <div id="graphManagementDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="graphSortDesc">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="graphManagementThumbnailsIn" class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
+        <div class="fullBorderBox">
+          <a href="#" id="createGraph" class="add">
+            <span id="newGraph" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
+            Add Graph
+          </a>
+        </div>
+      </div>
+
+
+      <% graphs.forEach(function(graph) {
+        var graphName = graph.get("_key");
+        var isSmart = graph.get("isSmart");
+        var isDisjoint = graph.get("isDisjoint");
+        var isSatellite = graph.get("isSatellite") || (graph.get("replicationFactor") == "satellite");
+      %>
+
+      <div class="tile tile-graph pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6" id="<%=graphName %>_tile">
+        <div class="paddingBox">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+          </div>
+          <span class="icon_arangodb_edge5 tile-icon"></span>
+          <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
+          <div class="tileBadge">
+            <% if (isSmart === true) { %>
+              <% if (isDisjoint === true) { %>
+                <span><div class="corneredBadge inProgress">Disjoint Smart</div></span>
+              <% } else { %>
+                <span><div class="corneredBadge inProgress">Smart</div></span>
+              <% } %>
+            <% } else if (isSatellite === true) { %>
+              <span><div class="corneredBadge inProgress">Satellite</div></span>
+            <% } %>
+          </div>
+          <h5 class="collectionName"><%=graphName %></h5>
+        </div>
+      </div>
+
+      <%});%>
+     </div>
+  </div>
+

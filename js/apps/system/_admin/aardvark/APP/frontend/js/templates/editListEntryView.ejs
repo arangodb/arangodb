@@ -1,0 +1,20 @@
+<td class="writable sorting_1">
+  <% if (isReadOnly) { %>
+    <span class="key"><%=key%></span>
+  <% } else { %>
+    <input type="text" class="key" placeholder="attribute" <%=key?"value=" + key:""%>></input>
+  <% } %>
+</td>
+<td class="writeable rightCell">
+  <% if (isReadOnly) { %>
+    <span class="val"><%=value%></span>
+  <% } else { %>
+    <textarea class="val" placeholder="value"><%=value?value:""%></textarea>
+  <% } %>
+</td>
+</td>
+<td class="leftCell">
+  <a class="deleteAttribute">
+    <span class="icon_arangodb_roundminus" data-original-title="Delete attribute"></span>
+  </a>
+</td>

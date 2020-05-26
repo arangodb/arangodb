@@ -7532,7 +7532,7 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
-      if (!gn->isSatelliteNode()) {
+      if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
@@ -7900,7 +7900,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       plan->findNodesOfType(nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS}, true);
       bool const allSatellite = std::all_of(nodes.begin(), nodes.end(), [](auto n) {
         GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
-        return graphNode->isSatelliteNode();
+        return graphNode->isLocalGraphNode();
       });
 
       if (allSatellite) {
