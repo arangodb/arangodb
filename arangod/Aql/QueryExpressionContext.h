@@ -27,7 +27,7 @@
 #include "ExpressionContext.h"
 
 namespace arangodb {
-class ValidatorBase;
+struct ValidatorBase;
 namespace aql {
 class QueryContext;
 class AqlFunctionsInternalCache;
@@ -42,7 +42,7 @@ class QueryExpressionContext : public ExpressionContext {
 
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
-  
+
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
