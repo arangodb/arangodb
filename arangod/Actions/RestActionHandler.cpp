@@ -39,13 +39,6 @@ RestActionHandler::RestActionHandler(application_features::ApplicationServer& se
       _data(nullptr) {}
 
 RestStatus RestActionHandler::execute() {
-  // check the request path
-  if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
-    if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      RequestStatistics::SET_IGNORE(_statistics);
-    }
-  }
-
   // need an action
   if (_action == nullptr) {
     generateNotImplemented(_request->fullUrl());
