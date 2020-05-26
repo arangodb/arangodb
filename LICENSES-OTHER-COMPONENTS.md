@@ -165,6 +165,15 @@ exception from the GPL license:
     program.  This Exception is an additional permission under section 7
     of the GNU General Public License, version 3 ("GPLv3").
 
+### libunwind
+
+* Name: libunwind
+* Version: 1.4
+* Project Home: https://github.com/libunwind/libunwind
+* License: https://github.com/libunwind/libunwind/blob/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 ### linenoise-ng
 
 * Name: linenoise-ng
