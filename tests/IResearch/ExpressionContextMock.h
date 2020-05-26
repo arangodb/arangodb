@@ -25,7 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
 
 #include "Aql/QueryContext.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "Transaction/Methods.h"
 
@@ -44,7 +44,7 @@ struct Variable; // forward decl
 struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionContextBase {
 
   static ExpressionContextMock EMPTY;
-  
+
   ExpressionContextMock() : ViewExpressionContextBase(nullptr, nullptr, nullptr) {}
 
   virtual ~ExpressionContextMock();
@@ -62,8 +62,8 @@ struct ExpressionContextMock final : public arangodb::iresearch::ViewExpressionC
   void setTrx(arangodb::transaction::Methods* trx) {
     this->_trx = trx;
   }
-  
-  arangodb::aql::RegexCache _regexCache;
+
+  arangodb::aql::AqlFunctionsInternalCache _regexCache;
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock
 

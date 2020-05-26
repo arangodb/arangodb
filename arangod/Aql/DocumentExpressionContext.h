@@ -34,7 +34,7 @@ namespace aql {
 class DocumentExpressionContext final : public QueryExpressionContext {
  public:
   DocumentExpressionContext(transaction::Methods& trx, QueryContext& query,
-                            RegexCache& cache, arangodb::velocypack::Slice document);
+                            AqlFunctionsInternalCache& cache, arangodb::velocypack::Slice document);
 
   ~DocumentExpressionContext() = default;
 
