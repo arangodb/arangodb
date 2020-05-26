@@ -63,6 +63,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 
 #include <velocypack/Iterator.h>
 
@@ -234,7 +235,7 @@ void Query::prepareQuery(SerializationFormat format) {
     }
     registry->registerEngines(_snippets);
   }
-  
+
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
@@ -288,6 +289,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
 
   enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
+
   auto plan = ExecutionPlan::instantiateFromAst(_ast.get());
 
   // Run the query optimizer:
@@ -302,7 +304,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // return the V8 context if we are in one
   exitV8Context();
-  
+
   return plan;
 }
 
@@ -318,7 +320,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     }
 
     bool useQueryCache = canUseQueryCache();
- 
+
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
         if (useQueryCache) {
@@ -515,11 +517,11 @@ QueryResult Query::executeSync() {
       TRI_ASSERT(state == aql::ExecutionState::DONE);
       return queryResult;
     }
-    
+
     if (!ss) {
       ss = sharedState();
     }
-    
+
     ss->waitForAsyncWakeup();
   } while (true);
 }
@@ -578,7 +580,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
     // will throw if it fails
     prepareQuery(SerializationFormat::SHADOWROWS);
-    
+
     log();
 
     if (useQueryCache && (isModificationQuery()  || !_warnings.empty() ||
@@ -1271,7 +1273,8 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackSlice variables,
                                        VPackSlice snippets,
                                        VPackSlice traverserSlice,
-                                       VPackBuilder& answerBuilder) {
+                                       VPackBuilder& answerBuilder,
+                                       arangodb::AnalyzersRevision::Revision analyzersRevision) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                              << "Query::prepareQuerySnippets"
                                              << " this: " << (uintptr_t)this;
@@ -1308,7 +1311,9 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                 std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-
+  if (_trx->state()->isDBServer()) {
+    _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+  }
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1372,7 +1377,6 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
     }
     answerBuilder.close();  // traverserEngines
   }
-
   TRI_ASSERT(_trx != nullptr);
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
@@ -1404,7 +1408,7 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
     }
   }
 
-   LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
+  LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
        << TRI_microtime() - _startTime << " "
        << "Query::finalizeSnippets: before cleanupPlanAndEngine"
        << " this: " << (uintptr_t)this;

@@ -27,6 +27,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -44,7 +45,12 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
                                                  TRI_voc_tid_t tid,
                                                  transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    : TransactionState(vocbase, tid, options) {
+  TRI_ASSERT(isCoordinator());
+  acceptAnalyzersRevision(_vocbase.server()
+    .getFeature< arangodb::iresearch::IResearchAnalyzerFeature>()
+    .getAnalyzersRevision(_vocbase, true)->getRevision());
+}
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
@@ -57,7 +63,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
   // set hints
   _hints = hints;
-  
+
   auto cleanup = scopeGuard([&] {
     updateStatus(transaction::Status::ABORTED);
     _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
