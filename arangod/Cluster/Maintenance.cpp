@@ -191,11 +191,19 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
   bool shouldBeLeading = serverId == leaderId;
   bool shouldResign = UNDERSCORE + serverId == leaderId;
 
+
   commonShrds.emplace(shname);
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
+
     auto const lcol = ldb.get(shname);
-    bool leading = lcol.get(THE_LEADER).copyString().empty();
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+    std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
+#else
+    std::string const localLeader = lcol.get(THE_LEADER).copyString();
+#endif
+    bool const leaderTouched = localLeader != LEADER_NOT_YET_KNOWN;
+    bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
@@ -269,13 +277,14 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       shouldBeLeading = true;
       shouldResign = false;
     }
-    if (leading != shouldBeLeading && !shouldResign) {
+    if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
-        << "Triggering TakeoverShardLeadership job for shard "
-        << dbname << "/" << colname << "/" << shname
-        << ", local leader: " << lcol.get(THE_LEADER).copyString()
-        << ", should be leader: "
-        << (shouldBeLeading ? std::string() : leaderId);
+          << "Triggering TakeoverShardLeadership job for shard " << dbname
+          << "/" << colname << "/" << shname
+          << ", local leader: " << lcol.get(THE_LEADER).copyString()
+          << ", leader id: " << leaderId << ", my id: " << serverId
+          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId)
+          << ", leaderTouched = " << (leaderTouched ? "yes" : "no");
       actions.emplace_back(ActionDescription(
             std::map<std::string, std::string>{
                 {NAME, TAKEOVER_SHARD_LEADERSHIP},
@@ -283,7 +292,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {COLLECTION, colname},
                 {SHARD, shname},
                 {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-                {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
+                {LOCAL_LEADER, std::string(localLeader)},
                 {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
                 LEADER_PRIORITY));
     }
@@ -298,7 +307,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       // Index errors are checked in `compareIndexes`. THe loop below only
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
-        for (auto const& index : VPackArrayIterator(difference.slice())) {
+        for (auto&& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(ActionDescription(
               {{NAME, "EnsureIndex"},
                {DATABASE, dbname},

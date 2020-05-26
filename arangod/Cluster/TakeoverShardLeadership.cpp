@@ -68,7 +68,7 @@ std::string stripServerPrefix(std::string const& destination) {
 }  // namespace
 
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
-                                             ActionDescription const& desc)
+                                                 ActionDescription const& desc)
     : ActionBase(feature, desc) {
   std::stringstream error;
 
@@ -102,7 +102,8 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
   TRI_ASSERT(desc.has(OLD_CURRENT_COUNTER));
 
   if (!error.str().empty()) {
-    LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE) << "TakeoverLeadership: " << error.str();
+    LOG_TOPIC("2aa85", ERR, Logger::MAINTENANCE)
+        << "TakeoverLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -134,19 +135,19 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   network::RequestOptions options;
   options.database = databaseName;
   options.timeout = network::Timeout(3.0);
-  options.skipScheduler = true; // hack to speed up future.get()
-  
+  options.skipScheduler = true;  // hack to speed up future.get()
+
   std::string const url = "/_api/replication/set-the-leader";
 
   std::vector<network::FutureRes> futures;
   futures.reserve(currentServers.size());
-  
+
   for (auto const& srv : currentServers) {
     if (srv == sid) {
-      continue; // ignore ourself
+      continue;  // ignore ourself
     }
     LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
-      << "Sending " << bodyBuilder.toJson() << " to " << srv;
+        << "Sending " << bodyBuilder.toJson() << " to " << srv;
     auto f = network::sendRequest(pool, "server:" + srv, fuerte::RestVerb::Put,
                                   url, buffer, options);
     futures.emplace_back(std::move(f));
@@ -166,15 +167,18 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
   }
 }
 
-static void handleLeadership(LogicalCollection& collection,
-                      std::string const& localLeader,
-                      std::string const& plannedLeader,
-                      std::string const& databaseName,
-                      uint64_t oldCounter, MaintenanceFeature& feature) {
+static void handleLeadership(LogicalCollection& collection, std::string const& localLeader,
+                             std::string const& plannedLeader, std::string const& databaseName,
+                             uint64_t oldCounter, MaintenanceFeature& feature) {
   auto& followers = collection.followers();
 
   if (plannedLeader.empty()) {   // Planned to lead
     if (!localLeader.empty()) {  // We were not leader, assume leadership
+      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+      << "handling leadership of shard '" << databaseName << "/"
+      << collection.name() << ": becoming leader";
+
+
       // This will block the thread until we fetched a new current version
       // in maintenance main thread.
       feature.waitForLargerCurrentCounter(oldCounter);
@@ -206,18 +210,24 @@ static void handleLeadership(LogicalCollection& collection,
         }
       }
 
-      std::vector<ServerID> failoverCandidates = currentInfo->failoverCandidates(collection.name());
+      std::vector<ServerID> failoverCandidates =
+          currentInfo->failoverCandidates(collection.name());
       followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
       transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
     }
   } else {  // Planned to follow
-    if (localLeader.empty()) {
+    if (localLeader.empty() || localLeader == LEADER_NOT_YET_KNOWN) {
       // Note that the following does not delete the follower list
       // and that this is crucial, because in the planned leader
       // resign case, updateCurrentForCollections will report the
       // resignation together with the old in-sync list to the
       // agency. If this list would be empty, then the supervision
       // would be very angry with us!
+
+      LOG_TOPIC("c1f0c", DEBUG, Logger::MAINTENANCE)
+          << "handling leadership of shard '" << databaseName << "/"
+          << collection.name() << ": following " << plannedLeader;
+
       followers->setTheLeader(plannedLeader);
       transaction::cluster::abortLeaderTransactionsOnShard(collection.id());
     }
@@ -242,23 +252,23 @@ bool TakeoverShardLeadership::first() {
   try {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
-    
+
     std::shared_ptr<LogicalCollection> coll;
     Result found = methods::Collections::lookup(vocbase, shard, coll);
     if (found.ok()) {
-      
       TRI_ASSERT(coll);
-      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
-          << "trying to become leader of shard '" << database << "/" << shard;
+      LOG_TOPIC("46a16", DEBUG, Logger::MAINTENANCE)
+          << "handling leadership of shard '" << database << "/" << shard;
       // We adjust local leadership, note that the planned
       // resignation case is not handled here, since then
       // ourselves does not appear in shards[shard] but only
       // "_" + ourselves.
-      handleLeadership(*coll, localLeader, plannedLeader,
-                       vocbase.name(), oldCounter, feature());
+      handleLeadership(*coll, localLeader, plannedLeader, vocbase.name(),
+                       oldCounter, feature());
     } else {
       std::stringstream error;
-      error << "TakeoverShardLeadership: failed to lookup local collection " << shard << "in database " + database;
+      error << "TakeoverShardLeadership: failed to lookup local collection "
+            << shard << "in database " + database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();
       _result = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
     }

@@ -1543,17 +1543,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
-    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
-      leaderTouched = true;
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (isMock) {
-      leaderTouched = true;
-    }
-#endif
-    if (theLeader.empty() && leaderTouched) {
+    if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -1639,7 +1629,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // Error reporting in the babies case is done outside of here,
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
         TRI_ASSERT(didReplace);
-        
+
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
                               0, nullptr, nullptr);
@@ -1866,17 +1856,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
-    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
-      leaderTouched = true;
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (isMock) {
-      leaderTouched = true;
-    }
-#endif
-    if (theLeader.empty() && leaderTouched) {
+    if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
@@ -2162,17 +2142,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
-    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
-      leaderTouched = true;
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (isMock) {
-      leaderTouched = true;
-    }
-#endif
-    if (theLeader.empty() && leaderTouched) {
+    if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
@@ -2416,17 +2386,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
-    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
-      leaderTouched = true;
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
-    if (isMock) {
-      leaderTouched = true;
-    }
-#endif
-    if (theLeader.empty() && leaderTouched) {
+    if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION));
@@ -2501,7 +2461,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // Now prepare the requests:
       std::vector<network::FutureRes> futures;
       futures.reserve(followers->size());
-      
+
       network::RequestOptions reqOpts;
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
@@ -2516,11 +2476,6 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       }
 
       auto responses = futures::collectAll(futures).get();
-      // If any would-be-follower refused to follow there must be a
-      // new leader in the meantime, in this case we must not allow
-      // this operation to succeed, we simply return with a refusal
-      // error (note that we use the follower version, since we have
-      // lost leadership):
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
         bool replicationWorked =
@@ -2543,6 +2498,11 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           }
         }
       }
+      // If any would-be-follower refused to follow there must be a
+      // new leader in the meantime, in this case we must not allow
+      // this operation to succeed, we simply return with a refusal
+      // error (note that we use the follower version, since we have
+      // lost leadership):
       if (findRefusal(responses)) {
         return futures::makeFuture(OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED));
       }
@@ -3057,7 +3017,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
-    
+
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();
@@ -3094,7 +3054,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
   }
 
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
-    
+
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();
@@ -3107,7 +3067,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
 ///        return a valid index. nullptr is impossible.
 transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     std::string const& collectionName, std::string const& idxId) {
-  
+
   if (idxId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
@@ -3116,7 +3076,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
   if (!arangodb::Index::validateId(idxId.c_str())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
   }
-  
+
   if (_state->isCoordinator()) {
     std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, idxId);
     if (idx == nullptr) {
@@ -3186,7 +3146,7 @@ Future<Result> Methods::replicateOperations(
   }
 
   // path and requestType are different for insert/remove/modify.
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
@@ -3259,9 +3219,9 @@ Future<Result> Methods::replicateOperations(
     // nothing to do
     return Result();
   }
-  
+
   reqOpts.timeout = network::Timeout(chooseTimeout(count, payload->size()));
-  
+
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
