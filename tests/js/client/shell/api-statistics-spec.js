@@ -7,23 +7,7 @@ const arango = require('@arangodb').arango;
 const _ = require("lodash");
 
 function getStatistics() {
-  return arango.GET("/_db/_system/_admin/statistics?dont-count-this-request=true");
-}
-
-function getStableStatistics() {
-  // We need to make sure all pending statistic updates have been processed.
-  // To this end, we perform an OPTIONS request (as these are rather rare) and
-  // wait for max. 30sec that the requestsOptions counter has been increased.
-  const initialRequestOptions = getStatistics().http.requestsOptions;
-  arango.OPTIONS("/_dummy", "dummy");
-  for (let i = 0; i < 60; ++i) {
-    internal.sleep(0.5);
-    const stats = getStatistics();
-    if (stats.http.requestsOptions > initialRequestOptions) {
-      return stats;
-    }
-  }
-  throw "Failed to verify stable statistics counters - aborting";
+  return arango.GET("/_db/_system/_admin/statistics?sync=true");
 }
 
 function performGETRequest() {
@@ -52,9 +36,10 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
     expect(_.get(finalStats, path), path).to.be.above(_.get(initialStats, path));
   }
 
-  const increaseByTwo = [ // the OPTIONS request for the sync indication is also counted
+  const increaseByTwo = [ // the inital statistics request is also counted
     "client.totalTime.count",
     "client.requestTime.count",
+    "client.queueTime.count",
     "client.ioTime.count",
     "client.bytesSent.count",
     "client.bytesReceived.count",
@@ -64,31 +49,21 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
   for (const path of increaseByTwo) {
     expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 2);
   }
-
-  // OPTIONS requests are not queue and therefore do not show up in queueTime
-  const increaseByOne = [
-    "client.queueTime.count",
-  ];
-
-  for (const path of increaseByOne) {
-    expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 1);
-  }
 }
 
 describe('request statistics', function () {
   it('should be updated by GET requests', function () {
-    const initialStats = getStableStatistics();
+    const initialStats = getStatistics();
     performGETRequest();
-    const finalStats = getStableStatistics();
-    
+    const finalStats = getStatistics();
+
     checkCommonStatisticsChanges(initialStats, finalStats);
 
-    const increaseByOne = [
+    const increaseByTwo = [ // the inital statistics request is also counted
       "http.requestsGet",
-      "http.requestsOptions", // this is the sync indicator
     ];
-    for (const path of increaseByOne) {
-      expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 1);
+    for (const path of increaseByTwo) {
+      expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 2);
     }
 
     const equal = [
@@ -98,6 +73,7 @@ describe('request statistics', function () {
       "http.requestsPut",
       "http.requestsPatch",
       "http.requestsDelete",
+      "http.requestsOptions",
       "http.requestsOther",
     ];
     for (const path of equal) {
@@ -108,15 +84,15 @@ describe('request statistics', function () {
   });
 
   it('should be updated by POST requests', function () {
-    const initialStats = getStableStatistics();
+    const initialStats = getStatistics();
     performPOSTRequest();
-    const finalStats = getStableStatistics();
+    const finalStats = getStatistics();
 
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
+      "http.requestsGet", // the inital statistics request is also counted
       "http.requestsPost",
-      "http.requestsOptions", // this is the sync indicator
     ];
     for (const path of increaseByOne) {
       expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 1);
@@ -124,11 +100,11 @@ describe('request statistics', function () {
 
     const equal = [
       "http.requestsAsync",
-      "http.requestsGet",
       "http.requestsHead",
       "http.requestsPut",
       "http.requestsPatch",
       "http.requestsDelete",
+      "http.requestsOptions",
       "http.requestsOther",
     ];
     for (const path of equal) {
@@ -138,15 +114,15 @@ describe('request statistics', function () {
   });
 
   it('should be updated by DELETE requests', function () {
-    const initialStats = getStableStatistics();
+    const initialStats = getStatistics();
     performDELETERequest();
-    const finalStats = getStableStatistics();
+    const finalStats = getStatistics();
 
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
+      "http.requestsGet", // the inital statistics request is also counted
       "http.requestsDelete",
-      "http.requestsOptions", // this is the sync indicator
     ];
     for (const path of increaseByOne) {
       expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 1);
@@ -154,11 +130,11 @@ describe('request statistics', function () {
 
     const equal = [
       "http.requestsAsync",
-      "http.requestsGet",
       "http.requestsHead",
       "http.requestsPost",
       "http.requestsPut",
       "http.requestsPatch",
+      "http.requestsOptions",
       "http.requestsOther",
     ];
     for (const path of equal) {
