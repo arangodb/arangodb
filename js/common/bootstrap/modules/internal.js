@@ -143,7 +143,7 @@ global.DEFINE_MODULE('internal', (function () {
   exports.availableResources = {};
   if (global.SYS_GET_AVAILABLE_RESOURCES) {
     exports.availableResources = global.SYS_GET_AVAILABLE_RESOURCES;
-    delete global.SYS_GET_AVAILABLE_RESOURCES
+    delete global.SYS_GET_AVAILABLE_RESOURCES;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
