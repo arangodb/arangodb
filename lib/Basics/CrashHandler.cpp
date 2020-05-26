@@ -369,6 +369,17 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* cont
 
 /// @brief installs the crash handler globally
 void CrashHandler::installCrashHandler() {
+  // read environment variable that can be used to toggle the
+  // crash handler
+  std::string value;
+  if (TRI_GETENV("ARANGODB_OVERRIDE_CRASH_HANDLER", value)) {
+    bool toggle = arangodb::basics::StringUtils::boolean(value);
+    if (!toggle) {
+      // crash handler turned off
+      return;
+    }
+  }
+
 #ifndef _WIN32
   // install signal handlers for the following signals
   struct sigaction act;

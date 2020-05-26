@@ -2642,7 +2642,8 @@ void TRI_InitializeFiles() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the files subsystem
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value) {
