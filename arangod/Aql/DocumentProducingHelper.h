@@ -117,7 +117,7 @@ struct DocumentProducingFunctionContext {
   
   bool hasFilter() const noexcept;
   
-  aql::AqlFunctionsInternalCache& regexCache() { return _aqlFunctionsInternalCache; }
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
  private:
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;

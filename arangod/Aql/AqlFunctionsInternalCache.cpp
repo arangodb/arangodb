@@ -38,15 +38,16 @@ using namespace arangodb::aql;
 AqlFunctionsInternalCache::~AqlFunctionsInternalCache() { clear(); }
 
 void AqlFunctionsInternalCache::clear() noexcept {
-  _aqlFunctionsInternalCache.clear();
+  _regexCache.clear();
   _likeCache.clear();
+  _validatorCache.clear();
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(char const* ptr, size_t length,
                                                  bool caseInsensitive) {
   buildRegexPattern(_temp, ptr, length, caseInsensitive);
 
-  return fromCache(_temp, _aqlFunctionsInternalCache);
+  return fromCache(_temp, _regexCache);
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(char const* ptr, size_t length,
@@ -93,7 +94,7 @@ icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(AqlValue const& 
 }
 
 arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(VPackSlice const& validatorParams) {
-  auto matcherIter = _schemaCache.try_emplace(
+  auto matcherIter = _validatorCache.try_emplace(
         validatorParams.hash(),
         arangodb::lazyConstruct([&]{
           return std::unique_ptr<arangodb::ValidatorBase>(new arangodb::ValidatorJsonSchema(validatorParams));

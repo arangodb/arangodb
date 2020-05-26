@@ -158,7 +158,7 @@ struct BaseOptions {
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
   
-  aql::AqlFunctionsInternalCache& regexCache() { return _aqlFunctionsInternalCache; }
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
   virtual auto estimateDepth() const noexcept -> uint64_t = 0;
   

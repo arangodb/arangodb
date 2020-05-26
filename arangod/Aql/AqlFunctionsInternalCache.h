@@ -58,6 +58,8 @@ class AqlFunctionsInternalCache final {
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression);
 
+  /// @brief return validators -- This is currently only used for JSONSchema validation.
+  //                              But it is able to handle other validation types without change.
   arangodb::ValidatorBase* buildValidator(VPackSlice const& validatorDescription);
 
   /// @brief inspect a LIKE pattern from a string, and remove all
@@ -84,11 +86,12 @@ class AqlFunctionsInternalCache final {
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
-  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _aqlFunctionsInternalCache;
+  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _regexCache;
   /// @brief cache for compiled regexes (LIKE function)
   std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>> _likeCache;
-  /// @brief a reusable string object for pattern generation
-  std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>> _schemaCache;
+  /// @brief cache for validators -- This is currently only used for JSONSchema validation.
+  //                                 But it is able to handle other validation types without change.
+  std::unordered_map<std::size_t, std::unique_ptr<arangodb::ValidatorBase>> _validatorCache;
   /// @brief a reusable string object for pattern generation
   std::string _temp;
 };

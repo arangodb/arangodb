@@ -1912,7 +1912,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     std::unordered_set<std::string> writeCollectionsSeen;
     std::unordered_map<std::string, int64_t> collectionsFirstSeen;
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
-    AqlFunctionsInternalCache regexCache;
+    AqlFunctionsInternalCache aqlFunctionsInternalCache;
     transaction::Methods& trx;
     int64_t stopOptimizationRequests = 0;
     int64_t nestingLevel = 0;
@@ -2075,7 +2075,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
         node->type == NODE_TYPE_OPERATOR_BINARY_LE || node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GE || node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return this->optimizeBinaryOperatorRelational(ctx->trx, ctx->regexCache, node);
+      return this->optimizeBinaryOperatorRelational(ctx->trx, ctx->aqlFunctionsInternalCache, node);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
@@ -2117,7 +2117,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(ctx->trx, ctx->regexCache, node);
+        return this->optimizeFunctionCall(ctx->trx, ctx->aqlFunctionsInternalCache, node);
       }
       // optimization not allowed
       return node;
