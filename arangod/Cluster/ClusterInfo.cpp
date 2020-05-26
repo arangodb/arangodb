@@ -260,7 +260,13 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _planVersion(0),
     _currentVersion(0),
     _planLoader(std::thread::id()),
-    _uniqid() {
+    _uniqid(),
+    _lpTimer(_server.getFeature<MetricsFeature>().histogram(
+               "load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "Plan loading runtimes [ms]")),
+    _lcTimer(_server.getFeature<MetricsFeature>().histogram(
+               "load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "Current loading runtimes [ms]")) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -558,10 +564,7 @@ void ClusterInfo::loadPlan() {
 
   auto& clusterFeature = _server.getFeature<ClusterFeature>();
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
-  auto& metricsFeature = _server.getFeature<MetricsFeature>();
 
-  auto& timer = metricsFeature.histogram(
-    "load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10), "Plan loading tuntimes [ms]");
   auto start = clock::now();
   auto& agencyCache = clusterFeature.agencyCache();
 
@@ -1171,8 +1174,7 @@ void ClusterInfo::loadPlan() {
     }
   }
 
-  timer.count(
-    duration<float,std::milli>(clock::now()-start).count());
+  _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
 
 }
 
@@ -1192,10 +1194,6 @@ void ClusterInfo::loadCurrent() {
   consensus::index_t idx = 0;
   uint64_t newCurrentVersion = 0;
 
-  auto& metricsFeature = _server.getFeature<MetricsFeature>();
-
-  auto& timer = metricsFeature.histogram(
-    "load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10), "Current loading tuntimes [ms]");
   auto start = clock::now();
 
   // We need to update ServersKnown to notice rebootId changes for all servers.
@@ -1354,8 +1352,7 @@ void ClusterInfo::loadCurrent() {
     }
   }
 
-  timer.count(
-    duration<float,std::milli>(clock::now()-start).count());
+  _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
 
 }
 

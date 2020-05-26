@@ -84,40 +84,20 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   }
 
   template <typename Scale>
-  Histogram<Scale>& histogram(
-    metrics_key const& mk, Scale const& scale, std::string const& help = std::string()) {
-
-    std::shared_ptr<Histogram<Scale>> metric = nullptr;
-    std::string error;
-    {
-      std::lock_guard<std::recursive_mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(mk);
-      if (it != _registry.end()) {
-        try {
-          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
-        } catch (std::exception const& e) {
-          error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
-        }
-        if (metric == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            std::string("Non matching scale classes for cloning ") + mk.name);
-        }
-        return *metric;
-      }
-    }
-
+  Histogram<Scale>& histogram(metrics_key const& mk, Scale const& scale,
+                              std::string const& help = std::string()) {
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
       if (!labels.empty()) {
         labels += ",";
       }
-      labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
-        "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
+      labels +=
+          "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
+          "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
 
-    metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
+    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -125,8 +105,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("histogram ") + mk.name + " alredy exists");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     std::string("histogram ") + mk.name +
+                                         " alredy exists");
     }
     return *metric;
   };
@@ -147,8 +128,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       if (it == _registry.end()) {
         it = _registry.find(mk.name);
         if (it == _registry.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + mk.name);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         std::string("No gauge booked as ") + mk.name);
         }
         try {
           metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
