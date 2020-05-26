@@ -417,9 +417,6 @@ describe('_admin/metrics', () => {
     it('collection and index', () => {
       try {
         runTest(() => {
-          /*require("internal").wait(10.0);
-          db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2});
-          require("internal").wait(10.0);*/
           db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2, waitForSyncReplication: true});
         },
         [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
