@@ -518,7 +518,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
        << Logger::FIXED(totalTime, 6);
   
   auto* tmp = static_cast<HttpResponse*>(res.get());
-  auto stream = findStream(res->messageId());
+  auto stream = findStream(static_cast<int32_t>(res->messageId()));
   TRI_ASSERT(stream);
   stream->statistics = std::move(stat);
 
