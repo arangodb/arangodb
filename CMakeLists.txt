@@ -566,9 +566,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
-endif ()
+set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
