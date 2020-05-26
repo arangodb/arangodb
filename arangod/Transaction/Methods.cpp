@@ -1354,8 +1354,14 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
     auto validatedKey = transaction::helpers::validatedOperationInputDocumentKey(*collection, newVal);
 
+    Result res;
     if (!validatedKey.ok()) {
-      return validatedKey.result();
+      // FIXME: We're doing this for backwards compatibility to not
+      //        hide more serious test failures. We should really
+      //        be returning the "correct" error code in
+      //        the validation procedure, *and* adapt all tests to accept 
+      //        these error codes.
+      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
     result.clear();
@@ -1365,7 +1371,6 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // single document operations. We need to have a lock here already.
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
-    Result res;
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, previous);
     } else {
