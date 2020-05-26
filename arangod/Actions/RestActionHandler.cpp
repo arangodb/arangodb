@@ -40,13 +40,6 @@ RestActionHandler::RestActionHandler(application_features::ApplicationServer& se
       _data(nullptr) {}
 
 RestStatus RestActionHandler::execute() {
-  // check the request path
-  if (_request->databaseName() == StaticStrings::SystemDatabase) {
-    if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      _statistics.SET_IGNORE();
-    }
-  }
-
   // need an action
   if (_action == nullptr) {
     generateNotImplemented(_request->fullUrl());
