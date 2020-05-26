@@ -1543,7 +1543,17 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
@@ -1856,7 +1866,17 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
@@ -2142,7 +2162,17 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
@@ -2386,7 +2416,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
-    if (theLeader.empty()) {
+    bool leaderTouched = followerInfo->getLeaderTouched();  // this is false after a restart
+    if (collection->name() == "_statisticsRaw" || collection->name() == "_statistics15" || collection->name() == "_statistics") {
+      leaderTouched = true;
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool const isMock = EngineSelectorFeature::ENGINE->typeName() == "Mock";
+    if (isMock) {
+      leaderTouched = true;
+    }
+#endif
+    if (theLeader.empty() && leaderTouched) {
       if (!options.isSynchronousReplicationFrom.empty()) {
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION));
