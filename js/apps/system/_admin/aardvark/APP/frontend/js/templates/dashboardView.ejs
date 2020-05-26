@@ -1,0 +1,146 @@
+  <% var subBar = function(title) { %>
+    <div class="dashboard-sub-bar">
+      <div  class="dashboard-sub-bar-title"><%= title %></div>
+    </div>
+  <% }
+  var enlargeButton = function(name, arrows) {
+    if (arrows) { %>
+      <div class="dashboard-sub-bar-menu">
+        <i class="fa fa-arrows-alt dashboard-sub-bar-menu-sign" id="<%= name %>Button"></i>
+      </div>
+    <% }
+  } %>
+
+  <% var largeChart = function(name, title, arrows) { %>
+    <div class="dashboard-large-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-2-3">
+      <% enlargeButton(name, true); %>
+      <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div class="dashboard-legend">
+          <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+        </div>
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
+      </div>
+      <% subBar(title) %>
+    </div>
+  <% } %>
+
+  <% var mediumChart = function(name, title, arrows) { %>
+    <div class="dashboard-medium-chart-outer pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-2">
+      <div class="dashboard-medium-chart">
+        <% enlargeButton(name, true); %>
+          <div class="dashboard-legend">
+            <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
+          </div>
+        <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
+          <div id="<%= name %>" class="dashboard-interior-chart"></div>
+        </div>
+        <% subBar(title) %>
+      </div>
+    </div>
+  <% } %>
+
+  <% var smallChart = function(name, title, arrows) { %>
+    <div class="dashboard-small-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
+      <% enlargeButton(name, arrows); %>
+      <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
+        <div id="<%= name %>" class="dashboard-interior-chart">
+          <svg></svg>
+        </div>
+      </div>
+      <% subBar(title) %>
+    </div>
+  <% } %>
+
+  <% var tendency = function(title, name, arrows) { %>
+    <div class="dashboard-tendency-container pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
+      <div class="dashboard-tendency-chart">
+        <% enlargeButton(name, arrows); %>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">sync</div>
+            <div class="dashboard-figure">
+              <span id="syncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">current</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Current"></span>
+          <% } %>
+          </div>
+        </div>
+        <div class="dashboard-tendency">
+          <% if (name === "asyncRequests") {%>
+            <div class="dashboard-subtitle-bar">async</div>
+            <div class="dashboard-figure">
+              <span id="asyncPerSecondCurrent"></span>
+          <%} else {%>
+            <div class="dashboard-subtitle-bar">15-min-avg</div>
+            <div class="dashboard-figure">
+              <span id="<%= name %>Average"></span>
+          <% } %>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-sub-bar"><%= title %></div>
+    </div>
+  <% } %>
+
+  <ul class="subMenuEntries subViewNavbar">
+    <li id="requests-statistics" class="subMenuEntry active"><a>Request Statistics</a></li>
+    <li id="system-statistics" class="subMenuEntry "><a>System Resources</a></li>
+  </ul>
+
+  <div id="requests">
+    <div class="contentDiv">
+      <div class="dashboard-row pure-u cluster-values" id="node-info" style="width: 100%; margin-top: 0; padding-right: 2px; box-sizing: border-box;">
+      </div>
+
+      <% if (hideStatistics !== true) { %>
+        <div class="dashboard-row pure-u">
+          <% largeChart("requestsChart", "Requests per Second") %>
+
+          <% tendency("Request Types", "asyncRequests", false); %>
+          <% tendency("Number of Client Connections", "clientConnections", false); %>
+        </div>
+        
+        <div class="dashboard-row pure-u small-label-padding">
+          <% largeChart("dataTransferChart", "Transfer Size per Second") %>
+          <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
+        </div>
+        
+        <div class="dashboard-row pure-u small-label-padding">
+          <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
+          <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+
+  <div id="system" class="tendency-box-sizing" style="display: none";>
+
+    <div class="dashboard-row pure-u" style="width: 100%;">
+      <% tendency("Number of threads", "numberOfThreads", false); %>
+
+      <div class="dashboard-bar-chart-container pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
+        <div class="dashboard-bar-chart">
+          <div class="dashboard-bar-chart-title">
+            <div class="percentage"></div>
+            <div class="absolut"></div>
+          </div>
+          <div class="dashboard-bar-chart-chart" id="residentSizeChartContainer">
+            <div id="residentSizeChart">
+              <svg></svg>
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-sub-bar"">Memory</div>
+      </div>
+
+      <% tendency("Virtual Size in GB", "virtualSize", false); %>
+    </div>
+    <div class="dashboard-row pure-u" style="width: 100%">
+      <% mediumChart("pageFaultsChart", "Major Page Faults") %>
+      <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
+    </div>
+
+  </div>
+
