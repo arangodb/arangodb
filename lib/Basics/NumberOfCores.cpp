@@ -22,6 +22,7 @@
 
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/FileUtils.h"
 #include "Basics/operating-system.h"
 #include "Basics/files.h"
 
@@ -29,6 +30,7 @@
 #include <unistd.h>
 #endif
 
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <thread>
@@ -45,12 +47,29 @@ std::size_t numberOfCoresImpl() {
     n = 0;
   }
 
-  if (n > 0) {
-    return static_cast<std::size_t>(n);
+  if (n <= 0)
+#endif
+    {
+      n = std::thread::hardware_concurrency();
+    }
+#ifdef TRI_SC_NPROCESSORS_ONLN
+  try {
+    int64_t cfsPeriodUs;
+    int64_t cfsQuotaUs;
+    cfsPeriodUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_period_us"));
+    cfsQuotaUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"));
+    if (cfsQuotaUs > 0 && cfsPeriodUs > 0) {
+      n = std::lround(n * cfsQuotaUs / cfsPeriodUs);
+    }
+  } catch (...) {
+    // ignore errors due to wrong file access permissions, 
+    // malformed input etc.
+    // in this case we simply fall back to using the available
+    // physical memory. this should not be an issue as the
+    // amount of memory detected is always logged at startup.
   }
 #endif
-
-  return static_cast<std::size_t>(std::thread::hardware_concurrency());
+  return static_cast<size_t>(n);
 }
 
 struct NumberOfCoresCache {
