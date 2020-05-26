@@ -59,7 +59,7 @@ std::size_t numberOfCoresImpl() {
     cfsPeriodUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_period_us"));
     cfsQuotaUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"));
     if (cfsQuotaUs > 0 && cfsPeriodUs > 0) {
-      n = std::lround(n * cfsQuotaUs / cfsPeriodUs);
+      n = std::lround(double(cfsQuotaUs) / double(cfsPeriodUs));
     }
   } catch (...) {
     // ignore errors due to wrong file access permissions, 
