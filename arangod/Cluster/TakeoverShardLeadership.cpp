@@ -224,7 +224,7 @@ static void handleLeadership(LogicalCollection& collection, std::string const& l
       // agency. If this list would be empty, then the supervision
       // would be very angry with us!
 
-      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("c1f0c", DEBUG, Logger::MAINTENANCE)
           << "handling leadership of shard '" << databaseName << "/"
           << collection.name() << ": following " << plannedLeader;
 
@@ -257,7 +257,7 @@ bool TakeoverShardLeadership::first() {
     Result found = methods::Collections::lookup(vocbase, shard, coll);
     if (found.ok()) {
       TRI_ASSERT(coll);
-      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("46a16", DEBUG, Logger::MAINTENANCE)
           << "handling leadership of shard '" << database << "/" << shard;
       // We adjust local leadership, note that the planned
       // resignation case is not handled here, since then
