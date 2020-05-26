@@ -1671,16 +1671,27 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
 }
 
 void Expression::replaceNode(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
   if (node != _node) {
     _node = node;
     invalidateAfterReplacements();
   }
 }
 
-Ast* Expression::ast() const noexcept { return _ast; }
+Ast* Expression::ast() const noexcept { 
+  TRI_ASSERT(_ast != nullptr);
+  return _ast; 
+}
 
-AstNode const* Expression::node() const { return _node; }
-AstNode* Expression::nodeForModification() const { return _node; }
+AstNode const* Expression::node() const {
+  TRI_ASSERT(_node != nullptr);
+  return _node; 
+}
+
+AstNode* Expression::nodeForModification() const { 
+  TRI_ASSERT(_node != nullptr);
+  return _node; 
+}
 
 bool Expression::canRunOnDBServer() {
   TRI_ASSERT(_type != UNPROCESSED);

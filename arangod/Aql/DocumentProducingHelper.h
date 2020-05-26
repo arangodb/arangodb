@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
 #include "Aql/types.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
@@ -117,10 +117,10 @@ struct DocumentProducingFunctionContext {
   
   bool hasFilter() const noexcept;
   
-  aql::RegexCache& regexCache() { return _regexCache; }
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
  private:
-  aql::RegexCache _regexCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   bool checkFilter(ExpressionContext& ctx);
 
