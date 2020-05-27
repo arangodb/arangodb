@@ -43,7 +43,7 @@ class InAndOutRowExpressionContext final : public QueryExpressionContext {
  public:
   InAndOutRowExpressionContext(transaction::Methods& trx,
                                QueryContext& query,
-                               RegexCache& cache,
+                               AqlFunctionsInternalCache& cache,
                                std::vector<Variable const*> vars,
                                std::vector<RegisterId> regs, size_t vertexVarIdx,
                                size_t edgeVarIdx, size_t pathVarIdx);

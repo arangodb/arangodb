@@ -54,6 +54,8 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
   static std::string const& defaultEngine();
 
+  /// @brief note that this will return true for the ClusterEngine too, in case
+  /// the underlying engine is the RocksDB engine.
   static bool isRocksDB();
 
   // selected storage engine. this will contain a pointer to the storage engine

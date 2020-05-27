@@ -29,12 +29,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct ValidatorBase;
 namespace transaction {
 class BufferCache ;
 class Methods;
 }
 namespace velocypack {
 struct Options;
+class Slice;
 }
 
 namespace aql {
@@ -56,7 +58,7 @@ class ExpressionContext {
 
   virtual void registerWarning(int errorCode, char const* msg) = 0;
   virtual void registerError(int errorCode, char const* msg) = 0;
-  
+
   virtual icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                                bool caseInsensitive) = 0;
   virtual icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
@@ -64,6 +66,7 @@ class ExpressionContext {
   virtual icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
                                                velocypack::Options const* opts,
                                                bool& isEmptyExpression) = 0;
+  virtual arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) = 0;
 
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
