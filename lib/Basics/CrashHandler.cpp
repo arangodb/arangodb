@@ -36,6 +36,8 @@
 #include <exception>
 #include <thread>
 
+#include <boost/core/demangle.hpp>
+
 #include "CrashHandler.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
@@ -212,7 +214,6 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
   size_t length = buildLogMessage(p, context, signal, info);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
-  arangodb::Logger::flush();
    
   // number of frames to skip in backtrace output
   static constexpr int skipFrames = 1;
@@ -226,54 +227,66 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
     // unw_word_t ip, sp;
     unw_context_t uc;
 
-    unw_getcontext(&uc);
-    unw_init_local(&cursor, &uc);
     // the following call is recommended by libunwind's manual when the
     // calling function is known to be a signal handler. but on x86_64,
     // the code in libunwind is no different if the flag is set or not.
     //  unw_init_local2(&cursor, &uc, UNW_INIT_SIGNAL_FRAME);
+    if (unw_getcontext(&uc) == 0 && unw_init_local(&cursor, &uc) == 0) {
+      // unwind frames one by one, going up the frame stack.
+      int frame = 0;
 
-    // unwind frames one by one, going up the frame stack.
-    int frame = 0;
-
-    do {
-      unw_word_t pc;
-      unw_get_reg(&cursor, UNW_REG_IP, &pc);
-      if (pc == 0) {
-        break;
-      }
-      
-      if (frame >= skipFrames) {
-        // this is a stack frame we want to display
-        memset(&buffer[0], 0, sizeof(buffer));
-        p = &buffer[0];
-        appendNullTerminatedString("frame ", p);
-        p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
-        appendNullTerminatedString(" [0x", p);
-        appendHexValue(reinterpret_cast<unsigned char const*>(&pc), sizeof(decltype(pc)), p);
-        appendNullTerminatedString("]: ", p);
-
-        size_t avail = sizeof(buffer) - (p - &buffer[0]); 
-        unw_word_t offset;
-        if (unw_get_proc_name(&cursor, p, avail, &offset) == 0) {
-          // find end of generated proc name
-          char const* e = &buffer[0] + sizeof(buffer) - 1;
-          while (p < e && *p != '\0') {
-            ++p;
-          } 
-          appendNullTerminatedString(" (+0x", p); 
-          appendHexValue(reinterpret_cast<unsigned char const*>(&offset), sizeof(decltype(offset)), p);
-          appendNullTerminatedString(")", p); 
-        } else {
-          appendNullTerminatedString("*no symbol name available for this frame", p); 
+      do {
+        unw_word_t pc;
+        unw_get_reg(&cursor, UNW_REG_IP, &pc);
+        if (pc == 0) {
+          break;
         }
 
-        length = p - &buffer[0];
-        LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
-      }
-    } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
-    // flush logs as early as possible
-    arangodb::Logger::flush();
+        if (frame >= skipFrames) {
+          // this is a stack frame we want to display
+          memset(&buffer[0], 0, sizeof(buffer));
+          p = &buffer[0];
+          appendNullTerminatedString("frame ", p);
+          p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
+          appendNullTerminatedString(" [0x", p);
+          appendHexValue(reinterpret_cast<unsigned char const*>(&pc), sizeof(decltype(pc)), p);
+          appendNullTerminatedString("] ", p);
+
+          char mangled[512];
+          memset(&mangled[0], 0, sizeof(mangled));
+          
+          // get symbol information (in mangled format)
+          unw_word_t offset;
+          if (unw_get_proc_name(&cursor, &mangled[0], sizeof(mangled) - 1, &offset) == 0) {
+            // "mangled" buffer must have been null-terminated before, but it doesn't
+            // harm if we double-check it is null-terminated
+            mangled[sizeof(mangled) - 1] = '\0';
+          
+            boost::core::scoped_demangled_name demangled(&mangled[0]);
+
+            if (demangled.get()) {
+              appendNullTerminatedString(demangled.get(), p); 
+            } else {
+              // demangling has failed.
+              // in this case, append mangled version. still better than nothing
+              appendNullTerminatedString(mangled, p);
+            }
+            // print offset into function
+            appendNullTerminatedString(" (+0x", p); 
+            appendHexValue(reinterpret_cast<unsigned char const*>(&offset), sizeof(decltype(offset)), p);
+            appendNullTerminatedString(")", p); 
+          } else {
+            // unable to retrieve symbol information
+            appendNullTerminatedString("*no symbol name available for this frame", p); 
+          }
+
+          length = p - &buffer[0];
+          LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+        }
+      } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
+      // flush logs as early as possible
+      arangodb::Logger::flush();
+    }
   }
 #endif
 
@@ -292,8 +305,6 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
     p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
 
     LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
-    // flush logs as early as possible
-    arangodb::Logger::flush();
   }
 } catch (...) {
   // we better not throw an exception from inside a signal handler
