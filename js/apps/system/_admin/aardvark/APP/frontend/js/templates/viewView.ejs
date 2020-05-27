@@ -1,0 +1,21 @@
+
+  <div class="innerContent">
+    <div id="viewDocumentation" class="infoBox" style="margin-top: 10px; margin-bottom: 30px;">
+      <h4>Info</h4>
+      <p>See the <a style="color: #5bc0de" href="https://www.arangodb.com/docs/stable/arangosearch-views.html" target="_blank"><b>ArangoSearch Views documentation</b></a> to learn how to configure Views.</p>
+    </div>
+    <div id="viewProcessing"class="infoBox" style="margin-top: 10px; margin-bottom: 30px; display: none">
+      <h4>Processing <i class="fa fa-spinner fa-spin"></i></h4>
+      <p>The view is currently in processing. No editing possible right now.</p>
+    </div>
+    <div id="propertiesEditor" class="document-editor" style="border-top: 1px solid rgba(140,138,137,.25)"></div>
+    <div class="bottomButtonBar">
+      <button id="savePropertiesButton" class="button-close pull-right" disabled>Save</button>
+      <% if (!window.frontendConfig.isCluster) { %>
+        <button id="renameViewButton" class="button-warning pull-right">Rename</button>
+      <% } %>
+      <button id="deleteViewButton" class="button-danger pull-right">Delete</button>
+      <span class="buttonBarInfo pull-right"></span>
+    </div>
+  </div>
+  

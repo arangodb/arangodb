@@ -1,0 +1,116 @@
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="userManagementSearchSubmit" class="search-submit-icon"> -->
+      <i id="userManagementSearchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+        <a id="userManagementToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+
+<div id="userManagementDropdown2" class="headerDropdown">
+
+  <div id="userManagementDropdown" class="dropdownInner">
+    <ul>
+      <li class="nav-header">Sorting</li>
+
+      <!--<li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortName">
+          <label class="css-label css-label-round"></label>Sort by username
+        </label>
+      </a></li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="sortType">
+          <label class="css-label css-label-round"></label>Sort by status
+        </label>
+      </a></li>-->
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="userSortDesc">
+          <i class="fa"></i>
+          Sort descending
+        </label>
+      </a></li>
+    </ul>
+  </div>
+
+</div>
+
+
+  <div class="contentDiv" id="arangoCollectionsContainer">
+    <div id="userManagementThumbnailsIn" class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
+        <div class="fullBorderBox">
+          <a id="createUser" class="add">
+            <span id="newUser" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
+            Add User
+          </a>
+        </div>
+      </div>
+
+
+            <% collection.forEach(function(user) {
+              var username = user.get("user"),
+                extra = user.get("extra"),
+                name = extra.name,
+                img = extra.img,
+                active = user.get("active"),
+                avatar = '<img src="';
+
+              if (! img) {
+                avatar = '<i id="' + _.escape(username) + '" class="collection-type-icon fa fa-user"></i>';
+              } else {
+                avatar += 'https://s.gravatar.com/avatar/';
+                avatar += img;
+                avatar += '?s=50';
+                avatar += '" height="50" width="50" alt="" class="icon" id="';
+                avatar += _.escape(username);
+                avatar += '" />';
+              }
+              if (! name) {
+                name = " ";
+              }
+              if (username.substring(0, 6) === ':role:') {
+                avatar = '<i id="' + _.escape(username) + '" class="collection-type-icon fa fa-group"></i>';
+              }
+      %>
+
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
+        <div class="paddingBox">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <!-- <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span> -->
+          </div>
+          <%=avatar %>
+          <div class="tileBadge">
+            <span>
+              <%if (active) {%>
+              <div class="corneredBadge loaded">
+                active
+              </div>
+              <%} else {%>
+              <div class="corneredBadge unloaded">
+                inactive
+              </div>
+              <%}%>
+            </span>
+          </div>
+
+          <h5 class="collectionName"><%=_.escape(username) %> <% if (name !== ' ') { %>(<%=_.escape(name) %>)<%}%></h5>
+        </div>
+      </div>
+      <%});%>
+     </div>
+  </div>

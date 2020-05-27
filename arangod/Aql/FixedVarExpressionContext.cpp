@@ -69,5 +69,5 @@ void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const&
 
 FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
                                                      QueryContext& context,
-                                                     RegexCache& cache)
+                                                     AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
