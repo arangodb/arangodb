@@ -82,6 +82,9 @@ struct NumberOfCoresCache {
         }
       }
     }
+    if (cachedValue == 0) {
+      cachedValue = 1;
+    }
   }
 
   std::size_t cachedValue;
