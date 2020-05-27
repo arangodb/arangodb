@@ -122,20 +122,36 @@ std::atomic<bool> crashHandlerInvoked(false);
 /// (default: yes on Linux, false elsewhere) or not
 std::atomic<bool> enableStacktraces(true);
 
+/// @brief kill process hard using SIGKILL, in order to circumvent core
+/// file generation etc.
+std::atomic<bool> killHard(false);
+
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
 #ifdef _WIN32
-  exit(255 + signal);
+  if (::killHard.load(std::memory_order_relaxed)) {
+    auto hSelf = GetCurrentProcess();
+    TerminateProcess(hSelf, -999);
+    // TerminateProcess is async, alright wait here for selfdestruct (we will never exit wait)
+    WaitForSingleObject(hSelf, INFINITE);
+  } else {
+    exit(255 + signal);
+  }
 #else
-  // restore default signal action, so that we can write a core dump and crash "properly"
-  struct sigaction act;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
-  act.sa_handler = SIG_DFL;
-  sigaction(signal, &act, nullptr);
+  if (::killHard.load(std::memory_order_relaxed)) {
+    kill(getpid(), SIGKILL);  //to kill the complete process tree.
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+  } else {
+    // restore default signal action, so that we can write a core dump and crash "properly"
+    struct sigaction act;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
+    act.sa_handler = SIG_DFL;
+    sigaction(signal, &act, nullptr);
 
-  // resend signal to ourselves to invoke default action for the signal (e.g. coredump)
-  ::kill(::getpid(), signal);
+    // resend signal to ourselves to invoke default action for the signal (e.g. coredump)
+    kill(::getpid(), signal);
+  }
 #endif
   
   std::abort();
@@ -397,6 +413,17 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* cont
   crash(&buffer[0]);
 }
 
+/// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
+/// file generation etc.
+void CrashHandler::setHardKill() {
+  ::killHard.store(true, std::memory_order_relaxed);
+}
+
+/// @brief disable printing of backtraces
+void CrashHandler::disableBacktraces() {
+  ::enableStacktraces.store(false, std::memory_order_relaxed);
+}
+
 /// @brief installs the crash handler globally
 void CrashHandler::installCrashHandler() {
   // read environment variable that can be used to toggle the
@@ -406,9 +433,8 @@ void CrashHandler::installCrashHandler() {
     bool toggle = arangodb::basics::StringUtils::boolean(value);
     if (!toggle) {
       // crash handler backtraces turned off
-      ::enableStacktraces.store(false, std::memory_order_relaxed);
-
-      // additionally, do not install signal handler and not
+      disableBacktraces();
+      // additionally, do not install signal handler nor the
       // handler for std::terminate()
       return;
     }

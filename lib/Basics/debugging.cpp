@@ -98,24 +98,36 @@ std::set<std::string, ::Comparer> failurePoints(comparer);
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
 void TRI_TerminateDebugging(char const* message) {
-  LOG_TOPIC("bde58", WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
-  // make sure the latest log messages are flushed
-  Logger::flush();
-  Logger::shutdown();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  CrashHandler::setHardKill();
 
-  // and now crash
-#ifdef _WIN32
-  auto hSelf = GetCurrentProcess();
-  TerminateProcess(hSelf, -999);
-  // TerminateProcess is async, alright wait here  for selfdestruct (we will never exit wait)
-  WaitForSingleObject(hSelf, INFINITE);
-#else
-  kill(getpid(), SIGKILL);  //to kill the complete process tree.
-  std::this_thread::sleep_for(std::chrono::seconds(5));
+  // there are some reserved crash messages we use in testing the
+  // crash handler
+  velocypack::StringRef const s(message);
+  if (s == "CRASH-HANDLER-TEST-ABORT") {
+    std::abort();
+  } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+    std::terminate();
+  } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
+    auto f = []() noexcept {
+      return std::string(nullptr);
+    };
+    f();
+    std::terminate();
+  } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
+    std::unique_ptr<int> x;
+    *x;
+    *x = 2;
+  } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
+    int a = 1;
+    TRI_ASSERT(a == 2);
+  }
+
 #endif
-
-  // ensure the process is terminated
-  TRI_ASSERT(false);
+ 
+  // intentional crash - no need for a backtrace here
+  CrashHandler::disableBacktraces();
+  CrashHandler::crash(message);  
 }
 
 /// @brief check whether we should fail at a specific failure point

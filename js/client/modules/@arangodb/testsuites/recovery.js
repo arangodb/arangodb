@@ -63,8 +63,18 @@ function runArangodRecovery (params) {
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
+  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
+  fs.makeDirectoryRecursive(crashLogDir);
+  pu.cleanupDBDirectoriesAppend(crashLogDir);
+
+  let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
+    try {
+      // clean up crash log before next test
+      fs.remove(crashLog);
+    } catch (err) {}
+
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     pu.cleanupDBDirectoriesAppend(params.testDir);
@@ -89,6 +99,8 @@ function runArangodRecovery (params) {
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
+      
+    args['log.output'] = 'file://' + crashLog;
 
     if (useEncryption) {
       const key = '01234567890123456789012345678901';
@@ -130,6 +142,8 @@ function runArangodRecovery (params) {
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
+    
+  process.env["crash-log"] = crashLog;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
