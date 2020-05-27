@@ -97,6 +97,7 @@ if (window.frontendConfig && env === 'development') {
 }
 
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
+require('../../frontend/js/lib/jquery.form.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
 require('../../frontend/js/lib/bootstrap-min.js');
 
