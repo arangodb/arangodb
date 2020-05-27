@@ -99,7 +99,7 @@ ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server wa
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
 ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier is unknown."
-ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be raised when a collection with the given identifier or name is unknown."
+ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or View not found","Will be raised when a collection with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document identifier","Will be raised when a document identifier is corrupt."
 ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
@@ -193,7 +193,7 @@ ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in Agency","Will be r
 ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a Coordinator cannot truncate all shards of a cluster collection."
 ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
 ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DB-Server in a cluster","Will be raised if there is an attempt to run a DB-Server-only operation on a different type of node."
-ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
+ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required DB-Server can't be reached."
 ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using SatelliteCollections"
 ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,1482,"could not create index in plan","Will be raised when a Coordinator in a cluster cannot create an entry for a new index in the Plan hierarchy in the Agency."
 ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","Will be raised when a Coordinator in a cluster cannot remove an index from the Plan hierarchy in the Agency."
@@ -208,8 +208,8 @@ ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to per
 ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some Agency operation failed","Will be raised if after various retries an Agency operation could not be performed successfully."
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
-ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create view in plan","Will be raised when a Coordinator in a cluster cannot create an entry for a new view in the Plan hierarchy in the Agency."
-ERROR_CLUSTER_VIEW_ID_EXISTS,1498,"view ID already exists","Will be raised when a Coordinator in a cluster tries to create a view and the view ID already exists."
+ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create View in plan","Will be raised when a Coordinator in a cluster cannot create an entry for a new View in the Plan hierarchy in the Agency."
+ERROR_CLUSTER_VIEW_ID_EXISTS,1498,"View ID already exists","Will be raised when a Coordinator in a cluster tries to create a View and the View ID already exists."
 ERROR_CLUSTER_COULD_NOT_DROP_COLLECTION,1499,"could not drop collection in plan","Will be raised when a Coordinator in a cluster cannot drop a collection entry in the Plan hierarchy in the Agency."
 
 ################################################################################
@@ -455,13 +455,13 @@ ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised
 ################################################################################
 
 ERROR_CLUSTER_REPAIRS_FAILED,5000,"error during cluster repairs","General error during cluster repairs"
-ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,5001,"not enough (healthy) db servers","Will be raised when, during repairDistributeShardsLike, there must be a free db server to move a shard, but there is no candidate or none is healthy."
+ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY,5001,"not enough (healthy) DB-Servers","Will be raised when, during repairDistributeShardsLike, there must be a free DB-Server to move a shard, but there is no candidate or none is healthy."
 ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,5002,"replication factor violated during cluster repairs","Will be raised on various inconsistencies regarding the replication factor"
-ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,5003,"no DB-Servers during cluster repairs","Will be raised if a collection that is fixed has some shard without DB Servers"
+ERROR_CLUSTER_REPAIRS_NO_DBSERVERS,5003,"no DB-Servers during cluster repairs","Will be raised if a collection that is fixed has some shard without DB-Servers"
 ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS,5004,"mismatching leaders during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection have mismatching leaders (when they should already have been fixed)"
 ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS,5005,"mismatching followers during cluster repairs","Will be raised if a shard in collection and its prototype in the corresponding distributeShardsLike collection don't have the same followers (when they should already have been adjusted)"
 ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES,5006,"inconsistent attributes during cluster repairs","Will be raised if a collection that is fixed does (not) have distributeShardsLike when it is expected, or does (not) have repairingDistributeShardsLike when it is expected"
-ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,5007,"mismatching shards during cluster repairs","Will be raised if in a collection and its distributeShardsLike prototype collection some shard and its prototype have an unequal number of DB Servers"
+ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS,5007,"mismatching shards during cluster repairs","Will be raised if in a collection and its distributeShardsLike prototype collection some shard and its prototype have an unequal number of DB-Servers"
 ERROR_CLUSTER_REPAIRS_JOB_FAILED,5008,"move shard job failed during cluster repairs","Will be raised if a move shard job in the Agency failed during cluster repairs"
 ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED,5009,"move shard job disappeared during cluster repairs","Will be raised if a move shard job in the Agency cannot be found anymore before it finished"
 ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"Agency transaction failed during cluster repairs","Will be raised if an Agency transaction failed during either sending or executing it."
@@ -512,12 +512,12 @@ ERROR_FAILED_TO_UPLOAD_BACKUP,7005,"failed to upload hot backup set to remote ta
 ERROR_FAILED_TO_DOWNLOAD_BACKUP,7006,"failed to download hot backup set from remote source","Failed to download hot backup set from remote source"
 ERROR_NO_SUCH_HOT_BACKUP,7007,"no such hot backup set can be found","Cannot find a hot backup set with this Id"
 ERROR_REMOTE_REPOSITORY_CONFIG_BAD,7008,"remote hot backup repository configuration error","The configuration given for upload or download operation to/from remote hot backup repositories is wrong."
-ERROR_LOCAL_LOCK_FAILED,7009,"some db servers cannot be reached for transaction locks","Some of the db servers cannot be reached for transaction locks."
-ERROR_LOCAL_LOCK_RETRY,7010,"some db servers cannot be reached for transaction locks","Some of the db servers cannot be reached for transaction locks."
+ERROR_LOCAL_LOCK_FAILED,7009,"some DB-Servers cannot be reached for transaction locks","Some of the DB-Servers cannot be reached for transaction locks."
+ERROR_LOCAL_LOCK_RETRY,7010,"some DB-Servers cannot be reached for transaction locks","Some of the DB-Servers cannot be reached for transaction locks."
 ERROR_HOT_BACKUP_CONFLICT,7011,"hot backup conflict","Conflict of multiple hot backup processes."
-ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","One or more db servers could not be reached for hot backup inquiry"
+ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all DB-Servers reachable","One or more DB-Servers could not be reached for hot backup inquiry"
 
 ################################################################################
-## Plan analyzers errors
+## Plan Analyzers errors
 ################################################################################
-ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, 7021, "analyzers in plan could not be modified", "Plan could not be modified while creating or deleting analyzers revision"
+ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"Analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
