@@ -30,6 +30,9 @@
 #include <array>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace velocypack {
 class Builder;
 class Slice;
@@ -56,7 +59,8 @@ class KeyGenerator {
   virtual ~KeyGenerator() = default;
 
   /// @brief create a key generator based on the options specified
-  static KeyGenerator* factory(arangodb::velocypack::Slice);
+  static KeyGenerator* factory(application_features::ApplicationServer&,
+                               arangodb::velocypack::Slice);
 
   /// @brief whether or not the key generator has dynamic state
   /// that needs to be stored and recovered

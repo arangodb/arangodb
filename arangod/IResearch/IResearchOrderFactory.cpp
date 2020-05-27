@@ -24,20 +24,20 @@
 // otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
-
-#include "search/scorers.hpp"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/fasthash.h"
-#include "IResearchFeature.h"
-#include "IResearchOrderFactory.h"
-#include "VelocyPackHelper.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/VelocyPackHelper.h"
+
+#include <search/scorers.hpp>
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies
@@ -91,12 +91,12 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
     case 1: {
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
       scorer = irs::scorers::get( // get scorer
-        name, irs::text_format::json, irs::string_ref::NIL, false // args
+        name, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL, false // args
       );
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via jSON
-        scorer = irs::scorers::get(name, irs::text_format::json, "[]", false); // pass arg as json array
+        scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(), "[]", false); // pass arg as json array
       }
     } break;
     default: {  // fall through
@@ -126,7 +126,7 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref const& name,
 
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
       scorer = irs::scorers::get( // get scorer
-        name, irs::text_format::json, builder.toJson(), false // pass arg as json
+        name, irs::type<irs::text_format::json>::get(), builder.toJson(), false // pass arg as json
       );
     }
   }
@@ -147,7 +147,7 @@ bool fromFCall(irs::sort::ptr* scorer, irs::string_ref const& scorerName,
   if (!scorer) {
     // cheap shallow check
     // ArangoDB, for API consistency, only supports scorers configurable via jSON
-    return irs::scorers::exists(scorerName, irs::text_format::json, false);
+    return irs::scorers::exists(scorerName, irs::type<irs::text_format::json>::get(), false);
   }
 
   // we don't support non-constant arguments for scorers now, if it
@@ -217,7 +217,10 @@ arangodb::aql::Variable const* refFromScorer(arangodb::aql::AstNode const& node)
     return nullptr;
   }
 
-  arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
+  arangodb::iresearch::QueryContext const ctx{
+    nullptr, nullptr, nullptr,
+    nullptr, nullptr, ref
+  };
 
   if (!arangodb::iresearch::OrderFactory::scorer(nullptr, node, ctx)) {
     // not a scorer function
@@ -285,7 +288,7 @@ void ScorerReplacer::replace(aql::CalculationNode& node) {
       // create variable
       auto* var = ast->variables()->createTemporaryVariable();
 
-      it = _dedup.emplace(key, var).first;
+      it = _dedup.try_emplace(key, var).first;
     }
 
     return ast->createNodeReference(it->second);
@@ -361,13 +364,13 @@ void ScorerReplacer::extract(aql::Variable const& var, std::vector<Scorer>& scor
   if (!comparer) {
     // cheap shallow check
     // ArangoDB, for API consistency, only supports scorers configurable via jSON
-    return irs::scorers::exists(scorerName, irs::text_format::json, false);
+    return irs::scorers::exists(scorerName, irs::type<irs::text_format::json>::get(), false);
   }
 
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
   *comparer = irs::scorers::get( // get scorer
-    scorerName, irs::text_format::json, irs::string_ref::NIL, false // args
+    scorerName, irs::type<irs::text_format::json>::get(), irs::string_ref::NIL, false // args
   );
 
   return bool(*comparer);

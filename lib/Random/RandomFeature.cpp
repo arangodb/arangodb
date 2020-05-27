@@ -23,6 +23,7 @@
 #include "RandomFeature.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
@@ -36,7 +37,7 @@ RandomFeature::RandomFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Random"),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter<LoggerFeature>();
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -54,7 +55,7 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
       "only)",
       new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void RandomFeature::prepare() {

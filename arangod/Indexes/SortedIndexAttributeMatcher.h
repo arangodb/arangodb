@@ -24,7 +24,7 @@
 #define ARANGOD_INDEXES_SORTED_INDEX_ATTRIBUTE_MATCHER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Indexes/Index.h"
 
 namespace arangodb {
@@ -93,7 +93,7 @@ bool accessFitsIndex(
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
 
 bool isDuplicateOperator(arangodb::aql::AstNode const* node,
-                         arangodb::HashSet<int> const& operatorsFound);
+                         ::arangodb::containers::HashSet<int> const& operatorsFound);
 };  // namespace SortedIndexAttributeMatcher
 
 }  // namespace arangodb

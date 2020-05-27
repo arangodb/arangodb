@@ -27,8 +27,7 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
-
-#include "lib/Basics/Result.h"
+#include "Basics/Result.h"
 
 #include <chrono>
 
@@ -179,6 +178,14 @@ class Action {
   /// @brief When object finished executing
   std::chrono::system_clock::time_point getDoneTime() const {
     return _action->getDoneTime();
+  }
+
+  auto getRunDuration() const {
+    return _action->getDoneTime() - _action->getStartTime();
+  }
+
+  auto getQueueDuration() const {
+    return _action->getStartTime() - _action->getCreateTime();
   }
 
   /// @brief fastTrack

@@ -28,6 +28,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/BootstrapFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -66,13 +67,13 @@ static char const* cookies[] = {
 
 FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Fortune"), _fortune(false) {
-  startsAfter("Bootstrap");
+  startsAfter<BootstrapFeature>();
 }
 
 void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("fortune", "show fortune cookie on startup",
                      new BooleanParameter(&_fortune),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void FortuneFeature::start() {

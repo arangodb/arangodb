@@ -92,4 +92,3 @@ Unknown identifier
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -21,7 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ExecutionPlan.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/CollectNode.h"
@@ -37,22 +43,23 @@
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalNode.h"
+#include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LoggerStream.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -64,6 +71,7 @@ namespace {
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
+  std::unordered_set<ExecutionNode const*> seen;
 
   NodeCounter() : counts{} {}
 
@@ -71,7 +79,27 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  void after(ExecutionNode* en) override final { counts[en->getType()]++; }
+  void after(ExecutionNode* en) override final {
+    if (seen.find(en) == seen.end()) {
+      // There is a chance that we ahve the same node twice
+      // if we have multiple streams leading to it (e.g. Distribute)
+      counts[en->getType()]++;
+      seen.emplace(en);
+    }
+  }
+
+  bool done(ExecutionNode* en) override final {
+    if (en->getType() == ExecutionNode::MUTEX &&
+        seen.find(en) != seen.end()) {
+      return true;
+    }
+    if (!arangodb::ServerState::instance()->isDBServer() ||
+        (en->getType() != ExecutionNode::REMOTE && en->getType() != ExecutionNode::SCATTER &&
+         en->getType() != ExecutionNode::DISTRIBUTE)) {
+      return WalkerWorker<ExecutionNode>::done(en);
+    }
+    return false;
+  }
 };
 #endif
 
@@ -97,9 +125,35 @@ uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
+void parseGraphCollectionRestriction(std::vector<std::string>& collections,
+                                     AstNode const* src) {
+  if (src->isStringValue()) {
+    collections.emplace_back(src->getString());
+  } else if (src->type == NODE_TYPE_ARRAY) {
+    size_t const n = src->numMembers();
+    collections.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      AstNode const* c = src->getMemberUnchecked(i);
+      if (!c->isStringValue()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "collection restrictions option must be either a string or an "
+            "array of collection names");
+      }
+      collections.emplace_back(c->getStringValue(), c->getStringLength());
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "collection restrictions option must be either a string or an array of "
+        "collection names");
+  }
+}
+
+std::unique_ptr<graph::BaseOptions> createTraversalOptions(Ast* ast,
                                                            AstNode const* direction,
                                                            AstNode const* optionsNode) {
+  aql::QueryContext& query = ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
@@ -107,6 +161,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
   TRI_ASSERT(direction->numMembers() == 2);
 
   auto steps = direction->getMember(1);
+
+  bool invalidDepth = false;
 
   if (steps->isNumericValue()) {
     // Check if a double value is integer
@@ -118,10 +174,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     options->maxDepth = checkTraversalDepthValue(steps->getMember(1));
 
     if (options->maxDepth < options->minDepth) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     "invalid traversal depth");
+      invalidDepth = true;
     }
   } else {
+    invalidDepth = true;
+  }
+
+  if (invalidDepth) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
   }
@@ -130,7 +189,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = optionsNode->getMember(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -140,42 +199,52 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
         if (name == "bfs") {
           options->useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
-          if (value->stringEquals("path", true)) {
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
-          } else if (value->stringEquals("global", true)) {
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryGlobal)) {
             options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           // path is the default
-          if (value->stringEquals("none", true)) {
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryNone)) {
             options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
-          } else if (value->stringEquals("global", true)) {
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryGlobal)) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
                 "uniqueEdges: 'global' is not supported, "
-                "due to unpredictable results. Use 'path' "
+                "due to otherwise unpredictable results. Use 'path' "
                 "or 'none' instead");
+          }
+        } else if (name == "edgeCollections") {
+          parseGraphCollectionRestriction(options->edgeCollections, value);
+        } else if (name == "vertexCollections") {
+          parseGraphCollectionRestriction(options->vertexCollections, value);
+        } else if (name == "parallelism") {
+          if (ast->canApplyParallelism()) {
+            // parallelism is only used when there is no usage of V8 in the
+            // query and if the query is not a modification query.
+            options->setParallelism(Ast::validatedParallelism(value));
           }
         }
       }
     }
   }
+
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "uniqueVertices: 'global' is only "
                                    "supported, with bfs: true due to "
-                                   "unpredictable results.");
+                                   "otherwise unpredictable results.");
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
+std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::QueryContext& query,
                                                               AstNode const* node) {
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
@@ -183,7 +252,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -200,16 +269,16 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
-std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast, AstNode* node) {
+std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
+                                                  AstNode* node) {
   if (node->type == NODE_TYPE_NOP) {
     return nullptr;
   }
-  return std::make_unique<Expression>(plan, ast, node);
+  return std::make_unique<Expression>(ast, node);
 }
 
 }  // namespace
@@ -230,7 +299,10 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr && _planValid) {
+  // On coordinator there are temporary nodes injected into the Plan, that are NOT part
+  // of the full execution tree. This is in order to reuse a lot of the nodes
+  // for each DBServer instead of having all nodes copy everything once again.
+  if (_root != nullptr && _planValid && !arangodb::ServerState::instance()->isCoordinator()) {
     try {
       // count the actual number of nodes in the plan
       ::NodeCounter counter;
@@ -248,6 +320,15 @@ ExecutionPlan::~ExecutionPlan() {
   }
 #endif
 
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // we are in the destructor here already. decreasing the memory usage counters
+  // will only provide a benefit (in terms of assertions) if we are in
+  // maintainer mode, so we can save all these operations in non-maintainer mode
+  _ast->query().resourceMonitor().decreaseMemoryUsage(_ids.size() * sizeof(ExecutionNode));
+#endif
+#endif
+  
   for (auto& x : _ids) {
     delete x.second;
   }
@@ -266,7 +347,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromAst(Ast* ast) {
   plan->_root = plan->fromNode(root);
 
   // set fullCount flag for last LIMIT node on main level
-  if (plan->_lastLimitNode != nullptr && ast->query()->queryOptions().fullCount) {
+  if (plan->_lastLimitNode != nullptr && ast->query().queryOptions().fullCount) {
     ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
 
@@ -292,45 +373,47 @@ void ExecutionPlan::increaseCounter(ExecutionNode::NodeType type) noexcept {
 }
 
 /// @brief process the list of collections in a VelocyPack
-void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slice) {
-  TRI_ASSERT(ast != nullptr);
-
-  VPackSlice collectionsSlice = slice.get("collections");
-
+void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackSlice const slice) {
+  VPackSlice collectionsSlice = slice;
+  if (slice.isObject()) {
+    collectionsSlice = slice.get("collections");
+  }
+  
   if (!collectionsSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "json node \"collections\" not found or not an array");
+   THROW_ARANGO_EXCEPTION_MESSAGE(
+       TRI_ERROR_INTERNAL,
+       "json node \"collections\" not found or not an array");
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    ast->query()->addCollection(
-        arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
-                                                                   "name"),
+    colls.add(
+        basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                                           "type")
-                                   .c_str()));
+                                   .c_str()),
+        aql::Collection::Hint::Shard
+    );
   }
 }
 
 /// @brief create an execution plan from VelocyPack
-ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice const slice) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
   plan->_root = plan->fromSlice(slice);
   plan->setVarUsageComputed();
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast);
-
-  plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
+  plan->_root = _root->clone(plan.get(), true, false);
   plan->_appliedRules = _appliedRules;
+  plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
 
   return plan.release();
@@ -338,19 +421,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
-
-/// @brief create an execution plan identical to this one
-///   keep the memory of the plan on the query object specified.
-ExecutionPlan* ExecutionPlan::clone(Query const& query) {
-  auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
-
-  for (auto const& it : _ids) {
-    auto clonedNode = it.second->clone(otherPlan.get(), false, true);
-    otherPlan->registerNode(clonedNode);
-  }
-
-  return otherPlan.release();
-}
 
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
@@ -378,41 +448,54 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) 
   // set up rules
   builder.add(VPackValue("rules"));
   builder.openArray();
-  for (auto const& r : OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValue(r));
+  for (auto const& ruleName : OptimizerRulesFeature::translateRules(_appliedRules)) {
+    builder.add(VPackValuePair(ruleName.data(), ruleName.size(), VPackValueType::String));
   }
   builder.close();
 
   // set up collections
   builder.add(VPackValue("collections"));
-  builder.openArray();
-  for (auto const& c : *ast->query()->collections()->collections()) {
-    builder.openObject();
-    builder.add("name", VPackValue(c.first));
-    builder.add("type", VPackValue(AccessMode::typeString(c.second->accessType())));
-    builder.close();
-  }
-  builder.close();
+  ast->query().collections().toVelocyPack(builder);
 
   // set up variables
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 
   CostEstimate estimate = _root->getCost();
+  // simon: who is reading this ?
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
-  builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
+  builder.add("isModificationQuery", VPackValue(ast->containsModificationNode()));
 
   builder.close();
 }
 
-/// @brief get a list of all applied rules
-std::vector<std::string> ExecutionPlan::getAppliedRules() const {
-  return OptimizerRulesFeature::translateRules(_appliedRules);
+void ExecutionPlan::addAppliedRule(int level) {
+  if (_appliedRules.empty() || _appliedRules.back() != level) {
+    _appliedRules.emplace_back(level);
+  }
+}
+
+bool ExecutionPlan::hasAppliedRule(int level) const {
+  return std::any_of(_appliedRules.begin(), _appliedRules.end(),
+                     [level](int l) { return l == level; });
+}
+
+void ExecutionPlan::enableRule(int rule) { _disabledRules.erase(rule); }
+
+void ExecutionPlan::disableRule(int rule) { _disabledRules.emplace(rule); }
+
+bool ExecutionPlan::isDisabledRule(int rule) const {
+  return (_disabledRules.find(rule) != _disabledRules.end());
+}
+
+ExecutionNodeId ExecutionPlan::nextId() {
+  _nextId = ExecutionNodeId{_nextId.id() + 1};
+  return _nextId;
 }
 
 /// @brief get a node by its id
-ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
+ExecutionNode* ExecutionPlan::getNodeById(ExecutionNodeId id) const {
   auto it = _ids.find(id);
 
   if (it != _ids.end()) {
@@ -420,15 +503,18 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
     return (*it).second;
   }
 
-  std::string msg = std::string("node [") + std::to_string(id) +
+  std::string msg = std::string("node [") + std::to_string(id.id()) +
                     std::string("] wasn't found");
   // node unknown
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
 }
 
+std::unordered_map<ExecutionNodeId, ExecutionNode*> const& ExecutionPlan::getNodesById() const {
+  return _ids;
+}
+
 /// @brief creates a calculation node for an arbitrary expression
-ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* conditionVariable,
-                                                AstNode const* expression,
+ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* expression,
                                                 ExecutionNode* previous) {
   TRI_ASSERT(out != nullptr);
 
@@ -538,15 +624,8 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, Variable const* c
   }
 
   // generate a temporary calculation node
-  auto expr = std::make_unique<Expression>(this, _ast, node);
-
-  CalculationNode* en;
-  if (conditionVariable != nullptr) {
-    en = new CalculationNode(this, nextId(), expr.get(), conditionVariable, out);
-  } else {
-    en = new CalculationNode(this, nextId(), expr.get(), out);
-  }
-  expr.release();
+  auto expr = std::make_unique<Expression>(_ast, node);
+  CalculationNode* en = new CalculationNode(this, nextId(), std::move(expr), out);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
 
@@ -639,7 +718,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(CalculationNode const* previo
                             nullptr, nullptr, std::vector<Variable const*>(),
                             _ast->variables()->variables(false), false, true);
 
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+  registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
@@ -680,7 +759,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -688,25 +767,38 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == "waitForSync") {
+        if (name == StaticStrings::WaitForSyncString) {
           options.waitForSync = value->isTrue();
-        } else if (name == "ignoreErrors") {
-          options.ignoreErrors = value->isTrue();
-        } else if (name == "keepNull") {
-          // nullMeansRemove is the opposite of keepNull
-          options.nullMeansRemove = value->isFalse();
-        } else if (name == "mergeObjects") {
+        } else if (name == StaticStrings::SkipDocumentValidation) {
+          options.validate = !value->isTrue();
+        } else if (name == StaticStrings::KeepNullString) {
+          options.keepNull = value->isTrue();
+        } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
+        } else if (name == StaticStrings::Overwrite && value->isTrue()) {
+          // legacy: overwrite is set, superseded by overwriteMode
+          // default behavior if only "overwrite" is specified
+          if (!options.isOverwriteModeSet()) {
+            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+          }
+        } else if (name == StaticStrings::OverwriteMode && value->isStringValue()) {
+          auto overwriteMode =
+              OperationOptions::determineOverwriteMode(value->getStringRef());
+
+          if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+            options.overwriteMode = overwriteMode;
+          }
+        } else if (name == StaticStrings::IgnoreRevsString) {
+          options.ignoreRevs = value->isTrue();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
-        } else if (name == "overwrite") {
-          options.overwrite = value->isTrue();
-        } else if (name == "ignoreRevs") {
-          options.ignoreRevs = value->isTrue();
+        } else if (name == "ignoreErrors") {
+          options.ignoreErrors = value->isTrue();
         }
       }
     }
   }
+
   return options;
 }
 
@@ -729,14 +821,14 @@ ModificationOptions ExecutionPlan::createModificationOptions(AstNode const* node
       // its unclear which collections the traversal will access
       isReadWrite = true;
     } else {
-      auto const collections = _ast->query()->collections();
-
-      for (auto const& it : *(collections->collections())) {
-        if (it.second->isReadWrite()) {
+      _ast->query().collections().visit([&isReadWrite](std::string const&, aql::Collection* collection) {
+        if (collection->isReadWrite()) {
+          // stop iterating
           isReadWrite = true;
-          break;
+          return false;
         }
-      }
+        return true;
+      });
     }
 
     if (!isReadWrite) {
@@ -778,21 +870,35 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 /// @brief register a node with the plan
 ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(node->plan() == this);
+  TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-
-  _ids.emplace(node->id(), node.get());  // take ownership
+  
+  // may throw
+  _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
+  
+  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
+  TRI_ASSERT(emplaced);
   return node.release();
 }
 
 /// @brief register a node with the plan, will delete node if addition fails
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(node->plan() == this);
+  TRI_ASSERT(node->id() > ExecutionNodeId{0});
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
-    _ids.emplace(node->id(), node);
+    // may throw
+    _ast->query().resourceMonitor().increaseMemoryUsage(sizeof(ExecutionNode));
+    
+    auto [it, emplaced] = _ids.try_emplace(node->id(), node);
+    if (!emplaced) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to register node in plan");
+    }
+    TRI_ASSERT(it != _ids.end());
   } catch (...) {
     delete node;
     throw;
@@ -814,7 +920,7 @@ ExecutionNode* ExecutionPlan::createTemporaryCalculation(AstNode const* expressi
   auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
 
-  return createCalculation(out, nullptr, expression, previous);
+  return createCalculation(out, expression, previous);
 }
 
 /// @brief adds "previous" as dependency to "plan", returns "plan"
@@ -853,8 +959,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     std::string const collectionName = expression->getString();
-    auto collections = _ast->query()->collections();
-    auto collection = collections->get(collectionName);
+    auto& collections = _ast->query().collections();
+    auto collection = collections.get(collectionName);
 
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -864,7 +970,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
-    auto& vocbase = _ast->query()->vocbase();
+    auto& vocbase = _ast->query().vocbase();
 
     std::shared_ptr<LogicalView> view;
 
@@ -872,8 +978,9 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous, AstNode const
       view = vocbase.lookupView(viewName);
     } else {
       // need cluster wide view
-      TRI_ASSERT(ClusterInfo::instance());
-      view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+      TRI_ASSERT(vocbase.server().hasFeature<ClusterFeature>());
+      view = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getView(
+          vocbase.name(), viewName);
     }
 
     if (!view) {
@@ -940,7 +1047,7 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
   TRI_ASSERT(expression->type == NODE_TYPE_VIEW);
 
   std::string const viewName = expression->getString();
-  auto& vocbase = _ast->query()->vocbase();
+  auto& vocbase = _ast->query().vocbase();
 
   std::shared_ptr<LogicalView> view;
 
@@ -948,8 +1055,9 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous, AstNode c
     view = vocbase.lookupView(viewName);
   } else {
     // need cluster wide view
-    TRI_ASSERT(ClusterInfo::instance());
-    view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+    TRI_ASSERT(vocbase.server().hasFeature<ClusterFeature>());
+    view = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getView(
+        vocbase.name(), viewName);
   }
 
   if (!view) {
@@ -1010,20 +1118,21 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous, AstNode
   }
 
   // Prune Expression
-  std::unique_ptr<Expression> pruneExpression = createPruneExpression(this, _ast, node->getMember(3));
+  std::unique_ptr<Expression> pruneExpression =
+      createPruneExpression(this, _ast, node->getMember(3));
 
   auto options =
-      createTraversalOptions(getAst()->query(), direction, node->getMember(4));
-
+      createTraversalOptions(getAst(), direction, node->getMember(4));
+  
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(this, nextId(), &(_ast->query()->vocbase()),
-                                    direction, start, graph,
-                                    std::move(pruneExpression), std::move(options));
+  auto travNode =
+      new TraversalNode(this, nextId(), &(_ast->query().vocbase()), direction, start,
+                        graph, std::move(pruneExpression), std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1094,10 +1203,10 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
+  auto options = createShortestPathOptions(_ast->query(), node->getMember(4));
 
   // First create the node
-  auto spNode = new ShortestPathNode(this, nextId(), &(_ast->query()->vocbase()), direction,
+  auto spNode = new ShortestPathNode(this, nextId(), &(_ast->query().vocbase()), direction,
                                      start, target, graph, std::move(options));
 
   auto variable = node->getMember(5);
@@ -1140,7 +1249,7 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
-  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query()->vocbase()), direction,
+  auto spNode = new KShortestPathsNode(this, nextId(), &(_ast->query().vocbase()), direction,
                                        start, target, graph, std::move(options));
 
   auto variable = node->getMember(5);
@@ -1171,9 +1280,26 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous, AstNode co
     en = registerNode(new FilterNode(this, nextId(), v));
   } else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
-    previous = calc;
+    if (expression->isTrue()) {
+      // filter expression is known to be always true, so
+      // remove the filter entirely
+      return previous;
+    }
+
+    // note: if isTrue() is false above, it is not necessarily the case that
+    // isFalse() is true next. The reason is that isTrue() and isFalse() only
+    // return true in case of absolulete certainty. this requires expressions
+    // to be based on query compile-time values only, but it will not work
+    // for expressions that need to be evaluated at query runtime
+    if (expression->isFalse()) {
+      // filter expression is known to be always false, so
+      // replace the FILTER with a NoResultsNode
+      en = registerNode(new NoResultsNode(this, nextId()));
+    } else {
+      auto calc = createTemporaryCalculation(expression, previous);
+      en = registerNode(new FilterNode(this, nextId(), getOutVariable(calc)));
+      previous = calc;
+    }
   }
 
   return addDependency(previous, en);
@@ -1188,15 +1314,6 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
 
   AstNode const* variable = node->getMember(0);
   AstNode const* expression = node->getMember(1);
-
-  Variable const* conditionVariable = nullptr;
-
-  if (node->numMembers() > 2) {
-    // a LET with an IF condition
-    auto condition = createTemporaryCalculation(node->getMember(2), previous);
-    previous = condition;
-    conditionVariable = getOutVariable(condition);
-  }
 
   auto v = static_cast<Variable*>(variable->getData());
 
@@ -1226,13 +1343,16 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      return subquery;
+      // We do not create a new node here, just return the last dependency.
+      // Note that we *do not* want to return `subquery`, as we might leave a
+      // dangling branch of ExecutionNodes from it.
+      return previous;
     }
     // otherwise fall-through to normal behavior
 
     // operand is some misc expression, potentially including references to
     // other variables
-    return createCalculation(v, conditionVariable, expression, previous);
+    return createCalculation(v, expression, previous);
   }
 
   return addDependency(previous, en);
@@ -1266,10 +1386,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous, AstNode cons
     if (ascending->type == NODE_TYPE_VALUE) {
       if (ascending->value.type == VALUE_TYPE_STRING) {
         // special treatment for string values ASC/DESC
-        if (ascending->stringEquals("ASC", true)) {
+        if (ascending->stringEqualsCaseInsensitive(StaticStrings::QuerySortASC)) {
           isAscending = true;
           handled = true;
-        } else if (ascending->stringEquals("DESC", true)) {
+        } else if (ascending->stringEqualsCaseInsensitive(StaticStrings::QuerySortDESC)) {
           isAscending = false;
           handled = true;
         }
@@ -1450,6 +1570,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous, AstNode c
       TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
       keepVariables.emplace_back(static_cast<Variable const*>(ref->getData()));
     }
+  } else if (into->type != NODE_TYPE_NOP && expression->type == NODE_TYPE_NOP) {
+    // `COLLECT ... INTO var ...` with neither an explicit expression
+    // (INTO var = <expr>), nor an explicit `KEEP`.
+    // In this case, we look for all previously defined user-defined variables
+    // , which are in our scope, and which aren't top-level variables in the
+    // (sub)query the COLLECT resides in.
+    CollectNode::calculateAccessibleUserVariables(*previous, keepVariables);
   }
 
   auto collectNode =
@@ -1603,8 +1730,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1645,8 +1772,8 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1694,8 +1821,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1758,8 +1885,8 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous, AstNode c
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1822,8 +1949,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous, AstNode co
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
+  auto const& collections = _ast->query().collections();
+  auto* collection = collections.get(collectionName);
 
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1927,7 +2054,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         en = fromNodeLet(en, member);
         break;
       }
-
+      
       case NODE_TYPE_SORT: {
         en = fromNodeSort(en, member);
         break;
@@ -1994,20 +2121,18 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 }
 
 /// @brief find nodes of a certain type
-void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type, bool enterSubqueries) {
   // consult our nodes-of-type counters array
-  if (!contains(type)) {
-    // node type not present in plan, do nothing
-    return;
+  if (contains(type)) {
+    // node type present in plan
+    NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
+    root()->walk(finder);
   }
-
-  NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
-  root()->walk(finder);
 }
 
-/// @brief find nodes of a certain types
-void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+/// @brief find nodes of certain types
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     std::vector<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
   // check if any of the node types is actually present in the plan
@@ -2016,75 +2141,34 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
       // found a node type that is in the plan
       NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
       root()->walk(finder);
-      // abort, because we were looking for all nodes at the same type
+      // abort, because we were looking for all nodes at the same time
+      return;
+    }
+  }
+}
+
+/// @brief find nodes of certain types
+void ExecutionPlan::findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                                          std::vector<ExecutionNode::NodeType> const& types,
+                                          bool enterSubqueries) {
+  // check if any of the node types is actually present in the plan
+  for (auto const& type : types) {
+    if (contains(type)) {
+      // found a node type that is in the plan
+      UniqueNodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result, enterSubqueries);
+      root()->walk(finder);
+      // abort, because we were looking for all nodes at the same time
       return;
     }
   }
 }
 
 /// @brief find all end nodes in a plan
-void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
+void ExecutionPlan::findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                  bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
   root()->walk(finder);
 }
-
-/// @brief helper struct for findVarUsage
-struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  arangodb::HashSet<Variable const*> _usedLater;
-  arangodb::HashSet<Variable const*> _valid;
-  std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
-  bool const _ownsVarSetBy;
-
-  VarUsageFinder() : _varSetBy(nullptr), _ownsVarSetBy(true) {
-    _varSetBy = new std::unordered_map<VariableId, ExecutionNode*>();
-  }
-
-  explicit VarUsageFinder(std::unordered_map<VariableId, ExecutionNode*>* varSetBy)
-      : _varSetBy(varSetBy), _ownsVarSetBy(false) {
-    TRI_ASSERT(_varSetBy != nullptr);
-  }
-
-  ~VarUsageFinder() {
-    if (_ownsVarSetBy) {
-      TRI_ASSERT(_varSetBy != nullptr);
-      delete _varSetBy;
-    }
-  }
-
-  bool before(ExecutionNode* en) override final {
-    // count the type of node found
-    en->plan()->increaseCounter(en->getType());
-
-    en->invalidateVarUsage();
-    en->setVarsUsedLater(_usedLater);
-    // Add variables used here to _usedLater:
-
-    en->getVariablesUsedHere(_usedLater);
-
-    return false;
-  }
-
-  void after(ExecutionNode* en) override final {
-    // Add variables set here to _valid:
-    for (auto const& v : en->getVariablesSetHere()) {
-      _valid.insert(v);
-      _varSetBy->insert({v->id, en});
-    }
-
-    en->setVarsValid(_valid);
-    en->setVarUsageValid();
-  }
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
-    VarUsageFinder subfinder(_varSetBy);
-    subfinder._valid = _valid;  // need a copy for the subquery!
-    sub->walk(subfinder);
-
-    // we've fully processed the subquery
-    return false;
-  }
-};
 
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
@@ -2116,7 +2200,7 @@ void ExecutionPlan::unlinkNodes(std::unordered_set<ExecutionNode*> const& toRemo
   }
 }
 
-void ExecutionPlan::unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toRemove) {
+void ExecutionPlan::unlinkNodes(::arangodb::containers::HashSet<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
     unlinkNode(node);
   }
@@ -2258,7 +2342,6 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   VPackSlice nodes = slice.get("nodes");
-
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
@@ -2268,13 +2351,18 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
 
   // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step
-  for (auto const& it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "node entry in plan is not an object");
     }
 
     ret = ExecutionNode::fromVPackFactory(this, it);
+    // We need to adjust nextId here, otherwise we cannot add new nodes to this
+    // plan anymore
+    if (_nextId <= ret->id()) {
+      _nextId = ExecutionNodeId{ret->id().id() + 1};
+    }
     registerNode(ret);
 
     // we have to count all nodes by their type here, because our caller
@@ -2296,9 +2384,10 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   // all nodes have been created. now add the dependencies
-  for (auto const& it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     // read the node's own id
-    auto thisId = it.get("id").getNumericValue<size_t>();
+    auto thisId =
+        ExecutionNodeId{it.get("id").getNumericValue<ExecutionNodeId::BaseType>()};
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies
@@ -2306,7 +2395,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     if (dependencies.isArray()) {
       for (auto const& it2 : VPackArrayIterator(dependencies)) {
         if (it2.isNumber()) {
-          auto depId = it2.getNumericValue<size_t>();
+          auto depId =
+              ExecutionNodeId{it2.getNumericValue<ExecutionNodeId::BaseType>()};
           thisNode->addDependency(getNodeById(depId));
         }
       }
@@ -2325,8 +2415,9 @@ bool ExecutionPlan::isDeadSimple() const {
     auto const nodeType = current->getType();
 
     if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
-        nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::INDEX) {
+        nodeType == ExecutionNode::ENUMERATE_LIST ||
+        nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+        nodeType == ExecutionNode::K_SHORTEST_PATHS || nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }
@@ -2337,8 +2428,57 @@ bool ExecutionPlan::isDeadSimple() const {
   return true;
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool ExecutionPlan::fullCount() const noexcept {
+  LimitNode* lastLimitNode = _lastLimitNode == nullptr
+                                 ? nullptr
+                                 : ExecutionNode::castTo<LimitNode*>(_lastLimitNode);
+  return lastLimitNode != nullptr && lastLimitNode->fullCount();
+}
+  
+/// @brief find all variables that are populated with data from collections
+void ExecutionPlan::findCollectionAccessVariables() {
+  _ast->variables()->visit([this](Variable* variable) {
+    ExecutionNode* node = this->getVarSetBy(variable->id);
+    if (node != nullptr) {
+      if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+          node->getType() == ExecutionNode::INDEX ||
+          node->getType() == ExecutionNode::INSERT ||
+          node->getType() == ExecutionNode::UPDATE ||
+          node->getType() == ExecutionNode::REPLACE ||
+          node->getType() == ExecutionNode::REMOVE) {
+        // TODO: maybe add more node types here, e.g. arangosearch nodes
+        // also check if it makes sense to do this if the node uses
+        // projections
+        variable->isDataFromCollection = true;
+      }
+    }
+  });
+}
 
+void ExecutionPlan::prepareTraversalOptions() {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  findNodesOfType(nodes,
+                  {arangodb::aql::ExecutionNode::TRAVERSAL,
+                   arangodb::aql::ExecutionNode::SHORTEST_PATH,
+                   arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+                  true);
+  for (auto& node : nodes) {
+    switch (node->getType()) {
+      case ExecutionNode::TRAVERSAL:
+      case ExecutionNode::SHORTEST_PATH:
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+        graphNode->prepareOptions();
+      } break;
+      default:
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    }
+  }
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 
 /// @brief show an overview over the plan
@@ -2347,27 +2487,77 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   Shower() : indent(0) {}
 
-  ~Shower() {}
+  ~Shower() override = default;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     indent++;
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
-    indent--;
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final { indent--; }
+
+  bool before(ExecutionNode* en) final { return false; }
+
+  void after(ExecutionNode* en) final {
+    if (en->getType() == ExecutionNode::SUBQUERY_END) {
+      --indent;
+    }
+
+    LoggerStream logLn{};
+    logLn << LogLevel::INFO << Logger::AQL;
+
+    for (int i = 0; i < 2 * indent; i++) {
+      logLn << ' ';
+    }
+    logNode(logLn, *en);
+
+    if (en->getType() == ExecutionNode::SUBQUERY_START) {
+      ++indent;
+    }
   }
 
-  void after(ExecutionNode* en) override final {
-    for (int i = 0; i < indent; i++) {
-      std::cout << ' ';
+  static LoggerStream& logNode(LoggerStream& log, ExecutionNode const& node) {
+    return log << "[" << node.id() << "]" << detailedNodeType(node);
+  }
+
+  static std::string detailedNodeType(ExecutionNode const& node) {
+    switch (node.getType()) {
+      case ExecutionNode::TRAVERSAL:
+      case ExecutionNode::SHORTEST_PATH:
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        if (graphNode.isUsedAsSatellite()) {
+          type += " used as satellite";
+        }
+        return type;
+      }
+      case ExecutionNode::INDEX:
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::UPDATE:
+      case ExecutionNode::INSERT:
+      case ExecutionNode::REMOVE:
+      case ExecutionNode::REPLACE:
+      case ExecutionNode::UPSERT: {
+        auto const& colAccess =
+            *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
+        auto type = std::string{node.getTypeString()};
+        type += " (";
+        type += colAccess.collection()->name();
+        type += ")";
+        if (colAccess.isUsedAsSatellite()) {
+          type += " used as satellite";
+        }
+        return type;
+      }
+      default:
+        return {node.getTypeString()};
     }
-    std::cout << en->getTypeString() << std::endl;
   }
 };
 
 /// @brief show an overview over the plan
-void ExecutionPlan::show() {
+void ExecutionPlan::show() const {
   Shower shower;
   _root->walk(shower);
 }

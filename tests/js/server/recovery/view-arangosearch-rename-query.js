@@ -50,7 +50,7 @@ function runSetup () {
 
   db._collection('UnitTestsDummy').save({ _key: 'bar', num: 2 }, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite

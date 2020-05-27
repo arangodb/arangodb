@@ -33,10 +33,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
-                                                       GeneralResponse* response,
-                                                       arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-    : RestVocbaseBaseHandler(request, response),
+RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
 RestStatus RestAgencyCallbacksHandler::execute() {
@@ -63,7 +63,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     return RestStatus::DONE;
   }
 
-  uint32_t index = basics::StringUtils::uint32(suffixes.at(0));
+  uint64_t index = basics::StringUtils::uint64(suffixes.at(0));
   auto cb = _agencyCallbackRegistry->getCallback(index);
   if (cb.get() == nullptr) {
     // no entry by this id!

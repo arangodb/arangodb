@@ -32,6 +32,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const replication = require("@arangodb/replication");
 const compareTicks = replication.compareTicks;
 const console = require("console");
@@ -50,12 +51,12 @@ function ReplicationSuite() {
   var cn3 = "UnitTestsReplication3";
 
   var connectToMaster = function() {
-    arango.reconnect(masterEndpoint, db._name(), "root", "");
+    reconnectRetry(masterEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
   var connectToSlave = function() {
-    arango.reconnect(slaveEndpoint, db._name(), "root", "");
+    reconnectRetry(slaveEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 

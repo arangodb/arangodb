@@ -53,9 +53,11 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  SslClientConnection(Endpoint* endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(application_features::ApplicationServer& server,
+                      Endpoint* endpoint, double, double, size_t, uint64_t);
 
-  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(application_features::ApplicationServer& server,
+                      std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection

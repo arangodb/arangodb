@@ -1102,7 +1102,7 @@ static const flex_int32_t yy_rule_can_match_eol[100] =
 
 namespace arangodb {
 namespace aql {
-class Query;
+class QueryContext;
 class Parser;
 }
 }
@@ -1110,6 +1110,7 @@ class Parser;
 #include "Aql/AstNode.h"
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
+#include "Aql/QueryContext.h"
 
 #include <algorithm>
 
@@ -2004,7 +2005,7 @@ case 63:
 YY_RULE_SETUP
 {
   /* unquoted string */
-  yylval->strval.value = yyextra->query()->registerString(yytext, yyleng);
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
   return T_STRING;
 }
@@ -2023,7 +2024,7 @@ YY_RULE_SETUP
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -2039,6 +2040,12 @@ case 67:
 YY_RULE_SETUP
 {
   /* newline character inside backtick */
+}
+	YY_BREAK
+case YY_STATE_EOF(BACKTICK):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 	YY_BREAK
 case 68:
@@ -2061,7 +2068,7 @@ YY_RULE_SETUP
   /* end of forwardtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 2, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 2, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -2077,6 +2084,12 @@ case 72:
 YY_RULE_SETUP
 {
   /* newline character inside forwardtick */
+}
+	YY_BREAK
+case YY_STATE_EOF(FORWARDTICK):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 	YY_BREAK
 case 73:
@@ -2101,7 +2114,7 @@ YY_RULE_SETUP
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
@@ -2117,6 +2130,12 @@ case 77:
 YY_RULE_SETUP
 {
   /* newline character inside quote */
+}
+	YY_BREAK
+case YY_STATE_EOF(DOUBLE_QUOTE):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 	YY_BREAK
 case 78:
@@ -2138,7 +2157,7 @@ YY_RULE_SETUP
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
@@ -2154,6 +2173,12 @@ case 82:
 YY_RULE_SETUP
 {
   /* newline character inside quote */
+}
+	YY_BREAK
+case YY_STATE_EOF(SINGLE_QUOTE):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 	YY_BREAK
 case 83:
@@ -2224,7 +2249,7 @@ YY_RULE_SETUP
 {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name or a view name parameter */
-  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
 }
@@ -2237,7 +2262,7 @@ YY_RULE_SETUP
 {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name or a view name parameter */
-  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_DATA_SOURCE_PARAMETER;
 }
@@ -2306,6 +2331,12 @@ YY_RULE_SETUP
   // eat the lone star
 }
 	YY_BREAK
+case YY_STATE_EOF(COMMENT_MULTI):
+{
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated multi-line comment", yylloc->first_line, yylloc->first_column);
+}
+	YY_BREAK
 case 97:
 /* rule 97 can match eol */
 YY_RULE_SETUP
@@ -2326,12 +2357,7 @@ YY_RULE_SETUP
 ECHO;
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-case YY_STATE_EOF(BACKTICK):
-case YY_STATE_EOF(FORWARDTICK):
-case YY_STATE_EOF(SINGLE_QUOTE):
-case YY_STATE_EOF(DOUBLE_QUOTE):
 case YY_STATE_EOF(COMMENT_SINGLE):
-case YY_STATE_EOF(COMMENT_MULTI):
 	yyterminate();
 
 	case YY_END_OF_BUFFER:

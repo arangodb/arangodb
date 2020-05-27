@@ -19,14 +19,14 @@ cloned/copied into a regular JavaScript object first. This is not necessary
 if the *document* method is called from out of arangosh or from any other
 client.
 
-`collection.document(document-handle)`
+`collection.document(document-id)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of document a *document-id* can be passed as
 first argument.
 
 *Examples*
 
-Returns the document for a document-handle:
+Returns the document for a document-id:
 
 @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
 ~ db._create("example");
@@ -45,7 +45,7 @@ An error is raised if the document is unknown:
 ~ db._drop("example");
 @END_EXAMPLE_ARANGOSH_OUTPUT
 
-An error is raised if the handle is invalid:
+An error is raised if the identifier is invalid:
 
 @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameHandle}
 ~ db._create("example");

@@ -23,30 +23,38 @@
 #ifndef ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 #define ARANGOD_AQL_TESTS_DEPENDENCY_PROXY_MOCK_H
 
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <queue>
 
 namespace arangodb {
+namespace aql {
+class SkipResult;
+}
 namespace tests {
 namespace aql {
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   explicit DependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                               ::arangodb::aql::RegIdSet const& inputRegisters,
                                ::arangodb::aql::RegisterId nrRegisters);
 
  public:
   // mock methods
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
   inline size_t numberDependencies() const override { return 1; }
+
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
+      arangodb::aql::AqlCallStack& stack) override;
 
  private:
   using FetchBlockReturnItem =
@@ -69,27 +77,26 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
  private:
   std::queue<FetchBlockReturnItem> _itemsToReturn;
 
-  using AqlItemBlockPtr = uintptr_t;
-
-  std::unordered_set<AqlItemBlockPtr> _fetchedBlocks;
   size_t _numFetchBlockCalls;
 
   ::arangodb::aql::ResourceMonitor& _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  ::arangodb::aql::SharedAqlItemBlockPtr _block;
 };
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class MultiDependencyProxyMock
     : public ::arangodb::aql::DependencyProxy<passBlocksThrough> {
  public:
   MultiDependencyProxyMock(arangodb::aql::ResourceMonitor& monitor,
+                           ::arangodb::aql::RegIdSet const& inputRegisters,
                            ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps);
 
  public:
   // mock methods
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override {
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override {
     // This is never allowed to be called.
     TRI_ASSERT(false);
     return {::arangodb::aql::ExecutionState::DONE, nullptr};
@@ -97,8 +104,7 @@ class MultiDependencyProxyMock
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency,
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+      size_t dependency, size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   inline size_t numberDependencies() const override {
     return _dependencyMocks.size();
@@ -108,14 +114,14 @@ class MultiDependencyProxyMock
   // additional test methods
   DependencyProxyMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
     TRI_ASSERT(dependency < _dependencyMocks.size());
-    return _dependencyMocks[dependency];
+    return *_dependencyMocks[dependency];
   }
   bool allBlocksFetched() const;
 
   size_t numFetchBlockCalls() const;
 
  private:
-  std::vector<DependencyProxyMock<passBlocksThrough>> _dependencyMocks;
+  std::vector<std::unique_ptr<DependencyProxyMock<passBlocksThrough>>> _dependencyMocks;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
 };
 

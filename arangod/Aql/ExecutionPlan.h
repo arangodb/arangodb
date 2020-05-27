@@ -24,14 +24,16 @@
 #ifndef ARANGOD_AQL_EXECUTION_PLAN_H
 #define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
+#include <array>
+
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
-
-#include <array>
+#include "Containers/HashSet.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -43,8 +45,10 @@ class Ast;
 struct AstNode;
 class CalculationNode;
 class CollectNode;
+class Collections;
 class ExecutionNode;
-class Query;
+struct OptimizerRule;
+class QueryContext;
 
 class ExecutionPlan {
  public:
@@ -59,10 +63,10 @@ class ExecutionPlan {
   static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static ExecutionPlan* instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -74,7 +78,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan identical to this one
   ///   keep the memory of the plan on the query object specified.
-  ExecutionPlan* clone(Query const&);
+//  ExecutionPlan* clone(Query const&);
 
   /// @brief export to VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
@@ -85,20 +89,27 @@ class ExecutionPlan {
   inline bool empty() const { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
-  inline void addAppliedRule(int level) { 
-    if (_appliedRules.empty() || _appliedRules.back() != level) {
-      _appliedRules.emplace_back(level); 
-    }
-  }
+  void addAppliedRule(int level);
 
-  /// @brief get a list of all applied rules
-  std::vector<std::string> getAppliedRules() const;
+  /// @brief check if a specific optimizer rule was applied
+  bool hasAppliedRule(int level) const;
+
+  /// @brief check if a specific rule is disabled
+  bool isDisabledRule(int rule) const;
+
+  /// @brief enable a specific rule
+  void enableRule(int rule);
+
+  /// @brief disable a specific rule
+  void disableRule(int rule);
 
   /// @brief return the next value for a node id
-  inline size_t nextId() { return ++_nextId; }
+  ExecutionNodeId nextId();
 
   /// @brief get a node by its id
-  ExecutionNode* getNodeById(size_t id) const;
+  ExecutionNode* getNodeById(ExecutionNodeId id) const;
+
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& getNodesById() const;
 
   /// @brief check if the node is the root node
   inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
@@ -126,6 +137,9 @@ class ExecutionPlan {
   /// @brief get the estimated cost . . .
   CostEstimate getCost() {
     TRI_ASSERT(_root != nullptr);
+    // Costs are only valid if the traversal options are prepared
+    // if they already are this is a noop.
+    prepareTraversalOptions();
     return _root->getCost();
   }
 
@@ -139,7 +153,7 @@ class ExecutionPlan {
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void show();
+  void show() const;
 #endif
 
   /// @brief note this node for being excluded from producing scatter/gather
@@ -163,15 +177,20 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(SmallVector<ExecutionNode*>& result,
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
-  /// @brief find nodes of a certain types
-  void findNodesOfType(SmallVector<ExecutionNode*>& result,
+  /// @brief find nodes of certain types
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+  
+  /// @brief find unique nodes of certain types
+  void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                             std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(SmallVector<ExecutionNode*>& result, bool enterSubqueries) const;
+  void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                    bool enterSubqueries) const;
 
   /// @brief determine and set _varsUsedLater and _varSetBy
   void findVarUsage();
@@ -188,10 +207,15 @@ class ExecutionPlan {
   /// @brief static analysis
   void planRegisters() { _root->planRegisters(); }
 
+  /// @brief find all variables that are populated with data from collections
+  void findCollectionAccessVariables();
+
+  void prepareTraversalOptions();
+
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);
-  void unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toUnlink);
+  void unlinkNodes(::arangodb::containers::HashSet<ExecutionNode*> const& toUnlink);
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
@@ -203,6 +227,9 @@ class ExecutionPlan {
   /// @brief add a node to the plan, will delete node if addition
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
+
+  template <typename Node, typename... Args>
+  Node* createNode(Args&&...);
 
   /// @brief add a subquery to the plan, will call registerNode internally
   SubqueryNode* registerSubquery(SubqueryNode*);
@@ -245,9 +272,11 @@ class ExecutionPlan {
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
+  bool fullCount() const noexcept;
+
  private:
   /// @brief creates a calculation node
-  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*, ExecutionNode*);
+  ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 
   /// @brief get the subquery node from an expression
   /// this will return a nullptr if the expression does not refer to a subquery
@@ -294,7 +323,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
-
+  
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
 
@@ -334,7 +363,7 @@ class ExecutionPlan {
 
  private:
   /// @brief map from node id to the actual node
-  std::unordered_map<size_t, ExecutionNode*> _ids;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> _ids;
 
   /// @brief root node of the plan
   ExecutionNode* _root;
@@ -344,6 +373,9 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
+
+  /// @brief which optimizer rules were disabled for a plan
+  ::arangodb::containers::HashSet<int> _disabledRules;
 
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to
@@ -357,7 +389,7 @@ class ExecutionPlan {
   int _nestingLevel;
 
   /// @brief auto-increment sequence for node ids
-  size_t _nextId;
+  ExecutionNodeId _nextId;
 
   /// @brief the ast
   Ast* _ast;
@@ -375,7 +407,14 @@ class ExecutionPlan {
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
+
 }  // namespace aql
 }  // namespace arangodb
+
+template <typename Node, typename... Args>
+Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
+  auto node = std::make_unique<Node>(std::forward<Args>(args)...);
+  return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
+}
 
 #endif

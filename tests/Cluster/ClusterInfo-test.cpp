@@ -23,19 +23,20 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/AgencyMock.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Slice.h"
+
+#include "IResearch/AgencyMock.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
@@ -45,8 +46,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
+
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 namespace {
 
@@ -129,20 +132,25 @@ struct ViewFactory : public arangodb::ViewFactory {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class ClusterInfoTest : public ::testing::Test {
+class ClusterInfoTest : public ::testing::Test,
+                        public LogSuppressor<Logger::AGENCY, LogLevel::FATAL>,
+                        public LogSuppressor<Logger::AUTHENTICATION, LogLevel::ERR>,
+                        public LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
+{
  protected:
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
   };
 
-  GeneralClientConnectionAgencyMock* agency;
-  arangodb::consensus::Store agencyStore{nullptr, "arango"};
-  StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  GeneralClientConnectionAgencyMock* agency;
+  arangodb::consensus::Store agencyStore;
+  StorageEngineMock engine;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
   ViewFactory viewFactory;
 
-  ClusterInfoTest() : engine(server), server(nullptr, nullptr) {
+  ClusterInfoTest()
+      : server(nullptr, nullptr), agencyStore(server, nullptr, "arango"), engine(server) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(agencyStore);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
@@ -151,84 +159,55 @@ class ClusterInfoTest : public ::testing::Test {
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress INFO {cluster} Starting up with role SINGLE
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::FATAL);
-
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(server), false);  // required for ClusterFeature::prepare()
-    features.emplace_back(arangodb::DatabaseFeature::DATABASE =
-                              new arangodb::DatabaseFeature(server),
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), false);  // required for ClusterFeature::prepare()
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::application_features::CommunicationFeaturePhase>(),
                           false);
-    features.emplace_back(new arangodb::application_features::CommunicationFeaturePhase(server),
-                          false);
-    features.emplace_back(new arangodb::ClusterFeature(server),
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
                           false);  // required for ClusterInfo::instance()
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::V8DealerFeature(server),
-                          false);  // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for LogicalView::instantiate(...)
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), false);  // required for LogicalView::instantiate(...)
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(),
                           false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
     // register view factory
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>()
-        ->emplace(arangodb::LogicalDataSource::Type::emplace(
-                      arangodb::velocypack::StringRef("testViewType")),
-                  viewFactory);
+    server.getFeature<arangodb::ViewTypesFeature>().emplace(
+        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        viewFactory);
 
     agencyCommManager->start();  // initialize agency
   }
 
   ~ClusterInfoTest() {
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCY.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::ClusterInfo::cleanup();  // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
-    arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
 
     ClusterCommControl::reset();
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
@@ -239,9 +218,9 @@ class ClusterInfoTest : public ::testing::Test {
 
 TEST_F(ClusterInfoTest, test_drop_database) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
-  ASSERT_TRUE(nullptr != database);
+  ASSERT_NE(nullptr, database);
   auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
+  ASSERT_NE(nullptr, ci);
 
   // test LogicalView dropped when database dropped
   {
@@ -250,8 +229,8 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     // create database
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
-    ASSERT_TRUE((nullptr != vocbase));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
+    ASSERT_NE(nullptr, vocbase);
 
     // simulate heartbeat thread
     ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
@@ -264,9 +243,9 @@ TEST_F(ClusterInfoTest, test_drop_database) {
       arangodb::LogicalView::ptr logicalView;
       ASSERT_TRUE(
           (viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
-      ASSERT_TRUE((false == !logicalView));
+      ASSERT_FALSE(!logicalView);
     }
-    EXPECT_TRUE((ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok()));
+    EXPECT_TRUE(ci->dropDatabaseCoordinator(vocbase->name(), 0.0).ok());
     ASSERT_TRUE(arangodb::AgencyComm().setValue("Current/Databases/testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), 0.0).successful());
     EXPECT_TRUE((ci->createDatabaseCoordinator(
                    vocbase->name(),
@@ -274,6 +253,6 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     arangodb::LogicalView::ptr logicalView;
     EXPECT_TRUE(
         (viewFactory.create(logicalView, *vocbase, viewCreateJson->slice()).ok()));
-    EXPECT_TRUE((false == !logicalView));
+    EXPECT_FALSE(!logicalView);
   }
 }

@@ -21,13 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBRestWalHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBRestWalHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -38,8 +41,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RocksDBRestWalHandler::RocksDBRestWalHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -132,7 +137,8 @@ void RocksDBRestWalHandler::flush() {
 
   int res = TRI_ERROR_NO_ERROR;
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+    auto& feature = server().getFeature<ClusterFeature>();
+    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   } else {
     if (waitForSync) {
       EngineSelectorFeature::ENGINE->flushWal();

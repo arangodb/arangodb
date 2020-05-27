@@ -164,7 +164,7 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate, VPackSlice c
   while (it.valid()) {
     v8::Handle<v8::Value> val = TRI_VPackToV8(isolate, it.value(), options, &slice);
     if (!val.IsEmpty()) {
-      object->Set(j++, val);
+      object->Set(TRI_IGETC, j++, val).FromMaybe(false);
     }
     if (arangodb::V8PlatformFeature::isOutOfMemory(isolate)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -312,10 +312,15 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
           VPackValue(parameter->ToUint32(context.context).ToLocalChecked()->Value()));
       return TRI_ERROR_NO_ERROR;
     }
-
-    AddValue<VPackValue, inObject>(
-        context, attributeName,
-        VPackValue(parameter->ToNumber(context.context).ToLocalChecked()->Value()));
+        
+    double value = parameter->ToNumber(context.context).ToLocalChecked()->Value();
+    if (std::isnan(value) || !std::isfinite(value)) {
+      AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+    } else {
+      AddValue<VPackValue, inObject>(
+          context, attributeName,
+          VPackValue(parameter->ToNumber(context.context).ToLocalChecked()->Value()));
+    }
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -341,7 +346,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
     uint32_t const n = array->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> value = array->Get(i);
+      v8::Handle<v8::Value> value = array->Get(context.context, i).FromMaybe(v8::Local<v8::Value>());
       if (value->IsUndefined()) {
         // ignore array values which are undefined
         continue;
@@ -373,16 +378,20 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       if (parameter->IsBooleanObject()) {
         AddValue<VPackValue, inObject>(context, attributeName,
                                        VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)
-                                                      ->BooleanValue(context.context)
-                                                      .FromMaybe(false)));
+                                                  ->BooleanValue(context.isolate)));
         return TRI_ERROR_NO_ERROR;
       }
 
       if (parameter->IsNumberObject()) {
-        AddValue<VPackValue, inObject>(context, attributeName,
-                                       VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
-                                                      ->NumberValue(context.context)
-                                                      .FromMaybe(0.0)));
+        double value = v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue(context.context).FromMaybe(0.0);
+        if (std::isnan(value) || !std::isfinite(value)) {
+          AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+        } else {
+          AddValue<VPackValue, inObject>(context, attributeName,
+                                         VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
+                                                        ->NumberValue(context.context)
+                                                        .FromMaybe(0.0)));
+        }
         return TRI_ERROR_NO_ERROR;
       }
 
@@ -411,7 +420,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       // first check if the object has a "toJSON" function
       if (o->Has(context.context, context.toJsonKey).FromMaybe(false)) {
         // call it if yes
-        v8::Handle<v8::Value> func = o->Get(context.toJsonKey);
+        v8::Handle<v8::Value> func = o->Get(context.context, context.toJsonKey).FromMaybe(v8::Local<v8::Value>());
         if (func->IsFunction()) {
           v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
@@ -419,7 +428,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
           // this prevents "error C2466: cannot allocate an array of constant
           // size 0" in MSVC
           v8::Handle<v8::Value> args[] = {v8::Null(context.isolate)};
-          v8::Handle<v8::Value> converted = toJson->Call(o, 0, args);
+          v8::Handle<v8::Value> converted = toJson->Call(context.context, o, 0, args).FromMaybe(v8::Local<v8::Value>());
 
           if (!converted.IsEmpty()) {
             // return whatever toJSON returned
@@ -432,7 +441,7 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       }
     }
 
-    v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
+    v8::Handle<v8::Array> names = o->GetOwnPropertyNames(context.context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
 
     AddValue<VPackValue, inObject>(context, attributeName,
@@ -441,14 +450,14 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
       v8::Handle<v8::String> key =
-          names->Get(i)->ToString(context.context).ToLocalChecked();
+        names->Get(context.context, i).FromMaybe(v8::Local<v8::Value>())->ToString(context.context).ToLocalChecked();
       v8::String::Utf8Value str(context.isolate, key);
 
       if (*str == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      v8::Handle<v8::Value> value = o->Get(key);
+      v8::Handle<v8::Value> value = o->Get(context.context, key).FromMaybe(v8::Handle<v8::Value>());
       if (value->IsUndefined()) {
         // ignore object values which are undefined
         continue;

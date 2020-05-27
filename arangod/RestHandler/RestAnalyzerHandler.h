@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_ANALYZER_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {
@@ -35,9 +36,10 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
  public:
   // @note RestHandlerFactory::createHandler(...) passes raw pointers for
   //       request/response to RestHandlerCreator::createNoData(...)
-  RestAnalyzerHandler( // constructor
-    arangodb::GeneralRequest* request, // request
-    arangodb::GeneralResponse* response // response
+  RestAnalyzerHandler(  // constructor
+      application_features::ApplicationServer& server,
+      arangodb::GeneralRequest* request,   // request
+      arangodb::GeneralResponse* response  // response
   );
 
   virtual arangodb::RestStatus execute() override;

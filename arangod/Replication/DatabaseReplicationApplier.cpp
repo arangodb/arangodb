@@ -48,7 +48,7 @@ namespace arangodb {
 
 /// @brief replication applier for a single database, without configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t& vocbase)
-    : DatabaseReplicationApplier(ReplicationApplierConfiguration(), vocbase) {}
+    : DatabaseReplicationApplier(ReplicationApplierConfiguration(vocbase.server()), vocbase) {}
 
 /// @brief replication applier for a single database, with configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
@@ -123,12 +123,13 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TR
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
     TRI_ASSERT(builder.isEmpty());
-    return ReplicationApplierConfiguration();
+    return ReplicationApplierConfiguration(vocbase.server());
   }
 
   TRI_ASSERT(!builder.isEmpty());
 
-  return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(),
+  return ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(),
+                                                         builder.slice(),
                                                          vocbase.name());
 }
 

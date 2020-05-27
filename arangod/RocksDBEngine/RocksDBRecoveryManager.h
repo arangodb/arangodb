@@ -42,7 +42,6 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
   explicit RocksDBRecoveryManager(application_features::ApplicationServer& server);
 
   static std::string featureName() { return "RocksDBRecoveryManager"; }
-  static RocksDBRecoveryManager* instance();
 
   void start() override;
 

@@ -21,14 +21,17 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
+#include "Basics/signals.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
@@ -36,6 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -56,7 +60,7 @@ namespace {
 /// @brief return the default number of threads to use (upper bound)
 size_t defaultNumberOfThreads() {
   // use two times the number of hardware threads as the default
-  size_t result = TRI_numberProcessors() * 2;
+  size_t result = arangodb::NumberOfCores::getValue() * 2;
   // but only if higher than 64. otherwise use a default minimum value of 64
   if (result < 64) {
     result = 64;
@@ -74,11 +78,12 @@ SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& serv
     : ApplicationFeature(server, "Scheduler"), 
       _scheduler(nullptr) {
   setOptional(false);
-  startsAfter("GreetingsPhase");
-  startsAfter("FileDescriptors");
+  startsAfter<GreetingsFeaturePhase>();
+
+  startsAfter<FileDescriptorsFeature>();
 }
 
-SchedulerFeature::~SchedulerFeature() {}
+SchedulerFeature::~SchedulerFeature() = default;
 
 void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   // Different implementations of the Scheduler may require different
@@ -93,12 +98,12 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                          "= use system-specific default of ") +
                          std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--server.minimal-threads",
                      "minimum number of request handling threads to run",
                      new UInt64Parameter(&_nrMinimalThreads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
@@ -107,11 +112,11 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.prio1-size", "size of the priority 1 fifo",
                      new UInt64Parameter(&_fifo1Size),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -120,14 +125,15 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
   options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
-void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  auto const N = TRI_numberProcessors();
+void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+  auto const N = NumberOfCores::getValue();
 
   LOG_TOPIC("2ef39", DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
 
   TRI_ASSERT(N > 0);
-  if (_nrMaximalThreads > 8 * N) {
+  if (options->processingResult().touched("server.maximal-threads") && 
+      _nrMaximalThreads > 8 * N) {
     LOG_TOPIC("0a92a", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N
@@ -170,9 +176,9 @@ void SchedulerFeature::prepare() {
 #pragma warning(push)
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
 #endif
-  auto sched =
-      std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                            _queueSize, _fifo1Size, _fifo2Size);
+  auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
+                                                     _nrMaximalThreads, _queueSize,
+                                                     _fifo1Size, _fifo2Size);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
@@ -215,9 +221,9 @@ void SchedulerFeature::unprepare() {
 void SchedulerFeature::initV8Stuff() {
   // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
-    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-    if (dealer->isEnabled()) {
-      dealer->defineContextUpdate(
+    auto& dealer = server().getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      dealer.defineContextUpdate(
           [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
             TRI_InitV8Dispatcher(isolate, context);
           },
@@ -238,7 +244,7 @@ void SchedulerFeature::deinitV8Stuff() {
 // ---------------------------------------------------------------------------
 
 void SchedulerFeature::signalStuffInit() {
-  ArangoGlobalContext::CONTEXT->maskAllSignals();
+  arangodb::signals::maskAllSignals();
 
 #ifdef _WIN32
 // Windows does not support POSIX signal handling
@@ -254,7 +260,7 @@ void SchedulerFeature::signalStuffInit() {
 
   if (res < 0) {
     LOG_TOPIC("91d20", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for pipe";
+        << "cannot initialize signal handler for SIGPIPE";
   }
 #endif
 
@@ -262,7 +268,6 @@ void SchedulerFeature::signalStuffInit() {
 }
 
 void SchedulerFeature::signalStuffDeinit() {
-  // MORE COMPLETELY UNRELATED SCHEDULER CODE!?!?!?
   {
     // cancel signals
     if (_exitSignals != nullptr) {
@@ -334,9 +339,7 @@ bool CtrlHandler(DWORD eventType) {
     LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
-    if (application_features::ApplicationServer::server != nullptr) {
-      application_features::ApplicationServer::server->beginShutdown();
-    }
+    application_features::ApplicationServer::CTRL_C.store(true);
 
     seen = true;
     return true;
@@ -355,17 +358,13 @@ bool CtrlHandler(DWORD eventType) {
 
 extern "C" void c_exit_handler(int signal) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
-    static bool seen = false;
+    static std::atomic<bool> seen{false};
 
-    if (!seen) {
+    if (!seen.exchange(true)) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";
 
-      if (application_features::ApplicationServer::server != nullptr) {
-        application_features::ApplicationServer::server->beginShutdown();
-      }
-
-      seen = true;
+      application_features::ApplicationServer::CTRL_C.store(true);
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::CLUSTER)
           << "control-c received (again!), terminating";
@@ -412,39 +411,29 @@ void SchedulerFeature::buildControlCHandler() {
     }
   }
 #else
-
   // Signal masking on POSIX platforms
   //
   // POSIX allows signals to be blocked using functions such as sigprocmask()
   // and pthread_sigmask(). For signals to be delivered, programs must ensure
   // that any signals registered using signal_set objects are unblocked in at
   // least one thread.
-  sigset_t all;
-  sigemptyset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, nullptr);
+  arangodb::signals::unmaskAllSignals();
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
   action.sa_handler = c_exit_handler;
 
-  int res;
-  res = sigaction(SIGINT, &action, nullptr);
-  if (res < 0) {
-    LOG_TOPIC("cc8d8", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
+  int res = sigaction(SIGINT, &action, nullptr);
+  if (res == 0) {
+    res = sigaction(SIGQUIT, &action, nullptr);
+    if (res == 0) {
+      res = sigaction(SIGTERM, &action, nullptr);
+    }
   }
-
-  res = sigaction(SIGQUIT, &action, nullptr);
-  if (res < 0) {
-    LOG_TOPIC("78075", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
-  }
-
-  res = sigaction(SIGTERM, &action, nullptr);
   if (res < 0) {
     LOG_TOPIC("e666b", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
+        << "cannot initialize signal handlers for SIGINT/SIGQUIT/SIGTERM";
   }
 #endif
 }

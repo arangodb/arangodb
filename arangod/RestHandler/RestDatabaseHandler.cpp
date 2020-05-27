@@ -34,8 +34,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDatabaseHandler::RestDatabaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestDatabaseHandler::RestDatabaseHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestDatabaseHandler::execute() {
   // extract the request type
@@ -71,13 +72,13 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_vocbase.isSystem()) {
         res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       } else {
-        names = methods::Databases::list(std::string());
+        names = methods::Databases::list(server(), std::string());
       }
     } else if (suffixes[0] == "user") {
       if (!_request->authenticated() && ExecContext::isAuthEnabled()) {
         res.reset(TRI_ERROR_FORBIDDEN);
       } else {
-        names = methods::Databases::list(_request->user());
+        names = methods::Databases::list(server(), _request->user());
       }
     }
 
@@ -87,7 +88,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
     }
     builder.close();
   } else if (suffixes[0] == "current") {
-    res = methods::Databases::info(&_vocbase, builder);
+    _vocbase.toVelocyPack(builder);
   }
 
   if (res.fail()) {
@@ -130,7 +131,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  Result res = methods::Databases::create(dbName, users, options);
+  Result res = methods::Databases::create(server(), dbName, users, options);
   if (res.ok()) {
     generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {

@@ -48,7 +48,7 @@ function ahuacatlLogicalTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       // this.tearDown(); should actually work as well
       db._drop(vn);
       
@@ -60,7 +60,7 @@ function ahuacatlLogicalTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(vn);
     },
 

@@ -208,7 +208,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        node->removeMembers();
+        node->clearMembers();
         node->addMember(op);
 
         return node;
@@ -220,7 +220,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        node->removeMembers();
+        node->clearMembers();
         node->addMember(op);
 
         return node;
@@ -292,7 +292,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 
   if (_found.size() == _attributes.size()) {
     // remove node's existing members
-    node->removeMembers();
+    node->clearMembers();
 
     // found contains all nodes required for this condition sorted by
     // _attributes
@@ -360,16 +360,11 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
     // costs.estimatedItems is always set here, make it at least 1
     costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
 
-    // seek cost is O(log(n)) for RocksDB, and O(1) for mmfiles
-    // TODO: move this into storage engine!
-    if (EngineSelectorFeature::ENGINE->typeName() == "mmfiles") {
-      costs.estimatedCosts = std::max(double(1.0), double(values));
-    } else {
-      costs.estimatedCosts = std::max(double(1.0),
-                                    std::log2(double(itemsInIndex)) * values);
-      if (idx->unique()) {
-        costs.estimatedCosts = std::max(double(1.0), double(itemsInIndex) * values);
-      }
+    // seek cost is O(log(n)) for RocksDB
+    costs.estimatedCosts = std::max(double(1.0),
+                                  std::log2(double(itemsInIndex)) * values);
+    if (idx->unique()) {
+      costs.estimatedCosts = std::max(double(1.0), double(itemsInIndex) * values);
     }
     // add per-document processing cost
     costs.estimatedCosts += costs.estimatedItems * 0.05;
@@ -483,7 +478,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
 
     if (match) {
       // mark ith attribute as being covered
-      _found.emplace(i, op);
+      _found.try_emplace(i, op);
       TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }

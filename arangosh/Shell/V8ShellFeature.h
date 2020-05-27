@@ -82,7 +82,6 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   std::string _name;
   v8::Isolate* _isolate;
   v8::Persistent<v8::Context> _context;
-  ConsoleFeature* _console;
 };
 
 }  // namespace arangodb

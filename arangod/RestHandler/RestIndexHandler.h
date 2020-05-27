@@ -32,7 +32,8 @@ class LogicalCollection;
 
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestIndexHandler(GeneralRequest*, GeneralResponse*);
+  RestIndexHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestIndexHandler"; }

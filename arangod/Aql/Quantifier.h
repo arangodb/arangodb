@@ -34,9 +34,9 @@ namespace aql {
 struct AstNode;
 
 struct Quantifier {
-  static int64_t const NONE;
-  static int64_t const ALL;
-  static int64_t const ANY;
+  static int64_t constexpr NONE = 1;
+  static int64_t constexpr ALL = 2;
+  static int64_t constexpr ANY = 3;
 
   /// @brief converts a quantifier string into an int equivalent
   static int64_t FromString(std::string const& value);

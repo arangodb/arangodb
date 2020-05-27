@@ -79,7 +79,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedLeader::~FailedLeader() {}
+FailedLeader::~FailedLeader() = default;
 
 void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -118,7 +118,7 @@ void FailedLeader::rollback() {
       VPackArrayBuilder a(payload.get());
       { // opers
         VPackObjectBuilder b(payload.get());
-        for (auto const c : cs) {
+        for (auto const& c : cs) {
           payload->add(planColPrefix + _database + "/" + c.collection +
                            "/shards/" + c.shard,
                        rb.slice());

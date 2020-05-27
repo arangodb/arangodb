@@ -13,7 +13,7 @@ describe ArangoDB do
   context "binary data" do
     before do
       # make sure system collections exist
-      ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_modules', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {} try { db._create('_routing', { isSystem: true, distributeShardsLike: '_graphs' }); } catch (err) {}")
+      ArangoDB.post("/_admin/execute", :body => "var db = require('internal').db; try { db._create('_modules', { isSystem: true, distributeShardsLike: '_users' }); } catch (err) {} try { db._create('_routing', { isSystem: true, distributeShardsLike: '_users' }); } catch (err) {}")
 
       # clean up first
       ArangoDB.delete("/_api/document/_modules/UnitTestRoutingTest")

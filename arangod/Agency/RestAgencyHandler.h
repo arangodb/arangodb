@@ -25,6 +25,8 @@
 #define ARANGOD_REST_HANDLER_REST_AGENCY_HANDLER_H 1
 
 #include "Agency/Agent.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
@@ -35,7 +37,8 @@ namespace arangodb {
 
 class RestAgencyHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
+  RestAgencyHandler(application_features::ApplicationServer&, GeneralRequest*,
+                    GeneralResponse*, consensus::Agent*);
 
  public:
   char const* name() const override final { return "RestAgencyHandler"; }
@@ -45,6 +48,13 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
   }
 
   RestStatus execute() override;
+
+  using fvoid = futures::Future<futures::Unit>;
+
+  /**
+   * @brief Async call to Agent poll with index to wait for within timeout
+   */
+  RestStatus pollIndex(consensus::index_t const& index, double const& timeout);
 
  private:
   RestStatus reportErrorEmptyRequest();
@@ -61,6 +71,7 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
   RestStatus handleState();
   RestStatus handleTransient();
   RestStatus handleInquire();
+  RestStatus handlePoll();
 
   void redirectRequest(std::string const& leaderId);
   consensus::Agent* _agent;

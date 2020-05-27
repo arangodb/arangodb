@@ -34,7 +34,8 @@ class QueryRegistry;
 
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
-  RestSimpleQueryHandler(GeneralRequest*, GeneralResponse*, arangodb::aql::QueryRegistry*);
+  RestSimpleQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
+                         GeneralResponse*, arangodb::aql::QueryRegistry*);
 
  public:
   RestStatus execute() override final;

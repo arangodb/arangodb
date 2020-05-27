@@ -28,8 +28,10 @@
 
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/Maintenance.h"
-#include "MMFiles/MMFilesEngine.h"
+#include "Mocks/Servers.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
@@ -68,9 +70,9 @@ char const* dbs2Str =
 #include "DBServer0003.json"
     ;
 
-int loadResources(void) {return 0;}
+int loadResources(void) { return 0; }
 
-#else // _WIN32
+#else  // _WIN32
 #include <Windows.h>
 #include "jsonresource.h"
 LPSTR planStr = nullptr;
@@ -81,17 +83,13 @@ LPSTR dbs1Str = nullptr;
 LPSTR dbs2Str = nullptr;
 
 LPSTR getResource(int which) {
-  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which),  RT_RCDATA);
+  HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which), RT_RCDATA);
   HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
-  return (LPSTR) ::LockResource(myResourceData);
+  return (LPSTR)::LockResource(myResourceData);
 }
 int loadResources(void) {
-  if ((planStr == nullptr) &&
-      (currentStr == nullptr) &&
-      (supervisionStr == nullptr) &&
-      (dbs0Str == nullptr) &&
-      (dbs1Str == nullptr) &&
-      (dbs2Str == nullptr)) {
+  if ((planStr == nullptr) && (currentStr == nullptr) && (supervisionStr == nullptr) &&
+      (dbs0Str == nullptr) && (dbs1Str == nullptr) && (dbs2Str == nullptr)) {
     planStr = getResource(IDS_PLAN);
     currentStr = getResource(IDS_CURRENT);
     dbs0Str = getResource(IDS_DBSERVER0001);
@@ -102,7 +100,7 @@ int loadResources(void) {
   return 0;
 }
 
-#endif // _WIN32
+#endif  // _WIN32
 
 std::map<std::string, std::string> matchShortLongIds(Node const& supervision) {
   std::map<std::string, std::string> ret;
@@ -325,8 +323,11 @@ class LogicalCollection;
 }
 
 class MaintenanceTestActionDescription : public ::testing::Test {
+  // private:
+  //   tests::mocks::MockDBServer _server;
+
  protected:
-  MaintenanceTestActionDescription() {
+  MaintenanceTestActionDescription() /*: _server{}*/ {
     loadResources();
     plan = createNode(planStr);
     originalPlan = plan;
@@ -340,7 +341,7 @@ TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription) {
   ActionDescription desc(std::map<std::string, std::string>{{"name",
                                                              "SomeAction"}},
                          NORMAL_PRIORITY);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_nullptr_props) {
@@ -351,48 +352,50 @@ TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_wit
 TEST_F(MaintenanceTestActionDescription, construct_minimal_actiondescription_with_empty_props) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
-    ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const&) { }
+    ASSERT_EQ(bogus, "bogus");
+  } catch (std::out_of_range const&) {
+  }
   std::string value;
   auto res = desc.get("bogus", value);
   ASSERT_TRUE(value.empty());
-  ASSERT_TRUE(!res.ok());
+  ASSERT_FALSE(res.ok());
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_key_from_actiondescription_2) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   try {
     auto bogus = desc.get("bogus");
-    ASSERT_TRUE(bogus == "bogus");
-  } catch (std::out_of_range const&) { }
+    ASSERT_EQ(bogus, "bogus");
+  } catch (std::out_of_range const&) {
+  }
   std::string value;
   auto res = desc.get("bogus", value);
-  ASSERT_TRUE(value == "bogus");
+  ASSERT_EQ(value, "bogus");
   ASSERT_TRUE(res.ok());
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_nonassigned_properties_from_actiondescription) {
   std::shared_ptr<VPackBuilder> props;
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
-  ASSERT_TRUE(desc.properties() == nullptr);
+  ASSERT_EQ(desc.get("name"), "SomeAction");
+  ASSERT_EQ(desc.properties(), nullptr);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_empty_properties_from_actiondescription) {
   auto props = std::make_shared<VPackBuilder>();
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->isEmpty());
 }
 
@@ -400,7 +403,7 @@ TEST_F(MaintenanceTestActionDescription, retrieve_empty_object_properties_from_a
   auto props = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder empty(props.get()); }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().isEmptyObject());
 }
 
@@ -411,9 +414,9 @@ TEST_F(MaintenanceTestActionDescription, retrieve_string_value_from_actiondescri
     props->add("hello", VPackValue("world"));
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("hello"));
-  ASSERT_TRUE(desc.properties()->slice().get("hello").copyString() == "world");
+  ASSERT_EQ(desc.properties()->slice().get("hello").copyString(), "world");
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_double_value_from_actiondescriptions_properties) {
@@ -424,9 +427,9 @@ TEST_F(MaintenanceTestActionDescription, retrieve_double_value_from_actiondescri
     props->add("pi", VPackValue(3.14159265359));
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("pi"));
-  ASSERT_TRUE(desc.properties()->slice().get("pi").getNumber<double>() == pi);
+  ASSERT_EQ(desc.properties()->slice().get("pi").getNumber<double>(), pi);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_integer_value_from_actiondescriptions_property) {
@@ -437,9 +440,9 @@ TEST_F(MaintenanceTestActionDescription, retrieve_integer_value_from_actiondescr
     props->add("one", VPackValue(one));
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("one"));
-  ASSERT_TRUE(desc.properties()->slice().get("one").getNumber<size_t>() == one);
+  ASSERT_EQ(desc.properties()->slice().get("one").getNumber<size_t>(), one);
 }
 
 TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescriptions_properties) {
@@ -458,13 +461,13 @@ TEST_F(MaintenanceTestActionDescription, retrieve_array_value_from_actiondescrip
     }
   }
   ActionDescription desc({{"name", "SomeAction"}}, NORMAL_PRIORITY, props);
-  ASSERT_TRUE(desc.get("name") == "SomeAction");
+  ASSERT_EQ(desc.get("name"), "SomeAction");
   ASSERT_TRUE(desc.properties()->slice().hasKey("array"));
   ASSERT_TRUE(desc.properties()->slice().get("array").isArray());
-  ASSERT_TRUE(desc.properties()->slice().get("array").length() == 3);
-  ASSERT_TRUE(desc.properties()->slice().get("array")[0].getNumber<double>() == pi);
-  ASSERT_TRUE(desc.properties()->slice().get("array")[1].getNumber<size_t>() == one);
-  ASSERT_TRUE(desc.properties()->slice().get("array")[2].copyString() == hello);
+  ASSERT_EQ(desc.properties()->slice().get("array").length(), 3);
+  ASSERT_EQ(desc.properties()->slice().get("array")[0].getNumber<double>(), pi);
+  ASSERT_EQ(desc.properties()->slice().get("array")[1].getNumber<size_t>(), one);
+  ASSERT_EQ(desc.properties()->slice().get("array")[2].copyString(), hello);
 }
 
 class MaintenanceTestActionPhaseOne : public ::testing::Test {
@@ -472,26 +475,29 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
   int _dummy;
   std::shared_ptr<arangodb::options::ProgramOptions> po;
   arangodb::application_features::ApplicationServer as;
-  TestMaintenanceFeature feature;
+  std::unique_ptr<TestMaintenanceFeature> feature;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, Node> localNodes;
 
-  arangodb::MMFilesEngine engine;  // arbitrary implementation that has index types registered
+  arangodb::RocksDBEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
-  
+
   MaintenanceTestActionPhaseOne()
-    : _dummy(loadResources()),
-      po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
-                                                             std::string(),
-                                                             "path")),
-      as(po, nullptr),
-      feature(as),
-      localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
-                 {dbsIds[shortNames[1]], createNode(dbs1Str)},
-                 {dbsIds[shortNames[2]], createNode(dbs2Str)}},
-      engine(as),
-      origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+      : _dummy(loadResources()),
+        po(std::make_shared<arangodb::options::ProgramOptions>("test", std::string(),
+                                                               std::string(),
+                                                               "path")),
+        as(po, nullptr),
+        localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
+                   {dbsIds[shortNames[1]], createNode(dbs1Str)},
+                   {dbsIds[shortNames[2]], createNode(dbs2Str)}},
+        engine(as),
+        origStorageEngine(arangodb::EngineSelectorFeature::ENGINE) {
+    as.addFeature<arangodb::MetricsFeature>();
+    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+    feature = std::make_unique<TestMaintenanceFeature>(as);
+
     arangodb::EngineSelectorFeature::ENGINE = &engine;
   }
 
@@ -506,12 +512,12 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   for (auto const& node : localNodes) {
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 0) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 0);
+    ASSERT_EQ(actions.size(), 0);
   }
 }
 
@@ -522,14 +528,14 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions);
 
   if (actions.size() != 1) {
     std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
   }
-  ASSERT_TRUE(actions.size() == 1);
-  ASSERT_TRUE(actions.front().name() == "DropDatabase");
-  ASSERT_TRUE(actions.front().get("database") == "db3");
+  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.front().name(), "DropDatabase");
+  ASSERT_EQ(actions.front().get("database"), "db3");
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
@@ -539,11 +545,11 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
   arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                        localNodes.begin()->second.toBuilder().slice(),
-                                       localNodes.begin()->first, errors, feature, actions);
+                                       localNodes.begin()->first, errors, *feature, actions);
 
-  ASSERT_TRUE(actions.size() == 1);
-  ASSERT_TRUE(actions.front().name() == "DropDatabase");
-  ASSERT_TRUE(actions.front().get("database") == "db3");
+  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.front().name(), "DropDatabase");
+  ASSERT_EQ(actions.front().get("database"), "db3");
 }
 
 TEST_F(MaintenanceTestActionPhaseOne,
@@ -561,14 +567,14 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "CreateCollection");
+      ASSERT_EQ(action.name(), "CreateCollection");
     }
   }
 }
@@ -589,14 +595,14 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 2) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 2);
+    ASSERT_EQ(actions.size(), 2);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "CreateCollection");
+      ASSERT_EQ(action.name(), "CreateCollection");
     }
   }
 }
@@ -615,7 +621,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(), node.first,
-                                         errors, feature, actions);
+                                         errors, *feature, actions);
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -627,9 +633,9 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
     if (actions.size() != n) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == n);
+    ASSERT_EQ(actions.size(), n);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "EnsureIndex");
+      ASSERT_EQ(action.name(), "EnsureIndex");
     }
   }
 }
@@ -651,7 +657,7 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          local.toBuilder().slice(), node.first,
-                                         errors, feature, actions);
+                                         errors, *feature, actions);
 
     size_t n = 0;
     for (auto const& shard : shards) {
@@ -663,9 +669,9 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
     if (actions.size() != n) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == n);
+    ASSERT_EQ(actions.size(), n);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "DropIndex");
+      ASSERT_EQ(action.name(), "DropIndex");
     }
   }
 }
@@ -679,16 +685,16 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "DropCollection");
-      ASSERT_TRUE(action.get("database") == "_system");
-      ASSERT_TRUE(action.get("collection") == "s1111112");
+      ASSERT_EQ(action.name(), "DropCollection");
+      ASSERT_EQ(action.get("database"), "_system");
+      ASSERT_EQ(action.get("collection"), "s1111112");
     }
   }
 }
@@ -711,18 +717,18 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     /*
     if (actions.size() != 1) {
       std::cout << __FILE__ << ":" << __LINE__ << " " << actions  << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
+    ASSERT_EQ(actions.size(), 1);
     for (auto const& action : actions) {
 
-      ASSERT_TRUE(action.name() == "UpdateCollection");
-      ASSERT_TRUE(action.get("shard") == shname);
-      ASSERT_TRUE(action.get("database") == dbname);
+      ASSERT_EQ(action.name(), "UpdateCollection");
+      ASSERT_EQ(action.get("shard"), shname);
+      ASSERT_EQ(action.get("database"), dbname);
       auto const props = action.properties();
 
     }
@@ -748,17 +754,17 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (check) {
       if (actions.size() != 1) {
         std::cout << __FILE__ << ":" << __LINE__ << " " << actions << std::endl;
       }
-      ASSERT_TRUE(actions.size() == 1);
+      ASSERT_EQ(actions.size(), 1);
       for (auto const& action : actions) {
-        ASSERT_TRUE(action.name() == "TakeoverShardLeadership");
+        ASSERT_EQ(action.name(), "TakeoverShardLeadership");
         ASSERT_TRUE(action.has("shard"));
-        ASSERT_TRUE(action.get("shard") == collection("name").getString());
+        ASSERT_EQ(action.get("shard"), collection("name").getString());
         ASSERT_TRUE(action.get("localLeader").empty());
       }
     }
@@ -777,11 +783,11 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
-    ASSERT_TRUE(actions.size() == node.second("db3").children().size());
+    ASSERT_EQ(actions.size(), node.second("db3").children().size());
     for (auto const& action : actions) {
-      ASSERT_TRUE(action.name() == "DropCollection");
+      ASSERT_EQ(action.name(), "DropCollection");
     }
   }
 }
@@ -804,7 +810,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
       Slice servers = shardBuilder.slice();
 
       ASSERT_TRUE(servers.isArray());
-      ASSERT_TRUE(servers.length() == 2);
+      ASSERT_EQ(servers.length(), 2);
       auto const leader = servers[0].copyString();
       auto const follower = servers[1].copyString();
 
@@ -822,15 +828,15 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
-    if (actions.size() != 2) {
+    if (actions.size() != 1) {
       std::cout << actions << std::endl;
     }
-    ASSERT_TRUE(actions.size() == 1);
-    ASSERT_TRUE(actions[0].name() == "ResignShardLeadership");
-    ASSERT_TRUE(actions[0].get(DATABASE) == dbname);
-    ASSERT_TRUE(actions[0].get(SHARD) == shname);
+    ASSERT_EQ(actions.size(), 1);
+    ASSERT_EQ(actions[0].name(), "ResignShardLeadership");
+    ASSERT_EQ(actions[0].get(DATABASE), dbname);
+    ASSERT_EQ(actions[0].get(SHARD), shname);
   }
 }
 
@@ -852,24 +858,24 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
 
     arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
                                          node.second.toBuilder().slice(),
-                                         node.first, errors, feature, actions);
+                                         node.first, errors, *feature, actions);
 
     if (node.first == followerName) {
       // Must see an action dropping the shard
-      ASSERT_TRUE(actions.size() == 1);
-      ASSERT_TRUE(actions.front().name() == "DropCollection");
-      ASSERT_TRUE(actions.front().get(DATABASE) == dbname);
-      ASSERT_TRUE(actions.front().get(COLLECTION) == shname);
+      ASSERT_EQ(actions.size(), 1);
+      ASSERT_EQ(actions.front().name(), "DropCollection");
+      ASSERT_EQ(actions.front().get(DATABASE), dbname);
+      ASSERT_EQ(actions.front().get(COLLECTION), shname);
     } else if (node.first == leaderName) {
       // Must see an UpdateCollection action to drop the follower
-      ASSERT_TRUE(actions.size() == 1);
-      ASSERT_TRUE(actions.front().name() == "UpdateCollection");
-      ASSERT_TRUE(actions.front().get(DATABASE) == dbname);
-      ASSERT_TRUE(actions.front().get(SHARD) == shname);
-      ASSERT_TRUE(actions.front().get(FOLLOWERS_TO_DROP) == followerName);
+      ASSERT_EQ(actions.size(), 1);
+      ASSERT_EQ(actions.front().name(), "UpdateCollection");
+      ASSERT_EQ(actions.front().get(DATABASE), dbname);
+      ASSERT_EQ(actions.front().get(SHARD), shname);
+      ASSERT_EQ(actions.front().get(FOLLOWERS_TO_DROP), followerName);
     } else {
       // No actions required
-      ASSERT_TRUE(actions.size() == 0);
+      ASSERT_EQ(actions.size(), 0);
     }
   }
 }

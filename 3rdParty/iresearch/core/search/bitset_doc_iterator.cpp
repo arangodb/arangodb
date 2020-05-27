@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitset_doc_iterator.hpp"
@@ -29,19 +28,23 @@
 NS_ROOT
 
 bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
-  : begin_(set.begin()),
+  : attributes{{
+      { type<document>::id(), &doc_   },
+      { type<cost>::id(),     &cost_  },
+      { type<score>::id(),    &score_ },
+    }},
+    begin_(set.begin()),
     end_(set.end()),
     size_(set.size()) {
-  auto docs_count = set.count();
+  const auto docs_count = set.count();
 
   // make doc_id accessible via attribute
-  attrs_.emplace(doc_);
   doc_.value = docs_count
     ? doc_limits::invalid()
     : doc_limits::eof(); // seal iterator
 
   // set estimation value
-  estimate(docs_count);
+  cost_.value(docs_count);
 }
 
 bitset_doc_iterator::bitset_doc_iterator(
@@ -51,22 +54,24 @@ bitset_doc_iterator::bitset_doc_iterator(
       const order::prepared& order,
       boost_t boost)
   : bitset_doc_iterator(set) {
-  prepare_score(order, order.prepare_scorers(
-    reader,
-    empty_term_reader(cost_.estimate()),
-    stats,
-    attributes(), // doc_iterator attributes
-    boost
-  ));
+  // prepare score
+  if (!order.empty()) {
+    score_.prepare(order, order.prepare_scorers(
+      reader,
+      empty_term_reader(cost_.estimate()),
+      stats,
+      *this, // doc_iterator attributes
+      boost));
+  }
 }
 
-bool bitset_doc_iterator::next() NOEXCEPT {
+bool bitset_doc_iterator::next() noexcept {
   return !doc_limits::eof(
     seek(doc_.value + irs::doc_id_t(doc_.value < size_))
   );
 }
 
-doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
+doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   const auto* pword = begin_ + bitset::word(target);
 
   if (pword >= end_) {
@@ -76,7 +81,6 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
   }
 
   auto word = ((*pword) >> bitset::bit(target));
-
   typedef decltype(word) word_t;
 
   if (word) {
@@ -100,7 +104,3 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

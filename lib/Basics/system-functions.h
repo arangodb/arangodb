@@ -28,7 +28,7 @@
 
 #include "Basics/Common.h"
 
-#ifdef TRI_MISSING_MEMRCHR
+#ifdef ARANGODB_MISSING_MEMRCHR
 void* memrchr(void const* block, int c, size_t size);
 #endif
 
@@ -52,9 +52,6 @@ time_t TRI_timegm(struct tm*);
 
 // seconds with microsecond resolution
 double TRI_microtime();
-
-// number of processors or 0
-size_t TRI_numberProcessors();
 
 namespace arangodb {
 namespace utilities {

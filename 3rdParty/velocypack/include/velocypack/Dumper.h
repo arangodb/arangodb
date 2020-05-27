@@ -112,6 +112,8 @@ class Dumper {
 
   void appendUInt(uint64_t);
 
+  void appendInt(int64_t);
+
   void appendDouble(double);
 
  private:

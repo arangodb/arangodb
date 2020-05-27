@@ -35,7 +35,7 @@ function optimizerProducesResultTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -48,7 +48,7 @@ function optimizerProducesResultTestSuite () {
       c.ensureIndex({ type: "skiplist", fields: ["x"] });
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

@@ -389,6 +389,14 @@
     exports.serverId = global.REPLICATION_SERVER_ID;
     delete global.REPLICATION_SERVER_ID;
   }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for index selectivity estimate sync
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
+    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
+    delete global.WAIT_FOR_ESTIMATOR_SYNC;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief loadStartup
@@ -502,12 +510,12 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSegfault
+  // / @brief debugTerminate
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_DEBUG_SEGFAULT) {
-    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-    delete global.SYS_DEBUG_SEGFAULT;
+  if (global.SYS_DEBUG_TERMINATE) {
+    exports.debugTerminate = global.SYS_DEBUG_TERMINATE;
+    delete global.SYS_DEBUG_TERMINATE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -555,12 +563,37 @@
     delete global.SYS_DEBUG_CAN_USE_FAILAT;
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief replicationFactor(s) and number of shards
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.DEFAULT_REPLICATION_FACTOR) {
+    exports.defaultReplicationFactor = global.DEFAULT_REPLICATION_FACTOR;
+    delete global.DEFAULT_REPLICATION_FACTOR;
+  }
+  if (global.MIN_REPLICATION_FACTOR) {
+    exports.minReplicationFactor = global.MIN_REPLICATION_FACTOR;
+    delete global.MIN_REPLICATION_FACTOR;
+  }
+  if (global.MAX_REPLICATION_FACTOR) {
+    exports.maxReplicationFactor = global.MAX_REPLICATION_FACTOR;
+    delete global.MAX_REPLICATION_FACTOR;
+  }
+  if (global.MAX_NUMBER_OF_SHARDS) {
+    exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
+    delete global.MAX_NUMBER_OF_SHARDS;
+  }
+  if (global.FORCE_ONE_SHARD) {
+    exports.forceOneShard = global.FORCE_ONE_SHARD;
+    delete global.FORCE_ONE_SHARD;
+  }
+
   // /////////////////////////////////////////////////////////////////////////////
   // / @brief whether or not clustering is enabled
   // /////////////////////////////////////////////////////////////////////////////
 
   exports.isCluster = function () {
-    var role = global.ArangoServerState.role();
+    let role = global.ArangoServerState.role();
     return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
   };
 

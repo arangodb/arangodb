@@ -31,15 +31,17 @@
 
 using namespace arangodb::velocypack;
 
-std::string HexDump::toHex(uint8_t value) {
-  std::string result("0x");
+std::string HexDump::toHex(uint8_t value, std::string const& header) {
+  std::string result(header);
+  appendHex(result, value);
+  return result;
+}
 
+void HexDump::appendHex(std::string& result, uint8_t value) {
   uint8_t x = value / 16;
   result.push_back((x < 10 ? ('0' + x) : ('a' + x - 10)));
   x = value % 16;
   result.push_back((x < 10 ? ('0' + x) : ('a' + x - 10)));
-
-  return result;
 }
 
 std::string HexDump::toString() const {
@@ -59,7 +61,8 @@ std::string HexDump::toString() const {
       }
     }
 
-    result.append(HexDump::toHex(it));
+    result.append(header);
+    HexDump::appendHex(result, it);
     ++current;
   }
 

@@ -22,22 +22,32 @@
 
 #include "HotBackup.h"
 
-#include "Cluster/ServerState.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
 
-HotBackup::HotBackup() {
+HotBackup::HotBackup(application_features::ApplicationServer& server)
+#ifdef USE_ENTERPRISE
+    : _server(server) {
+#else
+{
+#endif
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
   } else if (EngineSelectorFeature::isRocksDB()) {
     _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    _engine = BACKUP_ENGINE::MMFILES;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
   }
 }
 
@@ -46,16 +56,14 @@ arangodb::Result HotBackup::execute (
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
   switch (_engine) {
-  case BACKUP_ENGINE::ROCKSDB:
-    return executeRocksDB(command, payload, report);
-  case BACKUP_ENGINE::MMFILES:
-    return executeMMFiles(command, payload, report);
-  case BACKUP_ENGINE::CLUSTER:
-    return executeCoordinator(command, payload, report);
+    case BACKUP_ENGINE::ROCKSDB:
+      return executeRocksDB(command, payload, report);
+    case BACKUP_ENGINE::CLUSTER:
+      return executeCoordinator(command, payload, report);
   }
 
-  return arangodb::Result();
-
+  return arangodb::Result(
+    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
 }
 
 
@@ -64,11 +72,14 @@ arangodb::Result HotBackup::executeRocksDB(
 
 #ifdef USE_ENTERPRISE
   std::shared_ptr<RocksDBHotBackup> operation;
-  operation = RocksDBHotBackup::operationFactory(command, payload, report);
+  auto& feature = _server.getFeature<HotBackupFeature>();
+  operation = RocksDBHotBackup::operationFactory(feature, command, payload, report);
 
   if (operation->valid()) {
     operation->execute();
   } // if
+
+  operation->doAuditLog();
 
   // if !valid() then !success() already set
   if (!operation->success()) {
@@ -84,39 +95,31 @@ arangodb::Result HotBackup::executeRocksDB(
 
 arangodb::Result HotBackup::executeCoordinator(
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-
 #ifdef USE_ENTERPRISE
+  auto& feature = _server.getFeature<ClusterFeature>();
   if (command == "create") {
-    return hotBackupCoordinator(payload, report);
+    return hotBackupCoordinator(feature, payload, report);
   } else if (command == "lock") {
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, "backup locks not implemented on coordinators");
   } else if (command == "restore") {
-    return hotRestoreCoordinator(payload, report);
+    return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {
-    return deleteHotBackupsOnCoordinator(payload, report);
+    return deleteHotBackupsOnCoordinator(feature, payload, report);
   } else if (command == "list") {
-    return listHotBackupsOnCoordinator(payload, report);
+    return listHotBackupsOnCoordinator(feature, payload, report);
   } else if (command == "upload") {
-    return uploadBackupsOnCoordinator(payload, report);
+    return uploadBackupsOnCoordinator(feature, payload, report);
   } else if (command == "download") {
-    return downloadBackupsOnCoordinator(payload, report);
+    return downloadBackupsOnCoordinator(feature, payload, report);
   } else {
     return arangodb::Result(
       TRI_ERROR_NOT_IMPLEMENTED, command + " is not implemented on coordinators");
   }
-
 #endif
 
   // We'll never get here
   return arangodb::Result();
-
-}
-
-arangodb::Result HotBackup::executeMMFiles(
-  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-  return arangodb::Result(
-    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented on MMFiles");
 }
 
 }

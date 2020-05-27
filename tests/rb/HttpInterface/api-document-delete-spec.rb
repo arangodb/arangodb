@@ -22,9 +22,9 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns an error if document handle is missing" do
+      it "returns an error if document identifier is missing" do
         cmd = "/_api/document"
-        doc = ArangoDB.log_delete("#{prefix}-missing-handle", cmd)
+        doc = ArangoDB.log_delete("#{prefix}-missing-identifier", cmd)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -33,9 +33,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document identifier is corrupted" do
         cmd = "/_api/document/123456"
-        doc = ArangoDB.log_delete("#{prefix}-bad-handle", cmd)
+        doc = ArangoDB.log_delete("#{prefix}-bad-identifier", cmd)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -44,9 +44,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document identifier is corrupted" do
         cmd = "/_api/document//123456"
-        doc = ArangoDB.log_delete("#{prefix}-bad-handle2", cmd)
+        doc = ArangoDB.log_delete("#{prefix}-bad-identifier2", cmd)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -66,9 +66,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document handle is unknown" do
+      it "returns an error if document identifier is unknown" do
         cmd = "/_api/document/#{@cid}/234567"
-        doc = ArangoDB.log_delete("#{prefix}-unknown-handle", cmd)
+        doc = ArangoDB.log_delete("#{prefix}-unknown-identifier", cmd)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)

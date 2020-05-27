@@ -134,10 +134,10 @@ function success (options) {
       duration: 2,
       failed: 1,
       failTest: {
-        status: false,
+        status: true,
         total: 1,
         duration: 1,
-        message: 'this testcase will always success.'
+        message: 'this testcase will always succeed.'
       },
       failSuccessTest: {
         status: true,

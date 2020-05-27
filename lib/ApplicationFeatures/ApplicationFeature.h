@@ -23,15 +23,21 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+#include <string>
+#include <typeindex>
+#include <unordered_set>
+#include <vector>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
-#include <unordered_set>
-
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 namespace application_features {
+class ApplicationServer;
 
 class ApplicationFeature {
   friend class ApplicationServer;
@@ -54,6 +60,9 @@ class ApplicationFeature {
     STOPPED,
     UNPREPARED
   };
+
+  // return the ApplicationServer instance
+  ApplicationServer& server() const { return _server; }
 
   // return the feature's name
   std::string const& name() const { return _name; }
@@ -88,7 +97,7 @@ class ApplicationFeature {
   }
 
   // names of features required to be enabled for this feature to be enabled
-  std::vector<std::string> const& requires() const { return _requires; }
+  std::vector<std::type_index> const& requires() const { return _requires; }
 
   // register whether the feature requires elevated privileges
   void requiresElevatedPrivileges(bool value) {
@@ -101,11 +110,15 @@ class ApplicationFeature {
   }
 
   // whether the feature starts before another
-  bool doesStartBefore(std::string const& other) const;
+  template <typename T>
+  bool doesStartBefore() const {
+    return doesStartBefore(std::type_index(typeid(T)));
+  }
 
   // whether the feature starts after another
-  bool doesStartAfter(std::string const& other) const {
-    return !doesStartBefore(other);
+  template <typename T>
+  bool doesStartAfter() const {
+    return !doesStartBefore(std::type_index(typeid(T)));
   }
 
   // add the feature's options to the global list of options. this method will
@@ -145,52 +158,68 @@ class ApplicationFeature {
   virtual void unprepare();
 
   // return startup dependencies for feature
-  std::unordered_set<std::string> const& startsAfter() const {
+  std::unordered_set<std::type_index> const& startsAfter() const {
     return _startsAfter;
   }
 
   // return startup dependencies for feature
-  std::unordered_set<std::string> const& startsBefore() const {
+  std::unordered_set<std::type_index> const& startsBefore() const {
     return _startsBefore;
   }
 
  protected:
-  // return the ApplicationServer instance
-  ApplicationServer* server() const { return &_server; }
-
   void setOptional() { setOptional(true); }
 
   // make the feature optional (or not)
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void requires(std::string const& other) { _requires.emplace_back(other); }
+  void requires(std::type_index other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
-  void startsAfter(std::string const& other) { _startsAfter.emplace(other); }
+  template <typename T>
+  void startsAfter() {
+    startsAfter(std::type_index(typeid(T)));
+  }
+
+  // register a start dependency upon another feature by typeid
+  void startsAfter(std::type_index type);
 
   // register a start dependency upon another feature
-  void startsBefore(std::string const& other) { _startsBefore.emplace(other); }
+  template <typename T>
+  void startsBefore() {
+    startsBefore(std::type_index(typeid(T)));
+  }
+
+  void startsBefore(std::type_index type);
 
   // determine all direct and indirect ancestors of a feature
-  std::unordered_set<std::string> ancestors() const;
+  std::unordered_set<std::type_index> ancestors() const;
 
-  void onlyEnabledWith(std::string const& other) {
-    _onlyEnabledWith.emplace(other);
+  template <typename T>
+  void onlyEnabledWith() {
+    _onlyEnabledWith.emplace(std::type_index(typeid(T)));
   }
 
   // return the list of other features that this feature depends on
-  std::unordered_set<std::string> const& onlyEnabledWith() const {
+  std::unordered_set<std::type_index> const& onlyEnabledWith() const {
     return _onlyEnabledWith;
   }
 
  private:
+  // whether the feature starts before another
+  bool doesStartBefore(std::type_index type) const;
+
+  void addAncestorToAllInPath(
+      std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
+      std::type_index ancestorType);
+
   // set a feature's state. this method should be called by the
   // application server only
   void state(State state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
-  void determineAncestors();
+  void determineAncestors(std::type_index as);
 
   // pointer to application server
   ApplicationServer& _server;
@@ -200,19 +229,19 @@ class ApplicationFeature {
 
   // names of other features required to be enabled if this feature
   // is enabled
-  std::vector<std::string> _requires;
+  std::vector<std::type_index> _requires;
 
   // a list of start dependencies for the feature
-  std::unordered_set<std::string> _startsAfter;
+  std::unordered_set<std::type_index> _startsAfter;
 
   // a list of start dependencies for the feature
-  std::unordered_set<std::string> _startsBefore;
+  std::unordered_set<std::type_index> _startsBefore;
 
   // list of direct and indirect ancestors of the feature
-  std::unordered_set<std::string> _ancestors;
+  std::unordered_set<std::type_index> _ancestors;
 
   // enable this feature only if the following other features are enabled
-  std::unordered_set<std::string> _onlyEnabledWith;
+  std::unordered_set<std::type_index> _onlyEnabledWith;
 
   // state of feature
   State _state;

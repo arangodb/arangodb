@@ -23,12 +23,6 @@
 #include <string>
 #include <vector>
 
-// Makes copy constructor and operator= private
-// Deprecated: now just use =delete.
-#define DISALLOW_COPY_AND_ASSIGN(type)    \
-  type(const type&);                      \
-  void operator=(const type&)
-
 #if defined(__GNUC__) || defined(__clang__)
 #define OPENFST_DEPRECATED(message) __attribute__((deprecated(message)))
 #elif defined(_MSC_VER)
@@ -37,21 +31,12 @@
 #define OPENFST_DEPRECATED(message)
 #endif
 
-// MSVC2013 doesn't support 'constexpr'
-#if defined _MSC_VER && _MSC_VER < 1900
-  #define FST_CONSTEXPR
-#else
-  #define FST_CONSTEXPR constexpr
-#endif
-
 #include <fst/config.h>
 #include <fst/types.h>
 #include <fst/lock.h>
 #include <fst/flags.h>
 #include <fst/log.h>
 #include <fst/icu.h>
-
-using std::string;
 
 void FailedNewHandler();
 
@@ -90,18 +75,18 @@ class CheckSummer {
     }
   }
 
-  void Update(string const &data) {
+  void Update(std::string const &data) {
     for (int i = 0; i < data.size(); ++i) {
       check_sum_[(count_++) % kCheckSumLength] ^= data[i];
     }
   }
 
-  string Digest() { return check_sum_; }
+  std::string Digest() { return check_sum_; }
 
  private:
   static const int kCheckSumLength = 32;
   int count_;
-  string check_sum_;
+  std::string check_sum_;
 
   CheckSummer(const CheckSummer &) = delete;
   CheckSummer &operator=(const CheckSummer &) = delete;

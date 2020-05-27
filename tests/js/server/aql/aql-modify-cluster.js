@@ -1088,7 +1088,7 @@ function ahuacatlInsertSuite () {
       assertEqual(doc1._key, '123');
       assertEqual(doc1.name, 'ulf');
 
-      var rv2 = db._query(" INSERT { _key: '123', name: 'ulfine' } IN @@cn OPTIONS { overwrite: true } RETURN {old: OLD, new: NEW}", { "@cn": cn1 });
+      var rv2 = db._query(" INSERT { _key: '123', name: 'ulfine' } IN @@cn OPTIONS { overwriteMode: 'replace' } RETURN {old: OLD, new: NEW}", { "@cn": cn1 });
       assertEqual(1, c1.count());
       var doc2 = rv2.toArray()[0];
       assertEqual(doc2.new._key, '123');
@@ -1128,6 +1128,36 @@ function ahuacatlInsertSuite () {
 
     },
 
+    testInsertOverwriteUpsert : function () {
+      c1.truncate();
+      assertEqual(0, c1.count());
+
+      var rv1 = db._query(" INSERT { _key: '123', name: 'ulf', drinks : { hard : 'korn' } } IN @@cn OPTIONS { overwrite: false } RETURN NEW", { "@cn": cn1 });
+      assertEqual(1, c1.count());
+      var doc1 = rv1.toArray()[0];
+      assertEqual(doc1._key, '123');
+      assertEqual(doc1.name, 'ulf');
+
+      var rv2 = db._query(`
+        INSERT { _key: '123'
+               , partner: 'ulfine'
+               , drinks : { soft : 'korn' }
+               } IN @@cn OPTIONS { overwriteMode : 'update'
+                                 , mergeObjects: false
+                                 }
+          RETURN {old: OLD, new: NEW}`
+      , { "@cn": cn1 });
+      assertEqual(1, c1.count());
+      var doc2 = rv2.toArray()[0];
+      assertEqual(doc2.new._key, '123');
+      assertEqual(doc2.new.name, 'ulf');
+      assertEqual(doc2.new.partner, 'ulfine');
+      assertEqual(doc2.new.drinks, { 'soft' : 'korn'});
+      assertEqual(doc2.old._rev, doc1._rev);
+      assertEqual(doc2.old._key, doc1._key);
+      assertEqual(doc2.old.name, doc1.name);
+    },
+
   }; // end insert tests
 }
 
@@ -1160,18 +1190,26 @@ function ahuacatlUpdateSuite () {
       c3 = db._create(cn3, {numberOfShards: 1});
       c4 = db._create(cn4, {numberOfShards: 1});
 
+      let docs = [];
       for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c1.insert(docs);
+      docs = [];
       for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c2.insert(docs);
+      docs = [];
       for (i = 0; i < 100; ++i) {
-        c3.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c3.insert(docs);
+      docs = [];
       for (i = 0; i < 50; ++i) {
-        c4.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c4.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

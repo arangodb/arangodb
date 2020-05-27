@@ -45,8 +45,8 @@ struct SLPA : public SimpleAlgorithm<SLPAValue, int8_t, uint64_t> {
   unsigned _maxCommunities = 1;
 
  public:
-  explicit SLPA(VPackSlice userParams)
-      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>("slpa", userParams) {
+  explicit SLPA(application_features::ApplicationServer& server, VPackSlice userParams)
+      : SimpleAlgorithm<SLPAValue, int8_t, uint64_t>(server, "slpa", userParams) {
     arangodb::velocypack::Slice val = userParams.get("threshold");
     if (val.isNumber()) {
       _threshold = std::min(1.0, std::max(val.getDouble(), 0.0));

@@ -137,7 +137,34 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
     }
 
     case ValueType::BCD: {
+      if (options->disallowBCD) {
+        throw Exception(Exception::BuilderBCDDisallowed);
+      }
       throw Exception(Exception::NotImplemented);
+    }
+    
+    case ValueType::Tagged: {
+      if (options->disallowTags) {
+        throw Exception(Exception::BuilderTagsDisallowed);
+      }
+      if (head == 0xee) {
+        // 1 byte tag type
+        // the actual Slice (without tag) must be at least one byte long
+        validateBufferLength(1 + 1 + 1, length, true);
+        VELOCYPACK_ASSERT(length > 2);
+        ptr += 2;
+        length -= 2;
+      } else if (head == 0xef) {
+        // 8 bytes tag type
+        // the actual Slice (without tag) must be at least one byte long
+        validateBufferLength(1 + 8 + 1, length, true);
+        VELOCYPACK_ASSERT(length > 9);
+        ptr += 9;
+        length -= 9;
+      } else {
+        throw Exception(Exception::NotImplemented);
+      }
+      break;
     }
 
     case ValueType::External: {
@@ -429,12 +456,18 @@ void Validator::validateCompactObject(uint8_t const* ptr, std::size_t length) {
     // validate key
     validate(p, e - p, true);
     Slice key(p);
-    if (!key.isString() && !key.isInteger()) {
+    bool isString = key.isString();
+    if (!isString && !key.isInteger()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
+    }
+    ValueLength keySize = key.byteSize();
+    // validate key
+    if (isString && options->validateUtf8Strings) {
+      validate(p, keySize, true);
     }
 
     // validate value
-    p += key.byteSize();
+    p += keySize;
     validate(p, e - p, true);
     p += Slice(p).byteSize();
   }
@@ -528,11 +561,16 @@ void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
     validate(member, indexTable - member, true);
 
     Slice key(member);
-    if (!key.isString() && !key.isInteger()) {
+    bool const isString = key.isString();
+    if (!isString && !key.isInteger()) {
       throw Exception(Exception::ValidatorInvalidLength, "Invalid object key type");
     }
 
     ValueLength const keySize = key.byteSize();
+    if (isString && options->validateUtf8Strings) {
+      validate(member, keySize, true);
+    }
+
     uint8_t const* value = member + keySize;
     if (value >= indexTable) {
       throw Exception(Exception::ValidatorInvalidLength, "Object value leaking into index table");

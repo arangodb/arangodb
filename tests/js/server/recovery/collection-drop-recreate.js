@@ -58,7 +58,7 @@ function runSetup () {
   require('internal').wait(5, false);
 
   c.save({ _key: 'crashme' }, true);
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

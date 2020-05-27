@@ -54,9 +54,11 @@ struct PruneOptions {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
 
-  PruneOptions(const Weight &weight_threshold, StateId state_threshold,
-               ArcFilter filter, std::vector<Weight> *distance = nullptr,
-               float delta = kDelta, bool threshold_initial = false)
+  explicit PruneOptions(const Weight &weight_threshold = Weight::Zero(),
+                        StateId state_threshold = kNoStateId,
+                        ArcFilter filter = ArcFilter(),
+                        std::vector<Weight> *distance = nullptr,
+                        float delta = kDelta, bool threshold_initial = false)
       : weight_threshold(std::move(weight_threshold)),
         state_threshold(state_threshold),
         filter(std::move(filter)),
@@ -92,9 +94,10 @@ struct PruneOptions {
 //
 //   Plus(weight, Weight::One()) == Weight::One()
 template <class Arc, class ArcFilter,
-          typename std::enable_if<
-              (Arc::Weight::Properties() & kPath) == kPath>::type * = nullptr>
-void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts) {
+          typename std::enable_if<IsPath<typename Arc::Weight>::value>::type * = 
+              nullptr>
+void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts =
+                                     PruneOptions<Arc, ArcFilter>()) {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   using StateHeap = Heap<StateId, internal::PruneCompare<StateId, Weight>>;
@@ -173,9 +176,9 @@ void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts) {
 }
 
 template <class Arc, class ArcFilter,
-          typename std::enable_if<
-              (Arc::Weight::Properties() & kPath) != kPath>::type * = nullptr>
-void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &) {
+          typename std::enable_if<!IsPath<typename Arc::Weight>::value>::type * = nullptr>
+void Prune(MutableFst<Arc> *fst, const PruneOptions<Arc, ArcFilter> &opts =
+                                     PruneOptions<Arc, ArcFilter>()) {
   FSTERROR() << "Prune: Weight needs to have the path property: "
              << Arc::Weight::Type();
   fst->SetProperties(kError, kError);
@@ -212,10 +215,11 @@ void Prune(MutableFst<Arc> *fst, typename Arc::Weight weight_threshold,
 //
 //   Plus(weight, Weight::One()) == Weight::One()
 template <class Arc, class ArcFilter,
-          typename std::enable_if<
-              (Arc::Weight::Properties() & kPath) == kPath>::type * = nullptr>
-void Prune(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
-           const PruneOptions<Arc, ArcFilter> &opts) {
+          typename std::enable_if<IsPath<typename Arc::Weight>::value>::type * =
+              nullptr>
+void Prune(
+    const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
+    const PruneOptions<Arc, ArcFilter> &opts = PruneOptions<Arc, ArcFilter>()) {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   using StateHeap = Heap<StateId, internal::PruneCompare<StateId, Weight>>;
@@ -301,8 +305,8 @@ void Prune(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
 }
 
 template <class Arc, class ArcFilter,
-          typename std::enable_if<
-              (Arc::Weight::Properties() & kPath) != kPath>::type * = nullptr>
+          typename std::enable_if<!IsPath<typename Arc::Weight>::value>::type
+              * = nullptr>
 void Prune(const Fst<Arc> &, MutableFst<Arc> *ofst,
            const PruneOptions<Arc, ArcFilter> &) {
   FSTERROR() << "Prune: Weight needs to have the path property: "

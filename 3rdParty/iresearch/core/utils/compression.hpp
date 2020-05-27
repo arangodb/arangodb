@@ -30,23 +30,11 @@
 #include <map>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            compression definition
-// -----------------------------------------------------------------------------
-
-#define DECLARE_COMPRESSION_TYPE() DECLARE_TYPE_ID(iresearch::compression::type_id)
-#define DEFINE_COMPRESSION_TYPE_NAMED(class_type, class_name) \
-  DEFINE_TYPE_ID(class_type, iresearch::compression::type_id) { \
-    static iresearch::compression::type_id type(class_name); \
-  return type; \
-}
-#define DEFINE_COMPRESSION_TYPE(class_type) DEFINE_COMPRESSION_TYPE_NAMED(class_type, #class_type)
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                          compression registration
 // -----------------------------------------------------------------------------
 
 #define REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, source) \
-  static iresearch::compression::compression_registrar compression_registrar ## _ ## line(compression_name::type(), compressor_factory, decompressor_factory, source)
+  static iresearch::compression::compression_registrar compression_registrar ## _ ## line(::iresearch::type<compression_name>::get(), compressor_factory, decompressor_factory, source)
 #define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, decompressor_factory, file, line) \
   REGISTER_COMPRESSION__(compression_name, compressor_factory, decompressor_factory, line, file ":" TOSTRING(line))
 #define REGISTER_COMPRESSION(compression_name, compressor_factory, decompressor_factory) \
@@ -113,21 +101,6 @@ struct IRESEARCH_API decompressor {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class type_id
-////////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API type_id : public irs::type_id, private util::noncopyable {
- public:
-  type_id(const string_ref& name) NOEXCEPT
-    : name_(name) {
-  }
-  operator const type_id*() const NOEXCEPT { return this; }
-  const string_ref& name() const NOEXCEPT { return name_; }
-
- private:
-  string_ref name_;
-};
-
 typedef irs::compression::compressor::ptr(*compressor_factory_f)(const options&);
 typedef irs::compression::decompressor::ptr(*decompressor_factory_f)();
 
@@ -137,12 +110,12 @@ typedef irs::compression::decompressor::ptr(*decompressor_factory_f)();
 
 class IRESEARCH_API compression_registrar {
  public:
-   compression_registrar(const compression::type_id& type,
+   compression_registrar(const type_info& type,
                          compressor_factory_f compressor_factory,
                          decompressor_factory_f decompressor_factory,
                          const char* source = nullptr);
 
-  operator bool() const NOEXCEPT {
+  operator bool() const noexcept {
     return registered_;
   }
 
@@ -161,15 +134,15 @@ IRESEARCH_API bool exists(const string_ref& name, bool load_library = true);
 IRESEARCH_API compressor::ptr get_compressor(
     const string_ref& name,
     const options& opts,
-    bool load_library = true) NOEXCEPT;
+    bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a compressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
 inline compressor::ptr get_compressor(
-    const type_id& type,
+    const type_info& type,
     const options& opts,
-    bool load_library = true) NOEXCEPT {
+    bool load_library = true) noexcept {
   return get_compressor(type.name(), opts, load_library);
 }
 
@@ -178,14 +151,14 @@ inline compressor::ptr get_compressor(
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API decompressor::ptr get_decompressor(
     const string_ref& name,
-    bool load_library = true) NOEXCEPT;
+    bool load_library = true) noexcept;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a decompressor by name, or nullptr if not found
 ////////////////////////////////////////////////////////////////////////////////
 inline decompressor::ptr get_decompressor(
-    const type_id& type,
-    bool load_library = true) NOEXCEPT {
+    const type_info& type,
+    bool load_library = true) noexcept {
   return get_decompressor(type.name(), load_library);
 }
 
@@ -210,8 +183,10 @@ IRESEARCH_API bool visit(const std::function<bool(const string_ref&)>& visitor);
 /// @class raw
 /// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API raw {
-  DECLARE_COMPRESSION_TYPE();
+struct IRESEARCH_API none {
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::compression::none";
+  }
 
   static void init();
 

@@ -22,7 +22,7 @@
 
 #include "GeneralConnection.h"
 
-#include <fuerte/FuerteLogger.h>
+#include "debugging.h"
 
 namespace arangodb { namespace fuerte {
 
@@ -31,117 +31,152 @@ GeneralConnection<ST>::GeneralConnection(
     EventLoopService& loop, detail::ConnectionConfiguration const& config)
     : Connection(config),
       _io_context(loop.nextIOContext()),
-      _protocol(loop, *_io_context),
-      _timeout(*_io_context),
-      _state(Connection::State::Disconnected) {}
+      _proto(loop, *_io_context),
+      _state(Connection::State::Disconnected),
+      _numQueued(0) {}
 
 /// @brief cancel the connection, unusable afterwards
 template <SocketType ST>
 void GeneralConnection<ST>::cancel() {
   FUERTE_LOG_DEBUG << "cancel: this=" << this << "\n";
-  _state.store(State::Failed);
-  std::weak_ptr<Connection> self = shared_from_this();
-  asio_ns::post(*_io_context, [self, this] {
+  asio_ns::post(*_io_context, [self(weak_from_this()), this] {
     auto s = self.lock();
     if (s) {
-      shutdownConnection(Error::Canceled);
+      _state.store(State::Failed);
       drainQueue(Error::Canceled);
+      shutdownConnection(Error::Canceled);
     }
   });
 }
 
 // Activate this connection.
 template <SocketType ST>
+void GeneralConnection<ST>::start() {
+  asio_ns::post(*this->_io_context, [self = Connection::shared_from_this()] {
+    static_cast<GeneralConnection<ST>&>(*self).startConnection();
+  });
+}
+
+template <SocketType ST>
 void GeneralConnection<ST>::startConnection() {
   // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
-    auto cb = [self = Connection::shared_from_this()] {
-      auto* thisPtr = static_cast<GeneralConnection<ST>*>(self.get());
-      thisPtr->tryConnect(thisPtr->_config._maxConnectRetries);
-    };
-    asio_ns::post(*this->_io_context, std::move(cb));
+    FUERTE_ASSERT(_config._maxConnectRetries > 0);
+    tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now(),
+               asio_ns::error_code());
+  } else {
+    FUERTE_LOG_DEBUG << "startConnection: this=" << this << " found unexpected state "
+      << static_cast<int>(exp) << " not equal to 'Disconnected'";
+    FUERTE_ASSERT(false);
   }
 }
 
 // shutdown the connection and cancel all pending messages.
 template <SocketType ST>
-void GeneralConnection<ST>::shutdownConnection(const Error err) {
-  FUERTE_LOG_DEBUG << "shutdownConnection: this=" << this << "\n";
-
-  if (_state.load() != Connection::State::Failed) {
-    _state.store(Connection::State::Disconnected);
+void GeneralConnection<ST>::shutdownConnection(const Error err, std::string const& msg,
+                                               bool mayRestart) {
+  FUERTE_LOG_DEBUG << "shutdownConnection: err = '" << to_string(err) << "' ";
+  if (!msg.empty()) {
+    FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
   }
+  FUERTE_LOG_DEBUG<< "this=" << this << "\n";
 
-  asio_ns::error_code ec;
-  _timeout.cancel(ec);
-  if (ec) {
-    FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
+  bool mustShutdown = false;
+
+  auto state = _state.load();
+  if (state != Connection::State::Failed) {
+    state = Connection::State::Disconnected;
+    // hack to fix SSL streams
+    if constexpr (ST == SocketType::Ssl) {
+      state = Connection::State::Failed;
+      mayRestart = false;
+      mustShutdown = true;
+    }
+    _state.store(state);
   }
-
-  try {
-    _protocol.shutdown();  // Close socket
-  } catch (...) {
-  }
-
-  abortOngoingRequests(err);
-
+  
   // clear buffer of received messages
   _receiveBuffer.consume(_receiveBuffer.size());
+  abortOngoingRequests(err);
+
+  _proto.shutdown([=, self(shared_from_this())](auto const& ec) {
+    if (mayRestart && requestsLeft() > 0) {
+      startConnection();
+      // cancel was triggered externally, no need to notify
+      onFailure(err, msg);
+    }
+  });  // Close socket
+  if (mustShutdown) {
+    terminateActivity();
+  }
 }
 
 // Connect with a given number of retries
 template <SocketType ST>
-void GeneralConnection<ST>::tryConnect(unsigned retries) {
-  assert(_state.load() == Connection::State::Connecting);
+void GeneralConnection<ST>::tryConnect(unsigned retries,
+                                       std::chrono::steady_clock::time_point start,
+                                       asio_ns::error_code const& ec) {
+  if (_state.load() != Connection::State::Connecting) {
+    return;
+  }
+
+  if (retries == 0) {
+    _state.store(Connection::State::Failed, std::memory_order_release);
+    drainQueue(Error::CouldNotConnect);
+    std::string msg("connecting failed: '");
+    msg.append((ec != asio_ns::error::operation_aborted) ? ec.message() : "timeout");
+    msg.push_back('\'');
+    shutdownConnection(Error::CouldNotConnect, msg);
+    return;
+  }
+  
   FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
+  auto self = Connection::shared_from_this();
 
-  asio_ns::error_code ec;
-  _timeout.cancel(ec);
-  if (ec) {
-    FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
-  }
-
-  auto self = shared_from_this();
-  if (_config._connectTimeout.count() > 0) {
-    _timeout.expires_after(_config._connectTimeout);
-    _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
-      if (!ec) {
-        _protocol.shutdown();
-      }
-    });
-  }
-
-  _protocol.connect(_config, [self, this,
-                              retries](asio_ns::error_code const& ec) {
-    _timeout.cancel();
+  _proto.timer.expires_at(start + _config._connectTimeout);
+  _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
+    if (!ec && self->state() == Connection::State::Connecting) {
+      // the connect handler below gets 'operation_aborted' error
+      static_cast<GeneralConnection<ST>&>(*self)._proto.cancel();
+    }
+  });
+  
+  _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
+    GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
+    me._proto.timer.cancel();
+    // Note that is is possible that the alarm has already gone off, in which
+    // case its closure might already be queued right after ourselves! However,
+    // we now quickly set the state to `Connected` in which case the closure will
+    // no longer shut down the socket and ruin our success.
     if (!ec) {
-      finishConnect();
+      me.finishConnect();
       return;
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-      tryConnect(retries - 1);
+      auto end = std::min(std::chrono::steady_clock::now() + me._config._connectRetryPause,
+                          start + me._config._connectTimeout);
+      me._proto.timer.expires_at(end);
+      me._proto.timer.async_wait([self(std::move(self)), start, retries](auto ec) mutable {
+        GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
+        me.tryConnect(!ec ? retries - 1 : 0, start, ec);
+      });
     } else {
-      _state.store(Connection::State::Failed, std::memory_order_release);
-      shutdownConnection(Error::CouldNotConnect);
-      drainQueue(Error::CouldNotConnect);
-      onFailure(Error::CouldNotConnect, "connecting failed: " + ec.message());
+      me.tryConnect(0, start, ec); // <- handles errors
     }
   });
 }
 
 template <SocketType ST>
-void GeneralConnection<ST>::restartConnection(const Error error) {
+void GeneralConnection<ST>::restartConnection(const Error err) {
   // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
     FUERTE_LOG_DEBUG << "restartConnection this=" << this << "\n";
-    shutdownConnection(error);  // Terminate connection
-    if (requestsLeft() > 0) {
-      startConnection();  // switches state to Conneccting
-    }
+    // Terminate connection, restarts if required
+    shutdownConnection(err, /*msg*/ "", /*mayRestart*/err != Error::Canceled);
   }
 }
 
@@ -153,17 +188,19 @@ void GeneralConnection<ST>::asyncReadSome() {
   // TODO perform a non-blocking read
 
   // Start reading data from the network.
-  auto self = shared_from_this();
-  auto cb = [self, this](asio_ns::error_code const& ec, size_t transferred) {
-    // received data is "committed" from output sequence to input sequence
-    _receiveBuffer.commit(transferred);
-    FUERTE_LOG_TRACE << "received " << transferred << " bytes\n";
-    asyncReadCallback(ec);
-  };
 
   // reserve 32kB in output buffer
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
-  _protocol.socket.async_read_some(mutableBuff, std::move(cb));
+  
+  _proto.socket.async_read_some(mutableBuff, [self = shared_from_this()]
+                                 (auto const& ec, size_t nread) {
+    FUERTE_LOG_TRACE << "received " << nread << " bytes\n";
+    
+    // received data is "committed" from output sequence to input sequence
+    auto& me = static_cast<GeneralConnection<ST>&>(*self);
+    me._receiveBuffer.commit(nread);
+    me.asyncReadCallback(ec);
+  });
 }
 
 template class arangodb::fuerte::GeneralConnection<SocketType::Tcp>;

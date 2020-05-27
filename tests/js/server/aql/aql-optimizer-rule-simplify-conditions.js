@@ -40,9 +40,6 @@ function optimizerRuleTestSuite () {
 
   return {
 
-    setUp : function () {},
-    tearDown : function () {},
-
     testRuleDisabled : function () {
       let queries = [
         "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[0]",

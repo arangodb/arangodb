@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestAuthReloadHandler : public arangodb::RestBaseHandler {
  public:
-  RestAuthReloadHandler(GeneralRequest*, GeneralResponse*);
+  RestAuthReloadHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAuthReloadHandler"; }

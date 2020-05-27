@@ -31,12 +31,14 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
-#include "Cluster/ClusterComm.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -69,8 +71,8 @@ void Constituent::configure(Agent* agent) {
 }
 
 // Default ctor
-Constituent::Constituent()
-    : Thread("Constituent"),
+Constituent::Constituent(application_features::ApplicationServer& server)
+    : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),
@@ -428,12 +430,14 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
 /// @brief Call to election
 void Constituent::callElection() {
   using namespace std::chrono;
-  auto timeout =
+  
+  // simon: whats the minimum timeout here ?
+  network::Timeout timeout(0.9 * _agent->config().minPing() * _agent->config().timeoutMult());
+  auto endTime =
       steady_clock::now() +
       duration<double>(_agent->config().minPing() * _agent->config().timeoutMult());
 
   std::vector<std::string> active = _agent->config().active();
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   term_t savedTerm;
   {
@@ -448,9 +452,6 @@ void Constituent::callElection() {
     _leaderID = NO_LEADER;
   }
 
-  std::string body;
-  std::stringstream path;
-
   int64_t electionEventCount = countRecentElectionEvents(3600);
   if (electionEventCount <= 0) {
     electionEventCount = 1;
@@ -464,31 +465,53 @@ void Constituent::callElection() {
                                     << electionEventCount << " for next term...";
   }
 
-  path << "/_api/agency_priv/requestVote?term=" << savedTerm
-       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-       << "&prevLogTerm=" << _agent->lastLog().term
-       << "&timeoutMult=" << electionEventCount;
-
-  auto cc = ClusterComm::instance();
-
+  auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = timeout;
+  reqOpts.param("term", std::to_string(savedTerm)).param("candidateId", _id)
+         .param("prevLogIndex", std::to_string(_agent->lastLog().index))
+         .param("prevLogTerm", std::to_string(_agent->lastLog().term))
+         .param("timeoutMult", std::to_string(electionEventCount));
+  
   // Ask everyone for their vote
-  std::unordered_map<std::string, std::string> headerFields;
-  for (auto const& i : active) {
-    if (i != _id) {
-      if (!isStopping() && cc != nullptr) {
-        cc->asyncRequest(coordinatorTransactionID, _agent->config().poolAt(i),
-                         rest::RequestType::GET, path.str(),
-                         std::make_shared<std::string>(body), headerFields, nullptr,
-                         0.9 * _agent->config().minPing() * _agent->config().timeoutMult(),
-                         /*single*/ true);
-      }
-    }
-  }
-
   // Collect ballots. I vote for myself.
-  size_t yea = 1;
-  size_t nay = 0;
-  size_t majority = size() / 2 + 1;
+  auto yea = std::make_shared<std::atomic<size_t>>(1);
+  auto nay = std::make_shared<std::atomic<size_t>>(0);
+  auto maxTermReceived = std::make_shared<std::atomic<term_t>>(savedTerm);
+  const size_t majority = size() / 2 + 1;
+  
+  for (auto const& i : active) {
+    if (i == _id) {
+      continue;
+    }
+    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, "/_api/agency_priv/requestVote",
+                         VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
+      if (r.ok() && r.response->statusCode() == 200) {
+        VPackSlice slc = r.slice();
+
+        // Got ballot
+        if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
+          // Follow right away?
+          term_t receivedT = slc.get("term").getUInt();
+          if (receivedT > savedTerm) { // only count vote if term is equal or smaller
+            term_t expectedT = maxTermReceived->load();
+            maxTermReceived->compare_exchange_strong(expectedT, receivedT);
+          } else {
+            // Check result and counts
+            if (slc.get("voteGranted").getBool()) {  // majority in favour?
+              yea->fetch_add(1);
+              // Vote is counted as yea
+              return;
+            }
+          }
+        }
+      }
+      // Count the vote as a nay
+      nay->fetch_add(1);
+    });
+  }
 
   // We collect votes, we leave the following loop when one of the following
   // conditions is met:
@@ -496,60 +519,38 @@ void Constituent::callElection() {
   //   (2) A majority of yea votes (including ourselves) have been received
   //   (3) At least yyy time has passed, in this case we give up without
   //       a conclusive vote.
-  while (true) {
-    if (steady_clock::now() >= timeout) {  // Timeout.
+  while (!isStopping()) {
+    if (steady_clock::now() >= endTime) {  // Timeout.
       MUTEX_LOCKER(locker, _termVoteLock);
       followNoLock(0);  // do not adjust _term or _votedFor
       break;
     }
-
-    if (!isStopping() && cc != nullptr) {
-      auto res = cc->wait(coordinatorTransactionID, 0, "",
-                          duration<double>(timeout - steady_clock::now()).count());
-
-      if (res.status == CL_COMM_SENT) {
-        auto body = res.result->getBodyVelocyPack();
-        VPackSlice slc = body->slice();
-
-        // Got ballot
-        if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
-          // Follow right away?
-          term_t t = slc.get("term").getUInt();
-          {
-            MUTEX_LOCKER(locker, _termVoteLock);
-            if (t > _term) {
-              followNoLock(t, NO_LEADER);
-              break;
-            }
-          }
-
-          // Check result and counts
-          if (slc.get("voteGranted").getBool()) {  // majority in favour?
-            if (++yea >= majority) {
-              lead(savedTerm);
-              break;
-            }
-            // Vote is counted as yea, continue loop
-            continue;
-          }
-        }
+    
+    term_t t = maxTermReceived->load();
+    {
+      MUTEX_LOCKER(locker, _termVoteLock);
+      if (t > _term) {
+        followNoLock(t, NO_LEADER);
+        break;
       }
     }
-    // Count the vote as a nay
-    if (++nay > size() - majority) {  // Network: majority against?
-      follow(0);                      // do not adjust _term or _votedFor
+    
+    if (yea->load() >= majority) {
+      lead(savedTerm);
       break;
     }
+    
+    if (nay->load() > size() - majority) {  // Network: majority against?
+      follow(0);                            // do not adjust _term or _votedFor
+      break;
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   LOG_TOPIC("b5061", DEBUG, Logger::AGENCY)
-      << "Election: Have received " << yea << " yeas and " << nay
-      << " nays, the " << (yea >= majority ? "yeas" : "nays") << " have it.";
-
-  // Clean up
-  if (!isStopping() && cc != nullptr) {
-    cc->drop(coordinatorTransactionID, 0, "");
-  }
+      << "Election: Have received " << yea->load() << " yeas and " << nay->load()
+      << " nays, the " << (yea->load() >= majority ? "yeas" : "nays") << " have it.";
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
@@ -596,10 +597,11 @@ void Constituent::run() {
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, *_vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                               arangodb::aql::QueryString(aql),
+                               bindVars, nullptr);
 
-    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -782,7 +784,8 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
 }
 
 // Notify about heartbeat being sent out:
-void Constituent::notifyHeartbeatSent(std::string followerId) {
+void Constituent::notifyHeartbeatSent(std::string const& followerId) {
+  double now = TRI_microtime();
   MUTEX_LOCKER(guard, _heartBeatMutex);
-  _lastHeartbeatSent[followerId] = TRI_microtime();
+  _lastHeartbeatSent[followerId] = now;
 }

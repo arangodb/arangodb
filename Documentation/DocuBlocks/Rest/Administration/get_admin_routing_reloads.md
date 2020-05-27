@@ -12,4 +12,3 @@ Reloads the routing information from the collection *routing*.
 @RESTRETURNCODE{200}
 Routing information was reloaded successfully.
 @endDocuBlock
-

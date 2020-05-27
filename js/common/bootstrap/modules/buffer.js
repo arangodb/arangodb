@@ -8,8 +8,9 @@
   no-unused-expressions:0,
   no-unused-vars:0
   */
-/*jshint ignore:start */
-/*eslint-disable */
+/* jshint ignore:start */
+/* eslint-disable */
+/* global BYTELENGTH */
 global.DEFINE_MODULE('buffer', (function () {
   'use strict'
   /*eslint-enable */
@@ -17,7 +18,7 @@ global.DEFINE_MODULE('buffer', (function () {
   const exports = {};
 
   var SlowBuffer = require('internal').SlowBuffer;
-      
+
   SlowBuffer.prototype._PRINT = function(context) {
     context.output += '<SlowBuffer';
     for (let i = 0; i < Math.min(this.length, 50); i++) {
@@ -202,7 +203,7 @@ global.DEFINE_MODULE('buffer', (function () {
 
   function createBufferFromString(subject, encoding) {
     const buffer = Object.create(Buffer.prototype);
-    const length = Buffer.byteLength(subject, encoding);
+    const length = BYTELENGTH(subject, encoding);
     buffer.parent = new SlowBuffer(length);
     buffer.offset = 0;
     buffer.length = buffer.parent.write(subject, encoding);
@@ -481,7 +482,7 @@ global.DEFINE_MODULE('buffer', (function () {
   };
 
   // byteLength
-  Buffer.byteLength = SlowBuffer.byteLength;
+  Buffer.byteLength = BYTELENGTH;
 
   // fill(value, start=0, end=buffer.length)
   Buffer.prototype.fill = function fill (value, start, end) {

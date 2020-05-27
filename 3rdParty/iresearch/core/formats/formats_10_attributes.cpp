@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -32,7 +31,6 @@ NS_BEGIN(version10)
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(documents);
-DEFINE_ATTRIBUTE_TYPE(documents)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         term_meta
@@ -40,7 +38,3 @@ DEFINE_ATTRIBUTE_TYPE(documents)
 
 NS_END // version10
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

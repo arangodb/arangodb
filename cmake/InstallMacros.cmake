@@ -88,7 +88,7 @@ if (INSTALL_MACROS_NO_TARGET_INSTALL)
   macro (install_command_alias name where alias)
     if (MSVC)
       add_custom_command(
-        OUTPUT ${name}
+        OUTPUT ${alias}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${name}>
 	${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/$<CONFIG>/${alias}${CMAKE_EXECUTABLE_SUFFIX})
@@ -97,7 +97,7 @@ if (INSTALL_MACROS_NO_TARGET_INSTALL)
         DESTINATION ${where})
     else ()
       add_custom_command(
-        OUTPUT ${name}
+        OUTPUT ${alias}
         POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E create_symlink ${name}
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${alias}) 

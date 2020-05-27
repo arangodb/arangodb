@@ -23,32 +23,30 @@
 #ifndef ARANGOD_AQL_SUBQUERY_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace aql {
-
+class ExecutionBlock;
 class NoStats;
 class OutputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
-class SubqueryExecutorInfos : public ExecutorInfos {
+class SubqueryExecutorInfos {
  public:
-  SubqueryExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                        std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                        RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                        std::unordered_set<RegisterId> const& registersToClear,
-                        std::unordered_set<RegisterId>&& registersToKeep,
-                        ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
+  SubqueryExecutorInfos(ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
 
   SubqueryExecutorInfos() = delete;
-  SubqueryExecutorInfos(SubqueryExecutorInfos&&);
+  SubqueryExecutorInfos(SubqueryExecutorInfos&&) noexcept = default;
   SubqueryExecutorInfos(SubqueryExecutorInfos const&) = delete;
-  ~SubqueryExecutorInfos();
+  ~SubqueryExecutorInfos() = default;
 
   inline ExecutionBlock& getSubquery() const { return _subQuery; }
   inline bool returnsData() const { return _returnsData; }
@@ -62,13 +60,13 @@ class SubqueryExecutorInfos : public ExecutorInfos {
   bool const _isConst;
 };
 
-template<bool isModificationSubquery>
+template <bool isModificationSubquery>
 class SubqueryExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -76,7 +74,7 @@ class SubqueryExecutor {
   using Stats = NoStats;
 
   SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos);
-  ~SubqueryExecutor();
+  ~SubqueryExecutor() = default;
 
   /**
    * @brief Shutdown will be called once for every query
@@ -91,12 +89,14 @@ class SubqueryExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutionState, Stats, AqlCall>;
 
-  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
-    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-    return {rv.first, {}, std::move(rv.second)};
-  }
+  // skipRowsRange <=> isModificationSubquery
+
+  template <bool E = isModificationSubquery, std::enable_if_t<E, int> = 0>
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutionState, Stats, size_t, AqlCall>;
 
  private:
   /**
@@ -105,12 +105,34 @@ class SubqueryExecutor {
    */
   void writeOutput(OutputAqlItemRow& output);
 
+  /**
+   * @brief Translate _state => to to execution allowing waiting.
+   *
+   */
+  auto translatedReturnType() const noexcept -> ExecutionState;
+
+  /**
+   * @brief Initiliaze the subquery with next input row
+   *        Throws if there was an error during initialize cursor
+   *
+   *
+   * @param input Container for more data
+   * @return std::tuple<ExecutionState, bool> Result state (WAITING or
+   * translatedReturnType())
+   * bool flag if we have initialized the query, if not, we require more data.
+   */
+  auto initializeSubquery(AqlItemBlockInputRange& input)
+      -> std::tuple<ExecutionState, bool>;
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
+
  private:
   Fetcher& _fetcher;
   SubqueryExecutorInfos& _infos;
 
   // Upstream state, used to determine if we are done with all subqueries
-  ExecutionState _state;
+  ExecutorState _state;
 
   // Flag if the current subquery is initialized and worked on
   bool _subqueryInitialized;
@@ -129,6 +151,8 @@ class SubqueryExecutor {
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _input;
+
+  size_t _skipped = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -33,7 +33,7 @@ the transport, one of ['http', 'https', 'velocystream']
 @RESTREPLYBODY{server,object,required,admin_echo_server_struct}
 
 @RESTSTRUCT{address,admin_echo_server_struct,string,required,}
-the bind address of the endpoint this request was sent to 
+the bind address of the endpoint this request was sent to
 
 @RESTSTRUCT{port,admin_echo_server_struct,integer,required,}
 the port this request was sent to
@@ -82,4 +82,3 @@ relative path of this request
 List of digits of the sent characters
 
 @endDocuBlock
-

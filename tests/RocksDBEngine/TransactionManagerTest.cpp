@@ -26,7 +26,9 @@
 #include <mutex>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 
 using namespace arangodb;
 
@@ -38,15 +40,17 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  transaction::Manager tm(false);
+  application_features::ApplicationServer server{nullptr, nullptr};
+  transaction::ManagerFeature feature(server);
+  transaction::Manager tm(feature);
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500) );
   tm.releaseTransactions();
 
-  tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
+  tm.registerTransaction(static_cast<TRI_voc_tid_t>(1), false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
+  tm.unregisterTransaction(static_cast<TRI_voc_tid_t>(1), false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
   EXPECT_TRUE(tm.holdTransactions(500) );
@@ -55,7 +59,9 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
-  transaction::Manager tm(false);
+  application_features::ApplicationServer server{nullptr, nullptr};
+  transaction::ManagerFeature feature(server);
+  transaction::Manager tm(feature);
 
   std::chrono::milliseconds five(5);
   std::mutex mu;
@@ -72,7 +78,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
       cv.notify_all();
     }
 
-    tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
+    tm.registerTransaction(static_cast<TRI_voc_tid_t>(1), false);
     EXPECT_EQ(tm.getActiveTransactionCount(), 1);
   };
 
@@ -86,6 +92,6 @@ TEST(RocksDBTransactionManager, test_overlapping) {
 
   reader.join();
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
+  tm.unregisterTransaction(static_cast<TRI_voc_tid_t>(1), false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }

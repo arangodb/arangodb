@@ -11,8 +11,8 @@ The timestamp when this task was created
 
 @RESTSTRUCT{type,api_task_struct,string,required,}
 What type of task is this [ `periodic`, `timed`]
- - periodic are tasks that repeat periodically
- - timed are tasks that execute once at a specific time
+  - periodic are tasks that repeat periodically
+  - timed are tasks that execute once at a specific time
 
 @RESTSTRUCT{period,api_task_struct,number,required,}
 this task should run each `period` seconds

@@ -27,6 +27,7 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/EndpointIp.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/HttpCommTask.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -116,9 +117,9 @@ void AcceptorTcp<T>::open() {
   }
   _open = true;
   
-  LOG_TOPIC("853A9", DEBUG, arangodb::Logger::COMMUNICATION)
-  << "successfully opened acceptor TCP";
-  
+  LOG_TOPIC("853a9", DEBUG, arangodb::Logger::COMMUNICATION)
+      << "successfully opened acceptor TCP";
+
   asyncAccept();
 }
 
@@ -128,18 +129,25 @@ void AcceptorTcp<T>::close() {
     _asioSocket->timer.cancel();
   }
   if (_open) {
+    _open = false;  // make sure the _open flag is `false` before we
+                    // cancel/close the acceptor, since otherwise the
+                    // handleError method will restart async_accept.
     _acceptor.close();
-    if (_asioSocket) {
-      asio_ns::error_code ec;
-      _asioSocket->shutdown(ec);
-    }
+    _asioSocket.reset();
   }
-  _open = false;
+}
+
+template<SocketType T>
+void AcceptorTcp<T>::cancel() {
+  _acceptor.cancel();
 }
 
 template <>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
   _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
@@ -160,13 +168,13 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
-    
-    LOG_TOPIC("853AA", DEBUG, arangodb::Logger::COMMUNICATION)
-    << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
+
+    LOG_TOPIC("853aa", DEBUG, arangodb::Logger::COMMUNICATION)
+        << "accepted connection from " << info.clientAddress << ":" << info.clientPort;
 
     auto commTask =
-        std::make_shared<HttpCommTask<SocketType::Tcp>>(_server,
-                                                        std::move(info), std::move(as));
+        std::make_shared<HttpCommTask<SocketType::Tcp>>(_server, std::move(info),
+                                                        std::move(as));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
@@ -177,8 +185,29 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
 
 template <>
 void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
-  TRI_ASSERT(false); // MSVC requires the implementation to exist
+  TRI_ASSERT(false);  // MSVC requires the implementation to exist
 }
+
+namespace {
+bool tls_h2_negotiated(SSL* ssl) {
+
+  const unsigned char *next_proto = nullptr;
+  unsigned int next_proto_len = 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+  // allowed value is "h2"
+  // http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+  if (next_proto != nullptr && next_proto_len == 2 &&
+      memcmp(next_proto, "h2", 2) == 0) {
+    return true;
+  }
+  return false;
+}
+}
+
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
@@ -186,23 +215,21 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
   auto* ptr = proto.get();
   proto->timer.expires_from_now(std::chrono::seconds(60));
   proto->timer.async_wait([ptr](asio_ns::error_code const& ec) {
-    if (ec) { // canceled
+    if (ec) {  // canceled
       return;
     }
-    asio_ns::error_code err;
-    ptr->shutdown(err); // ignore error
+    ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
   });
-  
+
   auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
     as->timer.cancel();
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
-      << "error during TLS handshake: '" << ec.message() << "'";
-      asio_ns::error_code err;
-      as->shutdown(err); // ignore error
+          << "error during TLS handshake: '" << ec.message() << "'";
+      as.reset(); // ungraceful shutdown
       return;
     }
-    
+
     // set the endpoint
     ConnectionInfo info;
     info.endpoint = _endpoint->specification();
@@ -210,33 +237,40 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     info.encryptionType = _endpoint->encryption();
     info.serverAddress = _endpoint->host();
     info.serverPort = _endpoint->port();
-    
+
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
     
-    auto commTask =
-    std::make_unique<HttpCommTask<SocketType::Ssl>>(_server,
-                                                    std::move(info), std::move(as));
-    _server.registerTask(std::move(commTask));
+    std::shared_ptr<CommTask> task;
+    if (tls_h2_negotiated(as->socket.native_handle())) {
+      task = std::make_shared<H2CommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+    } else {
+      task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+    }
+    
+    _server.registerTask(std::move(task));
   };
   ptr->handshake(std::move(cb));
 }
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
 
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContext());
+  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);
       return;
     }
-    
+
     performHandshake(std::move(_asioSocket));
     this->asyncAccept();
   };
@@ -247,7 +281,6 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
 }
 }  // namespace rest
 }  // namespace arangodb
-
 
 template class arangodb::rest::AcceptorTcp<SocketType::Tcp>;
 template class arangodb::rest::AcceptorTcp<SocketType::Ssl>;

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FORMAT_10_ATTRIBUTES
@@ -37,7 +36,9 @@ NS_BEGIN(version10)
 /// @brief document set
 //////////////////////////////////////////////////////////////////////////////
 struct documents final : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "documents";
+  }
 
   documents() = default;
 
@@ -64,6 +65,11 @@ struct term_meta final : irs::term_meta {
 }; // term_meta
 
 NS_END // version10
+
+// use base irs::term_meta type for ancestors
+template<>
+struct type<version10::term_meta> : type<irs::term_meta> { };
+
 NS_END // ROOT
 
 #endif // IRESEARCH_FORMAT_10_ATTRIBUTES

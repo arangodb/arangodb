@@ -22,11 +22,14 @@
 
 #include "gtest/gtest.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 // test setup
 #include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
@@ -43,7 +46,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -60,100 +62,55 @@ extern const char* ARGV0;  // defined in main.cpp
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-class SortLimitTest : public ::testing::Test {
+// The Paramater is a Flag if we activate fullcount or not.
+
+class SortLimitTest
+    : public ::testing::TestWithParam<bool>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
   std::vector<arangodb::velocypack::Builder> insertedDocs;
 
-  SortLimitTest()
-      : engine(server),
-        server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+  SortLimitTest() : server() {
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                             0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
-                          false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
-
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                              testDBInfo(server.server()));
 
     CreateCollection();
   }
 
-  ~SortLimitTest() {
-    vocbase.reset();
-    system.reset();  // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+  ~SortLimitTest() { vocbase.reset(); }
 
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
+  auto doFullCount() -> bool { return GetParam(); }
 
-    for (auto& f : features) {
-      f.first->unprepare();
+  auto buildOptions(std::string rules) -> std::shared_ptr<arangodb::velocypack::Builder> {
+    if (doFullCount()) {
+      return arangodb::velocypack::Parser::fromJson(
+          "{\"optimizer\": {\"rules\": [" + rules + "]}, \"fullCount\": true}");
     }
+    return arangodb::velocypack::Parser::fromJson(
+        "{\"optimizer\": {\"rules\": [" + rules + "]}}");
   }
 
   std::string sorterType(TRI_vocbase_t& vocbase, std::string const& queryString,
                          std::string rules = "") {
-    auto options = arangodb::velocypack::Parser::fromJson(
-        "{\"optimizer\": {\"rules\": [" + rules + "]}}");
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
+    auto options = buildOptions(rules);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                               nullptr, options);
 
     auto result = query.explain();
     VPackSlice nodes = result.data->slice().get("nodes");
     EXPECT_TRUE(nodes.isArray());
 
     std::string strategy;
-    for (auto const& it : VPackArrayIterator(nodes)) {
+    for (VPackSlice it : VPackArrayIterator(nodes)) {
       if (!it.get("type").isEqualString("SortNode")) {
         continue;
       }
@@ -162,24 +119,23 @@ class SortLimitTest : public ::testing::Test {
       strategy = it.get("strategy").copyString();
     }
 
-    EXPECT_TRUE(!strategy.empty());
+    EXPECT_FALSE(strategy.empty());
     return strategy;
   }
 
-  bool verifyExpectedResults(TRI_vocbase_t& vocbase, std::string const& queryString,
+  void verifyExpectedResults(TRI_vocbase_t& vocbase, std::string const& queryString,
                              std::vector<size_t> const& expected,
-                             std::string rules = "") {
-    auto options = arangodb::velocypack::Parser::fromJson(
-        "{\"optimizer\": {\"rules\": [" + rules + "]}}");
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                               nullptr, options, arangodb::aql::PART_MAIN);
-    std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+                             size_t fullCount, std::string rules = "") {
+    auto options = buildOptions(rules);
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+    arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                               nullptr, options);
     arangodb::aql::QueryResult result;
 
     while (true) {
-      auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
+      auto state = query.execute(result);
       if (state == arangodb::aql::ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        query.sharedState()->waitForAsyncWakeup();
       } else {
         break;
       }
@@ -188,21 +144,25 @@ class SortLimitTest : public ::testing::Test {
     EXPECT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
-    if (slice.length() != expected.size()) {
-      return false;
-    }
+    ASSERT_EQ(slice.length(), expected.size());
 
     size_t i = 0;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      if (0 != arangodb::basics::VelocyPackHelper::compare(
-                   insertedDocs[expected[i++]].slice(), resolved, true)) {
-        return false;
-      };
-    }
 
-    return true;
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                       insertedDocs[expected[i]].slice(), resolved, true))
+          << insertedDocs[expected[i]].slice().toJson() << " vs. "
+          << resolved.toJson();
+      i++;
+    }
+    auto actualFullCount = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+        result.extra->slice(), std::vector<std::string>{"stats", "fullCount"}, 0);
+    if (doFullCount()) {
+      EXPECT_EQ(actualFullCount, fullCount);
+    } else {
+      EXPECT_EQ(actualFullCount, 0);
+    }
   }
 
   // create collection0, insertedDocs[0, 999]
@@ -210,7 +170,7 @@ class SortLimitTest : public ::testing::Test {
     auto createJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase->createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
     size_t total = 1000;
@@ -219,137 +179,139 @@ class SortLimitTest : public ::testing::Test {
           "{ \"valAsc\": " + std::to_string(i) +
           ", \"valDsc\": " + std::to_string(total - 1 - i) +
           ", \"mod\": " + std::to_string(i % 100) + "}"));
-    };
+    }
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(*vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
-    EXPECT_TRUE(insertedDocs.size() == total);
+    EXPECT_TRUE(trx.commit().ok());
+    EXPECT_EQ(insertedDocs.size(), total);
   }
 };
 
-TEST_F(SortLimitTest, CheckSimpleLimitSortedAscInInsertionOrder) {
+INSTANTIATE_TEST_CASE_P(SortLimitTest, SortLimitTest, ::testing::Bool());
+
+TEST_P(SortLimitTest, CheckSimpleLimitSortedAscInInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckLimitWithOffsetSortedAscInInsertionOrder) {
+TEST_P(SortLimitTest, CheckLimitWithOffsetSortedAscInInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckSimpleLimitSortedAscInReverseInsertionOrder) {
+TEST_P(SortLimitTest, CheckSimpleLimitSortedAscInReverseInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valDsc LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {999, 998, 997, 996, 995,
                                   994, 993, 992, 991, 990};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckLimitWithOffsetSortedAscInReverseInsertionOrder) {
+TEST_P(SortLimitTest, CheckLimitWithOffsetSortedAscInReverseInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valDsc LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {989, 988, 987, 986, 985,
                                   984, 983, 982, 981, 980};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckSimpleLimitSortedDscInInsertionOrder) {
+TEST_P(SortLimitTest, CheckSimpleLimitSortedDscInInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc DESC LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {999, 998, 997, 996, 995,
                                   994, 993, 992, 991, 990};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckLimitWithOffsetSortedDscInInsertionOrder) {
+TEST_P(SortLimitTest, CheckLimitWithOffsetSortedDscInInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc DESC LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {989, 988, 987, 986, 985,
                                   984, 983, 982, 981, 980};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckSimpleLimitSortedDscInReverseInsertionOrder) {
+TEST_P(SortLimitTest, CheckSimpleLimitSortedDscInReverseInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valDsc DESC LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckLimitWithOffsetSortedDscInReverseInsertionOrder) {
+TEST_P(SortLimitTest, CheckLimitWithOffsetSortedDscInReverseInsertionOrder) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valDsc DESC LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckLimitWithOffsetCompoundSort) {
+TEST_P(SortLimitTest, CheckLimitWithOffsetCompoundSort) {
   std::string query =
       "FOR d IN testCollection0 SORT d.mod, d.valAsc LIMIT 2, 5 RETURN  d";
   std::vector<size_t> expected = {200, 300, 400, 500, 600};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckLimitWithOffsetCompoundSortAgain) {
+TEST_P(SortLimitTest, CheckLimitWithOffsetCompoundSortAgain) {
   std::string query =
       "FOR d IN testCollection0 SORT d.mod, d.valAsc LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {1,   101, 201, 301, 401,
                                   501, 601, 701, 801, 901};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }
 
-TEST_F(SortLimitTest, CheckInterloperFilterMovedUp) {
+TEST_P(SortLimitTest, CheckInterloperFilterMovedUp) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc FILTER d.mod == 0 LIMIT 0, 10 "
       "RETURN d";
   std::vector<size_t> expected = {0,   100, 200, 300, 400,
                                   500, 600, 700, 800, 900};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
+  verifyExpectedResults(*vocbase, query, expected, 10);
 }
 
-TEST_F(SortLimitTest, CheckInterloperFilterNotMoved) {
+TEST_P(SortLimitTest, CheckInterloperFilterNotMoved) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc FILTER d.mod == 0 LIMIT 0, 10 "
       "RETURN d";
   std::string rules = "\"-move-filters-up\", \"-move-filters-up-2\"";
   std::vector<size_t> expected = {0,   100, 200, 300, 400,
                                   500, 600, 700, 800, 900};
-  EXPECT_TRUE(sorterType(*vocbase, query, rules) == "standard");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected, rules));
+  EXPECT_EQ(sorterType(*vocbase, query, rules), "standard");
+  verifyExpectedResults(*vocbase, query, expected, 10, rules);
 }
 
-TEST_F(SortLimitTest, CheckInterloperEnumerateList) {
+TEST_P(SortLimitTest, CheckInterloperEnumerateList) {
   std::string query =
       "FOR d IN testCollection0 SORT d.valAsc FOR e IN 1..10 FILTER e == 1 "
       "LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-  EXPECT_TRUE(sorterType(*vocbase, query) == "standard");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  EXPECT_EQ(sorterType(*vocbase, query), "standard");
+  verifyExpectedResults(*vocbase, query, expected, 1000);
 }

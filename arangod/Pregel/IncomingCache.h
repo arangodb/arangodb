@@ -30,7 +30,6 @@
 #include <map>
 
 #include "Basics/Common.h"
-#include "Basics/StringHeap.h"
 
 #include "Pregel/GraphStore.h"
 #include "Pregel/Iterators.h"
@@ -58,7 +57,7 @@ class InCache {
   virtual void _set(PregelShard shard, velocypack::StringRef const& vertexId, M const& data) = 0;
 
  public:
-  virtual ~InCache() {}
+  virtual ~InCache() = default;
 
   MessageFormat<M> const* format() const { return _format; }
   uint64_t containedMessageCount() const { return _containedMessageCount; }

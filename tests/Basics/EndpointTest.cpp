@@ -25,15 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
+#include "Mocks/LogLevels.h"
+
+#include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
 #include "Endpoint/EndpointUnixDomain.h"
+#include "Logger/LogTopic.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -49,15 +52,17 @@ using namespace std;
 
 #define CHECK_ENDPOINT_FEATURE(type, specification, feature, expected) \
   e = FACTORY(type, specification); \
-  EXPECT_TRUE((expected) == (e->feature())); \
+  EXPECT_EQ((expected), (e->feature())); \
   delete e;
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
   e = arangodb::Endpoint::serverFactory(specification, 1, true); \
-  EXPECT_TRUE((expected) == (e->feature())); \
+  EXPECT_EQ((expected), (e->feature())); \
   delete e;
 
 TEST(EndpointTest, EndpointInvalid) {
+  tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> suppressor;
+
   Endpoint* e = nullptr;
 
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory(""));

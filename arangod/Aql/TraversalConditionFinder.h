@@ -36,7 +36,7 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
   TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered);
 
-  ~TraversalConditionFinder() {}
+  ~TraversalConditionFinder() = default;
 
   bool before(ExecutionNode*) override final;
 
@@ -48,7 +48,7 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
  private:
   ExecutionPlan* _plan;
   std::unique_ptr<Condition> _condition;
-  arangodb::HashSet<VariableId> _filterVariables;
+  ::arangodb::containers::HashSet<VariableId> _filterVariables;
   bool* _planAltered;
 };
 }  // namespace aql

@@ -23,8 +23,8 @@
 #ifndef ARANGOD_GRAPH_CLUSTER_TRAVERSER_CACHE_H
 #define ARANGOD_GRAPH_CLUSTER_TRAVERSER_CACHE_H 1
 
+#include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/TraverserCache.h"
 #include <velocypack/StringRef.h>
 
@@ -44,13 +44,15 @@ class Slice;
 }  // namespace velocypack
 
 namespace graph {
+struct BaseOptions;
 
 class ClusterTraverserCache : public TraverserCache {
  public:
-  ClusterTraverserCache(aql::Query* query,
-                        std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+  ClusterTraverserCache(aql::QueryContext& query,
+                        std::unordered_map<ServerID, aql::EngineId> const* engines,
+                        BaseOptions*);
 
-  ~ClusterTraverserCache() {}
+  ~ClusterTraverserCache() = default;
 
   /// @brief will convert the EdgeDocumentToken to a slice
   arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
@@ -74,7 +76,7 @@ class ClusterTraverserCache : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const& idToken) override;
 
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const {
+  std::unordered_map<ServerID, aql::EngineId> const* engines() const {
     return _engines;
   }
 
@@ -83,7 +85,7 @@ class ClusterTraverserCache : public TraverserCache {
     return _cache;
   }
 
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake() {
+  std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake() {
     return _datalake;
   }
 
@@ -95,8 +97,8 @@ class ClusterTraverserCache : public TraverserCache {
   /// @brief link by _id into our data dump
   std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice> _cache;
   /// @brief dump for our edge and vertex documents
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
+  std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>> _datalake;
+  std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };
 
 }  // namespace graph

@@ -24,14 +24,15 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
+#include <rocksdb/status.h>
+
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-
-#include <rocksdb/status.h>
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace rocksdb {
 class Comparator;
@@ -43,6 +44,7 @@ class Cache;
 }
 class LogicalCollection;
 class RocksDBMethods;
+struct OperationOptions;
 
 class RocksDBIndex : public Index {
  protected:
@@ -61,7 +63,8 @@ class RocksDBIndex : public Index {
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
 
-  uint64_t objectId() const { return _objectId; }
+  uint64_t objectId() const { return _objectId.load(); }
+  uint64_t tempObjectId() const { return _tempObjectId.load(); }
 
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const override {
@@ -91,7 +94,7 @@ class RocksDBIndex : public Index {
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const& doc,
-                        Index::OperationMode mode) = 0;
+                        OperationOptions& options) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -109,9 +112,11 @@ class RocksDBIndex : public Index {
 
   rocksdb::Comparator const* comparator() const;
 
-  RocksDBKeyBounds getBounds() const {
-    return RocksDBIndex::getBounds(type(), _objectId, _unique);
+  RocksDBKeyBounds getBounds(std::uint64_t objectId) const {
+    return RocksDBIndex::getBounds(type(), objectId, _unique);
   }
+
+  RocksDBKeyBounds getBounds() const { return getBounds(_objectId); }
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
@@ -122,13 +127,15 @@ class RocksDBIndex : public Index {
 
   bool isPersistent() const override final { return true; }
 
+  Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
+
  protected:
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
+  RocksDBIndex(IndexId id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-               uint64_t objectId, bool useCache);
+               uint64_t objectId, uint64_t tempObjectId, bool useCache);
 
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  RocksDBIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
@@ -139,11 +146,14 @@ class RocksDBIndex : public Index {
   };
 
  protected:
-  uint64_t _objectId;
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
   bool _cacheEnabled;
+
+ private:
+  std::atomic<uint64_t> _objectId;
+  std::atomic<uint64_t> _tempObjectId;
 };
 }  // namespace arangodb
 

@@ -26,12 +26,14 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+class ClusterInfo;
+
 namespace transaction {
 namespace cluster {
   
 void abortLeaderTransactionsOnShard(TRI_voc_cid_t cid);
 void abortFollowerTransactionsOnShard(TRI_voc_cid_t cid);
-void abortTransactionsWithFailedServers();
+void abortTransactionsWithFailedServers(ClusterInfo&);
 
 }  // namespace cluster
 }  // namespace transaction

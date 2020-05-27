@@ -63,7 +63,7 @@ class WorkerContext {
         _edgeCount(0),
         _readAggregators(nullptr),
         _writeAggregators(nullptr) {}
-  virtual ~WorkerContext() {}
+  virtual ~WorkerContext() = default;
 
   inline uint64_t vertexCount() const { return _vertexCount; }
 

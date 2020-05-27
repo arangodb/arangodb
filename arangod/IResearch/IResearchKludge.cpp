@@ -52,18 +52,16 @@ void mangleNumeric(std::string& name) {
   name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
 }
 
-void mangleStringField( // mangle string field
-    std::string& name, // field name
-    arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
-) {
+void mangleStringField(
+    std::string& name,
+    arangodb::iresearch::FieldMeta::Analyzer const& analyzer) {
   name += ANALYZER_DELIMITER;
   name += analyzer._shortName;
 }
 
-void demangleStringField( // demangle string field
-    std::string& name, // field name
-    arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer // analyzer to apply
-) {
+void demangleStringField(
+    std::string& name,
+    arangodb::iresearch::FieldMeta::Analyzer const& analyzer) {
   // +1 for preceding '\1'
   auto const suffixSize = 1 + analyzer._shortName.size();
 

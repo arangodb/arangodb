@@ -29,10 +29,21 @@
 #include "shared.hpp"
 #include "ebo.hpp"
 #include "log.hpp"
+#include "math_utils.hpp"
 #include "type_utils.hpp"
 
 NS_ROOT
 NS_BEGIN(memory)
+
+inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  assert(math::is_power2(alignment));
+  return (size + alignment - 1) & (0 - alignment);
+#else
+  return IRS_ASSERT(math::is_power2(alignment)),
+         (size + alignment - 1) & (0 - alignment);
+#endif
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    is_shared_ptr
@@ -41,7 +52,7 @@ NS_BEGIN(memory)
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API void dump_mem_stats_trace() NOEXCEPT;
+IRESEARCH_API void dump_mem_stats_trace() noexcept;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class aligned_storage
@@ -57,26 +68,26 @@ class aligned_storage {
     // e.g. 2, 4, 8, 16, 32, or 64
     #pragma warning(disable: 4324) // structure was padded due to __declspec(align())
     template<size_t Align> struct align_t {};
-    template<> struct ALIGNAS(1)    align_t<1> { };
-    template<> struct ALIGNAS(2)    align_t<2> { };
-    template<> struct ALIGNAS(4)    align_t<4> { };
-    template<> struct ALIGNAS(8)    align_t<8> { };
-    template<> struct ALIGNAS(16)   align_t<16> { };
-    template<> struct ALIGNAS(32)   align_t<32> { };
-    template<> struct ALIGNAS(64)   align_t<64> { };
-    template<> struct ALIGNAS(128)  align_t<128> { };
-    template<> struct ALIGNAS(256)  align_t<256> { };
-    template<> struct ALIGNAS(512)  align_t<512> { };
-    template<> struct ALIGNAS(1024) align_t<1024> { };
-    template<> struct ALIGNAS(2048) align_t<2048> { };
-    template<> struct ALIGNAS(4096) align_t<4096> { };
-    template<> struct ALIGNAS(8192) align_t<8192> { };
+    template<> struct alignas(1)    align_t<1> { };
+    template<> struct alignas(2)    align_t<2> { };
+    template<> struct alignas(4)    align_t<4> { };
+    template<> struct alignas(8)    align_t<8> { };
+    template<> struct alignas(16)   align_t<16> { };
+    template<> struct alignas(32)   align_t<32> { };
+    template<> struct alignas(64)   align_t<64> { };
+    template<> struct alignas(128)  align_t<128> { };
+    template<> struct alignas(256)  align_t<256> { };
+    template<> struct alignas(512)  align_t<512> { };
+    template<> struct alignas(1024) align_t<1024> { };
+    template<> struct alignas(2048) align_t<2048> { };
+    template<> struct alignas(4096) align_t<4096> { };
+    template<> struct alignas(8192) align_t<8192> { };
     #pragma warning(default: 4324)
   #else
-    template<size_t Align> struct ALIGNAS(Align) align_t { };
+    template<size_t Align> struct alignas(Align) align_t { };
   #endif
 
-  static_assert(ALIGNOF(align_t<Alignment>) == Alignment, "ALIGNOF(align_t<Alignment>) != Alignment");
+  static_assert(alignof(align_t<Alignment>) == Alignment, "alignof(align_t<Alignment>) != Alignment");
 
  public:
   union {
@@ -104,7 +115,7 @@ struct aligned_union {
   };
 #endif
 
-  static const size_t alignment_value = ALIGNOF(type);
+  static const size_t alignment_value = alignof(type);
   static const size_t size_value =  sizeof(type);
 }; // aligned_union 
 
@@ -116,7 +127,7 @@ struct aligned_union {
 template<typename... Types>
 struct aligned_type {
   template<typename T>
-  T* as() NOEXCEPT {
+  T* as() noexcept {
     #if defined(_MSC_VER) && (_MSC_VER < 1900)
       const bool result = irs::is_convertible<T, Types...>();
       assert(result);
@@ -131,7 +142,7 @@ struct aligned_type {
   }
 
   template<typename T>
-  const T* as() const NOEXCEPT {
+  const T* as() const noexcept {
     return const_cast<aligned_type&>(*this).as<T>();
   }
 
@@ -151,7 +162,7 @@ struct aligned_type {
   }
 
   template<typename T>
-  void destroy() NOEXCEPT {
+  void destroy() noexcept {
     #if defined(_MSC_VER) && (_MSC_VER < 1900)
       const bool result = irs::is_convertible<T, Types...>();
       assert(result);
@@ -178,11 +189,11 @@ struct allocator_deallocator : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::allocator_type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_deallocator(const allocator_type& alloc) NOEXCEPT
+  allocator_deallocator(const allocator_type& alloc) noexcept
     : allocator_ref_t(alloc) {
   }
 
-  void operator()(pointer p) const NOEXCEPT {
+  void operator()(pointer p) const noexcept {
     auto& alloc = const_cast<allocator_ref_t*>(this)->get();
 
     // deallocate storage
@@ -198,11 +209,11 @@ struct allocator_deleter : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_deleter(allocator_type& alloc) NOEXCEPT
+  allocator_deleter(allocator_type& alloc) noexcept
     : allocator_ref_t(alloc) {
   }
 
-  void operator()(pointer p) const NOEXCEPT {
+  void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
     auto& alloc = const_cast<allocator_deleter*>(this)->get();
@@ -222,11 +233,11 @@ class allocator_array_deallocator : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_array_deallocator(const allocator_type& alloc, size_t size) NOEXCEPT
+  allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
     : allocator_ref_t(alloc), size_(size) {
   }
 
-  void operator()(pointer p) const NOEXCEPT {
+  void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
     auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
@@ -246,11 +257,11 @@ class allocator_array_deleter : public compact_ref<0, Alloc> {
   typedef typename allocator_ref_t::type allocator_type;
   typedef typename allocator_type::pointer pointer;
 
-  allocator_array_deleter(allocator_type& alloc, size_t size) NOEXCEPT
+  allocator_array_deleter(allocator_type& alloc, size_t size) noexcept
     : allocator_ref_t(alloc), size_(size) {
   }
 
-  void operator()(pointer p) const NOEXCEPT {
+  void operator()(pointer p) const noexcept {
     typedef std::allocator_traits<allocator_type> traits_t;
 
     auto& alloc = const_cast<allocator_type&>(allocator_ref_t::get());
@@ -280,16 +291,16 @@ struct noop_deleter {
 template<typename T>
 struct managed_deleter {
  public:
-  managed_deleter(T* ptr = nullptr) NOEXCEPT
+  managed_deleter(T* ptr = nullptr) noexcept
     : ptr_(ptr) {
   }
 
-  managed_deleter(managed_deleter&& rhs) NOEXCEPT
+  managed_deleter(managed_deleter&& rhs) noexcept
     : ptr_(rhs.ptr_) {
     rhs.ptr_ = nullptr;
   }
 
-  managed_deleter& operator=(managed_deleter&& rhs) NOEXCEPT {
+  managed_deleter& operator=(managed_deleter&& rhs) noexcept {
     if (this != &rhs) {
       ptr_ = rhs.ptr_;
       rhs.ptr_ = nullptr;
@@ -297,32 +308,47 @@ struct managed_deleter {
     return *this;
   }
 
-  void operator()(T*) NOEXCEPT {
+  void operator()(T*) noexcept {
     delete ptr_;
+  }
+
+  T* get() const noexcept {
+    return ptr_;
   }
 
  private:
   T* ptr_;
 }; // managed_deleter
 
-template <typename T, bool Manage = true>
-inline typename std::enable_if<
-  !std::is_array<T>::value,
-  std::unique_ptr<T, managed_deleter<T>>
->::type make_managed(T* ptr) NOEXCEPT {
-  return std::unique_ptr<T, managed_deleter<T>>(ptr, Manage ? ptr : nullptr);
-}
+template<typename T>
+using managed_ptr = std::unique_ptr<T, memory::managed_deleter<T>>;
 
 template <typename T, bool Manage = true>
 inline typename std::enable_if<
   !std::is_array<T>::value,
-  std::unique_ptr<T, managed_deleter<T>>
->::type make_managed(std::unique_ptr<T>&& ptr) NOEXCEPT {
-  auto* p = Manage ? ptr.release() : ptr.get();
-  return std::unique_ptr<T, managed_deleter<T>>(p, Manage ? p : nullptr);
+  managed_ptr<T>
+>::type make_managed(T* ptr) noexcept {
+  return managed_ptr<T>(ptr, Manage ? ptr : nullptr);
 }
 
-#define DECLARE_MANAGED_PTR(class_name) typedef std::unique_ptr<class_name, memory::managed_deleter<class_name> > ptr
+template <typename T>
+inline typename std::enable_if<
+  !std::is_array<T>::value,
+  managed_ptr<T>
+>::type make_managed(std::unique_ptr<T>&& ptr) noexcept {
+  auto* p = ptr.release();
+  return managed_ptr<T>(p, p);
+}
+
+
+template <typename T>
+std::shared_ptr<T> make_shared(managed_ptr<T>&& ptr) {
+  auto tmp = std::shared_ptr<T>(ptr.get(), memory::managed_deleter<T>(ptr.get_deleter().get()));
+  ptr.release();
+  return tmp;
+}
+
+#define DECLARE_MANAGED_PTR(class_name) typedef irs::memory::managed_ptr<class_name> ptr
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                      make_shared
@@ -591,9 +617,6 @@ NS_END // ROOT
 #define DECLARE_UNIQUE_PTR(class_name) \
   friend struct irs::memory::maker<class_name, false>; \
   typedef std::unique_ptr<class_name> ptr
-
-#define DECLARE_REFERENCE(class_name) typedef std::reference_wrapper<class_name> ref
-#define DECLARE_CONST_REFERENCE(class_name) typedef std::reference_wrapper<const class_name> cref
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief default inline implementation of a factory method, instantiation on

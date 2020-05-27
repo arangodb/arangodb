@@ -119,9 +119,9 @@ CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
 CommonGraph.prototype._removeVertexCollection = function (name, dropCollection) {
   let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex/" + encodeURIComponent(name);
   if (dropCollection === true) {
-    uri += "?dropCollections=true";
+    uri += "?dropCollection=true";
   } else {
-    uri += "?dropCollections=false";
+    uri += "?dropCollection=false";
   }
   const requestResult = arangosh.checkRequestResult(db._connection.DELETE(uri));
   const graph = requestResult.graph;

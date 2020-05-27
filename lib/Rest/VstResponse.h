@@ -27,8 +27,6 @@
 #include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
 
-#include <boost/asio/buffer.hpp>
-
 namespace arangodb {
 
 class VstResponse : public GeneralResponse {
@@ -36,8 +34,10 @@ class VstResponse : public GeneralResponse {
  public:
   VstResponse(ResponseCode code, uint64_t mid);
 
-  // required by base
-  uint64_t messageId() const override { return _messageId; }
+ bool isResponseEmpty() const override {
+    return _payload.empty();
+ }
+
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
@@ -58,7 +58,6 @@ class VstResponse : public GeneralResponse {
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
   
  private:
-  uint64_t _messageId; /// message ID
   velocypack::Buffer<uint8_t> _payload; /// actual payload
 };
 }  // namespace arangodb

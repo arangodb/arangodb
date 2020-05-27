@@ -26,9 +26,10 @@
 #ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 #define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -38,38 +39,25 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
-
-class TestEmptyExecutorHelperInfos : public ExecutorInfos {
- public:
-  TestEmptyExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                               RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep);
-
-  TestEmptyExecutorHelperInfos() = delete;
-  TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos&&) = default;
-  TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos const&) = delete;
-  ~TestEmptyExecutorHelperInfos() = default;
-};
 
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = EmptyExecutorInfos;
   using Stats = FilterStats;
 
   TestEmptyExecutorHelper() = delete;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper&&) = default;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper const&) = delete;
   TestEmptyExecutorHelper(Fetcher&, Infos&);
-  ~TestEmptyExecutorHelper();
+  ~TestEmptyExecutorHelper() = default;
 
   /**
    * @brief produce the next Row of Aql Values.

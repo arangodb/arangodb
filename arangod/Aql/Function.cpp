@@ -145,3 +145,22 @@ void Function::initializeArguments() {
     }
   }
 }
+
+std::underlying_type<Function::Flags>::type Function::makeFlags() {
+  return static_cast<std::underlying_type<Flags>::type>(Flags::None);
+}
+
+bool Function::hasFlag(Function::Flags flag) const {
+  return (flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0;
+}
+
+std::pair<size_t, size_t> Function::numArguments() const {
+  return std::make_pair(minRequiredArguments, maxRequiredArguments);
+}
+
+Function::Conversion Function::getArgumentConversion(size_t position) const {
+  if (position >= conversions.size()) {
+    return Conversion::None;
+  }
+  return conversions[position];
+}

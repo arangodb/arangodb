@@ -24,7 +24,6 @@
 #define ARANGOD_AQL_AQL_FUNCTION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Aql/AstNode.h"
 #include "Aql/Function.h"
 
 namespace arangodb {
@@ -71,7 +70,6 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void addGeometryConstructors();
   void addDateFunctions();
   void addMiscFunctions();
-  void addStorageEngineFunctions();
 
   /// @brief AQL user-callable function names
   std::unordered_map<std::string, Function const> _functionNames;

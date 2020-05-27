@@ -33,11 +33,15 @@
 #include <string>
 #include <vector>
 
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -141,6 +145,12 @@ std::string TRI_Dirname(std::string const& path);
 std::string TRI_Basename(char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the basename
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_Basename(std::string const& path);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of files in path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -212,7 +222,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length);
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length);
+char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -407,12 +417,6 @@ bool TRI_PathIsAbsolute(std::string const& path);
 void TRI_InitializeFiles();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the files subsystem
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownFiles();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief if which is found, value is overwriten, true returned.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -423,28 +427,14 @@ bool TRI_GETENV(char const* which, std::string& value);
 ///        you need to wrap your TRI_SHA256Functor object within std::ref().
 ////////////////////////////////////////////////////////////////////////////////
 struct TRI_SHA256Functor {
-  SHA256_CTX _context;
-  unsigned char _digest[SHA256_DIGEST_LENGTH];
+  TRI_SHA256Functor();
+  ~TRI_SHA256Functor();
 
-  TRI_SHA256Functor() {
-    int ret_val = SHA256_Init(&_context);
-    if (1 != ret_val) {
-      TRI_ASSERT(false);
-    } // if
-  }
-
-  bool operator()(char const* data, size_t size) {
-    int ret_val = SHA256_Update(&_context, static_cast<void const*>(data), size);
-    return 1 == ret_val;
-  }
-
-  std::string final() {
-    int ret_val = SHA256_Final(_digest, &_context);
-    if (1 != ret_val) {
-      TRI_ASSERT(false);
-    } // if
-    return arangodb::basics::StringUtils::encodeHex((char const *)_digest, SHA256_DIGEST_LENGTH);
-  }
+  bool operator()(char const* data, size_t size) noexcept;
+  
+  std::string finalize();
+  
+  EVP_MD_CTX* _context;
 };// struct TRI_SHA256Functor
 
 #endif

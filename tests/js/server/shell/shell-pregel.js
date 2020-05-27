@@ -100,35 +100,36 @@ function basicTestSuite() {
       var edges = db[eColl];
 
 
-      var A = vertices.insert({ _key: 'A', sssp: 3, pagerank: 0.027645934 })._id;
-      var B = vertices.insert({ _key: 'B', sssp: 2, pagerank: 0.3241496 })._id;
-      var C = vertices.insert({ _key: 'C', sssp: 3, pagerank: 0.289220 })._id;
-      var D = vertices.insert({ _key: 'D', sssp: 2, pagerank: 0.0329636 })._id;
-      var E = vertices.insert({ _key: 'E', sssp: 1, pagerank: 0.0682141 })._id;
-      var F = vertices.insert({ _key: 'F', sssp: 2, pagerank: 0.0329636 })._id;
-      var G = vertices.insert({ _key: 'G', sssp: -1, pagerank: 0.0136363 })._id;
-      var H = vertices.insert({ _key: 'H', sssp: -1, pagerank: 0.01363636 })._id;
-      var I = vertices.insert({ _key: 'I', sssp: -1, pagerank: 0.01363636 })._id;
-      var J = vertices.insert({ _key: 'J', sssp: -1, pagerank: 0.01363636 })._id;
-      var K = vertices.insert({ _key: 'K', sssp: 0, pagerank: 0.013636363 })._id;
+      vertices.insert([{ _key: 'A', sssp: 3, pagerank: 0.027645934 },
+                       { _key: 'B', sssp: 2, pagerank: 0.3241496 },
+                       { _key: 'C', sssp: 3, pagerank: 0.289220 },
+                       { _key: 'D', sssp: 2, pagerank: 0.0329636 },
+                       { _key: 'E', sssp: 1, pagerank: 0.0682141 },
+                       { _key: 'F', sssp: 2, pagerank: 0.0329636 },
+                       { _key: 'G', sssp: -1, pagerank: 0.0136363 },
+                       { _key: 'H', sssp: -1, pagerank: 0.01363636 },
+                       { _key: 'I', sssp: -1, pagerank: 0.01363636 },
+                       { _key: 'J', sssp: -1, pagerank: 0.01363636 },
+                       { _key: 'K', sssp: 0, pagerank: 0.013636363 }]);
 
-      edges.insert({ _from: B, _to: C, vertex: 'B' });
-      edges.insert({ _from: C, _to: B, vertex: 'C' });
-      edges.insert({ _from: D, _to: A, vertex: 'D' });
-      edges.insert({ _from: D, _to: B, vertex: 'D' });
-      edges.insert({ _from: E, _to: B, vertex: 'E' });
-      edges.insert({ _from: E, _to: D, vertex: 'E' });
-      edges.insert({ _from: E, _to: F, vertex: 'E' });
-      edges.insert({ _from: F, _to: B, vertex: 'F' });
-      edges.insert({ _from: F, _to: E, vertex: 'F' });
-      edges.insert({ _from: G, _to: B, vertex: 'G' });
-      edges.insert({ _from: G, _to: E, vertex: 'G' });
-      edges.insert({ _from: H, _to: B, vertex: 'H' });
-      edges.insert({ _from: H, _to: E, vertex: 'H' });
-      edges.insert({ _from: I, _to: B, vertex: 'I' });
-      edges.insert({ _from: I, _to: E, vertex: 'I' });
-      edges.insert({ _from: J, _to: E, vertex: 'J' });
-      edges.insert({ _from: K, _to: E, vertex: 'K' });
+      edges.insert([{ _from: vColl + '/B', _to: vColl + '/C', vertex: 'B' },
+                    { _from: vColl + '/C', _to: vColl + '/B', vertex: 'C' },
+                    { _from: vColl + '/D', _to: vColl + '/A', vertex: 'D' },
+                    { _from: vColl + '/D', _to: vColl + '/B', vertex: 'D' },
+                    { _from: vColl + '/E', _to: vColl + '/B', vertex: 'E' },
+                    { _from: vColl + '/E', _to: vColl + '/D', vertex: 'E' },
+                    { _from: vColl + '/E', _to: vColl + '/F', vertex: 'E' },
+                    { _from: vColl + '/F', _to: vColl + '/B', vertex: 'F' },
+                    { _from: vColl + '/F', _to: vColl + '/E', vertex: 'F' },
+                    { _from: vColl + '/G', _to: vColl + '/B', vertex: 'G' },
+                    { _from: vColl + '/G', _to: vColl + '/E', vertex: 'G' },
+                    { _from: vColl + '/H', _to: vColl + '/B', vertex: 'H' },
+                    { _from: vColl + '/H', _to: vColl + '/E', vertex: 'H' },
+                    { _from: vColl + '/I', _to: vColl + '/B', vertex: 'I' },
+                    { _from: vColl + '/I', _to: vColl + '/E', vertex: 'I' },
+                    { _from: vColl + '/J', _to: vColl + '/E', vertex: 'J' },
+                    { _from: vColl + '/K', _to: vColl + '/E', vertex: 'K' }]);
+      edges.toArray();
     },
 
     ////////////////////////////////////////////////////////////////////////////////

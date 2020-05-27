@@ -84,7 +84,7 @@ function optimizerRuleTestSuite() {
       var loopto = 10;
 
       internal.db._drop(colName);
-      skiplist = internal.db._create(colName);
+      skiplist = internal.db._create(colName, { numberOfShards: 2 });
       var i, j;
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
@@ -226,6 +226,12 @@ function optimizerRuleTestSuite() {
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z && 'bar' IN v.z RETURN v";
       result = AQL_EXPLAIN(query);
       // should optimize away one part of the filter
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasIndexNodeWithRanges(result);
+      
+      result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-move-filters-into-enumerate"] } });
+      // should optimize away one part of the filter
       assertEqual([ "remove-filter-covered-by-index", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
       hasFilterNode(result);
@@ -233,6 +239,12 @@ function optimizerRuleTestSuite() {
       
       query = "FOR v IN " + colName + " FILTER 'foo' IN v.z[*] && 'bar' IN v.z[*] RETURN v";
       result = AQL_EXPLAIN(query);
+      // should optimize away one part of the filter
+      assertEqual([ "remove-filter-covered-by-index", "use-indexes", "move-filters-into-enumerate" ].sort(),  
+        removeAlwaysOnClusterRules(result.plan.rules.sort()), query);
+      hasIndexNodeWithRanges(result);
+      
+      result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-move-filters-into-enumerate"] } });
       // should optimize away one part of the filter
       assertEqual([ "remove-filter-covered-by-index", "use-indexes" ].sort(),  
         removeAlwaysOnClusterRules(result.plan.rules.sort()), query);

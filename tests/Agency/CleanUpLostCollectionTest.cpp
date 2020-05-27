@@ -132,10 +132,10 @@ TEST_F(CleanUpLostCollectionTest, clean_up_a_lost_collection_when_leader_is_fail
     //        old: /arango/Supervision/Health/leader/Status == "FAILED"
 
     auto const& trxs = q->slice();
-    EXPECT_TRUE(trxs.length() == 1);
+    EXPECT_EQ(trxs.length(), 1);
 
     auto const& trx1 = trxs[0];
-    EXPECT_TRUE(trx1.length() == 2);  // Operation and Precondition
+    EXPECT_EQ(trx1.length(), 2);  // Operation and Precondition
     auto const& op1 = trx1[0];
     auto const& pre1 = trx1[1];
     EXPECT_TRUE(op1.isObject());

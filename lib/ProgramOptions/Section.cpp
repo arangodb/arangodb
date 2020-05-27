@@ -28,11 +28,6 @@
 
 using namespace arangodb::options;
 
-// adds a program option to the section
-void Section::addOption(Option const& option) {
-  options.emplace(option.name, option);
-}
-
 // whether or not the section has (displayable) options
 bool Section::hasOptions() const {
   if (!hidden) {

@@ -18,25 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_MANAGER_FEATURE_THREADS_H
 #define ARANGODB_CACHE_MANAGER_FEATURE_THREADS_H
 
-#include "Basics/Common.h"
+#include <cstdint>
+
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 
-#include <stdint.h>
-
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class CacheRebalancerThread final : public Thread {
  public:
-  CacheRebalancerThread(cache::Manager* manager, uint64_t interval);
+  CacheRebalancerThread(application_features::ApplicationServer& server,
+                        cache::Manager* manager, std::uint64_t interval);
   ~CacheRebalancerThread();
 
   void beginShutdown() override;
@@ -47,8 +50,8 @@ class CacheRebalancerThread final : public Thread {
  private:
   cache::Manager* _manager;
   cache::Rebalancer _rebalancer;
-  uint64_t _fullInterval;
-  uint64_t _shortInterval;
+  std::uint64_t _fullInterval;
+  std::uint64_t _shortInterval;
   basics::ConditionVariable _condition;
 };
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the hash index
@@ -340,13 +340,8 @@ function HashIndexSuite() {
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      if (internal.db._engine().name === 'mmfiles') {
-        assertEqual(id, idx.id);
-        assertFalse(idx.isNewlyCreated);
-      } else {
-        assertNotEqual(id, idx.id);
-        assertTrue(idx.isNewlyCreated);
-      }
+      assertNotEqual(id, idx.id);
+      assertTrue(idx.isNewlyCreated);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,17 +528,15 @@ function HashIndexSuite() {
         collection.insert({ value: i });
       }
       
-      if (internal.db._engine().name === "rocksdb") {
-        internal.db._executeTransaction({
-          collections: { write: cn },
-          action: function(params) {
-            // need to run compaction in the rocksdb case, as the lookups
-            // may use bloom filters afterwards but not for memtables
-            require("internal").db[params.cn].compact();
-          },
-          params: { cn }
-        });
-      }
+      internal.db._executeTransaction({
+        collections: { write: cn },
+        action: function(params) {
+          // need to run compaction in the rocksdb case, as the lookups
+          // may use bloom filters afterwards but not for memtables
+          require("internal").db[params.cn].compact();
+        },
+        params: { cn }
+      });
 
       assertEqual(2 * bound, collection.count());
 
@@ -581,17 +574,15 @@ function HashIndexSuite() {
         i *= 2;
       }
 
-      if (internal.db._engine().name === "rocksdb") {
-        internal.db._executeTransaction({
-          collections: { write: cn },
-          action: function(params) {
-            // need to run compaction in the rocksdb case, as the lookups
-            // may use bloom filters afterwards but not for memtables
-            require("internal").db[params.cn].compact();
-          },
-          params: { cn }
-        });
-      }
+      internal.db._executeTransaction({
+        collections: { write: cn },
+        action: function(params) {
+          // need to run compaction in the rocksdb case, as the lookups
+          // may use bloom filters afterwards but not for memtables
+          require("internal").db[params.cn].compact();
+        },
+        params: { cn }
+      });
         
       i = 0;
       while (i < 100000) {
@@ -604,7 +595,25 @@ function HashIndexSuite() {
         }
         i *= 2;
       }
-    }
+    },
+
+    testUniqueIndexNullSubattribute : function () {
+      let idx = collection.ensureIndex({ type: "hash", unique: true, fields: ["a.b"] });
+
+      assertEqual("hash", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(["a.b"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      // as "a" is null here, "a.b" should also be null, at least it should not fail when accessing it via the index
+      collection.insert({ _key: "test", a : null });
+      collection.update("test", { something: "test2" });
+
+      let doc = collection.document("test");
+      assertNull(doc.a);
+      assertEqual("test2", doc.something);
+    },
+
   };
 }
 

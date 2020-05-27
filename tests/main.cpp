@@ -1,24 +1,29 @@
+#include <chrono>
+#include <thread>
+
+#include "gtest/gtest.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Rest/Version.h"
+#include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
-#include "gtest/gtest.h"
-#include "tests/Basics/icu-helper.h"
-
-#include <chrono>
-#include <thread>
+#include "VocBase/Identifiers/ServerId.h"
 
 template <class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(Function&& f, int i, char* c[])
-      : arangodb::Thread("gtest"), _f(f), _i(i), _c(c), _done(false) {
+  TestThread(arangodb::application_features::ApplicationServer& server,
+             Function&& f, int i, char* c[])
+      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     CONDITION_LOCKER(guard, _wait);
     while (true) {
@@ -89,22 +94,22 @@ int main(int argc, char* argv[]) {
   }
 
   ARGV0 = subargv[0];
-  arangodb::Logger::setShowLineNumber(logLineNumbers);
-  arangodb::Logger::initialize(false);
-  arangodb::LogAppender::addAppender("-");
 
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ServerState state(server);
+  state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);
 
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
+  arangodb::Logger::setShowLineNumber(logLineNumbers);
+  arangodb::Logger::initialize(server, false);
+  arangodb::LogAppender::addAppender("-");
+
   sc.prepare();
 
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
   ctx.exit(0);  // set "good" exit code by default
 
-  arangodb::ServerIdFeature::setId(12345);
+  arangodb::ServerIdFeature::setId(arangodb::ServerId{12345});
   IcuInitializer::setup(ARGV0);
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
@@ -114,7 +119,7 @@ int main(int argc, char* argv[]) {
   auto tests = [](int argc, char* argv[]) -> int {
     return RUN_ALL_TESTS();
   };
-  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
+  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();

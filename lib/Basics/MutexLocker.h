@@ -29,8 +29,9 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef TRI_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
+#ifdef ARANGODB_SHOW_LOCK_TIME
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <thread>
@@ -69,14 +70,14 @@ class MutexLocker {
       : _mutex(mutex),
         _file(file),
         _line(line),
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
         _isLocked(false),
         _time(0.0) {
 #else
         _isLocked(false) {
 #endif
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // fetch current time
     double t = TRI_microtime();
 #endif
@@ -93,7 +94,7 @@ class MutexLocker {
       }
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // add elapsed time to time tracker
     _time = TRI_microtime() - t;
 #endif
@@ -105,10 +106,11 @@ class MutexLocker {
       _mutex->unlock();
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("bb435", INFO, arangodb::Logger::PERFORMANCE)
-          << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
+          << "MutexLocker for lock [" << _mutex << "]" << _file << ":" << _line
+          << " took " << _time << " s";
     }
 #endif
   }
@@ -170,7 +172,7 @@ class MutexLocker {
   /// @brief whether or not the mutex is locked
   bool _isLocked;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
   /// @brief lock time
   double _time;
 #endif

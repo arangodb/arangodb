@@ -4,6 +4,13 @@
 
 @RESTHEADER{GET /_api/replication/applier-state, State of the replication applier,handleCommandApplierGetState}
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, returns the state of the global replication applier for all
+databases. If set to *false*, returns the state of the replication applier in the
+selected database.
+
 @RESTDESCRIPTION
 Returns the state of the replication applier, regardless of whether the
 applier is currently running or not.
@@ -39,17 +46,17 @@ The response is a JSON object with the following attributes:
     applicable to the applier.
 
     Client applications can use it to determine approximately how far the applier
-    is behind the remote server, and can periodically check if the value is 
+    is behind the remote server, and can periodically check if the value is
     increasing (applier is falling behind) or decreasing (applier is catching up).
-    
-    Please note that as the remote server will only keep one last log tick value 
-    for all of its databases, but replication may be restricted to just certain 
-    databases on the applier, this value is more meaningful when the global applier 
+
+    Please note that as the remote server will only keep one last log tick value
+    for all of its databases, but replication may be restricted to just certain
+    databases on the applier, this value is more meaningful when the global applier
     is used.
     Additionally, the last log tick provided by the remote server may increase
     due to writes into system collections that are not replicated due to replication
     configuration. So the reported value may exaggerate the reality a bit for
-    some scenarios. 
+    some scenarios.
 
   - *time*: the time on the applier server.
 
@@ -140,4 +147,3 @@ Fetching the state of an active applier:
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

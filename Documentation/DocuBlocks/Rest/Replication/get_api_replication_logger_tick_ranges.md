@@ -33,7 +33,7 @@ is returned when an invalid HTTP method is used.
 is returned if the logger state could not be determined.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 
 @EXAMPLES
 
@@ -49,4 +49,3 @@ Returns the available tick ranges.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -1,2 +1,0 @@
-
-make b.obj : b.cpp : yfc-compile ;

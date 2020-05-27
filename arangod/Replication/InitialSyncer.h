@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
@@ -65,6 +64,9 @@ struct InitialSyncerIncrementalSyncStats {
   double waitedForKeys = 0.0;
   // total time spent waiting for responses to /_api/replication/keys?type=docs
   double waitedForDocs = 0.0;
+  double waitedForInsertions = 0.0;
+  double waitedForRemovals = 0.0;
+  double waitedForKeyLookups = 0.0;
 };
 
 class InitialSyncer : public Syncer {

@@ -1,0 +1,106 @@
+diff --git a/source/data/BUILDRULES.py b/source/data/BUILDRULES.py
+index 2442f4e3..d9e8ac19 100644
+--- a/source/data/BUILDRULES.py
++++ b/source/data/BUILDRULES.py
+@@ -43,48 +43,49 @@ def generate(config, glob, common_vars):
+         "locales",
+         None,
+         "icu-locale-deprecates.xml",
+-        True,
++        config.use_pool_bundle,
+         [])
+ 
+     requests += generate_tree(config, glob, common_vars,
+         "curr",
+         "curr",
+         "icu-locale-deprecates.xml",
+-        True,
++        config.use_pool_bundle,
+         [])
+ 
+     requests += generate_tree(config, glob, common_vars,
+         "lang",
+         "lang",
+         "icu-locale-deprecates.xml",
+-        True,
++        config.use_pool_bundle,
+         [])
+ 
+     requests += generate_tree(config, glob, common_vars,
+         "region",
+         "region",
+         "icu-locale-deprecates.xml",
+-        True,
++        config.use_pool_bundle,
+         [])
+ 
+     requests += generate_tree(config, glob, common_vars,
+         "zone",
+         "zone",
+         "icu-locale-deprecates.xml",
+-        True,
++        config.use_pool_bundle,
+         [])
+ 
+     requests += generate_tree(config, glob, common_vars,
+         "unit",
+         "unit",
+         "icu-locale-deprecates.xml",
+-        True,
++        config.use_pool_bundle,
+         [])
+ 
+     requests += generate_tree(config, glob, common_vars,
+         "coll",
+         "coll",
+         "icu-coll-deprecates.xml",
++        # Never use pool bundle for coll, brkitr, or rbnf
+         False,
+         # Depends on timezoneTypes.res and keyTypeData.res.
+         # TODO: We should not need this dependency to build collation.
+@@ -95,6 +96,7 @@ def generate(config, glob, common_vars):
+         "brkitr",
+         "brkitr",
+         "icu-locale-deprecates.xml",
++        # Never use pool bundle for coll, brkitr, or rbnf
+         False,
+         [DepTarget("brkitr_brk"), DepTarget("dictionaries")])
+ 
+@@ -102,6 +104,7 @@ def generate(config, glob, common_vars):
+         "rbnf",
+         "rbnf",
+         "icu-rbnf-deprecates.xml",
++        # Never use pool bundle for coll, brkitr, or rbnf
+         False,
+         [])
+ 
+diff --git a/source/data/buildtool/__main__.py b/source/data/buildtool/__main__.py
+index 52d869c8..30cfcdc2 100644
+--- a/source/data/buildtool/__main__.py
++++ b/source/data/buildtool/__main__.py
+@@ -141,6 +141,11 @@ class Config(object):
+         if "collationUCAData" in self.filters_json_data:
+             self.coll_han_type = self.filters_json_data["collationUCAData"]
+ 
++        # True or False (could be extended later to support enum/list)
++        self.use_pool_bundle = True
++        if "usePoolBundle" in self.filters_json_data:
++            self.use_pool_bundle = self.filters_json_data["usePoolBundle"]
++
+     def _parse_filter_file(self, f):
+         # Use the Hjson parser if it is available; otherwise, use vanilla JSON.
+         try:
+diff --git a/source/data/buildtool/filtration_schema.json b/source/data/buildtool/filtration_schema.json
+index 479c65af..c9f9b8cd 100644
+--- a/source/data/buildtool/filtration_schema.json
++++ b/source/data/buildtool/filtration_schema.json
+@@ -57,6 +57,9 @@
+         "collationUCAData": {
+             "type": "string",
+             "enum": ["unihan", "implicithan"]
++	},
++        "usePoolBundle": {
++            "type": "boolean"
+         }
+     },
+     "additionalProperties": false,

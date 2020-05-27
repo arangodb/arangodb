@@ -65,7 +65,7 @@ function runSetup () {
 
   db.UnitTestsRecovery1.save({ _key: 'foo' }, true); // 100 documents in collection 1
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -92,10 +92,6 @@ function recoverySuite () {
 
       c = db._collection('UnitTestsRecovery2');
       prop = c.properties();
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(8 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-      }
       assertEqual(1000 + 100000, c.count());
     }
 

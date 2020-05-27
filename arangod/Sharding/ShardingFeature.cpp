@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingFeature.h"
+
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -44,7 +46,7 @@ namespace arangodb {
 ShardingFeature::ShardingFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Sharding") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 }
 
 void ShardingFeature::prepare() {

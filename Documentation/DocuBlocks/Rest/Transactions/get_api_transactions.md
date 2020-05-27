@@ -7,7 +7,7 @@
 @RESTDESCRIPTION
 The result is an object describing with the attribute *transactions*, which contains
 an array of transactions.
-In a cluster the array will contain the transactions from all coordinators.
+In a cluster the array will contain the transactions from all Coordinators.
 
 Each array entry contains an object with the following attributes:
 
@@ -44,4 +44,3 @@ Get currently running transactions
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

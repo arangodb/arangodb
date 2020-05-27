@@ -35,6 +35,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -42,6 +43,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -318,6 +320,10 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     // we are in single-server mode, we already flushed the wal
     baseUrl += "&flush=false";
   }
+  
+  std::unordered_map<std::string, std::string> headers;
+  headers.emplace(arangodb::StaticStrings::Accept, arangodb::StaticStrings::MimeTypeDump);
+
 
   while (true) {
     std::string url = baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
@@ -329,7 +335,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // make the actual request for data
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
+        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0, headers));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
       LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
@@ -367,6 +373,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
               std::string("got invalid response from server: required header "
                           "is missing while dumping collection '") +
                   name + "'"};
+    }
+    
+    header = response->getHeaderField(arangodb::StaticStrings::ContentTypeHeader, headerExtracted);
+    if (!headerExtracted || header.compare(0, 25, "application/x-arango-dump") != 0) {
+      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+        "got invalid response from server: content-type is invalid"};
     }
 
     // now actually write retrieved data to dump file
@@ -569,12 +581,12 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
-      _clientManager{Logger::DUMP},
-      _clientTaskQueue{::processJob, ::handleJobResult},
+      _clientManager{server, Logger::DUMP},
+      _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -651,7 +663,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
       .setIntroducedIn(30402);
 
   options->addOption("--compress-output",
-                     "compress files containing collection contents using gzip format",
+                     "compress files containing collection contents using gzip format (not compatible with encryption)",
                      new BooleanParameter(&_options.useGzip))
                      .setIntroducedIn(30406)
                      .setIntroducedIn(30500);
@@ -698,7 +710,7 @@ void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> optio
 
   uint32_t clamped =
       boost::algorithm::clamp(_options.threadCount, 1,
-                              4 * static_cast<uint32_t>(TRI_numberProcessors()));
+                              4 * static_cast<uint32_t>(NumberOfCores::getValue()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC("0460e", WARN, Logger::DUMP) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
@@ -720,6 +732,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
 
   // fetch the collection inventory
   std::string const url = "/_api/replication/inventory?includeSystem=" +
+                          std::string(_options.includeSystemCollections ? "true" : "false") +
+                          "&includeFoxxQueues=" + 
                           std::string(_options.includeSystemCollections ? "true" : "false") +
                           "&batchId=" + basics::StringUtils::itoa(batchId);
   std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -776,7 +790,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _options.collections.size(); ++i) {
-    restrictList.insert(std::pair<std::string, bool>(_options.collections[i], true));
+    auto const& name = _options.collections[i];
+    restrictList.insert(std::pair<std::string, bool>(name, true));
+    if (!name.empty() && name[0] == '_') {
+      // if the user explictly asked for dumping certain collections, toggle the system collection flag automatically
+      _options.includeSystemCollections = true;
+    }
   }
 
   // Step 3. iterate over collections, queue dump jobs
@@ -992,6 +1011,10 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    auto props = body.get("properties");
+    if (props.isObject()) {
+      meta.add("properties", props);
+    }
     meta.close();
 
     // save last tick in file
@@ -1080,7 +1103,7 @@ void DumpFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(_options.outputPath,
+  _directory = std::make_unique<ManagedDirectory>(server(), _options.outputPath,
                                                   !_options.overwrite, true,
                                                   _options.useGzip);
   if (_directory->status().fail()) {
@@ -1088,7 +1111,6 @@ void DumpFeature::start() {
       case TRI_ERROR_FILE_EXISTS:
         LOG_TOPIC("efed0", FATAL, Logger::DUMP) << "cannot write to output directory '"
                                        << _options.outputPath << "'";
-
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
         LOG_TOPIC("bd7fe", FATAL, Logger::DUMP)
@@ -1104,8 +1126,7 @@ void DumpFeature::start() {
   }
 
   // get database name to operate on
-  auto client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
+  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   // get a client to use in main thread
   auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
@@ -1139,8 +1160,8 @@ void DumpFeature::start() {
 
   if (_options.progress) {
     LOG_TOPIC("f3a1f", INFO, Logger::DUMP)
-        << "Connected to ArangoDB '" << client->endpoint() << "', database: '"
-        << client->databaseName() << "', username: '" << client->username() << "'";
+        << "Connected to ArangoDB '" << client.endpoint() << "', database: '"
+        << client.databaseName() << "', username: '" << client.username() << "'";
 
     LOG_TOPIC("5e989", INFO, Logger::DUMP)
         << "Writing dump to output directory '" << _directory->path()
@@ -1156,7 +1177,7 @@ void DumpFeature::start() {
     std::tie(res, databases) = ::getDatabases(*httpClient);
   } else {
     // use just the single database that was specified
-    databases.push_back(client->databaseName());
+    databases.push_back(client.databaseName());
   }
 
   if (res.ok()) {
@@ -1164,11 +1185,12 @@ void DumpFeature::start() {
       if (_options.allDatabases) {
         // inject current database
         LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << db << "'";
-        client->setDatabaseName(db);
+        client.setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
 
-        _directory = std::make_unique<ManagedDirectory>(arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-                                                        true, true);
+        _directory = std::make_unique<ManagedDirectory>(
+            server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
+            true, true, _options.useGzip);
 
         if (_directory->status().fail()) {
           res = _directory->status();

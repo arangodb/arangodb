@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+fr_BE{
+    Languages{
+        frp{"franco-provençal"}
+        goh{"ancien haut-allemand"}
+        gu{"gujarati"}
+        njo{"ao"}
+    }
+    Version{"2.1.47.70"}
+}

@@ -21,12 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerIdFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -34,40 +36,40 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
 namespace arangodb {
 
-TRI_server_id_t ServerIdFeature::SERVERID = 0;
+ServerId ServerIdFeature::SERVERID{0};
 
 ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
-  startsAfter("BasicsPhase");
-  startsAfter("Database");
-  startsAfter("SystemDatabase");
-  startsAfter("InitDatabase");
+  startsAfter<application_features::BasicFeaturePhaseServer>();
+
+  startsAfter<DatabaseFeature>();
+  startsAfter<InitDatabaseFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 void ServerIdFeature::start() {
-  auto databasePath =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
-  _idFilename = databasePath->subdirectoryName("SERVER");
+  auto& databasePath = server().getFeature<DatabasePathFeature>();
+  _idFilename = databasePath.subdirectoryName("SERVER");
 
-  auto database = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-      "Database");
+  auto& database = server().getFeature<DatabaseFeature>();
 
   // read the server id or create a new one
-  bool const checkVersion = database->checkVersion();
+  bool const checkVersion = database.checkVersion();
   int res = determineId(checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
     if (checkVersion) {
       // when we are version checking, we will not fail here
       // additionally notify the database feature that we had no VERSION file
-      database->isInitiallyEmpty(true);
+      database.isInitiallyEmpty(true);
       return;
     }
 
@@ -84,14 +86,14 @@ void ServerIdFeature::start() {
 
 /// @brief generates a new server id
 void ServerIdFeature::generateId() {
-  TRI_ASSERT(SERVERID == 0);
+  TRI_ASSERT(SERVERID.empty());
 
   do {
-    SERVERID = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
+    SERVERID = ServerId(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
-  } while (SERVERID == 0);
+  } while (SERVERID.empty());
 
-  TRI_ASSERT(SERVERID != 0);
+  TRI_ASSERT(SERVERID.isSet());
 }
 
 /// @brief reads server id from file
@@ -100,7 +102,7 @@ int ServerIdFeature::readId() {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  TRI_server_id_t foundId;
+  ServerId foundId;
   try {
     VPackBuilder builder = basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
     VPackSlice content = builder.slice();
@@ -111,15 +113,16 @@ int ServerIdFeature::readId() {
     if (!idSlice.isString()) {
       return TRI_ERROR_INTERNAL;
     }
-    foundId = basics::StringUtils::uint64(idSlice.copyString());
+    foundId = ServerId(basics::StringUtils::uint64(idSlice.copyString()));
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME) << "using existing server id: " << foundId;
+  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME)
+      << "using existing server id: " << foundId;
 
-  if (foundId == 0) {
+  if (foundId.empty()) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -135,8 +138,8 @@ int ServerIdFeature::writeId() {
   try {
     builder.openObject();
 
-    TRI_ASSERT(SERVERID != 0);
-    builder.add("serverId", VPackValue(std::to_string(SERVERID)));
+    TRI_ASSERT(SERVERID.isSet());
+    builder.add("serverId", VPackValue(std::to_string(SERVERID.id())));
 
     time_t tt = time(nullptr);
     struct tm tb;

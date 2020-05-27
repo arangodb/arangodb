@@ -67,9 +67,6 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertTrue(p.waitForSync);
       assertFalse(p.isVolatile);
-      if (db._engine().name === "mmfiles") {
-        assertEqual(256, p.indexBuckets);
-      }
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -142,9 +139,6 @@ function dumpTestSuite () {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
-      if (db._engine().name === "mmfiles") {
-        assertEqual(16, p.indexBuckets);
-      }
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -163,6 +157,8 @@ function dumpTestSuite () {
       assertEqual(users.permission(uName, "_system"), 'rw');
       assertEqual(users.permission(uName, "UnitTestsDumpSrc"), 'rw');
       assertEqual(users.permission(uName, "UnitTestsDumpEmpty"), 'rw');
+
+      assertTrue(users.isValid("foobaruser", "foobarpasswd"));
     }
 
   };

@@ -24,34 +24,34 @@
 #ifndef ARANGOD_AQL_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_EXPRESSION_CONTEXT_H 1
 
-#include "Aql/types.h"
-#include "Basics/Common.h"
-
 #include <unicode/regex.h>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+struct ValidatorBase;
 namespace transaction {
+class BufferCache ;
 class Methods;
+}
+namespace velocypack {
+struct Options;
+class Slice;
 }
 
 namespace aql {
 struct AqlValue;
-class Query;
 struct Variable;
 
 class ExpressionContext {
  public:
-  ExpressionContext() {}
+  ExpressionContext() = default;
 
-  virtual ~ExpressionContext() {}
+  virtual ~ExpressionContext() = default;
 
-  virtual size_t numRegisters() const = 0;
-
-  virtual AqlValue const& getRegisterValue(size_t i) const = 0;
-
-  virtual Variable const* getVariable(size_t i) const = 0;
+  /// true if the variable we are referring to is set by
+  /// a collection enumeration/index enumeration
+  virtual bool isDataFromCollection(Variable const* variable) const = 0;
 
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
@@ -64,12 +64,13 @@ class ExpressionContext {
   virtual icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                               bool caseInsensitive) = 0;
   virtual icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
-                                               transaction::Methods*,
+                                               velocypack::Options const* opts,
                                                bool& isEmptyExpression) = 0;
+  virtual arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) = 0;
 
-  virtual bool killed() const = 0;
   virtual TRI_vocbase_t& vocbase() const = 0;
-  virtual Query* query() const = 0;
+  virtual transaction::Methods& trx() const = 0;
+  virtual bool killed() const = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

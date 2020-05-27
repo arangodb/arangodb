@@ -116,11 +116,12 @@ LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::BACKUP("backup");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
 LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
+LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
-LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
 LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
+LogTopic Logger::CRASH("crash");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
 LogTopic Logger::DEVEL("development", LogLevel::FATAL);
 LogTopic Logger::DUMP("dump", LogLevel::INFO);
@@ -131,7 +132,7 @@ LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
 LogTopic Logger::MAINTENANCE("maintenance", LogLevel::WARN);
-LogTopic Logger::MEMORY("memory", LogLevel::WARN);
+LogTopic Logger::MEMORY("memory", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
@@ -149,6 +150,7 @@ LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
 LogTopic Logger::TTL("ttl", LogLevel::WARN);
+LogTopic Logger::VALIDATION("validation", LogLevel::INFO);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
@@ -162,13 +164,14 @@ LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_HOTBACKUP("audit-hotbackup", LogLevel::INFO);
 #endif
 
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
   std::vector<std::pair<std::string, LogLevel>> levels;
 
-  auto visitor = [&levels](const std::string& name, const LogTopic* topic) {
-    levels.emplace_back(std::make_pair(name, topic->level()));
+  auto visitor = [&levels](std::string const& name, LogTopic const* topic) {
+    levels.emplace_back(name, topic->level());
     return true;
   };
 
@@ -179,7 +182,7 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
-    LOG_TOPIC("5363d", ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
+    LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
   }
 }
 

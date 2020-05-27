@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FORMAT_BURST_TRIE_H
@@ -68,13 +67,13 @@ NS_BEGIN(detail)
 // -----------------------------------------------------------------------------
 
 class fst_buffer;
-class term_iterator;
+class term_iterator_base;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          typedefs
 // -----------------------------------------------------------------------------
 
-typedef std::vector<const attribute::type_id*> feature_map_t;
+typedef std::vector<type_info::type_id> feature_map_t;
 
 template<typename Char>
 class volatile_ref : util::noncopyable {
@@ -84,13 +83,13 @@ class volatile_ref : util::noncopyable {
 
   volatile_ref() = default;
 
-  volatile_ref(volatile_ref&& rhs) NOEXCEPT
+  volatile_ref(volatile_ref&& rhs) noexcept
    : str_(std::move(rhs.str_)),
      ref_(str_.empty() ? rhs.ref_ : ref_t(str_)) {
     rhs.ref_ = ref_;
   }
 
-  volatile_ref& operator=(volatile_ref&& rhs) NOEXCEPT {
+  volatile_ref& operator=(volatile_ref&& rhs) noexcept {
     if (this != &rhs) {
       str_ = std::move(rhs.str_);
       ref_ = (str_.empty() ? rhs.ref_ : ref_t(str_));
@@ -125,7 +124,7 @@ class volatile_ref : util::noncopyable {
     ref_ = str_;
   }
 
-  operator const ref_t&() const NOEXCEPT {
+  operator const ref_t&() const noexcept {
     return ref_;
   }
 
@@ -152,7 +151,7 @@ typedef volatile_ref<byte_type> volatile_byte_ref;
 ///////////////////////////////////////////////////////////////////////////////
 struct block_t : private util::noncopyable {
   struct prefixed_output final : irs::byte_weight_output {
-    explicit prefixed_output(volatile_byte_ref&& prefix) NOEXCEPT
+    explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
      : prefix(std::move(prefix)) {
     }
 
@@ -161,20 +160,20 @@ struct block_t : private util::noncopyable {
 
   static const int16_t INVALID_LABEL = -1;
 
-  block_t(uint64_t block_start, byte_type meta, int16_t label) NOEXCEPT
+  block_t(uint64_t block_start, byte_type meta, int16_t label) noexcept
     : start(block_start),
       label(label),
       meta(meta) {
   }
 
-  block_t(block_t&& rhs) NOEXCEPT
+  block_t(block_t&& rhs) noexcept
     : index(std::move(rhs.index)),
       start(rhs.start),
       label(rhs.label),
       meta(rhs.meta) {
   }
 
-  block_t& operator=(block_t&& rhs) NOEXCEPT {
+  block_t& operator=(block_t&& rhs) noexcept {
     if (this != &rhs) {
       index = std::move(rhs.index);
       start = rhs.start;
@@ -208,29 +207,29 @@ class entry : private util::noncopyable {
   entry(const irs::bytes_ref& term, irs::postings_writer::state&& attrs, bool volatile_term);
   entry(const irs::bytes_ref& prefix, uint64_t block_start,
         byte_type meta, int16_t label, bool volatile_term);
-  entry(entry&& rhs) NOEXCEPT;
-  entry& operator=(entry&& rhs) NOEXCEPT;
-  ~entry() NOEXCEPT;
+  entry(entry&& rhs) noexcept;
+  entry& operator=(entry&& rhs) noexcept;
+  ~entry() noexcept;
 
-  const irs::postings_writer::state& term() const NOEXCEPT {
+  const irs::postings_writer::state& term() const noexcept {
     return *mem_.as<irs::postings_writer::state>();
   }
 
-  irs::postings_writer::state& term() NOEXCEPT {
+  irs::postings_writer::state& term() noexcept {
     return *mem_.as<irs::postings_writer::state>();
   }
 
-  const block_t& block() const NOEXCEPT { return *mem_.as<block_t>(); }
-  block_t& block() NOEXCEPT { return *mem_.as<block_t>(); }
+  const block_t& block() const noexcept { return *mem_.as<block_t>(); }
+  block_t& block() noexcept { return *mem_.as<block_t>(); }
 
-  const volatile_byte_ref& data() const NOEXCEPT { return data_; }
-  volatile_byte_ref& data() NOEXCEPT { return data_; }
+  const volatile_byte_ref& data() const noexcept { return data_; }
+  volatile_byte_ref& data() noexcept { return data_; }
 
-  EntryType type() const NOEXCEPT { return type_; }
+  EntryType type() const noexcept { return type_; }
 
  private:
-  void destroy() NOEXCEPT;
-  void move_union(entry&& rhs) NOEXCEPT;
+  void destroy() noexcept;
+  void move_union(entry&& rhs) noexcept;
 
   volatile_byte_ref data_; // block prefix or term
   memory::aligned_type<irs::postings_writer::state, block_t> mem_; // storage
@@ -244,30 +243,23 @@ class term_reader : public irs::term_reader,
                     private util::noncopyable {
  public:
   term_reader() = default;
-  term_reader(term_reader&& rhs) NOEXCEPT;
-  virtual ~term_reader();
+  term_reader(term_reader&& rhs) noexcept;
 
-  void prepare(
-    std::istream& in,
-    const feature_map_t& features,
-    field_reader& owner
-  );
+  void prepare(std::istream& in, const feature_map_t& features, field_reader& owner);
 
   virtual seek_term_iterator::ptr iterator() const override;
-  virtual const field_meta& meta() const override { return field_; }
-  virtual size_t size() const override { return terms_count_; }
-  virtual uint64_t docs_count() const override { return doc_count_; }
-  virtual const bytes_ref& min() const override { return min_term_ref_; }
-  virtual const bytes_ref& max() const override { return max_term_ref_; }
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs_; 
-  }
+  virtual seek_term_iterator::ptr iterator(automaton_table_matcher& matcher) const override;
+  virtual const field_meta& meta() const noexcept override { return field_; }
+  virtual size_t size() const noexcept override { return terms_count_; }
+  virtual uint64_t docs_count() const noexcept override { return doc_count_; }
+  virtual const bytes_ref& min() const noexcept override { return min_term_ref_; }
+  virtual const bytes_ref& max() const noexcept override { return max_term_ref_; }
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override;
 
  private:
   typedef fst::VectorFst<byte_arc> fst_t;
-  friend class term_iterator;
+  friend class term_iterator_base;
 
-  irs::attribute_view attrs_;
   bstring min_term_;
   bstring max_term_;
   bytes_ref min_term_ref_;
@@ -277,8 +269,9 @@ class term_reader : public irs::term_reader,
   uint64_t doc_freq_;
   uint64_t term_freq_;
   frequency freq_; // total term freq
+  frequency* pfreq_{};
   field_meta field_;
-  fst_t* fst_; // TODO: use compact fst here!!!
+  std::unique_ptr<fst_t> fst_; // TODO: use compact fst here!!!
   field_reader* owner_;
 }; // term_reader
 
@@ -359,7 +352,7 @@ class field_writer final : public irs::field_writer {
 
   void push(const irs::bytes_ref& term);
 
-  std::unordered_map<const attribute::type_id*, size_t> feature_map_;
+  std::unordered_map<type_info::type_id, size_t> feature_map_;
   memory_output suffix_; // term suffix column
   memory_output stats_; // term stats column
   encryption::stream::ptr terms_out_cipher_;
@@ -396,10 +389,10 @@ class field_reader final : public irs::field_reader {
 
   virtual const irs::term_reader* field(const string_ref& field) const override;
   virtual irs::field_iterator::ptr iterator() const override;
-  virtual size_t size() const override;
+  virtual size_t size() const noexcept override;
 
  private:
-  friend class detail::term_iterator;
+  friend class detail::term_iterator_base;
 
   std::vector<detail::term_reader> fields_;
   std::unordered_map<hashed_string_ref, term_reader*> name_to_field_;

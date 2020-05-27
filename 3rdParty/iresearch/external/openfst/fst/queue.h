@@ -18,6 +18,7 @@
 #include <fst/connect.h>
 #include <fst/heap.h>
 #include <fst/topsort.h>
+#include <fst/weight.h>
 
 
 namespace fst {
@@ -230,6 +231,10 @@ class ShortestFirstQueue : public QueueBase<S> {
     if (update) key_.clear();
   }
 
+  ssize_t Size() const { return heap_.Size(); }
+
+  const Compare &GetCompare() const { return heap_.GetCompare(); }
+
  private:
   Heap<StateId, Compare> heap_;
   std::vector<ssize_t> key_;
@@ -262,7 +267,7 @@ class StateWeightCompare {
 // Shortest-first queue discipline, templated on the StateId and Weight, is
 // specialized to use the weight's natural order for the comparison function.
 template <typename S, typename Weight>
-class NaturalShortestFirstQueue final
+class NaturalShortestFirstQueue
     : public ShortestFirstQueue<
           S, internal::StateWeightCompare<S, NaturalLess<Weight>>> {
  public:
@@ -276,8 +281,106 @@ class NaturalShortestFirstQueue final
 
  private:
   // This is non-static because the constructor for non-idempotent weights will
-  // result in a an error.
+  // result in an error.
   const NaturalLess<Weight> less_{};
+};
+
+// In a shortest path computation on a lattice-like FST, we may keep many old
+// nonviable paths as a part of the search. Since the search process always
+// expands the lowest cost path next, that lowest cost path may be a very old
+// nonviable path instead of one we expect to lead to a shortest path.
+//
+// For instance, suppose that the current best path in an alignment has
+// traversed 500 arcs with a cost of 10. We may also have a bad path in
+// the queue that has traversed only 40 arcs but also has a cost of 10.
+// This path is very unlikely to lead to a reasonable alignment, so this queue
+// can prune it from the search space.
+//
+// This queue relies on the caller using a shortest-first exploration order
+// like this:
+//   while (true) {
+//     StateId head = queue.Head();
+//     queue.Dequeue();
+//     for (const auto& arc : GetArcs(fst, head)) {
+//       queue.Enqueue(arc.nextstate);
+//     }
+//   }
+// We use this assumption to guess that there is an arc between Head and the
+// Enqueued state; this is how the number of path steps is measured.
+template <typename S, typename Weight>
+class PruneNaturalShortestFirstQueue
+    : public NaturalShortestFirstQueue<S, Weight> {
+ public:
+  using StateId = S;
+  using Base = NaturalShortestFirstQueue<StateId, Weight>;
+
+  PruneNaturalShortestFirstQueue(const std::vector<Weight> &distance,
+                                 ssize_t arc_threshold, ssize_t state_limit = 0)
+      : Base(distance),
+        arc_threshold_(arc_threshold),
+        state_limit_(state_limit),
+        head_steps_(0),
+        max_head_steps_(0) {}
+
+  ~PruneNaturalShortestFirstQueue() override = default;
+
+  StateId Head() const override {
+    const auto head = Base::Head();
+    // Stores the number of steps from the start of the graph to this state
+    // along the shortest-weight path.
+    if (head < steps_.size()) {
+      max_head_steps_ = std::max(steps_[head], max_head_steps_);
+      head_steps_ = steps_[head];
+    }
+    return head;
+  }
+
+  void Enqueue(StateId s) override {
+    // We assume that there is an arc between the Head() state and this
+    // Enqueued state.
+    const ssize_t state_steps = head_steps_ + 1;
+    if (s >= steps_.size()) {
+      steps_.resize(s + 1, state_steps);
+    }
+    // This is the number of arcs in the minimum cost path from Start to s.
+    steps_[s] = state_steps;
+
+    // Adjust the threshold in cases where path step thresholding wasn't
+    // enough to keep the queue small.
+    ssize_t adjusted_threshold = arc_threshold_;
+    if (Base::Size() > state_limit_ && state_limit_ > 0) {
+      adjusted_threshold = std::max<ssize_t>(
+          0, arc_threshold_ - (Base::Size() / state_limit_) - 1);
+    }
+
+    if (state_steps > (max_head_steps_ - adjusted_threshold) ||
+        arc_threshold_ < 0) {
+      if (adjusted_threshold == 0 && state_limit_ > 0) {
+        // If the queue is continuing to grow without bound, we follow any
+        // path that makes progress and clear the rest.
+        Base::Clear();
+      }
+      Base::Enqueue(s);
+    }
+  }
+
+ private:
+  // A dense map from StateId to the number of arcs in the minimum weight
+  // path from Start to this state.
+  std::vector<ssize_t> steps_;
+  // We only keep paths that are within this number of arcs (not weight!)
+  // of the longest path.
+  const ssize_t arc_threshold_;
+  // If the size of the queue climbs above this number, we increase the
+  // threshold to reduce the amount of work we have to do.
+  const ssize_t state_limit_;
+
+  // The following are mutable because Head() is const.
+  // The number of arcs traversed in the minimum cost path from the start
+  // state to the current Head() state.
+  mutable ssize_t head_steps_;
+  // The maximum number of arcs traversed by any low-cost path so far.
+  mutable ssize_t max_head_steps_;
 };
 
 // Topological-order queue discipline, templated on the StateId. States are
@@ -513,16 +616,7 @@ class AutoQueue : public QueueBase<S> {
             const std::vector<typename Arc::Weight> *distance, ArcFilter filter)
       : QueueBase<StateId>(AUTO_QUEUE) {
     using Weight = typename Arc::Weight;
-    // TrivialLess is never instantiated since the construction of Less is
-    // guarded by Properties() & kPath.  It is only here to avoid instantiating
-    // NaturalLess for non-path weights.
-    struct TrivialLess {
-      using Weight = typename Arc::Weight;
-      bool operator()(const Weight &, const Weight &) const { return false; }
-    };
-    using Less =
-        typename std::conditional<(Weight::Properties() & kPath) == kPath,
-                                  NaturalLess<Weight>, TrivialLess>::type;
+    using Less = NaturalLess<Weight>;
     using Compare = internal::StateWeightCompare<StateId, Less>;
     // First checks if the FST is known to have these properties.
     const auto props =
@@ -545,7 +639,7 @@ class AutoQueue : public QueueBase<S> {
       std::vector<QueueType> queue_types(nscc);
       std::unique_ptr<Less> less;
       std::unique_ptr<Compare> comp;
-      if (distance && (Weight::Properties() & kPath)) {
+      if (distance && (Weight::Properties() & kPath) == kPath) {
         less.reset(new Less);
         comp.reset(new Compare(*distance, *less));
       }
@@ -670,28 +764,34 @@ void AutoQueue<StateId>::SccQueueType(const Fst<Arc> &fst,
   }
 }
 
-// An A* estimate is a function object that maps from a state ID to a an
+// An A* estimate is a function object that maps from a state ID to an
 // estimate of the shortest distance to the final states.
 
 // A trivial A* estimate, yielding a queue which behaves the same in Dijkstra's
 // algorithm.
 template <typename StateId, typename Weight>
 struct TrivialAStarEstimate {
-  const Weight &operator()(StateId) const { return Weight::One(); }
+  constexpr Weight operator()(StateId) const { return Weight::One(); }
 };
 
 // A non-trivial A* estimate using a vector of the estimated future costs.
 template <typename StateId, typename Weight>
 class NaturalAStarEstimate {
  public:
-  NaturalAStarEstimate(const std::vector<Weight> &beta) :
-          beta_(beta) {}
+  NaturalAStarEstimate(const std::vector<Weight> &beta) : beta_(beta) {}
 
-  const Weight &operator()(StateId s) const { return beta_[s]; }
+  const Weight &operator()(StateId s) const {
+     return (s < beta_.size()) ? beta_[s] : kZero;
+  }
 
  private:
+  static constexpr Weight kZero = Weight::Zero();
+
   const std::vector<Weight> &beta_;
 };
+
+template <typename Arc, typename Weight>
+constexpr Weight NaturalAStarEstimate<Arc, Weight>::kZero;
 
 // Given a vector that maps from states to weights representing the shortest
 // distance from the initial state, a comparison function object between
@@ -712,6 +812,8 @@ class AStarWeightCompare {
     const auto w2 = Times(weights_[s2], estimate_(s2));
     return less_(w1, w2);
   }
+
+  const Estimate &GetEstimate() const { return estimate_; }
 
  private:
   const std::vector<Weight> &weights_;
@@ -736,7 +838,7 @@ class NaturalAStarQueue : public ShortestFirstQueue<
 
  private:
   // This is non-static because the constructor for non-idempotent weights will
-  // result in a an error.
+  // result in an error.
   const NaturalLess<Weight> less_{};
 };
 

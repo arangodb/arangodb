@@ -19,6 +19,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
@@ -163,16 +164,23 @@ TEST(RocksDBEventListenerThread, delete_matching_sha) {
 ////////////////////////////////////////////////////////////////////////////////
 class TestRocksDBEventListenerThread : public arangodb::RocksDBEventListenerThread {
 public:
-  TestRocksDBEventListenerThread() : arangodb::RocksDBEventListenerThread("testListener") {
-    // sample sha values are simulated, not real
-    setup.writeFile("MANIFEST-000004", "some manifest data");
-    setup.writeFile("CURRENT","MANIFEST-000004\n");
-    setup.writeFile("IDENTITY","no idea what goes here");
-    setup.writeFile("037793.sst","raw data 1");
-    setup.writeFile("037793.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash","");
-    setup.writeFile("037684.sst","raw data 2");
-    setup.writeFile("086218.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash","");
-    setup.writeFile("086219.sst","raw data 3");
+ TestRocksDBEventListenerThread(arangodb::application_features::ApplicationServer& server)
+     : arangodb::RocksDBEventListenerThread(server, "testListener") {
+   // sample sha values are simulated, not real
+   setup.writeFile("MANIFEST-000004", "some manifest data");
+   setup.writeFile("CURRENT", "MANIFEST-000004\n");
+   setup.writeFile("IDENTITY", "no idea what goes here");
+   setup.writeFile("037793.sst", "raw data 1");
+   setup.writeFile(
+       "037793.sha."
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
+       "");
+   setup.writeFile("037684.sst", "raw data 2");
+   setup.writeFile(
+       "086218.sha."
+       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash",
+       "");
+   setup.writeFile("086219.sst", "raw data 3");
   };
 
   CFilesSetup setup;
@@ -190,7 +198,8 @@ public:
 
 
 TEST(CheckMissingShaFilesSimple, verify_common_situations) {
-  TestRocksDBEventListenerThread tr;
+  arangodb::application_features::ApplicationServer server{nullptr, nullptr};
+  TestRocksDBEventListenerThread tr{server};
 
   tr.checkMissingShaFiles(tr.setup._directory.c_str(), 0);
 

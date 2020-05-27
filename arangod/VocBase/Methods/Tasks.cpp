@@ -85,8 +85,12 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 
     return nullptr;
   }
-  
-  if (application_features::ApplicationServer::isStopping()) {
+
+  TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
+  // DatabaseGuard constructor which on failure
+  // would fail Task constructor
+
+  if (vocbase->server().isStopping()) {
     ec = TRI_ERROR_SHUTTING_DOWN;
     return nullptr;
   }
@@ -100,7 +104,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   
   MUTEX_LOCKER(guard, _tasksLock);
 
-  if (!_tasks.emplace(id, std::make_pair(user, task)).second) {
+  if (!_tasks.try_emplace(id, user, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
 
     return {nullptr};
@@ -189,7 +193,13 @@ void Task::shutdownTasks() {
 
     if (++iterations % 10 == 0) {
       LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    } else if (iterations >= 25) {
+      LOG_TOPIC("54653", INFO, Logger::FIXME) << "giving up waiting for unfinished tasks";
+      MUTEX_LOCKER(guard, _tasksLock);
+      _tasks.clear();
+      break;
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }
@@ -210,11 +220,14 @@ void Task::removeTasksForDatabase(std::string const& name) {
 
 bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
   v8::HandleScope scope(isolate);
-
+  auto context = TRI_IGETC;
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+                                            current->Get(context,
+                                                         TRI_V8_ASCII_STRING(isolate, "Function"))
+                                            .FromMaybe(v8::Local<v8::Value>())
+                                            );
 
   // Invoke Function constructor to create function with the given body and no
   // arguments
@@ -242,7 +255,7 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
       _offset(0),
       _interval(0) {}
 
-Task::~Task() {}
+Task::~Task() = default;
 
 void Task::setOffset(double offset) {
   _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
@@ -290,7 +303,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
+    if (_dbGuard->database().server().isStopping() || !allowContinue) {
       Task::unregisterTask(_id, true);
       return;
     }
@@ -303,7 +316,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
                                                  : execContext.get());
             work(execContext.get());
 
-            if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+            if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
               // requeue the task
               bool queued = basics::function_utils::retryUntilTimeout(
                   [this]() -> bool { return queue(_interval); }, Logger::FIXME,
@@ -408,11 +421,15 @@ void Task::work(ExecContext const* exec) {
   {
     auto isolate = guard.isolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+                                              current->Get(context,
+                                                           TRI_V8_ASCII_STRING(isolate, "Function"))
+                                              .FromMaybe(v8::Local<v8::Value>())
+                                              );
 
     // Invoke Function constructor to create function with the given body and
     // no
@@ -436,7 +453,7 @@ void Task::work(ExecContext const* exec) {
       // call the function within a try/catch
       try {
         v8::TryCatch tryCatch(isolate);
-        action->Call(current, 1, &fArgs);
+        action->Call(TRI_IGETC, current, 1, &fArgs).FromMaybe(v8::Local<v8::Value>());
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);

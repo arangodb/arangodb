@@ -1,9 +1,15 @@
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
+//
+// Allocators for contiguous arrays of arcs.
+
 #ifndef FST_ARC_ARENA_H_
 #define FST_ARC_ARENA_H_
 
 #include <deque>
 #include <memory>
 #include <utility>
+
 #include <fst/fst.h>
 #include <fst/memory.h>
 #include <unordered_map>

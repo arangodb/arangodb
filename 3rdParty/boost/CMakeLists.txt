@@ -1,7 +1,7 @@
 project(boost)
 
 #the boost version must also be adjusted in the top-level CMakeLists.txt file
-set(boost_version "1.69.0")
+set(boost_version "1.71.0")
 set(BOOST_VERSION ${boost_version} PARENT_SCOPE)
 set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
 
@@ -146,5 +146,6 @@ add_library(boost_thread STATIC
     ${BOOST_THREAD_PLATFORM_SRC}
 )
 target_link_libraries(boost_thread PUBLIC boost_boost) #this will add required includes
+target_link_libraries(boost_locale PUBLIC boost_thread)
 target_compile_definitions(boost_thread PRIVATE "BOOST_SYSTEM_STATIC_LINK=1")
 target_compile_definitions(boost_thread PUBLIC  "BOOST_ALL_NO_LIB=1")
