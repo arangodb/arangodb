@@ -165,7 +165,6 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
 
   // global initialization
   TRI_InitializeError();
-  TRI_InitializeFiles();
 
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
