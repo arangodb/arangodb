@@ -223,11 +223,6 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
     return;
   }
    
-  // number of frames to skip in backtrace output
-  static constexpr int skipFrames = 1;
-  // maximum number of stack traces to show
-  static constexpr int maxFrames = 50;
-
 #ifdef ARANGODB_HAVE_LIBUNWIND
   // log backtrace, of up to maxFrames depth 
   { 
@@ -241,6 +236,13 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
     //  unw_init_local2(&cursor, &uc, UNW_INIT_SIGNAL_FRAME);
     if (unw_getcontext(&uc) == 0 && unw_init_local(&cursor, &uc) == 0) {
       // unwind frames one by one, going up the frame stack.
+    
+      // number of frames to skip in backtrace output
+      static constexpr int skipFrames = 1;
+      // maximum number of stack traces to show
+      static constexpr int maxFrames = 50;
+
+      // current frame counter
       int frame = 0;
 
       do {
