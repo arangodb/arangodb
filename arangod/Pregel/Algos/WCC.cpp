@@ -49,17 +49,16 @@ struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessa
     if (globalSuperstep() > 0) {
             
       for (const SenderMessage<uint64_t>* msg : messages) {
-        if (msg->value < currentComponent) {          
+        if (msg->value < currentComponent) {
           currentComponent = msg->value;
+          // TODO: optimization update the edge value if present
+          // problem: there might be loads of edges, could be expensive
         }
       }
       
       for (const SenderMessage<uint64_t>* msg : messages) {
         if (msg->value > currentComponent) {
          TRI_ASSERT(msg->senderId != pregelId());
-                    
-          // TODO: check if we already have this edge
-          // notify sender of small value
           SenderMessage<uint64_t> message(pregelId(), currentComponent);
           sendMessage(msg->senderId, message);
         }
