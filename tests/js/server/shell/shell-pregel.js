@@ -457,7 +457,6 @@ function componentsTestSuite() {
         db[vColl].insert(vertices);
       }
 
-      print(db[vColl].count());
       assertEqual(db[vColl].count(), numComponents * n);
 
       console.log("Done inserting vertices, inserting edges");
