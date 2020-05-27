@@ -64,7 +64,7 @@ std::size_t numberOfCoresImpl() {
     // ignore errors due to wrong file access permissions, 
     // malformed input etc.
     // in this case we simply fall back to using the available
-    // physical memory. this should not be an issue as the
+    // number of cores. this should not be an issue as the
     // count of cores detected is always logged at startup.
   }
 #endif
