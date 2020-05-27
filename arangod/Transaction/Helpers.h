@@ -100,6 +100,12 @@ std::string makeIdFromCustom(CollectionNameResolver const* resolver,
 
 ResultT<velocypack::StringRef> validatedOperationInputDocumentKey(LogicalCollection const& collection, VPackSlice const& value);
 
+// The input to a *single* remove operation is a velocypack which can be
+//  * a string that contains a valid key
+//  * a string that contains an id, i.e. it is of the form $collectionName/key
+// we entirely ignore the part before the everything, up to and including /
+VPackSlice normalizeRemoveOperationInput(LogicalCollection const& collection, VPackSlice const& value, VPackBuilder& builder);
+
 };  // namespace helpers
 
 /// @brief basics::StringBuffer leaser

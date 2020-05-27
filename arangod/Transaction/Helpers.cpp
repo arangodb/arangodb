@@ -424,22 +424,49 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   return resolved;
 }
 
-/// @brief takes the input for an insert, remove, update, or replace operation and creates
-///        valid information for continuing, or returns an error.
+///
 ResultT<velocypack::StringRef> transaction::helpers::validatedOperationInputDocumentKey(LogicalCollection const& collection, VPackSlice const& value) {
+  velocypack::StringRef keyRef;
 
+  // A document handle is either a string or an object
+  if (!value.isObject() && !value.isString()) {
+    return arangodb::ResultT<velocypack::StringRef>::error(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+  }
+
+  //
+  // If it's an object, the attribute _key needs to be verified; it has to be a string, and
+  // adhere to the documented requirements for being a _key
+  //
+  // If it's a string, then it is used as _key
+  //
   if (value.isObject()) {
     VPackSlice keySlice = value.get(StaticStrings::KeyString);
     if (keySlice.isString()) {
-      velocypack::StringRef keyRef{keySlice};
-      if (collection.keyGenerator()->validateKey(keyRef.data(), keyRef.length())) {
-        // This is the only "ok" case!
-        return arangodb::ResultT<velocypack::StringRef>::success(keyRef);
-      }
+      keyRef = keySlice;
+    } else {
+      return arangodb::ResultT<velocypack::StringRef>::error(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
+  } else if (value.isString()) {
+    keyRef = value;
+  }
+
+  if (collection.keyGenerator()->validateKey(keyRef.data(), keyRef.length())) {
+    return arangodb::ResultT<velocypack::StringRef>::success(keyRef);
   }
 
   return arangodb::ResultT<velocypack::StringRef>::error(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+}
+
+VPackSlice transaction::helpers::normalizeRemoveOperationInput(LogicalCollection const& collection, VPackSlice const& value, VPackBuilder& builder) {
+  if (value.isString()) {
+    velocypack::StringRef valueString{value};
+    size_t pos = valueString.find('/');
+    if (pos != std::string::npos) {
+      builder.add(VPackValuePair(valueString.data(), valueString.length(), VPackValueType::String));
+      return builder.slice();
+    }
+  }
+  return value;
 }
 
 // ============== StringBufferLeaser ==============

@@ -1574,14 +1574,14 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   ManagedDocumentResult previous;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
+    transaction::BuilderLeaser builder(this);
 
-    auto validatedKey = transaction::helpers::validatedOperationInputDocumentKey(*collection, value);
+    value = normalizeRemoveOperationInput(*collection, value, *builder.get());
+    auto validatedKey = validatedOperationInputDocumentKey(*collection, value);
 
     if (!validatedKey.ok()) {
       return validatedKey.result();
     }
-
-    arangodb::velocypack::StringRef key{validatedKey.get()};
 
     previous.clear();
 
@@ -1590,8 +1590,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         TRI_ASSERT(previous.revisionId() != 0);
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                              previous.revisionId(), 0,
+        buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                              validatedKey.get(), previous.revisionId(), 0,
                               options.returnOld ? &previous : nullptr, nullptr);
       }
       return res;
@@ -1600,8 +1600,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     if (!options.silent) {
       TRI_ASSERT(!options.returnOld || !previous.empty());
       TRI_ASSERT(previous.revisionId() != 0);
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                            previous.revisionId(), 0,
+      buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                            validatedKey.get(), previous.revisionId(), 0,
                             options.returnOld ? &previous : nullptr, nullptr);
     }
 
