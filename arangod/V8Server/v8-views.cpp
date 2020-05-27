@@ -26,6 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
@@ -186,8 +187,18 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
                                                            header.slice(), false, true);
 
   try {
+
+    // First refresh our analyzers cache to see all latest changes in analyzers
+    TRI_GET_GLOBALS();
+    auto res = v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                           .loadAvailableAnalyzers(vocbase.name());
+
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
     LogicalView::ptr view;
-    auto res = LogicalView::create(view, vocbase, builder.slice());
+    res = LogicalView::create(view, vocbase, builder.slice());
 
     if (!res.ok()) {
       // events::CreateView(vocbase.name(), name, res.errorNumber());
@@ -579,7 +590,16 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto res = view->properties(builder.slice(), partialUpdate);
+    auto& vocbase = GetContextVocBase(isolate);
+    TRI_GET_GLOBALS();
+    auto res = v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                           .loadAvailableAnalyzers(vocbase.name());
+
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
+    res = view->properties(builder.slice(), partialUpdate);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());

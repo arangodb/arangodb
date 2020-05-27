@@ -213,9 +213,17 @@ class IResearchAnalyzerFeature final
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// Checks if analyzer db (identified by db name prefix extracted from analyzer 
+  /// @brief Loads (or reloads if necessary) analyzers available for use in context
+  /// of specified database.
+  /// @param dbName database name
+  /// @return overall load result
+  //////////////////////////////////////////////////////////////////////////////
+  Result loadAvailableAnalyzers(irs::string_ref const& dbName);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// Checks if analyzer db (identified by db name prefix extracted from analyzer
   /// name) could be reached from specified db.
-  /// Properly handles special cases (e.g. NIL and EMPTY)       
+  /// Properly handles special cases (e.g. NIL and EMPTY)
   /// @param dbNameFromAnalyzer database name extracted from analyzer name
   /// @param currentDbName database name to check against (should not be empty!)
   /// @param forGetters check special case for getting analyzer (not creating/removing)
@@ -313,11 +321,11 @@ class IResearchAnalyzerFeature final
   AnalyzersRevision::Ptr getAnalyzersRevision(const TRI_vocbase_t& vocbase, bool forceLoadPlan = false) const;
 
   ///////////////////////////////////////////////////////////////////////////////
-/// @brief return current known analyzers revision
-/// @param vocbase name to get revision for
-/// @param forceLoadPlan force request to get latest available revision
-/// @return revision number. always 0 for single server and before plan is loaded
-///////////////////////////////////////////////////////////////////////////////
+  /// @brief return current known analyzers revision
+  /// @param vocbase name to get revision for
+  /// @param forceLoadPlan force request to get latest available revision
+  /// @return revision number. always 0 for single server and before plan is loaded
+  ///////////////////////////////////////////////////////////////////////////////
   AnalyzersRevision::Ptr getAnalyzersRevision(const irs::string_ref& vocbaseName, bool forceLoadPlan = false) const;
 
   virtual void prepare() override;
@@ -353,8 +361,7 @@ class IResearchAnalyzerFeature final
     irs::string_ref const& type, // analyzer type
     VPackSlice const properties, // analyzer properties
     irs::flags const& features, // analyzer features
-    AnalyzersRevision::Revision revision // analyzer revision
-  );
+    AnalyzersRevision::Revision revision); // analyzer revision
 
   AnalyzerPool::ptr get(irs::string_ref const& normalizedName,
                         AnalyzerName const& name, AnalyzersRevision::Revision const revision,
@@ -372,7 +379,7 @@ class IResearchAnalyzerFeature final
   ////////////////////////////////////////////////////////////////////////////////
   /// removes analyzers for database from feature cache
   /// Write lock must be acquired by caller
-  /// @param database the database to cleanup analyzers for 
+  /// @param database the database to cleanup analyzers for
   void cleanupAnalyzers(irs::string_ref const& database);
 
   //////////////////////////////////////////////////////////////////////////////
