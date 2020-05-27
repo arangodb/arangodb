@@ -54,10 +54,8 @@ std::size_t numberOfCoresImpl() {
     }
 #ifdef TRI_SC_NPROCESSORS_ONLN
   try {
-    int64_t cfsPeriodUs;
-    int64_t cfsQuotaUs;
-    cfsPeriodUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_period_us"));
-    cfsQuotaUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"));
+    int64_t cfsPeriodUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_period_us"));
+    int64_t cfsQuotaUs = std::stoll(basics::FileUtils::slurp("/sys/fs/cgroup/cpu/cpu.cfs_quota_us"));
     if (cfsQuotaUs > 0 && cfsPeriodUs > 0) {
       n = std::lround(double(cfsQuotaUs) / double(cfsPeriodUs));
     }
