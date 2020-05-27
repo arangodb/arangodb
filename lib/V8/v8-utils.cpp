@@ -2980,7 +2980,7 @@ static void JS_GetAvailableResources(v8::FunctionCallbackInfo<v8::Value> const& 
   auto context = TRI_IGETC;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "memory"),
-              v8::Number::New(isolate, arangodb::PhysicalMemory::getValue())).FromMaybe(false);
+              v8::Number::New(isolate, static_cast<double>(arangodb::PhysicalMemory::getValue()))).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "cpus"),
               v8::Number::New(isolate, static_cast<int32_t>(arangodb::NumberOfCores::getValue()))).FromMaybe(false);
 
