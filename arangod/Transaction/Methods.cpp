@@ -1351,17 +1351,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   auto workForOneDocument = [this, &operation, &options, &collection,
                              &resultBuilder, &cid, &previous,
                              &result](VPackSlice const newVal, bool isBabies) -> Result {
+    if (!newVal.isObject()) {
+      return Result{TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
+    }
 
-    auto validatedKey = transaction::helpers::validatedOperationInputDocumentKey(*collection, newVal);
-
-    Result res;
+    auto validatedKey = validatedOperationInputDocumentKey(*collection, newVal);
     if (!validatedKey.ok()) {
-      // FIXME: We're doing this for backwards compatibility to not
-      //        hide more serious test failures. We should really
-      //        be returning the "correct" error code in
-      //        the validation procedure, *and* adapt all tests to accept 
-      //        these error codes.
-      return res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+      return validatedKey.result();
     }
 
     result.clear();
@@ -1371,6 +1367,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     // single document operations. We need to have a lock here already.
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
+    Result res;
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options, previous);
     } else {
@@ -1380,8 +1377,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         TRI_ASSERT(previous.revisionId() != 0);
-        arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, validatedKey.get(),
                               previous.revisionId(), 0,
                               options.returnOld ? &previous : nullptr, nullptr);
       }
@@ -1393,8 +1389,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       TRI_ASSERT(!options.returnNew || !result.empty());
       TRI_ASSERT(result.revisionId() != 0 && previous.revisionId() != 0);
 
-      arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
+      buildDocumentIdentity(collection.get(), resultBuilder, cid, validatedKey.get(),
                             result.revisionId(), previous.revisionId(),
                             options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
