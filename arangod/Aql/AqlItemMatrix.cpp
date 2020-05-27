@@ -43,8 +43,8 @@ SharedAqlItemBlockPtr AqlItemMatrix::getBlock(size_t index) const noexcept {
 }
 
 InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexcept {
-  auto const& block = getBlock(index.first);
-  return InputAqlItemRow{block, index.second};
+  TRI_ASSERT(index.first < numberOfBlocks());
+  return InputAqlItemRow{_blocks[index.first], index.second};
 }
 
 std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {

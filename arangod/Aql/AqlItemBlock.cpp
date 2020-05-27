@@ -931,7 +931,8 @@ void AqlItemBlock::eraseValue(size_t index, RegisterId varNr) {
 }
 
 void AqlItemBlock::eraseAll() {
-  for (size_t i = 0; i < numEntries(); i++) {
+  size_t const n = numEntries();
+  for (size_t i = 0; i < n; i++) {
     auto& it = _data[i];
     if (!it.isEmpty()) {
       it.erase();
@@ -954,10 +955,11 @@ void AqlItemBlock::referenceValuesFromRow(size_t currentRow,
     TRI_ASSERT(reg < getNrRegs());
     if (getValueReference(currentRow, reg).isEmpty()) {
       // First update the reference count, if this fails, the value is empty
-      if (getValueReference(fromRow, reg).requiresDestruction()) {
-        ++_valueCount[getValueReference(fromRow, reg)];
+      AqlValue const& a = getValueReference(fromRow, reg);
+      if (a.requiresDestruction()) {
+        ++_valueCount[a];
       }
-      _data[getAddress(currentRow, reg)] = getValueReference(fromRow, reg);
+      _data[getAddress(currentRow, reg)] = a;
     }
   }
   // Copy over subqueryDepth
@@ -1010,7 +1012,10 @@ size_t AqlItemBlock::capacity() const noexcept { return _data.capacity(); }
 bool AqlItemBlock::isShadowRow(size_t row) const {
   /// This value is only filled for shadowRows.
   /// And it is guaranteed to be only filled by numbers this way.
-  return _data[getSubqueryDepthAddress(row)].isNumber();
+  
+  /// in case the format of shadowRows is ever adjusted, make sure to also
+  /// adjust the method AqlValue::isShadowRowDepthValue()
+  return _data[getSubqueryDepthAddress(row)].isShadowRowDepthValue();
 }
 
 AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
@@ -1021,6 +1026,9 @@ AqlValue const& AqlItemBlock::getShadowRowDepth(size_t row) const {
 
 void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
   TRI_ASSERT(other.isNumber());
+  TRI_ASSERT(other.isShadowRowDepthValue());
+  /// in case the format of shadowRows is ever adjusted, make sure to also
+  /// adjust the method AqlValue::isShadowRowDepthValue()
   _data[getSubqueryDepthAddress(row)] = other;
   TRI_ASSERT(isShadowRow(row));
   // Might be shadowRow before, but we do not care, set is unique
@@ -1029,14 +1037,14 @@ void AqlItemBlock::setShadowRowDepth(size_t row, AqlValue const& other) {
 
 void AqlItemBlock::makeShadowRow(size_t row) {
   TRI_ASSERT(!isShadowRow(row));
-  _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::zeroSlice()};
+  _data[getSubqueryDepthAddress(row)] = AqlValue{AqlValueHintZero()};
   TRI_ASSERT(isShadowRow(row));
   _shadowRowIndexes.emplace(row);
 }
 
 void AqlItemBlock::makeDataRow(size_t row) {
   TRI_ASSERT(isShadowRow(row));
-  _data[getSubqueryDepthAddress(row)] = AqlValue{VPackSlice::noneSlice()};
+  _data[getSubqueryDepthAddress(row)] = AqlValue{AqlValueHintNone()};
   TRI_ASSERT(!isShadowRow(row));
   _shadowRowIndexes.erase(row);
 }
@@ -1067,6 +1075,7 @@ size_t AqlItemBlock::decrRefCount() const noexcept {
 RegisterCount AqlItemBlock::internalNrRegs() const noexcept {
   return _nrRegs + 1;
 }
+
 size_t AqlItemBlock::getAddress(size_t index, RegisterId varNr) const noexcept {
   TRI_ASSERT(index < _nrItems);
   TRI_ASSERT(varNr < _nrRegs);
