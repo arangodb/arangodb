@@ -1,6 +1,11 @@
 devel
 -----
 
+* Include all requests to the web interface at endpoint `/_admin/aardvark` in 
+  a node's requests statistics. Previously, requests going to `/_admin/aardvark`
+  were excluded from the request statistics if and only if the requested
+  database was the `_system` database.
+
 * Fixed an issue with truncate of a collection after a dbserver was restarted
   very quickly. This could block arangosync from making progress because the
   _jobs collection could no longer be truncated.
