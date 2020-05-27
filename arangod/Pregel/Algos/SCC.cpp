@@ -36,6 +36,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+namespace {
 static std::string const kPhase = "phase";
 static std::string const kFoundNewMax = "max";
 static std::string const kConverged = "converged";
@@ -138,6 +139,8 @@ struct SCCComputation
     }
   }
 };
+
+}
 
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
     WorkerConfig const* config) const {

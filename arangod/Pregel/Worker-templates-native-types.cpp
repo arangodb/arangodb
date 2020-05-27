@@ -24,5 +24,6 @@
 
 // template types to create
 template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
+template class arangodb::pregel::Worker<uint64_t, uint8_t, uint64_t>;
 template class arangodb::pregel::Worker<float, float, float>;
 template class arangodb::pregel::Worker<double, float, double>;

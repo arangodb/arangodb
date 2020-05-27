@@ -409,9 +409,123 @@ function randomTestSuite() {
   };
 }
 
+function componentsTestSuite() {
+  'use strict';
+
+  const numComponents = 20; // components
+  const n = 200; // vertices
+  const m = 300; // edges
+
+  return {
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    setUpAll: function () {
+
+      console.log("Beginning to insert test data with " + (numComponents * n) + 
+                  " vertices, " + (numComponents * (m + n)) + " edges");
+
+      // var exists = graph_module._list().indexOf("random") !== -1;
+      // if (exists || db.demo_v) {
+      //   return;
+      // }
+      var graph = graph_module._create(graphName);
+      db._create(vColl, { numberOfShards: 4 });
+      graph._addVertexCollection(vColl);
+      db._createEdgeCollection(eColl, {
+        numberOfShards: 4,
+        replicationFactor: 1,
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+
+      console.log("created graph");
+
+      var rel = graph_module._relation(eColl, [vColl], [vColl]);
+      graph._extendEdgeDefinitions(rel);
+
+      console.log("extended edge definition");
+
+      for (let c = 0; c < numComponents; c++) {
+        let x = 0;
+        let vertices = [];
+        while (x < n) {
+          vertices.push({ _key: String(c) + ":" + String(x++) });
+        }
+        db[vColl].insert(vertices);
+      }
+
+      print(db[vColl].count());
+      assertEqual(db[vColl].count(), numComponents * n);
+
+      console.log("Done inserting vertices, inserting edges");
+
+      for (let c = 0; c < numComponents; c++) {
+        let edges = [];
+        for (let x = 0; x < m; x++) {
+          let fromID = String(c) + ":" + Math.floor(Math.random() * n);
+          let toID = String(c) + ":" + Math.floor(Math.random() * n);
+          let from = vColl + '/' + fromID;
+          let to = vColl + '/' + toID;
+          edges.push({ _from: from, _to: to, vertex: String(fromID) });
+        }
+        db[eColl].insert(edges);
+
+        for (let x = 0; x < n; x++) {
+          let fromID = String(c) + ":" + x;
+          let toID = String(c) + ":" + (x+1);
+          let from = vColl + '/' + fromID;
+          let to = vColl + '/' + toID;
+          db[eColl].insert({ _from: from, _to: to, vertex: String(fromID) });
+        }
+      }
+      
+      console.log("Got %s edges", db[eColl].count());
+      assertEqual(db[eColl].count(), numComponents * m + numComponents * n);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll: function () {
+      graph_module._drop(graphName, true);
+    },
+
+    testWCC: function () {
+      var pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
+      var i = 10000;
+      do {
+        internal.wait(0.2);
+        let stats = pregel.status(pid);
+        if (stats.state !== "running" && stats.state !== "storing") {
+          assertEqual(stats.vertexCount, numComponents * n, stats);
+          assertEqual(stats.edgeCount, numComponents * (m + n), stats);
+
+          let c = db[vColl].all();
+          let mySet = new Set();
+          while (c.hasNext()) {
+            let doc = c.next();
+            assertTrue(doc.result !== undefined, doc);
+            mySet.add(doc.result);
+          }
+          assertEqual(mySet.size, numComponents);
+
+          break;
+        }
+      } while (i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in WCC execution");
+      }
+    }
+  };
+}
+
 jsunity.run(basicTestSuite);
 jsunity.run(exampleTestSuite);
 jsunity.run(randomTestSuite);
-
+jsunity.run(componentsTestSuite);
 
 return jsunity.done();

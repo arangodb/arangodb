@@ -55,8 +55,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-const char* arangodb::pregel::ExecutionStateNames[6] = {
-    "none", "running", "done", "canceled", "in error", "recovering"};
+const char* arangodb::pregel::ExecutionStateNames[7] = {
+    "none", "running", "storing", "done", "canceled", "in error", "recovering"};
 
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
@@ -186,11 +186,12 @@ bool Conductor::_startGlobalStep() {
   bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
               _statistics.allMessagesProcessed();
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
-    _state = ExecutionState::DONE;
     // tells workers to store / discard results
     if (_storeResults) {
+      _state = ExecutionState::STORING;
       _finalizeWorkers();
     } else {  // just stop the timer
+      _state = ExecutionState::DONE;
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
           << "Done execution took" << totalRuntimeSecs() << " s";
@@ -670,8 +671,7 @@ int Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
   _finalizationStartTimeSecs = TRI_microtime();
 
-  bool store = _state == ExecutionState::DONE;
-  store = store && _storeResults;
+  bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -703,6 +703,12 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
     return;
   }
 
+  // do not swap an error state to done
+  bool didStore = false;
+  if (_state == ExecutionState::STORING) {
+    _state = ExecutionState::DONE;
+    didStore = true;
+  }
   _endTimeSecs = TRI_microtime();  // offically done
 
   VPackBuilder debugOut;
@@ -721,7 +727,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
       << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
   LOG_TOPIC("d43cb", INFO, Logger::PREGEL) << "Computation Time: " << compTime << "s";
-  LOG_TOPIC("74e05", INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
+  LOG_TOPIC_IF("74e05", INFO, Logger::PREGEL, didStore) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
 

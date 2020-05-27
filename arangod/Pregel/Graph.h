@@ -48,6 +48,10 @@ struct PregelID {
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
   }
+  
+  bool operator!=(const PregelID& rhs) const {
+    return shard != rhs.shard || key != rhs.key;
+  }
 
   bool operator<(const PregelID& rhs) const {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);

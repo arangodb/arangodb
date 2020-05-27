@@ -40,12 +40,18 @@ struct MessageFormat {
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };
 
-struct IntegerMessageFormat : public MessageFormat<int64_t> {
+template<typename T>
+struct IntegerMessageFormat : public MessageFormat<T> {
+  static_assert(std::is_integral<T>::value, "");
   IntegerMessageFormat() {}
-  void unwrapValue(VPackSlice s, int64_t& value) const override {
-    value = s.getInt();
+  void unwrapValue(VPackSlice s, T& value) const override {
+    if constexpr (std::is_signed<T>::value) {
+      value = s.getInt();
+    } else {
+      value = s.getUInt();
+    }
   }
-  void addValue(VPackBuilder& arrayBuilder, int64_t const& val) const override {
+  void addValue(VPackBuilder& arrayBuilder, T const& val) const override {
     arrayBuilder.add(VPackValue(val));
   }
 };
