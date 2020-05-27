@@ -24,7 +24,6 @@
 
 #include <boost/functional/hash.hpp>
 
-#include "all_filter.hpp"
 #include "conjunction.hpp"
 #include "disjunction.hpp"
 #include "min_match_disjunction.hpp"
@@ -44,6 +43,7 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
 
   return std::make_pair(inner, neg);
 }
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns disjunction iterator created from the specified queries
@@ -134,7 +134,7 @@ NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_query
-/// @brief base class for boolean queries 
+/// @brief base class for boolean queries
 //////////////////////////////////////////////////////////////////////////////
 class boolean_query : public filter::prepared {
  public:
@@ -168,8 +168,7 @@ class boolean_query : public filter::prepared {
     }
 
     return doc_iterator::make<exclusion>(
-      std::move(incl), std::move(excl)
-    );
+      std::move(incl), std::move(excl));
   }
 
   virtual void prepare(
@@ -194,8 +193,7 @@ class boolean_query : public filter::prepared {
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
       queries.emplace_back(filter->prepare(
-        rdr, order::prepared::unordered(), irs::no_boost(), ctx
-      ));
+        rdr, order::prepared::unordered(), irs::no_boost(), ctx));
     }
 
     // nothrow block
@@ -210,7 +208,7 @@ class boolean_query : public filter::prepared {
   bool empty() const { return queries_.empty(); }
   size_t size() const { return queries_.size(); }
 
-protected:
+ protected:
   virtual doc_iterator::ptr execute(
     const sub_reader& rdr,
     const order::prepared& ord,
@@ -231,7 +229,7 @@ protected:
 /// @brief represent a set of queries joint by "And"
 //////////////////////////////////////////////////////////////////////////////
 class and_query final : public boolean_query {
-public:
+ public:
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
@@ -308,8 +306,7 @@ class min_match_query final : public boolean_query {
     }
 
     return make_min_match_disjunction(
-      std::move(itrs), ord, min_match_count
-    );
+      std::move(itrs), ord, min_match_count);
   }
 
  private:
@@ -336,15 +333,13 @@ class min_match_query final : public boolean_query {
         conjunction_t::doc_iterators_t(
           std::make_move_iterator(itrs.begin()),
           std::make_move_iterator(itrs.end())
-        ), ord
-      );
+        ), ord);
     }
 
     // min match disjunction
     assert(min_match_count < size);
     return memory::make_shared<min_match_disjunction<doc_iterator::ptr>>(
-      std::move(itrs), min_match_count, ord
-    );
+      std::move(itrs), min_match_count, ord);
   }
 
   size_t min_match_count_;
@@ -356,15 +351,16 @@ class min_match_query final : public boolean_query {
 
 boolean_filter::boolean_filter(const type_info& type) noexcept
   : filter(type) {
+  all_docs_zero_boost_.boost(0.f);
 }
 
 size_t boolean_filter::hash() const noexcept {
-  size_t seed = 0; 
+  size_t seed = 0;
 
   ::boost::hash_combine(seed, filter::hash());
   std::for_each(
     filters_.begin(), filters_.end(),
-    [&seed](const filter::ptr& f){ 
+    [&seed](const filter::ptr& f){
       ::boost::hash_combine(seed, *f);
   });
 
@@ -389,12 +385,11 @@ filter::prepared::ptr boolean_filter::prepare(
   std::vector<const filter*> excl;
 
   group_filters(incl, excl);
-  remove_excess(incl, excl, boost);
+  optimize(incl, excl, ord, boost);
 
-  all all_docs;
   if (incl.empty() && !excl.empty()) {
     // single negative query case
-    incl.push_back(&all_docs);
+    incl.push_back(&all_docs_);
   }
 
   return prepare(incl, excl, rdr, ord, boost, ctx);
@@ -405,6 +400,7 @@ void boolean_filter::group_filters(
     std::vector<const filter*>& excl) const {
   incl.reserve(size() / 2);
   excl.reserve(incl.capacity());
+
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
     if (irs::type<Not>::id() == begin->type()) {
 #ifdef IRESEARCH_DEBUG
@@ -426,6 +422,11 @@ void boolean_filter::group_filters(
         }
 
         excl.push_back(res.first);
+        if (type() == irs::type<Or>::id()) {
+          // FIXME: this should have same boost as Not filter.
+          // But for now we do not boost negation.
+          incl.push_back(&all_docs_zero_boost_);
+        }
       } else {
         incl.push_back(res.first);
       }
@@ -445,36 +446,79 @@ And::And() noexcept
   : boolean_filter(irs::type<And>::get()) {
 }
 
-void And::remove_excess(
+void And::optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& /*excl*/,
+    const order::prepared& ord,
     boost_t& boost) const {
   if (incl.empty()) {
     // nothing to do
     return;
   }
 
-  // find `all` filters
-  auto it = std::remove_if(
-    incl.begin(), incl.end(),
+  // if include group has empty -> this whole conjunction is empty
+  auto incl_empty = std::find_if(incl.begin(), incl.end(),
     [](const irs::filter* filter) {
-      return irs::type<all>::id() == filter->type();
-  });
+      return irs::type<irs::empty>::id() == filter->type();
+    });
 
-  if (it == incl.begin()) {
-    // all iterators are of type `all`, preserve one
-    ++it;
+  if (incl_empty != incl.end()) {
+    // remove all except one empty
+    std::swap(*incl.begin(), *incl_empty);
+    incl.erase(incl.begin() + 1, incl.end());
+    return;
   }
 
-  // accumulate boost
-  boost = std::accumulate(
-    it, incl.end(), boost,
-    [](boost_t boost, const irs::filter* filter) {
-      return filter->boost() * boost;
-  });
-
-  // remove found `all` filters
-  incl.erase(it, incl.end());
+  boost_t all_boost{ 0 };
+  size_t all_count{ 0 };
+  std::for_each(
+    incl.begin(), incl.end(),
+    [&all_count, &all_boost](const irs::filter* filter) {
+      if (filter->type() == irs::type<irs::all>::id()) {
+        all_count++;
+        all_boost += filter->boost();
+      }
+    });
+  if (all_count != 0) {
+    const auto non_all_count = incl.size() - all_count;
+    if (non_all_count == 0) {
+      // only all filters. erase all but first
+      if (all_count > 1) {
+        incl.erase(incl.begin() + 1, incl.end());
+        auto single = const_cast<irs::filter*>(*incl.begin()); // FIXME: remove cast and make optimize non const
+        assert(single->type() == irs::type<all>::id());
+        single->boost(all_boost);
+      }
+    } else {
+      // Here And differs from Or. Last 'All' should be left in include group only if there is more than one
+      // filter of other type. Otherwise this another filter could be container for boost from 'all' filters
+      if (1 == non_all_count) {
+        auto it = std::remove_if(
+          incl.begin(), incl.end(),
+          [](const irs::filter* filter) {
+            return irs::type<all>::id() == filter->type();
+          });
+        incl.erase(it, incl.end());
+        // let this last filter to hold boost from all removed ones
+        auto filter = const_cast<irs::filter*>(*incl.begin()); // FIXME: remove cast and make optimize non const
+        filter->boost(filter->boost() + all_boost);
+      } else {
+        auto first_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
+          return irs::type<irs::all>::id() == filter->type();
+          });
+        auto it = std::remove_if(
+          first_all + 1, incl.end(),
+          [](const irs::filter* filter) {
+            return irs::type<all>::id() == filter->type();
+          });
+        // let this all hold boost from all removed ones
+        auto filter = const_cast<irs::filter*>(*first_all);
+        filter->boost(all_boost);
+        // remove found `all` filters except one
+        incl.erase(it, incl.end());
+      }
+    }
+  }
 }
 
 filter::prepared::ptr And::prepare(
@@ -500,7 +544,7 @@ filter::prepared::ptr And::prepare(
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                               Or 
+// --SECTION--                                                               Or
 // ----------------------------------------------------------------------------
 
 DEFINE_FACTORY_DEFAULT(Or)
@@ -510,13 +554,66 @@ Or::Or() noexcept
     min_match_count_(1) {
 }
 
-void Or::remove_excess(
+void Or::optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& /*excl*/,
-    boost_t& /*boost*/) const {
+    const order::prepared& ord,
+    boost_t& boost) const {
   if (incl.empty()) {
     // nothing to do
     return;
+  }
+
+  if (ord.empty()) {
+    // if we have at least one all in include group - all other filters are not necessary
+    // in case there is no scoring
+    auto incl_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
+        return irs::type<irs::all>::id() == filter->type();
+      });
+    if (incl_all != incl.end() && incl.size() > 1) {
+      std::swap(*incl.begin(), *incl_all);
+      incl.erase(incl.begin() + 1, incl.end());
+      return;
+    }
+  }
+
+  boost_t all_boost{ 0 };
+  size_t all_count{ 0 };
+  std::for_each(
+    incl.begin(), incl.end(),
+    [&all_count, &all_boost](const irs::filter* filter) {
+      if (filter->type() == irs::type<irs::all>::id()) {
+        all_count++;
+        all_boost += filter->boost();
+      }
+    });
+  if (all_count != 0) {
+    const auto non_all_count = incl.size() - all_count;
+    if (non_all_count == 0) {
+      // only all filters. erase all but first
+      if (all_count > 1) {
+        incl.erase(incl.begin() + 1, incl.end());
+        auto single = const_cast<irs::filter*>(*incl.begin()); // FIXME: remove cast and make optimize non const
+        assert(single->type() == irs::type<all>::id());
+        single->boost(all_boost);
+      }
+    } else {
+      // Here Or differs from And. Last All should be left in include group
+      auto first_all = std::find_if(incl.begin(), incl.end(), [](const irs::filter* filter) {
+        return irs::type<irs::all>::id() == filter->type();
+        });
+      auto it = std::remove_if(
+        first_all + 1, incl.end(),
+        [](const irs::filter* filter) {
+          return irs::type<all>::id() == filter->type();
+        });
+
+      // let this all hold boost from all removed ones
+      auto filter = const_cast<irs::filter*>(*first_all); // FIXME: remove cast and make optimize non const
+      filter->boost(all_boost);
+      // remove found `all` filters except one
+      incl.erase(it, incl.end());
+    }
   }
 
   // find `empty` filters
@@ -524,7 +621,7 @@ void Or::remove_excess(
     incl.begin(), incl.end(),
     [](const irs::filter* filter) {
       return irs::type<irs::empty>::id() == filter->type();
-  });
+    });
 
   // remove found `empty` filters
   incl.erase(it, incl.end());
@@ -574,7 +671,7 @@ filter::prepared::ptr Or::prepare(
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                              Not 
+// --SECTION--                                                              Not
 // ----------------------------------------------------------------------------
 
 DEFINE_FACTORY_DEFAULT(Not)

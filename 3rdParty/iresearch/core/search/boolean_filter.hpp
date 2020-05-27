@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "filter.hpp"
+#include "all_filter.hpp"
 #include "utils/iterator.hpp"
 
 NS_ROOT
@@ -73,9 +74,10 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   explicit boolean_filter(const type_info& type) noexcept;
   virtual bool equals(const filter& rhs) const noexcept override;
 
-  virtual void remove_excess(
+  virtual void optimize(
       std::vector<const filter*>& /*incl*/,
       std::vector<const filter*>& /*excl*/,
+      const order::prepared& /*ord*/,
       boost_t& /*boost*/) const {
     // noop
   }
@@ -96,6 +98,8 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
+  all all_docs_;
+  all all_docs_zero_boost_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
@@ -115,9 +119,10 @@ class IRESEARCH_API And: public boolean_filter {
   using filter::prepare;
 
  protected:
-  virtual void remove_excess(
+  virtual void optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
+    const order::prepared& ord,
     boost_t& boost
   ) const override;
 
@@ -159,9 +164,10 @@ class IRESEARCH_API Or : public boolean_filter {
   }
 
  protected:
-  virtual void remove_excess(
+  virtual void optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
+    const order::prepared& ord,
     boost_t& boost) const override;
 
   virtual filter::prepared::ptr prepare(
