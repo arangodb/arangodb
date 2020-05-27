@@ -227,27 +227,22 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
     }
   }
 
-  int tries = 0;
-
-  while (tries++ < 2) {
-    auto ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
-        _vocbase.name(), arangodb::basics::StringUtils::itoa(cid));
-    if (ci != nullptr) {
-      name = ci->name();
-      {
-        WRITE_LOCKER(locker, _lock);
-        _resolvedIds.emplace(cid, name);
-      }
-
-      return name;
-    } else {
-      // most likely collection not found. now try again
-      _vocbase.server().getFeature<ClusterFeature>().clusterInfo().flush();
+  auto ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+      _vocbase.name(), arangodb::basics::StringUtils::itoa(cid));
+  if (ci != nullptr) {
+    name = ci->name();
+    {
+      WRITE_LOCKER(locker, _lock);
+      _resolvedIds.emplace(cid, name);
     }
+
+    return name;
   }
 
   LOG_TOPIC("817e8", DEBUG, arangodb::Logger::FIXME)
       << "CollectionNameResolver: was not able to resolve id " << cid;
+  WRITE_LOCKER(locker, _lock);
+  _resolvedIds.emplace(cid, ::UNKNOWN);
   return ::UNKNOWN;
 }
 
