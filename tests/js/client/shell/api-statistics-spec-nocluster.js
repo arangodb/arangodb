@@ -1,4 +1,8 @@
 /* global describe, it, beforeEach */
+
+// ATM these tests are disabled for clusters because of the internal foxx-queue requests,
+// which can cause test failures due to unexpected changes in the request counters.
+
 'use strict';
 
 const expect = require('chai').expect;
@@ -7,7 +11,7 @@ const arango = require('@arangodb').arango;
 const _ = require("lodash");
 
 function getStatistics() {
-  return arango.GET("/_db/_system/_admin/statistics");
+  return arango.GET("/_db/_system/_admin/statistics?sync=true");
 }
 
 function performGETRequest() {
@@ -36,7 +40,7 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
     expect(_.get(finalStats, path), path).to.be.above(_.get(initialStats, path));
   }
 
-  const increaseByTwo = [ // the request for initialStats is also counted
+  const increaseByTwo = [ // the inital statistics request is also counted
     "client.totalTime.count",
     "client.requestTime.count",
     "client.queueTime.count",
@@ -52,38 +56,15 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
 }
 
 describe('request statistics', function () {
-
-  // Initial statistics counter - this is initialized as part of
-  // beforeEach when we try to establish that statistics have stabilized.
-  let initialStats;
-
-  beforeEach(function () {
-    // We need to make sure all pending statistic updates have been processed,
-    // so the tests have a stable initialStats value. To this end, we perform an
-    // OPTIONS request (as these are rather rare) and wait for max. 30sec that
-    // the requestsOptions counter has been increased.
-    const initialRequestOptions = getStatistics().http.requestsOptions;
-    arango.OPTIONS("/_dummy", "dummy");
-    for (let i = 0; i < 60; ++i) {
-      internal.sleep(0.5);
-      const stats = getStatistics();
-      if (stats.http.requestsOptions > initialRequestOptions) {
-        initialStats = stats;
-        return;
-      }
-    }
-    throw "Failed to verify stable statistics counters - aborting";
-  });
-
   it('should be updated by GET requests', function () {
+    const initialStats = getStatistics();
     performGETRequest();
-    internal.sleep(1); // need to wait a bit for the statistic updates to be processed
     const finalStats = getStatistics();
 
     checkCommonStatisticsChanges(initialStats, finalStats);
 
-    const increaseByTwo = [
-      "http.requestsGet", // the first statistics request is also counted
+    const increaseByTwo = [ // the inital statistics request is also counted
+      "http.requestsGet",
     ];
     for (const path of increaseByTwo) {
       expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 2);
@@ -107,14 +88,14 @@ describe('request statistics', function () {
   });
 
   it('should be updated by POST requests', function () {
+    const initialStats = getStatistics();
     performPOSTRequest();
-    internal.sleep(1); // need to wait a bit for the statistic updates to be processed...
     const finalStats = getStatistics();
 
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
-      "http.requestsGet", // the first statistics request is also counted
+      "http.requestsGet", // the inital statistics request is also counted
       "http.requestsPost",
     ];
     for (const path of increaseByOne) {
@@ -137,14 +118,14 @@ describe('request statistics', function () {
   });
 
   it('should be updated by DELETE requests', function () {
+    const initialStats = getStatistics();
     performDELETERequest();
-    internal.sleep(1); // need to wait a bit for the statistic updates to be processed...
     const finalStats = getStatistics();
 
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
-      "http.requestsGet", // the first statistics request is also counted
+      "http.requestsGet", // the inital statistics request is also counted
       "http.requestsDelete",
     ];
     for (const path of increaseByOne) {
