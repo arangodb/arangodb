@@ -260,12 +260,12 @@ struct OptimizerRule {
     scatterIResearchViewInClusterRule,
 
 #ifdef USE_ENTERPRISE
-    // move traversal on satellite graph to db server and add scatter / gather / remote
+    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
     scatterSatelliteGraphRule,
 #endif
 
 #ifdef USE_ENTERPRISE
-    // remove any superfluous satellite collection joins...
+    // remove any superfluous SatelliteCollection joins...
     // put it after Scatter rule because we would do
     // the work twice otherwise
     removeSatelliteJoinsRule,

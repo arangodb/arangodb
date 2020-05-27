@@ -105,7 +105,7 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
 
-  /// @brief flag, if the graph is a disjoint smart graph (enterprise edition only!)
+  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
   bool isDisjoint() const;
 
   /// @brief return the database
@@ -239,7 +239,7 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if graph is smart (Enterprise Edition only!)
   bool _isSmart;
 
-  /// @brief flag, if graph is smart *and* disjoint (enterprise edition only!)
+  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
 
   /// @brief list of shards involved, required for one-shard-databases

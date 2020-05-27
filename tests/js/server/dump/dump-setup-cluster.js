@@ -219,7 +219,7 @@ function setupSatelliteGraphs() {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates a smart graph and changes the value of the smart
+ *        Creates a SmartGraph and changes the value of the smart
  *        attribute to check that the graph can still be restored. 
  *
  *        This is a regression test for a bug in which a dumped

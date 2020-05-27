@@ -911,7 +911,7 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'isDisjoint',
-              'Disjoint Smart Graph',
+              'Disjoint SmartGraph',
               isDisjoint,
               'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.',
             )

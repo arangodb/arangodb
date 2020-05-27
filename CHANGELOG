@@ -41,12 +41,12 @@ devel
   to abort search was too eager and hence missed the shortest path between two
   vertices and returned a longer one.
 
-* Added feature: DisjointSmartGraphs
+* Added feature: Disjoint SmartGraphs
 
-  SmartGraphs have been extended to a new subtype, called **DisjointSmartGraphs**.
-  A DisjointSmartGraph prohibits edges between different SmartGraph components. 
+  SmartGraphs have been extended to a new subtype, called **Disjoint SmartGraphs**.
+  A Disjoint SmartGraph prohibits edges between different SmartGraph components. 
   In case the graph schema can be represented without the need of connected 
-  SmartGraph components, a DisjointSmartGraph should be used as this knowledge 
+  SmartGraph components, a Disjoint SmartGraph should be used as this knowledge 
   can be used by the internal optimizer to gain even better query traversal 
   execution times.
 
@@ -59,7 +59,7 @@ devel
   one DISTRIBUTE/GATHER pair and only access at most one collection.
 
   This proves particularly useful for traversals, shortest path, and k-shortest
-  paths queries on disjoint smart graphs where the entire traversal is executed
+  paths queries on Disjoint SmartGraphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
 
 * ClusterInfo does its own updating of plan / current caches.
@@ -161,10 +161,10 @@ devel
   For these systems the default value were presumably too high and needed manual
   adjustment.
 
-* Allow to override the detected number of avaiable CPU cores via an environment
+* Allow to override the detected number of available CPU cores via an environment
   variable ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES.
 
-* Fix a bug in the optimizer which handled combinations of smart joins with
+* Fix a bug in the optimizer which handled combinations of SmartJoins with
   query components that had to run on a coordinator wrong.
 
 * Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
@@ -196,7 +196,7 @@ devel
   deployments that are known to already contain invalid UTF-8 data and to keep
   them operational until the wrong string encoding is fixed in the data.
 
-* Fixed a bug which occurred if a dbserver was shut down exactly
+* Fixed a bug which occurred if a DB-Server was shut down exactly
   when it was supposed to resign from its leadership for a shard.
 
 * Improve continuation behavior of AQL queries. We post the continuation

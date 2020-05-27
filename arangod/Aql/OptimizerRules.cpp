@@ -3797,8 +3797,8 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
   // an earlier iteration in scatterInClusterRule.
   // We remove that block, effectively moving the SCATTER/REMOTE past the
   // current node
-  // The effect is that in a smart join we get joined up nodes that are
-  // all executed on the DBServer
+  // The effect is that in a SmartJoin we get joined up nodes that are
+  // all executed on the DB-Server
   auto found = false;
   auto* current = at->getFirstParent();
   while (current != nullptr) {
@@ -4125,7 +4125,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
     isSmart = graphNode->isSmart();
     isDisjoint = graphNode->isDisjoint();
 
-    // Note that here we are in the disjoint smart graph case and "collection()" will
+    // Note that here we are in the Disjoint SmartGraph case and "collection()" will
     // give us any collection in the graph, but they're all sharded the same way.
     collection = graphNode->collection();
 
