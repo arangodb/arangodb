@@ -757,7 +757,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   bool mustDestroy = false;
   Expression tmpExp(_plan->getAst(), node);
 
-  RegexCache rcache;
+  AqlFunctionsInternalCache rcache;
   FixedVarExpressionContext ctxt(_plan->getAst()->query().trxForOptimization(),
                                  _plan->getAst()->query(),
                                  rcache);

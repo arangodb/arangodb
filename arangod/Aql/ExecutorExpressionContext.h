@@ -40,7 +40,7 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
   ExecutorExpressionContext(transaction::Methods& trx,
                             QueryContext& context,
-                            RegexCache& cache, InputAqlItemRow const& inputRow,
+                            AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
                             std::vector<Variable const*> const& vars,
                             std::vector<RegisterId> const& regs);
 
