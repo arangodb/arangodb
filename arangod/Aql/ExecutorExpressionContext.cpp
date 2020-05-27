@@ -57,7 +57,7 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
 
 ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
                                                      QueryContext& context,
-                                                     RegexCache& cache,
+                                                     AqlFunctionsInternalCache& cache,
                                                      InputAqlItemRow const& inputRow,
                                                      std::vector<Variable const*> const& vars,
                                                      std::vector<RegisterId> const& regs)

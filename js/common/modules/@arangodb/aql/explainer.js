@@ -1358,8 +1358,12 @@ function processQuery(query, explain, planIndex) {
           indexes.push(idx);
         });
 
-        if (node.isSatelliteNode) {
-          rc += annotation(' /* satellite node, ' + (node.isUsedAsSatellite ? '' : 'not ') + 'used as satellite */');
+        if (node.isLocalGraphNode) {
+          if (node.isUsedAsSatellite) {
+            rc += annotation(' /* local graph node, used as satellite */');
+          } else {
+            rc += annotation(' /* local graph node */');
+          }
         }
         if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
           rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
