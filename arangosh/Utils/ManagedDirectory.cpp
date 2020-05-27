@@ -179,21 +179,32 @@ inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length, arangodb::
   return bytesRead;
 }
 
-void readEncryptionFile(std::string const& directory, std::string& type,
-                        arangodb::EncryptionFeature* encryptionFeature) {
+arangodb::Result readEncryptionFile(std::string const& directory, std::string& type,
+                                    arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
+    
+  std::string newType = ::EncryptionTypeNone;
+#ifdef USE_ENTERPRISE
+  if (nullptr != encryptionFeature) {
+    newType = encryptionFeature->encryptionType();
+  }
+#endif
+
   type = ::EncryptionTypeNone;
   auto filename = ::filePath(directory, ::EncryptionFilename);
   if (TRI_ExistsFile(filename.c_str())) {
     type = trim(slurp(filename));
   } else {
-#ifdef USE_ENTERPRISE
-    if (nullptr != encryptionFeature) {
-      type = encryptionFeature->encryptionType();
-    }
-#endif
+    type = newType;
   }
+    
+  if (type != newType) {
+    return {TRI_ERROR_BAD_PARAMETER, 
+            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type + 
+              ") does not match requested encryption type (" + newType + ")"}; 
+  }
+  return {};
 }
 
 #ifdef USE_ENTERPRISE
@@ -253,7 +264,8 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
                       "path specified is a non-empty directory");
         return;
       }
-      ::readEncryptionFile(_path, _encryptionType, _encryptionFeature);
+
+      _status.reset(::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
       return;
     }
     // fall through to write encryption file
@@ -287,7 +299,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
   // currently gzip and encryption are mutually exclusive, encryption wins
   if (::EncryptionTypeNone != _encryptionType) {
     _writeGzip = false;
-  }  // if
+  }  
 }
 
 ManagedDirectory::~ManagedDirectory() = default;
