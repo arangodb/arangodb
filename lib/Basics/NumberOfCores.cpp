@@ -40,8 +40,9 @@ using namespace arangodb;
 namespace {
 
 std::size_t numberOfCoresImpl() {
+  int64_t n;
 #ifdef TRI_SC_NPROCESSORS_ONLN
-  auto n = sysconf(_SC_NPROCESSORS_ONLN);
+  n = sysconf(_SC_NPROCESSORS_ONLN);
 
   if (n < 0) {
     n = 0;
@@ -64,7 +65,7 @@ std::size_t numberOfCoresImpl() {
     // malformed input etc.
     // in this case we simply fall back to using the available
     // physical memory. this should not be an issue as the
-    // amount of memory detected is always logged at startup.
+    // count of cores detected is always logged at startup.
   }
 #endif
   return static_cast<size_t>(n);

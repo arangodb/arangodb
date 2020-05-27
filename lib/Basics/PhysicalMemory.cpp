@@ -124,6 +124,7 @@ uint64_t physicalMemoryImpl() {
 
 struct PhysicalMemoryCache {
   PhysicalMemoryCache() : cachedValue(physicalMemoryImpl()), overridden(false) {
+    const uint64_t minram = 16 * 1024 * 1024; // 16MB
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
       if (!value.empty()) {
@@ -144,6 +145,9 @@ struct PhysicalMemoryCache {
           overridden = true;
         }
       }
+    }
+    if (cachedValue < minram) {
+      cachedValue = minram;
     }
   }
   uint64_t cachedValue;
