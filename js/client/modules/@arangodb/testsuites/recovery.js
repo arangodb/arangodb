@@ -53,7 +53,7 @@ const testPaths = {
 function runArangodRecovery (params) {
   let useEncryption = false;
 
-  if (params && params.options.storageEngine === 'rocksdb' && global.ARANGODB_CLIENT_VERSION) {
+  if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
       useEncryption = true;
@@ -83,7 +83,6 @@ function runArangodRecovery (params) {
     }
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
-      'wal.reserve-logfiles': 1,
       'rocksdb.wal-file-timeout-initial': 10,
       'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
@@ -121,7 +120,6 @@ function runArangodRecovery (params) {
       Object.assign(params.args,
                     {
                       'log.foreground-tty': 'true',
-                      'wal.ignore-logfile-errors': 'true',
                       'database.ignore-datafile-errors': 'false', // intentionally false!
                       'javascript.script-parameter': 'recovery'
                     }

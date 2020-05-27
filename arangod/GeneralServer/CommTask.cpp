@@ -30,6 +30,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/compile-time-strlen.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -75,27 +76,13 @@ CommTask::CommTask(GeneralServer& server,
                    ConnectionInfo info)
     : _server(server),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(nullptr),
+      _connectionStatistics(ConnectionStatistics::acquire()),
       _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
-  _connectionStatistics = ConnectionStatistics::acquire();
-  ConnectionStatistics::SET_START(_connectionStatistics);
+  _connectionStatistics.SET_START();
 }
 
-CommTask::~CommTask() {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-  for (auto& statistics : _statisticsMap) {
-    auto stat = statistics.second;
-
-    if (stat != nullptr) {
-      stat->release();
-    }
-  }
-  if (_connectionStatistics != nullptr) {
-    _connectionStatistics->release();
-    _connectionStatistics = nullptr;
-  }
-}
+CommTask::~CommTask() = default;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -150,6 +137,8 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authToken,
                                           GeneralRequest& req) {
+  DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
+
   // Step 1: In the shutdown phase we simply return 503:
   if (_server.server().isStopping()) {
     addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
@@ -215,7 +204,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
         ReplicationFeature::prepareFollowerResponse(res.get(), mode);
-        sendResponse(std::move(res), nullptr);
+        sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
       break;
@@ -324,7 +313,8 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
 
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
-  
+  DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
+
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
 
@@ -363,7 +353,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    statistics(messageId).SET_SUPERUSER();
     std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
                                  futures::Try<Result> && /*ignored*/) -> void {
       self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
@@ -373,8 +363,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestStatistics::SET_ASYNC(statistics(messageId));
-    handler->setStatistics(stealStatistics(messageId));
+    RequestStatistics::Item stats = stealStatistics(messageId);
+    stats.SET_ASYNC();
+    handler->setStatistics(std::move(stats));
 
     uint64_t jobId = 0;
 
@@ -398,7 +389,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
         // return the job id we just created
         resp->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
-      sendResponse(std::move(resp), nullptr);
+      sendResponse(std::move(resp), RequestStatistics::Item());
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        respType, messageId, TRI_ERROR_QUEUE_FULL);
@@ -415,55 +406,33 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
-  RequestStatistics* stat = RequestStatistics::acquire();
-  
+RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
+  RequestStatistics::Item stat = RequestStatistics::acquire();
+ 
   {
     std::lock_guard<std::mutex> guard(_statisticsMutex);
-    if (stat == nullptr) {
-      auto it = _statisticsMap.find(id);
-      if (it != _statisticsMap.end()) {
-        it->second->release();
-        _statisticsMap.erase(it);
-      }
-    } else {
-      auto result = _statisticsMap.insert({id, stat});
-      if (!result.second) {
-        result.first->second->release();
-        result.first->second = stat;
-      }
-    }
+    return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
   }
-  
-  return stat;
 }
 
 
-RequestStatistics* CommTask::statistics(uint64_t id) {
+RequestStatistics::Item const& CommTask::statistics(uint64_t id) {
   std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  auto iter = _statisticsMap.find(id);
-  if (iter == _statisticsMap.end()) {
-    return nullptr;
-  }
-
-  return iter->second;
+  return _statisticsMap[id];
 }
 
 
-RequestStatistics* CommTask::stealStatistics(uint64_t id) {
+RequestStatistics::Item CommTask::stealStatistics(uint64_t id) {
+  RequestStatistics::Item result;
   std::lock_guard<std::mutex> guard(_statisticsMutex);
 
   auto iter = _statisticsMap.find(id);
-
-  if (iter == _statisticsMap.end()) {
-    return nullptr;
+  if (iter != _statisticsMap.end()) {
+    result = std::move(iter->second);
+    _statisticsMap.erase(iter);
   }
 
-  RequestStatistics* stat = iter->second;
-  _statisticsMap.erase(iter);
-
-  return stat;
+  return result;
 }
 
 /// @brief send error response including response body
@@ -516,7 +485,8 @@ void CommTask::addErrorResponse(rest::ResponseCode code,
 // and scheduled later when the number of used threads decreases
 
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+  DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
+  handler->statistics().SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
@@ -526,7 +496,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
   auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
-    RequestStatistics::SET_QUEUE_END(handler->statistics());
+    handler->statistics().SET_QUEUE_END();
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       try {
         // Pass the response to the io context
@@ -601,8 +571,9 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
-  // deny access to database with NONE, (except /_api/user)
-  if (vc->databaseAuthLevel() == auth::Level::NONE/* && !StringUtils::isPrefix(path, ApiUser)*/) {
+  // deny access to database with NONE
+  if (result == Flow::Continue &&
+      vc->databaseAuthLevel() == auth::Level::NONE) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -624,7 +595,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
 
     if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
-
       if (!path.empty()) {
         // check if path starts with /_
         // or path begins with /
@@ -655,7 +625,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (StringUtils::isPrefix(path, ApiUser)) {
+      } else if (userAuthenticated && StringUtils::isPrefix(path, ApiUser)) {
         result = Flow::Continue;
       }
     }

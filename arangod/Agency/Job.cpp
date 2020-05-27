@@ -64,6 +64,7 @@ std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
+std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
 
 }  // namespace consensus
 }  // namespace arangodb
@@ -471,7 +472,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentShardPath = curColPrefix + sharedPath + clone.shard + "/servers";
     auto currentFailoverCandidatesPath =
-        curColPrefix + sharedPath + clone.shard + "/servers";
+        curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
     auto plannedShardPath = planColPrefix + sharedPath + "shards/" + clone.shard;
 
     // start up race condition  ... current might not have everything in plan

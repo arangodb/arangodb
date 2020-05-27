@@ -31,7 +31,12 @@ namespace arangodb::aql {
 
 class ShadowAqlItemRow;
 
+
 class AqlItemBlockInputRange {
+ public:
+  /// @brief tag that can be used to speed up nextDataRow
+  struct HasDataRow {};
+
  public:
   explicit AqlItemBlockInputRange(ExecutorState state, std::size_t skipped = 0);
 
@@ -52,13 +57,16 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
+  
+  /// @brief optimized version of nextDataRow, only to be used when it is known that 
+  /// there is a next data row (i.e. if a previous call to hasDataRow() returned true)
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(HasDataRow);
 
   std::size_t getRowIndex() const noexcept { return _rowIndex; };
 
   bool hasShadowRow() const noexcept;
 
   arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRowAndState() const;
 
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
@@ -71,6 +79,22 @@ class AqlItemBlockInputRange {
   [[nodiscard]] auto skipAll() noexcept -> std::size_t;
 
   [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many datarows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countDataRows() const noexcept -> std::size_t;
+
+  /**
+   * @brief Count how many shadowRows are expected in this range
+   *        Used to estimate amount of produced rows
+   * @return std::size_t
+   */
+  [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
+
+  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;

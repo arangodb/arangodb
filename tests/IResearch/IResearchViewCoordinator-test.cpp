@@ -71,10 +71,10 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
@@ -99,14 +99,14 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
-    }
+  }
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
     ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
-    }
+  }
 
   ~IResearchViewCoordinatorTest() = default;
 };
@@ -165,9 +165,11 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
       "}");
-  ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
-                                              collectionJson0->slice(), 0.0, false, nullptr)
-                   .ok()));
+
+  ci.loadPlan();
+
+  ASSERT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId0, 0, 1, 1, false,
+                                            collectionJson0->slice(), 0.0, false, nullptr).ok());
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(vocbase->name(), collectionId1, 0, 1, 1, false,
@@ -197,9 +199,12 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   std::shared_ptr<arangodb::Index> link;
   auto& factory =
       server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection0, linkJson->slice(), 1, false));
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection1, linkJson->slice(), 2, false));
-  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection2, linkJson->slice(), 3, false));
+  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection0, linkJson->slice(),
+                                         arangodb::IndexId{1}, false));
+  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection1, linkJson->slice(),
+                                         arangodb::IndexId{2}, false));
+  EXPECT_NE(nullptr, factory.instantiate(*logicalCollection2, linkJson->slice(),
+                                         arangodb::IndexId{3}, false));
 
   // visit view
   TRI_voc_cid_t expectedCollections[] = {1, 2, 3};
@@ -251,7 +256,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_EQ(17, slice.length());
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));
@@ -278,7 +283,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_EQ(14, slice.length());
+      EXPECT_EQ(15, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));
@@ -389,13 +394,12 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -767,13 +771,12 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -998,7 +1001,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     "      \"includeAllFields\":true, "
     "      \"analyzers\": [\"inPlace\"], "
     "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-    "      \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] "
+    "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
     "    } "
     "  } }");
 
@@ -1049,7 +1052,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(14, slice.length());
+    EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
@@ -1082,6 +1085,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1099,6 +1104,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
       EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
       EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+      EXPECT_FALSE(tmpSlice2.hasKey("storedValues"));
     }
   }
 
@@ -1113,7 +1119,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(17, slice.length());
+    EXPECT_EQ(18, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
@@ -1150,6 +1156,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1168,7 +1177,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(14, slice.length());
+    EXPECT_EQ(15, slice.length());
     EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
     EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
@@ -1201,6 +1210,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("primarySortCompression");
+    EXPECT_TRUE(tmpSlice.isString());
+    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
     tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
@@ -1210,7 +1222,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(8, tmpSlice2.length());
+      EXPECT_EQ(9, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1224,11 +1236,12 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
       ASSERT_EQ(1, tmpSlice2.length());
       tmpSlice2 = tmpSlice2.at(0);
       ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(4, tmpSlice2.length());
+      EXPECT_EQ(5, tmpSlice2.length());
       EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
       EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
       EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
       EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+      EXPECT_TRUE(tmpSlice2.get("revision").isNumber() && 0 == tmpSlice2.get("revision").getNumber<uint64_t>());
     }
   }
 }
@@ -1249,6 +1262,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
       "\"writebufferSizeMax\": 44040192, "
       "\"locale\": \"C\", "
       "\"version\": 1, "
+      "\"primarySortCompression\":\"none\","
       "\"primarySort\": [ "
       "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
       "{ \"field\": \"another.field\", \"asc\": false } "
@@ -1320,6 +1334,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
         "\"writeBufferSizeMax\": 142, "
         "\"locale\": \"en\", "
         "\"version\": 1, "
+        "\"primarySortCompression\":\"lz4\","
         "\"primarySort\": [ "
         "{ \"field\": \"field\", \"asc\": true } "
         "]"
@@ -1345,6 +1360,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
         "\"writeBufferSizeMax\": 142, "
         "\"locale\": \"en\", "
         "\"version\": 1, "
+        "\"primarySortCompression\":\"lz4\","
         "\"primarySort\": [ "
         "{ \"field\": \"field\", \"asc\": true } "
         "]"
@@ -1386,6 +1402,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
       EXPECT_TRUE(25 == meta._writebufferActive);
       EXPECT_TRUE(12 == meta._writebufferIdle);
       EXPECT_TRUE(42 * (size_t(1) << 20) == meta._writebufferSizeMax);
+      EXPECT_EQ(irs::type<irs::compression::none>::id(), meta._primarySortCompression);
       EXPECT_TRUE(2 == meta._primarySort.size());
       {
         auto& field = meta._primarySort.field(0);
@@ -2743,15 +2760,15 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
+
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = irs::make_finally(
         [userManager]() -> void { userManager->removeAllUsers(); });
 
@@ -4026,7 +4043,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       EXPECT_TRUE(expectedMeta == actualMeta);
     }
 
-    TRI_idx_iid_t linkId;
+    arangodb::IndexId linkId;
 
     // check indexes
     {
@@ -4109,7 +4126,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     EXPECT_TRUE(
         (arangodb::methods::Indexes::drop(
              logicalCollection.get(),
-             arangodb::velocypack::Parser::fromJson(std::to_string(linkId))->slice())
+             arangodb::velocypack::Parser::fromJson(std::to_string(linkId.id()))->slice())
              .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
@@ -4189,15 +4206,15 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::removeAllUsers()
+
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = irs::make_finally(
         [userManager]() -> void { userManager->removeAllUsers(); });
 
@@ -4384,13 +4401,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -4492,7 +4508,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -4591,13 +4607,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -4736,13 +4751,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -4899,13 +4913,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5134,13 +5147,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5242,7 +5254,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope scope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
@@ -5338,13 +5350,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5490,13 +5501,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5653,13 +5663,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -5748,17 +5757,17 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     EXPECT_TRUE(vocbase == &view->vocbase());
 
     // dummy query
-    arangodb::aql::Query query(false, *vocbase, arangodb::aql::QueryString("RETURN 1"),
-                               nullptr, arangodb::velocypack::Parser::fromJson("{}"),
-                               arangodb::aql::PART_MAIN);
-    query.prepare(arangodb::QueryRegistryFeature::registry(), arangodb::aql::SerializationFormat::SHADOWROWS);
+    arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(*vocbase),
+                               arangodb::aql::QueryString("RETURN 1"),
+                               nullptr, arangodb::velocypack::Parser::fromJson("{}"));
+    query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-    arangodb::aql::SingletonNode singleton(query.plan(), 0);
+    arangodb::aql::SingletonNode singleton(query.plan(), arangodb::aql::ExecutionNodeId{0});
 
-    arangodb::aql::Variable const outVariable("variable", 0);
+    arangodb::aql::Variable const outVariable("variable", 0, false);
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),
-                                                42,        // id
+                                                arangodb::aql::ExecutionNodeId{42},
                                                 *vocbase,  // database
                                                 view,      // view
                                                 outVariable,
@@ -5768,14 +5777,17 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
     );
     node.addDependency(&singleton);
 
-    arangodb::aql::ExecutionEngine engine(query, arangodb::aql::SerializationFormat::SHADOWROWS);
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
+    singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
+    singleton.setVarsValid({{}});
+    node.setVarsUsedLater({{}});
+    node.setVarsValid({arangodb::aql::VarSet{&outVariable}});
     singleton.setVarUsageValid();
     node.setVarUsageValid();
     singleton.planRegisters(nullptr);
     node.planRegisters(nullptr);
-    auto singletonBlock = singleton.createBlock(engine, cache);
-    auto execBlock = node.createBlock(engine, cache);
+    auto singletonBlock = singleton.createBlock(*query.rootEngine(), cache);
+    auto execBlock = node.createBlock(*query.rootEngine(), cache);
     ASSERT_TRUE(nullptr != execBlock);
     ASSERT_TRUE(nullptr !=
                 dynamic_cast<arangodb::aql::ExecutionBlockImpl<arangodb::aql::NoResultsExecutor>*>(

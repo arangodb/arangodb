@@ -123,6 +123,7 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/NumberOfCores.cpp
   Basics/NumberUtils.cpp
   Basics/PageSize.cpp
   Basics/PhysicalMemory.cpp
@@ -130,6 +131,7 @@ add_library(arango STATIC
   Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
+  Basics/Identifier.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp

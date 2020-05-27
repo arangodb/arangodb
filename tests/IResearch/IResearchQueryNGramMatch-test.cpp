@@ -66,7 +66,7 @@ TEST_F(IResearchQueryNGramMatchTest, SysVocbase) {
     auto res =
       analyzers.emplace(result, "_system::myngram", "ngram",
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-        irs::flags{ irs::frequency::type(), irs::position::type() }  // required for PHRASE
+        irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
   }
@@ -592,7 +592,7 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
     auto res =
       analyzers.emplace(result, "testVocbase::myngram", "ngram",
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-        irs::flags{ irs::frequency::type(), irs::position::type() }  // required for PHRASE
+        irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
   }
@@ -614,7 +614,7 @@ TEST_F(IResearchQueryNGramMatchTest, test) {
       auto res =
         analyzers.emplace(result, "testVocbase2::myngram", "ngram",
           VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", \"preserveOriginal\":false}")->slice(),
-          irs::flags{ irs::frequency::type(), irs::position::type() } 
+          irs::flags{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }
       );  // cache analyzer
       EXPECT_TRUE(res.ok());
     }

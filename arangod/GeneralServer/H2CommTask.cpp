@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/asio_ns.h"
+#include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -47,12 +48,13 @@ template <SocketType T>
 /*static*/ int H2CommTask<T>::on_begin_headers(nghttp2_session* session,
                                                const nghttp2_frame* frame, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-
+   
   if (frame->hd.type != NGHTTP2_HEADERS || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   const int32_t sid = frame->hd.stream_id;
+  me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
   auto req = std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
                                            /*allowMethodOverride*/ false);
   me->createStream(sid, std::move(req));
@@ -150,7 +152,11 @@ template <SocketType T>
 /*static*/ int H2CommTask<T>::on_stream_close(nghttp2_session* session, int32_t stream_id,
                                               uint32_t error_code, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-  me->_streams.erase(stream_id);
+  auto it = me->_streams.find(stream_id);
+  if (it != me->_streams.end()) {
+    it->second->statistics.SET_WRITE_END();
+    me->_streams.erase(it);
+  }
   
   if (error_code != NGHTTP2_NO_ERROR) {
     LOG_TOPIC("2824d", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
@@ -190,7 +196,7 @@ template <SocketType T>
 H2CommTask<T>::H2CommTask(GeneralServer& server, ConnectionInfo info,
                           std::unique_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)) {
-  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  this->_connectionStatistics.SET_HTTP();
   initNgHttp2Session();
 }
 
@@ -389,8 +395,20 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   return true;  //  continue read lopp
 }
 
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__ ((noinline)) DTraceH2CommTaskProcessStream(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskProcessStream, th);
+}
+#else
+static void DTraceH2CommTaskProcessStream(size_t) {}
+#endif
+
 template <SocketType T>
 void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
+
+  DTraceH2CommTaskProcessStream((size_t) this);
+
   TRI_ASSERT(stream);
 
   std::unique_ptr<HttpRequest> req = std::move(stream->request);
@@ -421,6 +439,12 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   
   // store origin header for later use
   stream->origin = req->header(StaticStrings::Origin);
+  auto messageId = req->messageId();
+  RequestStatistics::Item const& stat = this->statistics(messageId);
+  stat.SET_REQUEST_TYPE(req->requestType());
+  stat.ADD_RECEIVED_BYTES(stream->headerBuffSize + req->body().size());
+  stat.SET_READ_END();
+  stat.SET_WRITE_START();
 
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
@@ -433,7 +457,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
-    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
+    stat.SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -451,7 +475,7 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
 
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             req->messageId(), nullptr);
+                                             messageId, nullptr);
   resp->setContentType(req->contentTypeResponse());
   this->executeRequest(std::move(req), std::move(resp));
 }
@@ -463,15 +487,22 @@ bool expectResponseBody(int status_code) {
 }
 }  // namespace
 
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__ ((noinline)) DTraceH2CommTaskSendResponse(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskSendResponse, th);
+}
+#else
+static void DTraceH2CommTaskSendResponse(size_t) {}
+#endif
+
 template <SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
-                                 RequestStatistics* stat) {
-  
-  // TODO the statistics are total bogus here
-  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
-  if (stat) {
-    stat->release();
-  }
+                                 RequestStatistics::Item stat) {
+
+  DTraceH2CommTaskSendResponse((size_t) this);
+
+  double const totalTime = stat.ELAPSED_SINCE_READ_START();
   
   if (this->_stopped.load(std::memory_order_acquire)) {
     return;
@@ -487,6 +518,10 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
        << Logger::FIXED(totalTime, 6);
   
   auto* tmp = static_cast<HttpResponse*>(res.get());
+  auto stream = findStream(static_cast<int32_t>(res->messageId()));
+  TRI_ASSERT(stream);
+  stream->statistics = std::move(stat);
+
   // this uses fixed capacity queue, push might fail (it shouldn't though)
   int retries = 1024;
   while (ADB_UNLIKELY(!_responses.push(tmp))) {
@@ -584,6 +619,10 @@ void H2CommTask<T>::queueHttp2Responses() {
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
+    
+    RequestStatistics::Item const& stat = strm->statistics;
+    
+    
     if ((res.bodySize() > 0) &&
         res.generateBody() &&
         ::expectResponseBody(static_cast<int>(res.responseCode()))
@@ -617,7 +656,8 @@ void H2CommTask<T>::queueHttp2Responses() {
       };
       prd_ptr = &prd;
     }
-
+    stat.ADD_SENT_BYTES(res.bodySize());
+    
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
     if (rv != 0) {
@@ -629,6 +669,19 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
   }
 }
+
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__ ((noinline)) DTraceH2CommTaskBeforeAsyncWrite(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskBeforeAsyncWrite, th);
+}
+static void __attribute__ ((noinline)) DTraceH2CommTaskAfterAsyncWrite(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskAfterAsyncWrite, th);
+}
+#else 
+static void DTraceH2CommTaskBeforeAsyncWrite(size_t) {}
+static void DTraceH2CommTaskAfterAsyncWrite(size_t) {}
+#endif
 
 // called on IO context thread
 template <SocketType T>
@@ -685,6 +738,8 @@ void H2CommTask<T>::doWrite() {
     return;
   }
 
+  DTraceH2CommTaskBeforeAsyncWrite((size_t) this);
+
   asio_ns::async_write(this->_protocol->socket, outBuffers,
                        [self = this->shared_from_this()](const asio_ns::error_code& ec,
                                                          std::size_t nwrite) {
@@ -694,6 +749,8 @@ void H2CommTask<T>::doWrite() {
                            me.close(ec);
                            return;
                          }
+
+                         DTraceH2CommTaskAfterAsyncWrite((size_t) self.get());
 
                          me.doWrite();
                        });

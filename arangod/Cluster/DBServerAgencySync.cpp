@@ -106,7 +106,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
-        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
         if (theLeader.empty() && theLeaderTouched) {
@@ -124,11 +124,10 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
-
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
   auto start = clock::now();
-  TRI_ASSERT(AgencyCommManager::isEnabled());
+
   AgencyComm comm(_server);
 
 
@@ -170,12 +169,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   VPackBuilder local;
+  LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE) << "Before getLocalCollections for phaseOne";
   Result glc = getLocalCollections(local);
+  LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
     result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
   }
+  LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local.toJson();
 
   try {
     // in previous life handlePlanChange

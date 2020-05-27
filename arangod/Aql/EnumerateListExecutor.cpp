@@ -28,9 +28,9 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
@@ -49,19 +49,9 @@ void throwArrayExpectedException(AqlValue const& value) {
 }
 }  // namespace
 
-EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister,
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep)
-    : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    make_shared_unordered_set({outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _inputRegister(inputRegister),
-      _outputRegister(outputRegister) {}
+EnumerateListExecutorInfos::EnumerateListExecutorInfos(RegisterId inputRegister,
+                                                       RegisterId outputRegister)
+    : _inputRegister(inputRegister), _outputRegister(outputRegister) {}
 
 RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
   return _inputRegister;
@@ -73,11 +63,6 @@ RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos), _currentRow{CreateInvalidInputRowHint{}}, _inputArrayPosition(0), _inputArrayLength(0) {}
-
-std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {

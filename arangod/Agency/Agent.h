@@ -34,6 +34,7 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
+#include "Futures/Promise.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "RestServer/MetricsFeature.h"
@@ -121,6 +122,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Read from agency
   read_ret_t read(query_t const&);
 
+  /// @brief Long pool for higher index than given
+  futures::Future<query_t> poll(index_t const& index, double const& timeout);
+
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);
 
@@ -150,6 +154,18 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
  private:
 
+  void logsForTrigger();
+
+  /// @brief clear expired polls registered by Agent::poll
+  ///        if qu is nullptr, we're resigning.
+  ///        Caller must have _promLock!
+  void triggerPollsNoLock(
+    query_t qu = nullptr,
+    SteadyTimePoint const& tp = std::chrono::steady_clock::now() + std::chrono::seconds(60));
+
+  /// @brief trigger all expire polls
+  void clearExpiredPolls();
+
   /// @brief empty callback trash bin
   void emptyCbTrashBin();
 
@@ -166,7 +182,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Get last confirmed index of an agent. Default my own.
   ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
   index_t confirmed(std::string const& serverId = std::string()) const;
-  
+
   /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
@@ -507,6 +523,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  // @brief promises for poll interface and the guard
+  //        The map holds all current poll promises.
+  //        key,value: expiry time of this poll, the promise
+  //        When expired or when any change to commitIndex, promise is fullfilled
+  //        All rest handlers will receive the same vpack,
+  //        They need to sort out, what is sent to client
+  std::mutex _promLock;
+  index_t _lowestPromise;
+  std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
 
   Counter& _write_ok;
   Counter& _write_no_leader;

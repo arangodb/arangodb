@@ -150,8 +150,17 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const&
 }
 
 void ModificationExecutorHelpers::throwOperationResultException(
-    ModificationExecutorInfos const& infos, OperationResult const& result) {
-  auto const& errorCounter = result.countErrorCodes;
+    ModificationExecutorInfos const& infos, OperationResult const& operationResult) {
+
+  // A "higher level error" happened (such as the transaction being aborted,
+  // replication being refused, etc ), and we do not have errorCounter or
+  // similar so we throw.
+  if (!operationResult.ok()) {
+    // inside OperationResult hides a small result.
+    THROW_ARANGO_EXCEPTION(operationResult.result);
+  }
+
+  auto const& errorCounter = operationResult.countErrorCodes;
 
   // Early escape if we are ignoring errors.
   if (infos._ignoreErrors == true || errorCounter.empty()) {
@@ -164,11 +173,11 @@ void ModificationExecutorHelpers::throwOperationResultException(
   //
   // Find the first error with a message and throw that
   // This mirrors previous behaviour and might not be entirely ideal.
-  for (auto const p : errorCounter) {
+  for (auto const& p : errorCounter) {
     auto const errorCode = p.first;
     if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
-      for (auto doc : VPackArrayIterator(result.slice())) {
+      for (auto doc : VPackArrayIterator(operationResult.slice())) {
         if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
             doc.get(StaticStrings::ErrorNum).getInt() == errorCode) {
           VPackSlice s = doc.get(StaticStrings::ErrorMessage);
@@ -197,16 +206,15 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
   out.validate = in.validate;
-  out.keepNull = !in.nullMeansRemove;
+  out.keepNull = in.keepNull;
   out.mergeObjects = in.mergeObjects;
   // in.ignoreDocumentNotFound;
   // in.readCompleteInput;
-  out.isRestore = in.useIsRestore;
+  out.isRestore = in.isRestore;
   // in.consultAqlWriteFilter;
   // in.exclusive;
-  out.overwrite = in.overwrite;
+  out.overwriteMode = in.overwriteMode;
   out.ignoreRevs = in.ignoreRevs;
-  out.overwriteModeUpdate = in.overwriteModeUpdate;
 
   out.returnNew = (outVariableNew != nullptr);
   out.returnOld = (outVariableOld != nullptr);
@@ -217,8 +225,9 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
 
 AqlValue ModificationExecutorHelpers::getDocumentOrNull(VPackSlice const& elm,
                                                         std::string const& key) {
-  if (elm.hasKey(key)) {
-    return AqlValue{elm.get(key)};
+  VPackSlice s = elm.get(key);
+  if (!s.isNone()) {
+    return AqlValue{s};
   }
-  return AqlValue{VPackSlice::nullSlice()};
+  return AqlValue(AqlValueHintNull());
 }

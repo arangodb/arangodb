@@ -157,42 +157,6 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-
-        iid = doc.parsed_response['id']
-
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-
-          cmd = api + "/#{iid}"
-          doc = ArangoDB.get(cmd)
-
-          doc.code.should eq(200)
-          doc.headers['content-type'].should eq("application/json; charset=utf-8")
-          doc.parsed_response['error'].should eq(false)
-          doc.parsed_response['code'].should eq(200)
-          doc.parsed_response['id'].should match(@reFull)
-          doc.parsed_response['id'].should eq(iid)
-          doc.parsed_response['type'].should eq("hash")
-          doc.parsed_response['unique'].should eq(true)
-          doc.parsed_response['sparse'].should eq(false)
-          doc.parsed_response['fields'].should eq([ "a", "b" ])
-        end
       end
 
       it "survives unload, sparse index" do
@@ -207,27 +171,6 @@ describe ArangoDB do
         doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
-
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-
-        end
 
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
@@ -389,26 +332,6 @@ describe ArangoDB do
 
         iid = doc.parsed_response['id']
 
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
-
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
 
@@ -436,26 +359,6 @@ describe ArangoDB do
         doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
-
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
 
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
@@ -617,26 +520,6 @@ describe ArangoDB do
 
         iid = doc.parsed_response['id']
 
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
-
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
 
@@ -664,26 +547,6 @@ describe ArangoDB do
         doc.parsed_response['id'].should match(@reFull)
 
         iid = doc.parsed_response['id']
-
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
 
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
@@ -811,26 +674,6 @@ describe ArangoDB do
 
         iid = doc.parsed_response['id']
 
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
-
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
 
@@ -858,26 +701,6 @@ describe ArangoDB do
         doc.parsed_response['id'].should_not eq(0)
 
         iid = doc.parsed_response['id']
-
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
 
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)

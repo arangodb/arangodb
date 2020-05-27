@@ -104,8 +104,9 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair(StaticStrings::Empty, false)};
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
 
   bool found = false;
@@ -170,23 +171,28 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-
-  std::string const& mode = _request->value(StaticStrings::OverWriteMode);
-  using namespace std::literals::string_literals;
-  if (mode == "update"s) {
-    opOptions.overwrite = true;
-    opOptions.overwriteModeUpdate = true;
-    opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
-    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
-  } else if (mode == "replace"s) {
-    opOptions.overwrite = true;
-  }
-  if (!opOptions.overwrite) {
-    opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+  
+  if (_request->parsedValue(StaticStrings::Overwrite, false)) {
+    // the default behavior if just "overwrite" is set
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
   }
 
+
+  std::string const& mode = _request->value(StaticStrings::OverwriteMode);
+  if (!mode.empty()) {
+    auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+
+    if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+      opOptions.overwriteMode = overwriteMode;
+
+      if (opOptions.overwriteMode == OperationOptions::OverwriteMode::Update) {
+        opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
+        opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
+      }
+    }
+  }
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
-                        opOptions.overwrite;
+                        opOptions.isOverwriteModeUpdateReplace();
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -194,8 +200,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
-  if (!isMultiple && !opOptions.overwrite) {
-     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   Result res = _activeTrx->begin();

@@ -155,6 +155,9 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Check for boken collections
   void checkBrokenCollections();
 
+  /// @brief Check for broken analyzers
+  void checkBrokenAnalyzers();
+
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
     std::string const& coordinatorId;
@@ -165,6 +168,10 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Checks if a resource (database or collection). Action is called if resource should be deleted
   void ifResourceCreatorLost(std::shared_ptr<Node> const& resource,
                              std::function<void(ResourceCreatorLostEvent const&)> const& action);
+
+  // @brief Action is called if resource should be deleted
+  void resourceCreatorLost(std::shared_ptr<Node> const& resource,
+                           std::function<void(const ResourceCreatorLostEvent&)> const& action);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
@@ -234,6 +241,13 @@ class Supervision : public arangodb::CriticalThread {
   void deleteBrokenCollection(std::string const& database, std::string const& collection,
                               std::string const& coordinatorID,
                               uint64_t rebootID, bool coordinatorFound);
+
+  void restoreBrokenAnalyzersRevision(std::string const& database,
+                                      AnalyzersRevision::Revision revision,
+                                      AnalyzersRevision::Revision buildingRevision,
+                                      std::string const& coordinatorID,
+                                      uint64_t rebootID,
+                                      bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);

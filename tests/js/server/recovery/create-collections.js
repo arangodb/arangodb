@@ -60,7 +60,6 @@ function runSetup () {
     waitForSync: false,
     journalSize: 16 * 1024 * 1024,
     doCompact: true,
-    isVolatile: (db._engine().name === "mmfiles")
   });
   c.save({ value1: { 'some': 'rubbish' } });
   c.ensureSkiplist('value1');
@@ -109,26 +108,15 @@ function recoverySuite () {
       prop = c.properties();
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
-      if (db._engine().name === "mmfiles") {
-        assertEqual(8 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-        assertFalse(prop.isVolatile);
-      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
-      // isVolatile has no effect on rocksdb
-      assertEqual(db._engine().name  === "mmfiles" ? 0 : 1, c.count());
+      assertEqual(1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
-      if (db._engine().name  === "mmfiles") {
-        assertEqual(16 * 1024 * 1024, prop.journalSize);
-        assertTrue(prop.doCompact);
-        assertTrue(prop.isVolatile);
-      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(2, idx.length);
@@ -141,11 +129,6 @@ function recoverySuite () {
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
-      if (db._engine().name === "mmfiles") {
-        assertEqual(32 * 1024 * 1024, prop.journalSize);
-        assertTrue(prop.doCompact);
-        assertFalse(prop.isVolatile);
-      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(3, idx.length);

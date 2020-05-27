@@ -284,11 +284,11 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -412,11 +412,11 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -546,11 +546,11 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -651,11 +651,11 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -714,11 +714,11 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -780,11 +780,11 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -933,11 +933,11 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1071,11 +1071,11 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1208,11 +1208,11 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1301,11 +1301,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1422,11 +1422,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1598,11 +1598,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
   // segment meta creation failure
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1730,11 +1730,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
   // segment meta synchonization failure
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1876,11 +1876,11 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1989,11 +1989,11 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -2092,11 +2092,11 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
 TEST(index_death_test_formats_10, segment_components_fail_import) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2340,11 +2340,11 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
 TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segment_flush) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2489,11 +2489,11 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
 TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flush) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2572,11 +2572,11 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 
 TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segment_flush) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2631,11 +2631,11 @@ TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segmen
 
 TEST(index_death_test_formats_10, open_reader) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2730,16 +2730,16 @@ TEST(index_death_test_formats_10, open_reader) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
 TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2823,36 +2823,36 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
 TEST(index_death_test_formats_10, postings_reopen_fail) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   const auto positions = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get()
   };
 
   const auto positions_offsets = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::offset>::get()
   };
 
   const auto positions_payload = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2981,9 +2981,5 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

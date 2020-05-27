@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
 #include "Aql/types.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
@@ -43,10 +44,12 @@ class Builder;
 class Slice;
 }
 namespace aql {
+struct AqlValue;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class Query;
+class QueryContext;
+class ExpressionContext;
 
 enum class ProjectionType : uint32_t {
   IdAttribute,
@@ -56,17 +59,18 @@ enum class ProjectionType : uint32_t {
 
 void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                        transaction::Methods const* trxPtr, velocypack::Slice slice,
-                       velocypack::Builder& b, bool useRawDocumentPointers);
+                       velocypack::Builder& b);
 
 struct DocumentProducingFunctionContext {
  public:
   DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
                                    RegisterId outputRegister, bool produceResult,
-                                   Query* query, Expression* filter,
+                                   aql::QueryContext& query,
+                                   transaction::Methods& trx, Expression* filter,
                                    std::vector<std::string> const& projections,
                                    std::vector<size_t> const& coveringIndexAttributePositions,
                                    bool allowCoveringIndexOptimization,
-                                   bool useRawDocumentPointers, bool checkUniqueness);
+                                   bool checkUniqueness);
 
   DocumentProducingFunctionContext() = delete;
 
@@ -83,8 +87,6 @@ struct DocumentProducingFunctionContext {
   std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
 
   bool getAllowCoveringIndexOptimization() const noexcept;
-
-  bool getUseRawDocumentPointers() const noexcept;
 
   void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept;
 
@@ -103,19 +105,30 @@ struct DocumentProducingFunctionContext {
   RegisterId getOutputRegister() const noexcept;
 
   bool checkUniqueness(LocalDocumentId const& token);
-  
+
   bool checkFilter(velocypack::Slice slice);
+
+  bool checkFilter(AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
+                   void const* filterContext);
 
   void reset();
 
   void setIsLastIndex(bool val);
   
   bool hasFilter() const noexcept;
+  
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
 
  private:
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+
+  bool checkFilter(ExpressionContext& ctx);
+
+  
   InputAqlItemRow const& _inputRow;
   OutputAqlItemRow* _outputRow;
-  Query* const _query;
+  aql::QueryContext& _query;
+  transaction::Methods& _trx;
   Expression* _filter;
   std::vector<std::pair<ProjectionType, std::string>> _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
@@ -127,7 +140,6 @@ struct DocumentProducingFunctionContext {
 
   RegisterId const _outputRegister;
   bool const _produceResult;
-  bool const _useRawDocumentPointers;
   bool _allowCoveringIndexOptimization;
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
@@ -140,7 +152,6 @@ struct DocumentProducingFunctionContext {
 namespace DocumentProducingCallbackVariant {
 struct WithProjectionsCoveredByIndex {};
 struct WithProjectionsNotCoveredByIndex {};
-struct DocumentWithRawPointer {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
@@ -150,10 +161,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::Wi
 
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
-                                            DocumentProducingFunctionContext& context);
-
-template <bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
                                             DocumentProducingFunctionContext& context);
 
 template <bool checkUniqueness, bool skip>

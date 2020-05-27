@@ -42,7 +42,6 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
-#include "Aql/QueryRegistry.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
@@ -55,6 +54,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
@@ -63,7 +63,6 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -472,8 +471,8 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             nullptr, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
+                             nullptr, nullptr);
   auto parseResult = query.parse();
 
   if (parseResult.result.fail()) {
@@ -574,8 +573,8 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true),
+                             aql::QueryString(queryString), bindVars, options);
   auto queryResult = query.explain();
 
   if (queryResult.result.fail()) {
@@ -669,12 +668,30 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto queryRegistry = QueryRegistryFeature::registry();
-  TRI_ASSERT(queryRegistry != nullptr);
-
-  arangodb::aql::Query query(true, vocbase, queryBuilder, options, arangodb::aql::PART_MAIN);
-  aql::QueryResult queryResult =
-      query.executeSync(static_cast<arangodb::aql::QueryRegistry*>(queryRegistry));
+  arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true), options);
+  
+  VPackSlice collections = queryBuilder->slice().get("collections");
+  VPackSlice variables = queryBuilder->slice().get("variables");
+  VPackSlice analyzersRevision = queryBuilder->slice().get(arangodb::StaticStrings::ArangoSearchAnalyzersRevision);
+  
+  // simon: hack to get the behaviour of old second aql::Query constructor
+  VPackBuilder snippetBuilder; // simon: hack to make format conform
+  snippetBuilder.openObject();
+  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
+  snippetBuilder.add("nodes", queryBuilder->slice().get("nodes"));
+  snippetBuilder.close();
+  snippetBuilder.close();
+ 
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
+  VPackBuilder ignoreResponse;
+  query.prepareClusterQuery(aql::SerializationFormat::SHADOWROWS, VPackSlice::emptyObjectSlice(),
+                            collections, variables,
+                            snippetBuilder.slice(), VPackSlice::noneSlice(), ignoreResponse,
+                            analyzersRevision.isNumber() ? 
+                              static_cast<arangodb::AnalyzersRevision::Revision>(analyzersRevision.getUInt())
+                              : arangodb::AnalyzersRevision::MIN);
+  
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     events::QueryDocument(vocbase.name(), queryBuilder->slice(), queryResult.result.errorNumber());
@@ -785,14 +802,11 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto queryRegistry = QueryRegistryFeature::registry();
-  TRI_ASSERT(queryRegistry != nullptr);
-
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
+                             bindVars, options);
 
-  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
@@ -1682,7 +1696,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  if (!ExecContext::current().isAdminUser()) {
+  if (!ExecContext::current().isAdminUser() || (ServerState::readOnly() && !ExecContext::current().isSuperuser())) {
     events::DropDatabase("", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }

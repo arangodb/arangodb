@@ -167,6 +167,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
     }
     ~Ball() = default;
     const VertexRef center() const { return _center; };
+    bool done(std::optional<double> const currentBest) {
+      return _frontier.empty() || (currentBest.has_value() && currentBest.value() < _closest);
+    };
   };
 
   //
@@ -210,6 +213,11 @@ class KShortestPathsFinder : public ShortestPathFinder {
  public:
   explicit KShortestPathsFinder(ShortestPathOptions& options);
   ~KShortestPathsFinder();
+
+  // reset the traverser; this is mainly needed because the traverser is
+  // part of the KShortestPathsExecutorInfos, and hence not recreated when
+  // a cursor is initialised.
+  void clear() override;
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
   // TODO: Remove

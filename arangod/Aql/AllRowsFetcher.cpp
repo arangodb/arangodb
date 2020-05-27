@@ -61,10 +61,6 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcher::fetchAllRows() {
 }
 
 std::tuple<ExecutionState, SkipResult, AqlItemBlockInputMatrix> AllRowsFetcher::execute(AqlCallStack& stack) {
-  if (!stack.isRelevant()) {
-    auto [state, skipped, block] = _dependencyProxy->execute(stack);
-    return {state, skipped, AqlItemBlockInputMatrix{block}};
-  }
   TRI_ASSERT(stack.peek().getOffset() == 0);
   TRI_ASSERT(!stack.peek().needsFullCount());
   // We allow a 0 hardLimit for bypassing
@@ -205,7 +201,7 @@ AllRowsFetcher::AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& execu
       _blockToReturnNext(0),
       _dataFetchedState(NONE) {}
 
-RegisterId AllRowsFetcher::getNrInputRegisters() const {
+RegisterCount AllRowsFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 
@@ -215,32 +211,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlock() {
   _upstreamState = res.first;
 
   return res;
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForModificationExecutor(
-    std::size_t limit = ExecutionBlock::DefaultBatchSize) {
-  // TODO this method is considered obsolete.
-  // It cannot yet be removed as we need modification on the calling Executors which is ongoing
-  // However this method will not be fixed and updated for ShadowRows
-  while (_upstreamState != ExecutionState::DONE) {
-    auto state = fetchUntilDone();
-    if (state == ExecutionState::WAITING) {
-      return {state, nullptr};
-    }
-  }
-  TRI_ASSERT(_aqlItemMatrix != nullptr);
-  // This is to remember that this function is obsolete and needs to be removed
-  // before releasing the ShadowRow improvement!
-  TRI_ASSERT(!_aqlItemMatrix->stoppedOnShadowRow());
-  auto size = _aqlItemMatrix->numberOfBlocks();
-  if (_blockToReturnNext >= size) {
-    return {ExecutionState::DONE, nullptr};
-  }
-  auto blk = _aqlItemMatrix->getBlock(_blockToReturnNext);
-  ++_blockToReturnNext;
-
-  return {(_blockToReturnNext < size ? ExecutionState::HASMORE : ExecutionState::DONE),
-          std::move(blk)};
 }
 
 ExecutionState AllRowsFetcher::upstreamState() {

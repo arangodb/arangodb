@@ -28,6 +28,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Builder.h>
@@ -44,7 +45,7 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 class FilterStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
@@ -171,8 +172,6 @@ class ModificationExecutor {
   ModificationExecutor(FetcherType&, Infos&);
   ~ModificationExecutor() = default;
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
   [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
@@ -182,6 +181,8 @@ class ModificationExecutor {
  protected:
   void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
+  
+  transaction::Methods _trx;
 
   // The state that was returned on the last call to produceRows. For us
   // this is relevant because we might have collected some documents in the
@@ -189,7 +190,6 @@ class ModificationExecutor {
   // WAITING
   ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
-  FetcherType& _fetcher;
   ModifierType _modifier;
 };
 

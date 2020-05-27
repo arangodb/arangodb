@@ -31,15 +31,15 @@
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "AqlCall.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
 
 #include <Logger/LogMacros.h>
 #include <utility>
@@ -52,33 +52,20 @@ std::vector<size_t> const emptyAttributePositions;
 }
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
-    RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
+    RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter, std::vector<std::string> const& projections,
-    std::vector<size_t> const& coveringIndexAttributePositions,
-    bool useRawDocumentPointers, bool random)
-    : ExecutorInfos(make_shared_unordered_set(),
-                    make_shared_unordered_set({outputRegister}),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _engine(engine),
+    std::vector<size_t> const& coveringIndexAttributePositions, bool random, bool count)
+    : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
       _projections(projections),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
-      _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
-      _random(random) {}
-
-ExecutionEngine* EnumerateCollectionExecutorInfos::getEngine() {
-  return _engine;
-}
+      _random(random),
+      _count(count) {}
 
 Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
   return _collection;
@@ -88,15 +75,11 @@ Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
   return _outVariable;
 }
 
-Query* EnumerateCollectionExecutorInfos::getQuery() const {
-  return _engine->getQuery();
+QueryContext& EnumerateCollectionExecutorInfos::getQuery() const {
+  return _query;
 }
 
-transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
-  return _engine->getQuery()->trx();
-}
-
-Expression* EnumerateCollectionExecutorInfos::getFilter() const {
+Expression* EnumerateCollectionExecutorInfos::getFilter() const noexcept {
   return _filter;
 }
 
@@ -109,45 +92,36 @@ std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAtt
   return _coveringIndexAttributePositions;
 }
 
-bool EnumerateCollectionExecutorInfos::getProduceResult() const {
+bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-bool EnumerateCollectionExecutorInfos::getUseRawDocumentPointers() const {
-  return _useRawDocumentPointers;
-}
+bool EnumerateCollectionExecutorInfos::getRandom() const noexcept { return _random; }
 
-bool EnumerateCollectionExecutorInfos::getRandom() const { return _random; }
+bool EnumerateCollectionExecutorInfos::getCount() const noexcept { return _count; }
+
 RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
 }
 
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _documentProducer(nullptr),
+    : _trx(infos.getQuery().newTrxContext()),
+      _infos(infos),
       _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
-                                        _infos.getProduceResult(), _infos.getQuery(),
+                                        _infos.getProduceResult(), _infos.getQuery(), _trx,
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
-                                        true, _infos.getUseRawDocumentPointers(), false),
+                                        true, false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
-  _cursor = std::make_unique<OperationCursor>(
-      _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
+  TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
+  _cursor = _trx.indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
                                          ? transaction::Methods::CursorType::ANY
-                                         : transaction::Methods::CursorType::ALL)));
+                                         : transaction::Methods::CursorType::ALL));
 
-  if (!waitForSatellites(_infos.getEngine(), _infos.getCollection())) {
-    double maxWait = _infos.getEngine()->getQuery()->queryOptions().satelliteSyncWait;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-                                   "collection " + _infos.getCollection()->name() +
-                                       " did not come into sync in time (" +
-                                       std::to_string(maxWait) + ")");
-  }
   if (_infos.getProduceResult()) {
     _documentProducer =
         buildDocumentCallback<false, false>(_documentProducingFunctionContext);
@@ -157,21 +131,11 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
 
-std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor::produceRows(
-    OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(
-    size_t const toSkip) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
                                                   EnumerateCollectionStats& stats) {
   uint64_t actuallySkipped = 0;
+      
+  TRI_ASSERT(!_infos.getCount());
 
   if (_infos.getFilter() == nullptr) {
     _cursor->skip(toSkip, actuallySkipped);
@@ -193,6 +157,8 @@ uint64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
 
 std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  TRI_ASSERT(!_infos.getCount());
+
   AqlCall upstreamCall{};
   EnumerateCollectionStats stats{};
 
@@ -256,6 +222,16 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
   _cursorHasMore = _cursor->hasMore();
 }
 
+[[nodiscard]] auto EnumerateCollectionExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (_infos.getCount()) {
+    // when we are counting, we will always return a single row
+    return std::max<size_t>(input.countShadowRows(), 1);
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
+}
+
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
@@ -276,13 +252,29 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
 
     if (_cursorHasMore) {
       TRI_ASSERT(_currentRow.isInitialized());
-      if (_infos.getProduceResult()) {
+      if (_infos.getCount()) {
+        // count optimization
+        TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
+        uint64_t counter = 0;
+        _cursor->skipAll(counter);
+
+        InputAqlItemRow const& input = _documentProducingFunctionContext.getInputRow();
+        RegisterId registerId = _documentProducingFunctionContext.getOutputRegister();
+        TRI_ASSERT(!output.isFull());
+        AqlValue v((AqlValueHintUInt(counter)));
+        AqlValueGuard guard{v, true};
+        output.moveValueInto(registerId, input, guard);
+        TRI_ASSERT(output.produced());
+        output.advanceRow();
+
+        _cursorHasMore = _cursor->hasMore();
+      } else if (_infos.getProduceResult()) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
         _cursorHasMore =
             _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
       } else {
-        // performance optimization: we do not need the documents at all,
+        // performance optimization: we do not need the documents at all.
         // so just call next()
         TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
         _cursorHasMore =
@@ -311,9 +303,3 @@ void EnumerateCollectionExecutor::initializeCursor() {
   _cursorHasMore = false;
   _cursor->reset();
 }
-#ifndef USE_ENTERPRISE
-bool EnumerateCollectionExecutor::waitForSatellites(ExecutionEngine* engine,
-                                                    Collection const* collection) const {
-  return true;
-}
-#endif

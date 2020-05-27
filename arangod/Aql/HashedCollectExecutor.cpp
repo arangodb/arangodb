@@ -29,9 +29,9 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 
@@ -43,25 +43,16 @@ using namespace arangodb::aql;
 static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
+    velocypack::Options const* opts, bool count)
+    : _aggregateTypes(aggregateTypes),
       _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
-      _count(count),
-      _trxPtr(trxPtr) {
+      _vpackOptions(opts),
+      _count(count) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -77,19 +68,19 @@ std::vector<std::string> HashedCollectExecutorInfos::getAggregateTypes() const {
   return _aggregateTypes;
 }
 
-bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
-
-transaction::Methods* HashedCollectExecutorInfos::getTransaction() const {
-  return _trxPtr;
+velocypack::Options const* HashedCollectExecutorInfos::getVPackOptions() const {
+  return _vpackOptions;
 }
+
+bool HashedCollectExecutorInfos::getCount() const noexcept { return _count; }
 
 RegisterId HashedCollectExecutorInfos::getCollectRegister() const noexcept {
   return _collectRegister;
 }
 
-std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
+std::vector<Aggregator::Factory>
 HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos const& infos) {
-  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> aggregatorFactories;
+  std::vector<Aggregator::Factory> aggregatorFactories;
 
   if (infos.getAggregateTypes().empty()) {
     // no aggregate registers. this means we'll only count the number of items
@@ -114,9 +105,8 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
-                 AqlValueGroupHash(_infos.getTransaction(),
-                                   _infos.getGroupRegisters().size()),
-                 AqlValueGroupEqual(_infos.getTransaction())),
+                 AqlValueGroupHash(_infos.getGroupRegisters().size()),
+                 AqlValueGroupEqual(_infos.getVPackOptions())),
       _isInitialized(false),
       _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
@@ -201,11 +191,6 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
     AqlValueGuard guard{r, true};
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow, guard);
   }
-}
-
-std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool {
@@ -337,9 +322,9 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = std::make_unique<AggregateValuesType>();
   aggregateValues->reserve(_aggregatorFactories.size());
-  auto trx = _infos.getTransaction();
-  for (auto const& it : _aggregatorFactories) {
-    aggregateValues->emplace_back((*it)(trx));
+  auto* vpackOpts = _infos.getVPackOptions();
+  for (auto const& factory : _aggregatorFactories) {
+    aggregateValues->emplace_back((*factory)(vpackOpts));
   }
 
   // note: aggregateValues may be a nullptr!
@@ -355,9 +340,26 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   return result;
 };
 
-std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+[[nodiscard]] auto HashedCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (!_isInitialized) {
+    if (input.finalState() == ExecutorState::DONE) {
+      // Worst case assumption:
+      // For every input row we have a new group.
+      // We will never produce more then asked for
+      auto estOnInput = input.countDataRows();
+      if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+        // Special case, on empty input we will produce 1 output
+        estOnInput = 1;
+      }
+      return std::min(call.getLimit(), estOnInput);
+    }
+    // Otherwise we do not know.
+    return call.getLimit();
+  }
+  // We know how many groups we have left
+  return std::min<size_t>(call.getLimit(),
+                          std::distance(_currentGroup, _allGroups.end()));
 }
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {

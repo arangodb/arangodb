@@ -45,8 +45,8 @@ class OurLessThan {
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
-    InputAqlItemRow left = _input.getRow(a);
-    InputAqlItemRow right = _input.getRow(b);
+    InputAqlItemRow const& left = _input.getRow(a);
+    InputAqlItemRow const& right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
@@ -71,30 +71,31 @@ class OurLessThan {
 
 }  // namespace
 
-static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegisterIds(
-    std::vector<SortRegister> const& sortRegisters) {
-  auto set = make_shared_unordered_set();
-  std::transform(sortRegisters.begin(), sortRegisters.end(),
-                 std::inserter(*set, set->begin()),
-                 [](SortRegister const& sortReg) { return sortReg.reg; });
-  return set;
-}
-
-SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
+SortExecutorInfos::SortExecutorInfos(RegisterCount nrInputRegisters,
+                                     RegisterCount nrOutputRegisters,
+                                     RegIdFlatSet const& registersToClear,
+                                     std::vector<SortRegister> sortRegisters,
                                      std::size_t limit, AqlItemBlockManager& manager,
-                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
                                      velocypack::Options const* options, bool stable)
-    : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
+    : _numInRegs(nrInputRegisters),
+      _numOutRegs(nrOutputRegisters),
+      _registersToClear(registersToClear.begin(), registersToClear.end()),
       _limit(limit),
       _manager(manager),
       _vpackOptions(options),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
+}
+
+RegisterCount SortExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+
+RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
+  return _numOutRegs;
+}
+
+RegIdFlatSet const& SortExecutorInfos::registersToClear() const {
+  return _registersToClear;
 }
 
 std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const noexcept {
@@ -113,18 +114,12 @@ AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
   return _manager;
 }
 
-SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
+SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _input(nullptr),
       _currentRow(CreateInvalidInputRowHint{}),
       _returnNext(0) {}
 SortExecutor::~SortExecutor() = default;
-
-std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
 
 void SortExecutor::initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix) {
   TRI_ASSERT(_input == nullptr);
@@ -230,17 +225,31 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
-std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {
-  if (_input == nullptr) {
-    // This executor does not know anything yet.
-    // Just take whatever is presented from upstream.
-    // This will return WAITING a couple of times
-    return _fetcher.preFetchNumberOfRows(atMost);
+[[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(AqlItemBlockInputMatrix const& input,
+                                                         AqlCall const& call) const
+    noexcept -> size_t {
+  size_t rowsAvailable = input.countDataRows();
+  if (_input != nullptr) {
+    if (_returnNext < _sortedIndexes.size()) {
+      TRI_ASSERT(_returnNext <= rowsAvailable);
+      // if we have input, we are enumerating rows
+      // In a block within the given matrix.
+      // Unfortunately there could be more than
+      // one full block in the matrix and we do not know
+      // in which block we are.
+      // So if we are in the first block this will be accurate
+      rowsAvailable -= _returnNext;
+      // If we are in a later block, we will allocate space
+      // again for the first block.
+      // Nevertheless this is highly unlikely and
+      // only is bad if we sort few elements within highly nested
+      // subqueries.
+    }
+    // else we are in DONE state and not yet reset.
+    // We do not exactly now how many rows will be there
   }
-  TRI_ASSERT(_returnNext <= _sortedIndexes.size());
-  size_t rowsLeft = _sortedIndexes.size() - _returnNext;
-  if (rowsLeft > 0) {
-    return {ExecutionState::HASMORE, rowsLeft};
+  if (input.countShadowRows() == 0) {
+    return std::min(call.getLimit(), rowsAvailable);
   }
-  return {ExecutionState::DONE, rowsLeft};
+  return rowsAvailable;
 }

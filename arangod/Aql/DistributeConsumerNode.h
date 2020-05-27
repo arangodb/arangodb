@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -37,7 +38,7 @@ class ScatterNode;
 
 class DistributeConsumerNode : public ExecutionNode {
  public:
-  DistributeConsumerNode(ExecutionPlan* plan, size_t id, std::string distributeId)
+  DistributeConsumerNode(ExecutionPlan* plan, ExecutionNodeId id, std::string distributeId)
       : ExecutionNode(plan, id),
         _distributeId(std::move(distributeId)),
         _isResponsibleForInitializeCursor(true) {}
@@ -89,8 +90,6 @@ class DistributeConsumerNode : public ExecutionNode {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
   }
-
-  void cloneRegisterPlan(ScatterNode* dependency);
 
  protected:
   void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,

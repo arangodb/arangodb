@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
@@ -37,6 +38,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -612,10 +614,14 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
                                              SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
-  std::string collectionName = node->collection()->name();
+  aql::Collection const& coll = *node->collection();
+  std::string collectionName = coll.name();
 
-  transaction::Methods* trx = _ast->query()->trx();
-
+  transaction::Methods& trx = _ast->query().trxForOptimization();
+  if (trx.isInaccessibleCollection(collectionName)) {
+    return {false, false};
+  }
+  
   size_t itemsInIndex;
   if (!collectionName.empty() && collectionName[0] == '_' &&
       collectionName.compare(0, 11, "_statistics", 11) == 0) {
@@ -625,19 +631,19 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
     itemsInIndex = 1024;
   } else {
     // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = node->collection()->count(trx);
+    itemsInIndex = coll.count(&trx, transaction::CountType::TryCache);
   }
   if (_root == nullptr) {
     size_t dummy;
     return std::make_pair<bool, bool>(
-        false, trx->getIndexForSortCondition(collectionName, sortCondition, reference, itemsInIndex,
-                                             node->hint(), usedIndexes, dummy));
+        false, arangodb::aql::utils::getIndexForSortCondition(coll, sortCondition, reference, itemsInIndex,
+        node->hint(), usedIndexes, dummy));
   }
-
-  return trx->getBestIndexHandlesForFilterCondition(collectionName, _ast, _root,
-                                                    reference, sortCondition,
-                                                    itemsInIndex, node->hint(),
-                                                    usedIndexes, _isSorted);
+  
+  return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(coll, _ast, _root,
+                                                                     reference, sortCondition,
+                                                                     itemsInIndex, node->hint(),
+                                                                     usedIndexes, _isSorted);
 }
 
 /// @brief get the attributes for a sub-condition that are const
@@ -974,7 +980,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(VarSet const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -990,7 +996,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  ::arangodb::containers::HashSet<Variable const*> varsUsed;
+  VarSet varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);
@@ -1086,13 +1092,13 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
@@ -1155,8 +1161,6 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   if (_root == nullptr) {
     return;
   }
-
-  transaction::Methods* trx = plan->getAst()->query()->trx();
 
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
@@ -1275,13 +1279,13 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
@@ -1343,7 +1347,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               auto merged =
                   _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
                                                  leftNode->getMemberUnchecked(0),
-                                                 mergeInOperations(trx, leftNode, rightNode));
+                                                 mergeInOperations(leftNode, rightNode));
               andNode->removeMemberUncheckedUnordered(rightPos);
               andNode->changeMember(leftPos, merged);
               goto restartThisOrItem;
@@ -1617,8 +1621,7 @@ AstNode* Condition::deduplicateInOperation(AstNode* operation) {
 }
 
 /// @brief merge the values from two IN operations
-AstNode* Condition::mergeInOperations(transaction::Methods* trx,
-                                      AstNode const* lhs, AstNode const* rhs) {
+AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
   TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
 

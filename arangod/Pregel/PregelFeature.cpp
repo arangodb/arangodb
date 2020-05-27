@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberOfCores.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -234,7 +235,7 @@ PregelFeature::~PregelFeature() {
 std::shared_ptr<PregelFeature> PregelFeature::instance() { return ::instance; }
 
 size_t PregelFeature::availableParallelism() {
-  const size_t procNum = TRI_numberProcessors();
+  const size_t procNum = NumberOfCores::getValue();
   return procNum < 1 ? 1 : procNum;
 }
 

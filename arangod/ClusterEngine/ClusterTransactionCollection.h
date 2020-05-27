@@ -38,28 +38,25 @@ class TransactionState;
 class ClusterTransactionCollection final : public TransactionCollection {
  public:
   ClusterTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
-                               AccessMode::Type accessType, int nestingLevel);
+                               AccessMode::Type accessType);
   ~ClusterTransactionCollection();
 
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
-
   bool canAccess(AccessMode::Type accessType) const override;
-  int use(int nestingLevel) override;
-  void unuse(int nestingLevel) override;
-  void release() override;
+  Result lockUsage() override;
+  void releaseUsage() override;
 
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
   /// and no other error occurred returns any other error code otherwise
-  int doLock(AccessMode::Type, int nestingLevel) override;
+  Result doLock(AccessMode::Type) override;
 
   /// @brief request an unlock for a collection
-  int doUnlock(AccessMode::Type, int nestingLevel) override;
+  Result doUnlock(AccessMode::Type) override;
 };
 }  // namespace arangodb
 

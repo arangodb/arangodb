@@ -133,9 +133,8 @@ OPTION_OUTPUT_ENGINE = 5
 OPTION_OUTPUT_FILTER_NONMATCHING = 6
 OPTION_OUTPUT_FILTER_CLUSTER = 7
 
-engines = ["mmfiles", "rocksdb"]
-engine = "mmfiles"
-otherEngine = "mmfiles"
+engines = ["rocksdb"]
+engine = "rocksdb"
 storageEngineAgnostic = True
 cluster = False
 escapeBS = re.compile("\\\\")
@@ -608,7 +607,7 @@ if (allErrors.length > 0) {
 ################################################################################
 
 def loopDirectories():
-    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, cluster, engine, otherEngine
+    global ArangoshSetup, OutputDir, FilterForTestcase, storageEngineAgnostic, cluster, engine
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -678,10 +677,6 @@ def loopDirectories():
         elif fstate == OPTION_OUTPUT_ENGINE:
             fstate = OPTION_NORMAL
             engine = filename
-            if engine == engines[0]:
-                otherEngine = engines[1]
-            else:
-                otherEngine = engines[0]
 
         elif fstate == OPTION_OUTPUT_FILTER_NONMATCHING:
             fstate = OPTION_NORMAL
@@ -702,15 +697,11 @@ def loopDirectories():
 
 
 def generateTestCases():
-    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, cluster, engine, otherEngine
+    global TESTLINES, TYPE, LINE_NO, STRING, RunTests, storageEngineAgnostic, cluster, engine
     testNames = RunTests.keys()
 
     for thisTest in sorted(testNames):
-        if thisTest.endswith(otherEngine):
-            print("skipping " + thisTest, file=sys.stderr)
-            continue
-
-        # skip agnostic examples if storage engine is mmfiles to not generate them twice
+        # skip agnostic examples if storage engine is rocksdb to not generate them twice
         if not storageEngineAgnostic and not thisTest.endswith(engine):
             print("skipping " + thisTest, file=sys.stderr)
             continue

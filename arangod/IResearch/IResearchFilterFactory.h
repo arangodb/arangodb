@@ -35,6 +35,8 @@ class boolean_filter;  // forward declaration
 }  // namespace iresearch
 
 namespace arangodb {
+class Result;
+
 namespace aql {
 
 struct AstNode;  // forward declaration
@@ -58,7 +60,9 @@ struct FilterFactory {
 struct FilterConstants {
   // Defaults
   static constexpr size_t DefaultScoringTermsLimit { 128 };
+  static constexpr size_t DefaultLevenshteinTermsLimit { 64 };
   static constexpr double_t DefaultNgramMatchThreshold { 0.7 };
+  static constexpr int64_t DefaultStartsWithMinMatchCount { 1 };
 };
 
 }  // namespace iresearch

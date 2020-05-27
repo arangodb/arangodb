@@ -74,7 +74,7 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
       _version("arango"),
       _mode("unknown mode"),
       _role("UNKNOWN"),
-      _loop(1),
+      _loop(1, "V8ClientConnection"),
       _vpackOptions(VPackOptions::Defaults),
       _forceJson(false),
       _setCustomError(false) {
@@ -510,9 +510,10 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   }
 
   V8SecurityFeature& v8security = v8connection->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint)) {
+  if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "not allowed to connect to this endpoint");
+                                   std::string("not allowed to connect to this endpoint") +
+                                   endpoint);
   }
 
   client->setEndpoint(endpoint);
@@ -1933,7 +1934,7 @@ again:
                 TRI_V8_ASCII_STRING(isolate, "body"),
                 bufObj).FromMaybe(false);
   }
-  
+
   for (auto const& it : response->header.meta()) {
     headers->Set(context,
                  TRI_V8_STD_STRING(isolate, it.first),
@@ -1947,7 +1948,7 @@ again:
     headers->Set(context,
                  TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
                  TRI_V8_STD_STRING(isolate, std::to_string(responseBody.size()))).FromMaybe(false);
-    
+
   }
 
   result->Set(context,

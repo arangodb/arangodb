@@ -1,13 +1,324 @@
 devel
 -----
 
+* Include all requests to the web interface at endpoint `/_admin/aardvark` in 
+  a node's requests statistics. Previously, requests going to `/_admin/aardvark`
+  were excluded from the request statistics if and only if the requested
+  database was the `_system` database.
+
+* Fixed an issue with truncate of a collection after a dbserver was restarted
+  very quickly. This could block arangosync from making progress because the
+  _jobs collection could no longer be truncated.
+
+* Web UI is now using pre-compiled templates.
+
+* Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6 
+  (FilterNode) while planning registers.
+
+* Fixed internal issue #650: Added analyzer cache update before ArangoSearch
+  view creation/update.
+
+* Update OpenLDAP to 2.4.50.
+
+* Fixed issue ES-554: failed to build filter while querying ArangoSearch view.
+
+  This change provides global fix for ArangoSearch analyzers distribution and
+  management within a cluster.
+
+* Fixed issue ES-545: failing modification operations led to random crashes with
+  "Index out of bound" error message.
+
+* Fix edge cases in RocksDB primary index range lookups for operators >= and <.
+
+* Fixed issue #11525: Address security vulnerability by updating Swagger-UI
+  dependency (upgraded Swagger UI to 3.25.1).
+
+* Updated arangosync to 0.7.5.
+
+* Fixed ability to edit graph edge in Graph Viewer of web UI.
+
+* Fixed issue #10371: For k-shortest-paths queries on certain graphs a condition
+  to abort search was too eager and hence missed the shortest path between two
+  vertices and returned a longer one.
+
+* Added feature: DisjointSmartGraphs
+
+  SmartGraphs have been extended to a new subtype, called **DisjointSmartGraphs**.
+  A DisjointSmartGraph prohibits edges between different SmartGraph components. 
+  In case the graph schema can be represented without the need of connected 
+  SmartGraph components, a DisjointSmartGraph should be used as this knowledge 
+  can be used by the internal optimizer to gain even better query traversal 
+  execution times.
+
+* Fixed issue ES-605: arangodump broken when using encryption.
+
+* Fixed a lockup in dropCollection due to a mutex being held for too long.
+
+* Add an optimizer rule that enables execution of certain subqueries on a
+  DB Server. For this optimization to work, the subquery must contain exactly
+  one DISTRIBUTE/GATHER pair and only access at most one collection.
+
+  This proves particularly useful for traversals, shortest path, and k-shortest
+  paths queries on disjoint smart graphs where the entire traversal is executed
+  on the DB Server without involvement of a coordinator.
+
+* ClusterInfo does its own updating of plan / current caches.
+
+* Properly forward requests based on the transaction header.
+
+* Fix a bug in Agency poll, which would sometimes return a wrong firstIndex.
+
+* Made several improvements to AQL's internal register planning. This will
+  improve query performance in several cases; mainly of large queries with many
+  variables, and of spliced subqueries. This also fixes the github issues #10853
+  and #11358 which reported performance degradation caused by subquery splicing.
+
+* Fixed issue #11590: Querying for document by _key returning only a single
+  seemingly random property on entity ("old", in this case).
+
+  This fixes single-key document lookups in the cluster for simple by-key
+  AQL queries, such as `FOR doc IN collection FILTER doc._key == @key RETURN
+  doc` in case the document has either an "old" or a "new" attribute.
+
+* Restored behavior of Foxx API documentation being expanded to show all routes
+  rather than collapsing all sections by default.
+
+* Add optimization for subqueries for which only the number of results
+  matters. The optimization will be triggered for read-only subqueries that 
+  use a full collection scan or an index scan, without any additional filtering
+  (early pruning or document post-filtering) and without LIMIT.
+
+  It will help in the following situation:
+
+      FOR doc IN ...
+        LET count = COUNT(
+          FOR sub IN subCollection 
+            FILTER sub._from == doc._id 
+            RETURN sub
+        )
+        ...
+
+  The restrictions are that the subquery result must only be used with the 
+  COUNT/LENGTH function and not for anything else. The subquery itself must
+  be read-only (no data-modification subquery), not use nested FOR loops nor
+  LIMIT, nor a FILTER condition or calculation that requires accessing the 
+  document data. Accessing index data is supported for filtering, but not
+  for further calculations.
+
+  If the optimization is triggered, it will show up in the query execution
+  plan under the name `optimize-count`.
+
+* Integrated libiresearch log topic properly into ArangoDB logging system.
+
+* Fix a bad deadlock because transaction cleanup was pushed with too low
+  priority.
+
+* Allow specifying graph names as unquoted string in an AQL graph traversal
+  query, e.g. `FOR ... IN ... GRAPH abc`. Previously, the graph name had
+  to be a bind parameter or a string enclosed in quotes.
+
+* loadPlan and loadCurrent have been fixed to not miss out on increments.
+
+* ClusterInfo and all data definition changes use the local agency cache.
+
+* Coordinators and DB servers cache the agency's read key value store.
+
+* Agency offers the new poll API to subscribe to the Raft log stream.
+
+* Added option `--rocksdb.edge-cache` to toggle in-memory caching for
+  edges. The option is turned on by default. This normally helps with
+  performance in read-only and read-mostly workloads.
+
+* Fixed a bug in Maintenance which could prevent collection creation from
+  working (made CreateCollection action idempotent).
+
+* Fix potential undefined behavior in some operations issued to the REST
+  handler at `/_api/collection` in cluster mode.
+
+* `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
+
+* Removed old AgencyComm.
+
+* Improve continuation behavior of AQL queries. We post the continuation handler
+  on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM prio instead
+  of LOW.
+
+* Fixed a sleeping barber in fuerte. Added TLA+ model to prove that there
+  is not another one hiding somewhere.
+
+* Fix spurious bugs in `resilience_move` tests due to replication context of
+  to-be-dropped collections lingering around until timeout.
+
+* Fixed issue 11243: `db._isSystem()` returns true for a non-system DB.
+
+* Fix REST API `/_admin/cluster/removeServer`.
+  This also fixes the removal of servers via the web interface.
+
+* Updated OpenSSL to 1.1.1g.
+
+* Lower the default values for `--rocksdb.block-cache-size` and
+  `--rocksdb.total-write-buffer-size` for systems with less than 1 GB of RAM.
+  For these systems the default value were presumably too high and needed manual
+  adjustment.
+
+* Allow to override the detected number of avaiable CPU cores via an environment
+  variable ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES.
+
+* Fix a bug in the optimizer which handled combinations of smart joins with
+  query components that had to run on a coordinator wrong.
+
+* Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
+  integrated into scatter-in-cluster.
+
+* Issue #11447: expose extra RocksDB options `--rocksdb.target-file-size-base`
+  and `--rocksdb.target-file-size-multiplier` to make them configurable.
+
+* Allow STARTS_WITH function to process several prefixes with min match count
+  parameter.
+
+* Added collection property changes into auditing.
+
+* Fix creation of example graphs when `--cluster.min-replication-factor` is set
+  and no replication factor was specified for a graph. In this case, the new
+  graph will use the configured minimum replication factor.
+
+* Show some index details in index overview of the web interface, e.g. the 
+  `minLength` attribute for fulltext indexes or the `expireAfter` attribute for
+  TTL indexes.
+
+* Added startup option `--server.validate-utf8-strings`.
+
+  This option controls whether strings in incoming JSON or VPack requests are
+  validated for UTF-8 conformity. If set to `true` (which is the default value),
+  all strings are validated, and requests containing invalid UTF-8 data will be
+  rejected. Setting the option to `false` will turn off the UTF-8 string
+  validation for incoming requests. This mode should only be used for
+  deployments that are known to already contain invalid UTF-8 data and to keep
+  them operational until the wrong string encoding is fixed in the data.
+
+* Fixed a bug which occurred if a dbserver was shut down exactly
+  when it was supposed to resign from its leadership for a shard.
+
+* Improve continuation behavior of AQL queries. We post the continuation
+  handler on lane CLUSTER_AQL instead of CLIENT_AQL. This leads to MEDIUM
+  prio instead of LOW.
+  
+* When relaying requests to other coordinators in a load-balanced setup, don't
+  forward the "http/1.1" HTTP header from the remote response. Forwarding that
+  header in the same way as any other header is not required, as each response
+  will store and set its status separately anyway. Adding it to the headers
+  again will only cause confusion and some client applications to choke.
+
+* Fixed issue #11104: `ANALYZER` function doesn't correctly process `!= OR`
+  queries.
+
+* Obsoleted startup option `--database.maximal-journal-size`. This option was
+  useful for the MMFiles storage engine only, but did not have an effect with
+  the RocksDB engine. Using this startup option is not an error, but has
+  no effect anymore.
+
+* Added `JACCARD` AQL function.
+
+* storedValues property is removed from ArangoSearch link properties output.
+
+* Added primarySortCompression property to ArangoSearch Views.
+
+* Added compression property to ArangoSearch View storedValues.
+
+* Added overwrite mode "ignore" for document inserts. This mode allows
+  ignoring primary key conflicts on insert when the target document already
+  exists.
+
+  The following overwrite modes now exist:
+
+  * "ignore": if a document with the specified `_key` value exists already,
+    nothing will be done and no write operation will be carried out. The
+    insert operation will return success in this case. This mode does not
+    support returning the old document version using the `returnOld`
+    attribute. `returnNew` will only set the `new` attribute in the response
+    if a new document was inserted.
+  * "replace": if a document with the specified `_key` value exists already,
+    it will be overwritten with the specified document value. This mode will
+    also be used when no overwrite mode is specified but the `overwrite`
+    flag is set to `true`.
+  * "update": if a document with the specified `_key` value exists already,
+    it will be patched (partially updated) with the specified document value.
+  * "conflict": if a document with the specified `_key` value exists already,
+    return a unique constraint violation error so that the insert operation
+    fails. This is also the default behavior in case the overwrite mode is
+    not set, and the *overwrite* flag is *false* or not set either.
+
+  The overwrite mode "ignore" can also be used from AQL INSERT operations
+  by specifying it in the INSERT's `OPTIONS`, e.g.
+
+      INSERT { _key: ..., .... } INTO collection OPTIONS { overwriteMode: "ignore" }
+
+  Again, when the overwrite mode "ignore" is used from AQL, it does not
+  support returning the old document version. Using "RETURN OLD" in
+  an INSERT operation that uses the "ignore" overwrite mode will trigger
+  a parse error, as there will be no old version to return. "RETURN NEW"
+  will only return the document in case it was inserted. In case the
+  document already existed, "RETURN NEW" will return "null".
+
+  The main use case of inserting documents with overwrite mode "ignore" is
+  to make sure that certain documents exist in the cheapest possible way.
+  In case the target document already exists, the "ignore" mode is most
+  efficient, as it will not retrieve the existing document from storage and
+  not write any updates to it.
+
+* Added feature: SatelliteGraphs
+
+  SatelliteGraphs are a new type of graph, added in addition to the existing
+	ones, General Graphs and SmartGraphs.
+
+	When doing joins involving graph traversals, shortest path or k-shortest paths
+	computation in an ArangoDB cluster, data has to be exchanged between different
+	servers. In particular graph traversals are usually executed on a Coordinator,
+	because they need global information. This results in a lot of network traffic
+	and potentially slow query execution.
+
+  SatelliteGraphs are the natural extension of the concept of
+	SatelliteCollections to graphs. All of the usual benefits and caveats apply.
+	SatelliteGraphs are synchronously replicated to all DB-Servers that are part of
+	a cluster, which enables DB-Servers to execute graph traversals locally. This
+	includes (k-)shortest path(s) computation and possibly joins with traversals
+	and greatly improves performance for such queries.
+
+* Removed deprecated MMFiles storage engine and also the `arango-dfdb`
+  (datafile debugger) executable that could be used to validate MMFiles
+  datafiles.
+
+  This change also obsoletes all MMFiles-specific startup options in the
+  `--wal.*` section. Using these startup options is not an error, but has
+  no effect anymore.
+
+* Fixed a bug in the agency supervision, which ignored the `failoverCandidates`
+  field.
+
+* Fixed a bug in the agency supervision, which could declare an already FAILED
+  DB-Server temporarily as GOOD again after an agency leader change.
+
+* Added `INTERLEAVE` AQL function.
+
+* Upgraded bundled RocksDB library to version 6.8.0.
+
+* Added AQL function `IN_RANGE`.
+
+* Added startup option `--ssl.prefer-http1-in-alpn` to optionally let the
+  server prefer HTTP/1.1 over HTTP/2 in ALPN protocol negotiations.
+
+* Compilation issues with wrong cv-qualifiers and unnecessary
+  temporary copying.
+
+* Add DTRACE points to track a request through the infrastructure.
+
 * Fixed issue #11275: indexes backward compatibility broken in 3.5+.
 
 * Updated snowball dependency to the latest version.
-  More stemmers are available. Built-in analyzer list is unchanged.  
+  More stemmers are available. Built-in analyzer list is unchanged.
 
 * Reactive REST API endpoint at `/_admin/auth/reload`, as it is called by DC2DC.
- 
+
 * Fix an endless loop in FollowerInfo::persistInAgency which could trigger
   a hanger if a collection was dropped at the wrong time.
 
@@ -22,7 +333,7 @@ devel
   "numberOfShards" for each new collection. The default values were "_graphs"
   and 1 and were not modified if the user did not alter them, but it was still
   possible to alter them.
-  This is now (silenly) ignored. Any attempt to set any value for
+  This is now (silently) ignored. Any attempt to set any value for
   "distributeShardsLike" or "numberOfShards" for new collections in a OneShard
   database will silently be ignored. The collection will automatically be
   sharded like the sharding prototype and will have a single shard.
@@ -55,7 +366,7 @@ devel
 
 * Allow to override the detected total amount of memory via an environment
   variable ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY.
- 
+
 * `splice-subqueries` optimization is not limited by any type of operation within the
   subquery any more. It can now be applied on every subquery and will be by default.
   However they may be a performance impact on some queries where splice-subqueries
@@ -150,11 +461,11 @@ devel
         RETURN { doc, sub1, sub2 }
 
 * Added JSON-Schema (draft-4) document validation. The validation can be
-  specified by providing the new `validation` collection property when creating a
+  specified by providing the new `schema` collection property when creating a
   new collection or when updating the properties of an existing collection:
 
       db.mycollection.properties({
-        validation: {
+        schema: {
           rule : { nums : { type : "array", items : { type : "number", maximum : 6 }}},
           message : "Json-Schema validation failed"
         }

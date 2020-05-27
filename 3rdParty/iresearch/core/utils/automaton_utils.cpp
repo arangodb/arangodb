@@ -20,16 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "automaton_utils.hpp"
+#include "utils/automaton_utils.hpp"
 
 #include "index/index_reader.hpp"
-#include "search/limited_sample_scorer.hpp"
-#include "search/multiterm_query.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "utils/fst_table_matcher.hpp"
 
 NS_LOCAL
 
-using irs::automaton;
+using namespace irs;
 
 // table contains indexes of states in
 // utf8_transitions_builder::rho_states_ table
@@ -290,61 +289,44 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   a.EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
 }
 
-filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
-                                               const automaton& acceptor,
-                                               size_t scored_terms_limit,
-                                               const index_reader& index,
-                                               const order::prepared& order,
-                                               boost_t boost) {
-  automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+filter::prepared::ptr prepare_automaton_filter(
+    const string_ref& field,
+    const automaton& acceptor,
+    size_t scored_terms_limit,
+    const index_reader& index,
+    const order::prepared& order,
+    boost_t boost) {
+  auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {
     IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
                   "got the following properties " IR_UINT64_T_SPECIFIER "",
-                  acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+                  matcher.GetFst().Properties(automaton_table_matcher::FST_PROPERTIES, false));
 
     return filter::prepared::empty();
   }
 
-  limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   for (const auto& segment : index) {
     // get term dictionary for field
-    const term_reader* reader = segment.field(field);
+    const auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
     }
 
-    auto it = reader->iterator(matcher);
-
-    auto& meta = it->attributes().get<term_meta>(); // get term metadata
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
-
-    if (it->next()) {
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        it->read(); // read term attributes
-
-        state.estimation += *docs_count;
-        scorer.collect(*docs_count, state.count++, state, segment, *it);
-      } while (it->next());
-    }
+    visit(segment, *reader, matcher, mtv);
   }
 
   std::vector<bstring> stats;
-  scorer.score(index, order, stats);
+  collector.score(index, order, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  return memory::make_shared<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
 NS_END

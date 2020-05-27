@@ -67,6 +67,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
@@ -1176,7 +1177,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   if (coll) {
 
     VPackObjectBuilder object(&builder, true);
-    methods::Collections::Context ctxt(coll->vocbase(), *coll);
+    methods::Collections::Context ctxt(coll);
     Result res = methods::Collections::properties(ctxt, builder);
 
     if (res.fail()) {
@@ -1827,7 +1828,14 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  methods::Collections::Context ctxt(collection->vocbase(), *collection);
+  struct NonDeleter {
+    void operator()(LogicalCollection*) {}
+  };
+
+  // we are not responsible for this collection object, but need to wrap it into a
+  // shared_ptr here
+  std::shared_ptr<LogicalCollection> coll(collection, NonDeleter());
+  methods::Collections::Context ctxt(coll);
   auto res = methods::Collections::revisionId(ctxt).get();
 
   if (res.fail()) {
@@ -1908,28 +1916,34 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     }
 
     TRI_GET_GLOBAL_STRING(OverwriteKey);
-    if (!options.overwrite && TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
-      options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
+    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
+      bool overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
+      if (overwrite) {
+        // this is the default mode in case only "overwrite" is set.
+        TRI_ASSERT(!options.isOverwriteModeSet());
+        options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+      }
     }
 
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
       auto mode = TRI_ObjectToString(isolate, optionsObject->Get(context, OverwriteModeKey).FromMaybe(v8::Local<v8::Value>()));
-      if (mode == "update" ) {
-        options.overwriteModeUpdate = true;
-        options.overwrite = true;
+      
+      auto overwriteMode = OperationOptions::determineOverwriteMode(velocypack::StringRef(mode));
+      if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+        options.overwriteMode = overwriteMode;
 
-        TRI_GET_GLOBAL_STRING(KeepNullKey);
-        if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
-          options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, KeepNullKey).FromMaybe(v8::Local<v8::Value>()));
+        if (overwriteMode == OperationOptions::OverwriteMode::Update) {
+          TRI_GET_GLOBAL_STRING(KeepNullKey);
+          if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
+            options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, KeepNullKey).FromMaybe(v8::Local<v8::Value>()));
+          }
+          TRI_GET_GLOBAL_STRING(MergeObjectsKey);
+          if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
+            options.mergeObjects =
+              TRI_ObjectToBoolean(isolate, optionsObject->Get(context, MergeObjectsKey).FromMaybe(v8::Local<v8::Value>()));
+          }
         }
-        TRI_GET_GLOBAL_STRING(MergeObjectsKey);
-        if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
-          options.mergeObjects =
-            TRI_ObjectToBoolean(isolate, optionsObject->Get(context, MergeObjectsKey).FromMaybe(v8::Local<v8::Value>()));
-        }
-      } else if (mode == "replace") {
-        options.overwrite = true;
       }
     }
 
@@ -1944,7 +1958,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(ReturnOldKey);
     if (TRI_HasProperty(context, isolate, optionsObject, ReturnOldKey)) {
       options.returnOld = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, ReturnOldKey).FromMaybe(v8::Local<v8::Value>())) &&
-                          options.overwrite;
+                          options.isOverwriteModeUpdateReplace();
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (TRI_HasProperty(context, isolate, optionsObject, IsRestoreKey)) {
@@ -2017,7 +2031,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *collection, AccessMode::Type::WRITE);
 
-  if (!payloadIsArray && !options.overwrite) {
+  if (!payloadIsArray && !options.isOverwriteModeUpdateReplace()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -2308,6 +2322,7 @@ static void JS_CollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDatabaseNameAll
 ////////////////////////////////////////////////////////////////////////////////
+
 static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2329,7 +2344,6 @@ static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   bool error = false;
 
-  // already create an array of the correct size
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   size_t const n = colls.size();
   size_t x = 0;
@@ -2410,6 +2424,7 @@ static void JS_CompletionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engineStats()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_executeTransaction()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_exists()")).FromMaybe(false);
+  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_explain()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_id")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_isSystem()")).FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_databases()")).FromMaybe(false);

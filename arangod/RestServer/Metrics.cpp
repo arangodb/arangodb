@@ -51,7 +51,7 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
 Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
   : _name(name), _help(help), _labels(labels) {};
 
-Metric::~Metric() {}
+Metric::~Metric() = default;
 
 std::string const& Metric::help() const { return _help; }
 std::string const& Metric::name() const { return _name; }
@@ -101,7 +101,7 @@ void Counter::store(uint64_t const& n) {
 
 void Counter::toPrometheus(std::string& result) const {
   _b.push();
-  result += "#TYPE " + name() + " counter\n";
+  result += "\n#TYPE " + name() + " counter\n";
   result += "#HELP " + name() + " " + help() + "\n";
   result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
 }

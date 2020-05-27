@@ -125,6 +125,16 @@ class ConfigBuilder {
     this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
   }
   activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
+  activateCompression() {
+    if (this.type === 'dump') {
+      this.config['--compress-output'] = true;
+    }
+  }
+  deactivateCompression() {
+    if (this.type === 'dump') {
+      this.config['--compress-output'] = false;
+    }
+  }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -512,7 +522,6 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
   let args = {
     'configuration': fs.join(CONFIG_DIR, config),
     'define': 'TOP_DIR=' + TOP_DIR,
-    'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'javascript.copy-installation': false,
     'http.trusted-origin': options.httpTrustedOrigin || 'all',

@@ -1037,11 +1037,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-           if (db._engine().name === "rocksdb") {
-             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-           } else {
-            assertEqual("hash", node.indexes[0].type);
-           }
+          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1127,18 +1123,10 @@ function optimizerIndexesTestSuite () {
           ++indexNodes;
           if (indexNodes === 1) {
             // skiplist must be used for the first FOR
-            if (db._engine().name === "rocksdb") {
-              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-            } else {
-              assertEqual("skiplist", node.indexes[0].type);
-            }
+            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
             assertEqual("i", node.outVariable.name);
           }
           else {
-            if (db._engine().name !== "rocksdb") {// all indexes were created equal
-              // second FOR should use a hash index
-              assertEqual("hash", node.indexes[0].type);
-            }
             assertEqual("j", node.outVariable.name);
           }
         }
@@ -1212,19 +1200,11 @@ function optimizerIndexesTestSuite () {
         if (node.type === "IndexNode") {
           ++indexNodes;
           if (indexNodes === 1) {
-            if (db._engine().name === "rocksdb") {
-              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-            } else {
-              assertEqual("hash", node.indexes[0].type);
-            }
+            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
             assertEqual("i", node.outVariable.name);
           }
           else if (indexNodes === 2) {
-            if (db._engine().name === "rocksdb") {
-              assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-            } else {
-              assertEqual("hash", node.indexes[0].type);
-            }
+            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
             assertEqual("j", node.outVariable.name);
           }
           else {
@@ -1282,11 +1262,7 @@ function optimizerIndexesTestSuite () {
       walker(plan.nodes, function (node) {
         if (node.type === "IndexNode") {
           ++indexNodes;
-          if (db._engine().name === "rocksdb") {
-             assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-          } else {
-             assertEqual("hash", node.indexes[0].type);
-          }
+          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
         }
         else if (node.type === "EnumerateCollectionNode") {
           ++collectionNodes;
@@ -1334,11 +1310,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertFalse(node.producesResult);
-          if (db._engine().name === "rocksdb") {
-            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-          } else {
-            assertEqual("hash", node.indexes[0].type);
-          }
+          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -1403,11 +1375,7 @@ function optimizerIndexesTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.producesResult);
-          if (db._engine().name === "rocksdb") {
-            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-          } else {
-            assertEqual("hash", node.indexes[0].type);
-          }
+          assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
           assertFalse(node.indexes[0].unique);
         }
         return node.type;
@@ -2445,20 +2413,11 @@ function optimizerIndexesModifyTestSuite () {
       var nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
-      // rocksdb supports prefix filtering in the hash index
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      }
 
       var results = AQL_EXECUTE(query, {}, opt);
       assertEqual([ 1, 2 ], results.json.sort(), query);
-      if (db._engine().name === "rocksdb") {
-        assertEqual(2, results.stats.scannedIndex);
-        assertEqual(0, results.stats.scannedFull);
-      } else {
-        assertEqual(0, results.stats.scannedIndex);
-        assertTrue(results.stats.scannedFull > 0);
-      }
+      assertEqual(2, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

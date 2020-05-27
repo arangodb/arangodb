@@ -25,8 +25,8 @@
 
 #include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <string>
@@ -101,15 +101,15 @@ class UnsortedGatherExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
  private:
-  [[nodiscard]] auto numDependencies() const
-      noexcept(noexcept(static_cast<Fetcher*>(nullptr)->numberDependencies())) -> size_t;
+  auto initialize(typename Fetcher::DataRange const& input) -> void;
+  [[nodiscard]] auto numDependencies() const noexcept -> size_t;
   [[nodiscard]] auto done() const noexcept -> bool;
   [[nodiscard]] auto currentDependency() const noexcept -> size_t;
   auto advanceDependency() noexcept -> void;
 
  private:
-  Fetcher& _fetcher;
   size_t _currentDependency{0};
+  size_t _numDependencies{0};
 };
 
 }  // namespace arangodb::aql

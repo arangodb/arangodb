@@ -375,6 +375,39 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog, bool sent) {
   }
 }
 
+void Agent::logsForTrigger() {
+  // Wake up poll rest handlers:
+  // Get everything from _lowestPromise
+  // Create one builder pass shared pointer to all rest handlers
+  // Every resthandler takes, what it needs.
+  // Delete all promises.
+  // Reset _lowestPromise.
+  std::lock_guard lck(_promLock);
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder e(builder.get());
+    auto const logs = _state.get(_lowestPromise, _commitIndex);
+
+    TRI_ASSERT(!logs.empty());
+    if (!logs.empty()) {
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder e(builder.get());
+      builder->add("firstIndex", VPackValue(logs.front().index));
+      builder->add("commitIndex", VPackValue(logs.back().index));
+      builder->add(VPackValue("log"));
+      VPackArrayBuilder ls(builder.get());
+      for (auto const& i : logs) {
+        VPackObjectBuilder l(builder.get());
+        builder->add("index", VPackValue(i.index));
+        builder->add("query", VPackSlice(i.entry->data()));
+      }
+    }
+  }
+  triggerPollsNoLock(builder);
+  _lowestPromise = std::numeric_limits<index_t>::max();
+}
+
+
 /// Followers' append entries
 priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                            index_t prevIndex, term_t prevTerm,
@@ -425,7 +458,11 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
           << " with term " << term;
       {
         WRITE_LOCKER(oLocker, _outputLock);
-        _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+        index_t const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+        if (tmp > _commitIndex) {
+          logsForTrigger();
+        }
+        _commitIndex = tmp;
       }
       return priv_rpc_ret_t(true, t);
     } else {
@@ -450,7 +487,11 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
   {
     WRITE_LOCKER(oLocker, _outputLock);
     CONDITION_LOCKER(guard, _waitForCV);
-    _commitIndex = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+    index_t const tmp = std::max(_commitIndex, std::min(leaderCommitIndex, lastIndex));
+    if (tmp > _commitIndex) {
+      logsForTrigger();
+    }
+    _commitIndex = tmp;
     _waitForCV.broadcast();
     if (leaderCommitIndex >= _state.nextCompactionAfter() &&
         payload[nqs - 1].get("index").getNumber<index_t>() >= _state.nextCompactionAfter()) {
@@ -593,7 +634,7 @@ void Agent::sendAppendEntriesRPC() {
           needSnapshot = false;
         }
       }
-      
+
       index_t prevLogIndex = unconfirmed.front().index;
       index_t prevLogTerm = unconfirmed.front().term;
       if (needSnapshot) {
@@ -630,13 +671,14 @@ void Agent::sendAppendEntriesRPC() {
           // with the same index than the snapshot along to retain the
           // invariant of our data structure that the _log in _state is
           // non-empty.
-          builder.add(VPackValue(VPackValueType::Object));
-          builder.add("index", VPackValue(entry.index));
-          builder.add("term", VPackValue(entry.term));
-          builder.add("query", VPackSlice(entry.entry->data()));
-          builder.add("clientId", VPackValue(entry.clientId));
-          builder.add("timestamp", VPackValue(entry.timestamp.count()));
-          builder.close();
+          {
+            VPackObjectBuilder o(&builder);
+            builder.add("index", VPackValue(entry.index));
+            builder.add("term", VPackValue(entry.term));
+            builder.add("query", VPackSlice(entry.entry->data()));
+            builder.add("clientId", VPackValue(entry.clientId));
+            builder.add("timestamp", VPackValue(entry.timestamp.count()));
+          }
           highest = entry.index;
           ++toLog;
         }
@@ -696,9 +738,17 @@ void Agent::sendAppendEntriesRPC() {
 }
 
 void Agent::resign(term_t otherTerm) {
-  LOG_TOPIC("494a7", DEBUG, Logger::AGENCY) << "Resigning in term " << _constituent.term()
-                                   << " because of peer's term " << otherTerm;
+  LOG_TOPIC("494a7", DEBUG, Logger::AGENCY)
+    << "Resigning in term " << _constituent.term()
+    << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm, NO_LEADER);
+
+  // Wake up all polls with resignation letter
+  {
+    std::lock_guard lck(_promLock);
+    triggerPollsNoLock();
+  }
+
   endPrepareLeadership();
 }
 
@@ -717,7 +767,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     READ_LOCKER(oLocker, _outputLock);
     commitIndex = _commitIndex;
   }
-  
+
   // Just check once more:
   if (!leading()) {
     LOG_TOPIC("99dc2", DEBUG, Logger::AGENCY)
@@ -784,6 +834,7 @@ void Agent::advanceCommitIndex() {
   {
     WRITE_LOCKER(oLocker, _outputLock);
     if (index > _commitIndex) {
+
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
@@ -797,13 +848,72 @@ void Agent::advanceCommitIndex() {
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << _commitIndex + 1 << " through "
           << index << " to read db, done";
-      // Wake up rest handlers:
+      // Wake up write rest handlers:
       _waitForCV.broadcast();
+
+      logsForTrigger();
 
       if (_commitIndex >= _state.nextCompactionAfter()) {
         _compactor.wakeUp();
       }
+
     }
+  }
+
+}
+
+futures::Future<query_t> Agent::poll(
+  index_t const& index, double const& timeout) {
+
+  using namespace std::chrono;
+
+  std::vector<log_t> logs;
+  query_t builder;
+  {
+    READ_LOCKER(oLocker, _outputLock);
+    if (index == 0 || index < _state.firstIndex()) {  // deliver as if index = 0
+      builder = std::make_shared<VPackBuilder>();
+      VPackObjectBuilder r(builder.get());
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder r2(builder.get());
+      builder->add("commitIndex", VPackValue(_commitIndex));
+      builder->add("firstIndex", VPackValue(0));
+      builder->add(VPackValue("readDB"));
+      _readDB.get().toBuilder(*builder, true);
+    } else if (index <= _commitIndex) {   // deliver immediately all logs since index
+      builder = std::make_shared<VPackBuilder>();
+      VPackObjectBuilder r(builder.get());
+      builder->add(VPackValue("result"));
+      VPackObjectBuilder r2(builder.get());
+      logs = _state.get(index, _commitIndex);
+      builder->add("commitIndex", VPackValue(_commitIndex));
+      builder->add("firstIndex", VPackValue(logs.front().index));
+      builder->add(VPackValue("log"));
+      VPackArrayBuilder ls(builder.get());
+      for (auto const& l : logs) {
+        VPackObjectBuilder o(builder.get());
+        builder->add("index", VPackValue(l.index));
+        builder->add("query", VPackSlice(l.entry->data()));
+      }
+    }
+    if (builder != nullptr) {
+      return futures::makeFuture(std::move(builder));
+    }
+  }
+
+  std::lock_guard guard(_promLock);
+  auto tp = steady_clock::now() +
+    duration_cast<milliseconds>(duration<double>(timeout));
+
+  try {
+    auto res = _promises.emplace(tp, futures::Promise<query_t>());
+    if (_lowestPromise > index) {
+      _lowestPromise = index;
+    }
+    return res->second.getFuture();
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "Failed to add promise for polling");
   }
 }
 
@@ -1298,6 +1408,64 @@ read_ret_t Agent::read(query_t const& query) {
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
+
+// trigger all polls, who have timed out with empty result
+void Agent::clearExpiredPolls() {
+  index_t commitIndex = 0;
+  {
+    READ_LOCKER(oLocker, _outputLock);
+    commitIndex = _commitIndex;
+  }
+  auto empty = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder obj(empty.get());
+    empty->add(VPackValue("result"));
+    VPackObjectBuilder res(empty.get());
+    empty->add("firstIndex", VPackValue(commitIndex));
+    empty->add("commitIndex", VPackValue(commitIndex));
+    empty->add(VPackValue("log"));
+    VPackArrayBuilder a(empty.get());
+  }
+  std::lock_guard lck(_promLock);
+
+  triggerPollsNoLock(empty, std::chrono::steady_clock::now());
+}
+
+
+/// Clear expired polls
+/// Wake up everybody with query and delete with empty.
+/// If qu is nullptr, we're resigning.
+void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
+
+  if (qu == nullptr) { // We have resigned
+    qu = std::make_shared<VPackBuilder>();
+    VPackObjectBuilder qb(qu.get());
+    qu->add("error", VPackValue(true));
+    qu->add("code", VPackValue(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE));
+    qu->add(VPackValue("result"));
+    VPackArrayBuilder arr(qu.get());
+  }
+
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  auto pit = _promises.begin();
+  while (pit != _promises.end()) {
+    if (pit->first < tp) {
+      auto pp = std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
+      bool queued = scheduler->queue(
+        RequestLane::CLUSTER_INTERNAL, [pp, qu] { pp->setValue(qu); });
+      if (!queued) {
+        LOG_TOPIC("3647c", WARN, Logger::AGENCY) <<
+          "Failed to schedule logsForTrigger running in main thread";
+        pp->setValue(qu);
+      }
+      pit = _promises.erase(pit);
+    } else {
+      ++pit;
+    }
+  }
+}
+
+
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
   // Only run in case we are in multi-host mode
@@ -1329,7 +1497,10 @@ void Agent::run() {
                                 // reach the end of our log
     }
 
-    // Leader working only
+    // Clear expired long polls
+    clearExpiredPolls();
+
+      // Leader working only
     if (leading()) {
       if (1 == getPrepareLeadership()) {
         // Skip the usual work and the waiting such that above preparation
@@ -2163,4 +2334,3 @@ std::vector<log_t> Agent::logs(index_t begin, index_t end) const {
 
 }  // namespace consensus
 }  // namespace arangodb
-

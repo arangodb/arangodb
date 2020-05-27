@@ -150,9 +150,8 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   auto transactionContext = transaction::V8Context::Create(vocbase, true);
-  auto builderSPtr = std::make_shared<VPackBuilder>();
-  Result res = EngineSelectorFeature::ENGINE->lastLogger(vocbase, transactionContext,
-                                                         tickStart, tickEnd, builderSPtr);
+  VPackBuilder builder(transactionContext->getVPackOptions());
+  Result res = EngineSelectorFeature::ENGINE->lastLogger(vocbase, tickStart, tickEnd, builder);
   v8::Handle<v8::Value> result;
 
   if (res.fail()) {
@@ -160,7 +159,7 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  result = TRI_VPackToV8(isolate, builderSPtr->slice(),
+  result = TRI_VPackToV8(isolate, builder.slice(),
                          transactionContext->getVPackOptions());
 
   TRI_V8_RETURN(result);
@@ -412,7 +411,7 @@ static void JS_ServerIdReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId());
+  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
   TRI_V8_RETURN_STD_STRING(serverId);
   TRI_V8_TRY_CATCH_END
 }

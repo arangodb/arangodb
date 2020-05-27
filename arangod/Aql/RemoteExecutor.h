@@ -26,7 +26,7 @@
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 
 #include <fuerte/message.h>
 
@@ -58,14 +58,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // non-standard arguments (server, ownName and queryId) should probably be
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
-                     ExecutorInfos&& infos, std::string const& server,
-                     std::string const& ownName, std::string const& queryId, Api);
+                     RegisterInfos&& infos, std::string const& server,
+                     std::string const& distributeId, std::string const& queryId, Api);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
@@ -79,7 +75,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   // only for asserts:
  public:
   std::string const& server() const { return _server; }
-  std::string const& ownName() const { return _ownName; }
+  std::string const& distributeId() const { return _distributeId; }
   std::string const& queryId() const { return _queryId; }
 #endif
 
@@ -102,9 +98,9 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
       -> velocypack::Buffer<uint8_t>;
 
-  ExecutorInfos const& infos() const { return _infos; }
+  RegisterInfos const& registerInfos() const { return _registerInfos; }
 
-  Query const& getQuery() const { return _query; }
+  QueryContext const& getQuery() const { return _query; }
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
@@ -122,26 +118,17 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
-  enum class ReqState {
-    None,
-    SendingGetSome,
-    GotSendSome,
-    SendingSkipSome,
-    GotSkipSome,
-    SendingShutdown,
-    GotShutdown
-  };
 
-  ExecutorInfos _infos;
+  RegisterInfos _registerInfos;
 
-  Query const& _query;
+  QueryContext const& _query;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
 
   /// @brief our own identity, in case of the coordinator this is empty,
   /// in case of the DBservers, this is the shard ID as a string
-  std::string const _ownName;
+  std::string const _distributeId;
 
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;

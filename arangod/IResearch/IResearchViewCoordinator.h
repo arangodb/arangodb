@@ -48,7 +48,7 @@ class IResearchLink; // forward declaration
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
-  virtual ~IResearchViewCoordinator();
+  virtual ~IResearchViewCoordinator() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view

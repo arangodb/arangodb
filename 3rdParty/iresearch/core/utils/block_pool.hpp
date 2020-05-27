@@ -43,18 +43,18 @@ NS_ROOT
 /// @class block_pool_const_iterator
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_const_iterator
-    : public std::iterator<std::random_access_iterator_tag, typename ContType::value_type> {
+class block_pool_const_iterator {
   public:
-  typedef ContType container;
-  typedef typename container::block_type block_type;
-  typedef std::iterator<std::random_access_iterator_tag, typename container::value_type> base;
+  using container = ContType;
+  using block_type = typename container::block_type;
 
-  typedef typename base::pointer pointer;
-  typedef typename base::difference_type difference_type;
-  typedef typename base::reference reference;
-  typedef const typename container::value_type& const_reference;
-  typedef typename container::const_pointer const_pointer;
+  using iterator_category = std::random_access_iterator_tag;
+  using value_type = typename container::value_type;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = ptrdiff_t;
+  using const_pointer = const value_type*;
+  using const_reference = const value_type&;
 
   explicit block_pool_const_iterator(const container& pool) noexcept
     : pool_(&pool) {
@@ -325,16 +325,19 @@ block_pool_iterator<ContType> operator+(
 /// @class block_pool_reader
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_reader
-    : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
+class block_pool_reader {
  public:
-  typedef ContType container;
-  typedef typename container::block_type block_type;
-  typedef typename container::const_iterator const_iterator;
-  typedef typename container::const_reference const_reference;
-  typedef typename container::const_pointer const_pointer;
-  typedef typename container::pointer pointer;
-  typedef typename container::value_type value_type;
+  using container = ContType;
+  using block_type = typename container::block_type;
+  using const_iterator = typename container::const_iterator;
+
+  using iterator_category = std::input_iterator_tag;
+  using value_type = typename container::value_type;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
+  using const_pointer = const value_type*;
+  using const_reference = const value_type&;
 
   block_pool_reader(const container& pool, size_t offset) noexcept
     : where_(pool, offset) {
@@ -423,17 +426,20 @@ NS_END // detail
 /// @class block_pool_sliced_reader_base
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ReaderType, typename ContType>
-class block_pool_sliced_reader_base
-    : public std::iterator<std::input_iterator_tag, typename ContType::value_type> {
+class block_pool_sliced_reader_base {
  public:
-  typedef ReaderType reader;
-  typedef ContType container;
-  typedef typename container::block_type block_type;
-  typedef typename container::const_iterator const_iterator;
-  typedef typename container::pointer pointer;
-  typedef typename container::const_pointer const_pointer;
-  typedef typename container::const_reference const_reference;
-  typedef typename container::value_type value_type;
+  using reader = ReaderType;
+  using container = ContType;
+  using block_type = typename container::block_type ;
+  using const_iterator = typename container::const_iterator;
+
+  using iterator_category = std::input_iterator_tag;
+  using value_type = typename container::value_type;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
+  using const_pointer = const value_type*;
+  using const_reference = const value_type&;
 
   const_reference operator*() const noexcept {
     assert(!impl().eof());
@@ -611,8 +617,7 @@ class block_pool_sliced_greedy_reader
   block_pool_sliced_greedy_reader(
     const container& pool,
     size_t slice_offset,
-    size_t offset
-  ) noexcept;
+    size_t offset) noexcept;
 
  private:
   typedef block_pool_sliced_reader_base<block_pool_sliced_greedy_reader<ContType>, ContType> base;
@@ -643,8 +648,7 @@ class block_pool_sliced_greedy_reader
 
 template<typename ContType>
 block_pool_sliced_greedy_reader<ContType>::block_pool_sliced_greedy_reader(
-    const typename block_pool_sliced_greedy_reader<ContType>::container& pool
-) noexcept
+    const typename block_pool_sliced_greedy_reader<ContType>::container& pool) noexcept
   : base(pool) {
 }
 
@@ -652,8 +656,7 @@ template<typename ContType>
 block_pool_sliced_greedy_reader<ContType>::block_pool_sliced_greedy_reader(
     const typename block_pool_sliced_greedy_reader<ContType>::container& pool,
     size_t slice_offset,
-    size_t offset
-) noexcept
+    size_t offset) noexcept
   : base(pool, slice_offset) {
   init(offset);
 }
@@ -665,28 +668,31 @@ template<typename ContType> class block_pool_sliced_greedy_inserter;
 /// @class block_pool_inserter
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_inserter : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+class block_pool_inserter {
  public:
-  typedef ContType container;
-  typedef typename container::block_type block_type;
-  typedef typename container::iterator iterator;
-  typedef typename container::const_pointer const_pointer;
-  typedef typename container::const_reference const_reference;
-  typedef typename container::value_type value_type;
+  using container = ContType;
+  using block_type = typename container::block_type;
 
-  block_pool_inserter(const iterator& where) noexcept
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
+
+  // intentionally implicit
+  block_pool_inserter(const typename container::iterator& where) noexcept
     : where_(where) {
   }
 
   size_t pool_offset() const noexcept { return where_.pool_offset(); }
 
-  iterator& position() noexcept { return where_; }
+  typename container::iterator& position() noexcept { return where_; }
 
   container& parent() noexcept { return where_.parent(); }
 
   const container& parent() const noexcept { return where_.parent(); }
 
-  block_pool_inserter& operator=(const_reference value) {
+  block_pool_inserter& operator=(typename container::const_reference value) {
     resize();
     *where_ = value;
     ++where_;
@@ -699,7 +705,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
 
   block_pool_inserter& operator++() noexcept { return *this; }
 
-  void write(const_pointer b, size_t len) {
+  void write(typename container::const_pointer b, size_t len) {
     assert(b || !len);
 
     size_t to_copy = 0;
@@ -709,7 +715,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
 
       to_copy = std::min(block_type::SIZE - where_.offset(), len);
 
-      std::memcpy(where_.buffer(), b, to_copy * sizeof(value_type));
+      std::memcpy(where_.buffer(), b, to_copy * sizeof(typename container::value_type));
       len -= to_copy;
       where_ += to_copy;
       b += to_copy;
@@ -738,9 +744,9 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
   }
 
  private:
-  friend class block_pool_sliced_inserter<ContType>;
-  friend class block_pool_sliced_greedy_inserter<ContType>;
-  friend class block_pool_sliced_greedy_reader<ContType>;
+  friend class block_pool_sliced_inserter<container>;
+  friend class block_pool_sliced_greedy_inserter<container>;
+  friend class block_pool_sliced_greedy_reader<container>;
 
   void resize() {
     if (where_.eof()) {
@@ -772,7 +778,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     }
 
     // initialize slice
-    std::memset(where_.buffer(), 0, sizeof(value_type)*size);
+    std::memset(where_.buffer(), 0, sizeof(typename container::value_type)*size);
   }
 
   template<bool Greedy>
@@ -783,13 +789,13 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
 
     alloc_slice_of_size(size); // reserve next slice
     const size_t slice_start = where_.pool_offset();
-    if /*constexpr*/ (Greedy) {
+    if constexpr (Greedy) {
       *where_ = static_cast<byte_type>(level);
     }
     where_ += size;
     assert(level_info.next);
     assert(level_info.next < detail::LEVEL_MAX);
-    if /*constexpr*/ (Greedy) {
+    if constexpr (Greedy) {
       where_[-sizeof(uint32_t)] = static_cast<byte_type>(level_info.next);
     } else {
       where_[-1] = static_cast<byte_type>(level_info.next);
@@ -797,7 +803,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     return slice_start;
   }
 
-  size_t alloc_greedy_slice(iterator& pos) {
+  size_t alloc_greedy_slice(typename container::iterator& pos) {
     const byte_type next_level = *pos;
     assert(next_level < detail::LEVEL_MAX);
     const auto& next_level_info = detail::LEVELS[next_level];
@@ -819,7 +825,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     return size - sizeof(uint32_t) - 1; // -1 for slice header
   }
 
-  size_t alloc_slice(iterator& pos) {
+  size_t alloc_slice(typename container::iterator& pos) {
     constexpr const size_t ADDR_OFFSET = sizeof(uint32_t)-1;
 
     const size_t next_level = *pos;
@@ -835,7 +841,7 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     // write next address at the end of current slice
     {
       // write gets non-const reference. need explicit copy here
-      block_pool_inserter it = pos - ADDR_OFFSET;
+      block_pool_inserter it(pos - ADDR_OFFSET);
       irs::write<uint32_t>(it, uint32_t(where_.pool_offset()));
     }
 
@@ -848,38 +854,45 @@ class block_pool_inserter : public std::iterator<std::output_iterator_tag, void,
     return size - sizeof(uint32_t);
   }
 
-  iterator where_;
+  typename container::iterator where_;
 }; // block_pool_inserter
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class block_pool_sliced_inserter
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_sliced_inserter
-    : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+class block_pool_sliced_inserter {
  public:
-  typedef ContType container;
-  typedef typename container::inserter inserter;
-  typedef typename container::iterator iterator;
-  typedef typename container::const_pointer const_pointer;
-  typedef typename container::const_reference const_reference;
-  typedef typename container::value_type value_type;
+  using container = ContType;
 
-  block_pool_sliced_inserter(inserter& writer, const iterator& where) noexcept
-    : where_(where), writer_(&writer) {
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
+
+  block_pool_sliced_inserter(
+      typename container::inserter& writer,
+      const typename container::iterator& where) noexcept
+    : where_(where),
+      writer_(&writer) {
   }
 
-  block_pool_sliced_inserter(inserter& writer, size_t offset) noexcept
-    : block_pool_sliced_inserter(writer, iterator(writer.parent(), offset)) {
+  block_pool_sliced_inserter(
+      typename container::inserter& writer,
+      size_t offset) noexcept
+    : block_pool_sliced_inserter(
+        writer, typename container::iterator(writer.parent(), offset)) {
   }
 
   size_t pool_offset() const noexcept { return where_.pool_offset(); }
 
-  iterator& position() noexcept { return where_; }
+  typename container::iterator& position() noexcept { return where_; }
 
   container& parent() noexcept { return where_.parent(); }
 
-  block_pool_sliced_inserter& operator=(const_reference value) {
+  block_pool_sliced_inserter& operator=(
+      typename container::const_reference value) {
     if (*where_) {
       writer_->alloc_slice(where_);
     }
@@ -898,7 +911,7 @@ class block_pool_sliced_inserter
   // MSVC 2017.3 through 2017.9 incorectly count offsets if this function is inlined during optimization
   // MSVC 2017.2 and below work correctly for both debug and release
   MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  void write(const_pointer b, size_t len) {
+  void write(typename container::const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
       *where_ = *b;
@@ -916,25 +929,28 @@ class block_pool_sliced_inserter
   }
 
  private:
-  iterator where_;
-  inserter* writer_;
+  typename container::iterator where_;
+  typename container::inserter* writer_;
 }; // block_pool_sliced_inserter
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class block_pool_sliced_greedy_inserter
 ////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
-class block_pool_sliced_greedy_inserter
-    : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+class block_pool_sliced_greedy_inserter {
  public:
-  typedef ContType container;
-  typedef typename container::inserter inserter;
-  typedef typename container::iterator iterator;
-  typedef typename container::const_pointer const_pointer;
-  typedef typename container::const_reference const_reference;
-  typedef typename container::value_type value_type;
+  using container = ContType;
 
-  block_pool_sliced_greedy_inserter(inserter& writer, size_t slice_offset, size_t offset) noexcept
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
+
+  block_pool_sliced_greedy_inserter(
+      typename container::inserter& writer,
+      size_t slice_offset,
+      size_t offset) noexcept
     : slice_offset_(slice_offset),
       where_(writer.parent(), offset + slice_offset),
       writer_(&writer) {
@@ -945,14 +961,14 @@ class block_pool_sliced_greedy_inserter
 
   size_t slice_offset() const noexcept { return slice_offset_; }
 
-  iterator& position() noexcept { return where_; }
+  typename container::iterator& position() noexcept { return where_; }
 
   container& parent() noexcept { return where_.parent(); }
 
   // At least MSVC 2017.9 incorectly process increment if this function is inlined during optimization
   // Other MSVC 2017 versions could have similar issue
   MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  block_pool_sliced_greedy_inserter& operator=(const_reference value) {
+  block_pool_sliced_greedy_inserter& operator=(typename container::const_reference value) {
     assert(!*where_); // we're not at the address part
 
     *where_ = value;
@@ -975,7 +991,7 @@ class block_pool_sliced_greedy_inserter
   // MSVC 2017.3 through 2017.9 incorectly count offsets if this function is inlined during optimization
   // MSVC 2017.2 and below work correctly for both debug and release
   MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(__declspec(noinline))
-  void write(const_pointer b, size_t len) {
+  void write(typename container::const_pointer b, size_t len) {
     assert(!*where_); // we're not at the address part
 
     //FIXME optimize loop since we're aware of current slice
@@ -1010,8 +1026,8 @@ class block_pool_sliced_greedy_inserter
   }
 
   size_t slice_offset_;
-  iterator where_;
-  inserter* writer_;
+  typename container::iterator where_;
+  typename container::inserter* writer_;
 }; // block_pool_sliced_greedy_inserter
 
 ////////////////////////////////////////////////////////////////////////////////

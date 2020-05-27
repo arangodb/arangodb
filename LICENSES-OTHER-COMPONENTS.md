@@ -177,9 +177,9 @@ exception from the GPL license:
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.2
+* Version: 6.8
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/rocksdb/6.2/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.8/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
@@ -2308,7 +2308,7 @@ exception from the GPL license:
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.9.0
+* Version: 3.25.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://github.com/swagger-api/swagger-ui/blob/master/README.md

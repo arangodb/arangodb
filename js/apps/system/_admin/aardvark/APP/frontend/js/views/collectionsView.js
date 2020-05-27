@@ -469,9 +469,6 @@
             shardKeys: shardKeys
           };
 
-          if (self.engine.name !== 'rocksdb') {
-            tmpObj.journalSize = collSize;
-          }
           if (smartJoinAttribute !== '') {
             tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
@@ -678,24 +675,6 @@
                   {
                     rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
-                  }
-                ]
-              )
-            );
-          }
-          if (self.engine.name !== 'rocksdb') {
-            advancedTableContent.push(
-              window.modalView.createTextEntry(
-                'new-collection-size',
-                'Journal size',
-                '',
-                'The maximal size of a journal or datafile (in MB). Must be at least 1.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
                   }
                 ]
               )

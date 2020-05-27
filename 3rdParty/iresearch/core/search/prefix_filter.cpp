@@ -22,17 +22,52 @@
 
 #include "prefix_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "shared.hpp"
-#include "multiterm_query.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
+NS_LOCAL
+
+using namespace irs;
+
+template<typename Visitor>
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    Visitor& visitor) {
+  // find term
+  auto terms = reader.iterator();
+
+  // seek to prefix
+  if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
+    return;
+  }
+
+  const auto& value = terms->value();
+  if (starts_with(value, prefix)) {
+    terms->read();
+
+    visitor.prepare(segment, reader, *terms);
+
+    do {
+      visitor.visit(no_boost());
+
+      if (!terms->next()) {
+        break;
+      }
+
+      terms->read();
+    } while (starts_with(value, prefix));
+  }
+}
+
+NS_END
+
 NS_ROOT
 
-DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
@@ -42,80 +77,36 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     const string_ref& field,
     const bytes_ref& prefix,
     size_t scored_terms_limit) {
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
   for (const auto& segment: index) {
     // get term dictionary for field
-    const term_reader* reader = segment.field(field);
+    const auto* reader = segment.field(field);
 
     if (!reader) {
       continue;
     }
 
-    seek_term_iterator::ptr terms = reader->iterator();
-
-    // seek to prefix
-    if (SeekResult::END == terms->seek_ge(prefix)) {
-      continue;
-    }
-
-    auto& value = terms->value();
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
-    const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-
-    // NOTE: we can't use reference to 'docs_count' here, like
-    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
-    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
-    // probably due to broken optimization
-    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
-
-    if (starts_with(value, prefix)) {
-      terms->read();
-
-      // get state for current segment
-      auto& state = states.insert(segment);
-      state.reader = reader;
-
-      do {
-        // fill scoring candidates
-        scorer.collect(*docs_count, state.count++, state, segment, *terms);
-        state.estimation += *docs_count; // collect cost
-
-        if (!terms->next()) {
-          break;
-        }
-
-        terms->read();
-      } while (starts_with(value, prefix));
-    }
+    ::visit(segment, *reader, prefix, mtv);
   }
 
   std::vector<bstring> stats;
-  scorer.score(index, ord, stats);
+  collector.score(index, ord, stats);
 
-  return memory::make_shared<multiterm_query>(std::move(states), std::move(stats), boost);
+  return memory::make_shared<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
-by_prefix::by_prefix() noexcept : by_prefix(by_prefix::type()) { }
-
-size_t by_prefix::hash() const noexcept {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, by_term::hash());
-  ::boost::hash_combine(seed, scored_terms_limit_);
-  return seed;
-}
-
-bool by_prefix::equals(const filter& rhs) const noexcept {
-  const auto& impl = static_cast<const by_prefix&>(rhs);
-  return by_term::equals(rhs) && scored_terms_limit_ == impl.scored_terms_limit_;
+/*static*/ void by_prefix::visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
+  ::visit(segment, reader, prefix, visitor);
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -33,7 +33,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Sharding/ShardingFeature.h"
-#include "Sharding/ShardingStrategy.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/KeyGenerator.h"

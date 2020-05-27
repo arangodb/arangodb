@@ -84,13 +84,12 @@ static bool inline IsRole(std::string const& name) {
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
-    : _server(server), _globalVersion(1), _internalVersion(0), _queryRegistry(nullptr) {}
+    : _server(server), _globalVersion(1), _internalVersion(0) {}
 #else
 auth::UserManager::UserManager(application_features::ApplicationServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
-      _queryRegistry(nullptr),
       _authHandler(nullptr) {}
 
 auth::UserManager::UserManager(application_features::ApplicationServer& server,
@@ -98,7 +97,6 @@ auth::UserManager::UserManager(application_features::ApplicationServer& server,
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
-      _queryRegistry(nullptr),
       _authHandler(std::move(handler)) {}
 #endif
 
@@ -125,8 +123,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server,
-                                                   aql::QueryRegistry* queryRegistry) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::ApplicationServer& server) {
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -140,15 +137,16 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
   ExecContextSuperuserScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, *vocbase, arangodb::aql::QueryString(queryStr),
-                             emptyBuilder, emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(*vocbase),
+                             arangodb::aql::QueryString(queryStr),
+                             emptyBuilder, emptyBuilder);
 
   query.queryOptions().cache = false;
 
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
-  aql::QueryResult queryResult = query.executeSync(queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -175,9 +173,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(application_features::Applica
 /// Convert documents from _system/_users into the format used in
 /// the REST user API and Foxx
 static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
-  if (doc.isExternal()) {
-    doc = doc.resolveExternals();
-  }
+  doc = doc.resolveExternals();
   VPackSlice authDataSlice = doc.get("authData");
   {
     VPackObjectBuilder b(&result, true);
@@ -191,7 +187,6 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 // private, will acquire _userCacheLock in write-mode and release it.
 // will also acquire _loadFromDBLock and release it
 void auth::UserManager::loadFromDB() {
-  TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
   if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
@@ -204,7 +199,7 @@ void auth::UserManager::loadFromDB() {
   }
 
   try {
-    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server, _queryRegistry);
+    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
     if (builder) {
       VPackSlice usersSlice = builder->slice();
       if (usersSlice.length() != 0) {
@@ -296,11 +291,9 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
     if (res.ok()) {
       VPackSlice userDoc = opres.slice();
-      TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
-      userDoc = userDoc.get("new");
-      if (userDoc.isExternal()) {
-        userDoc = userDoc.resolveExternal();
-      }
+      TRI_ASSERT(userDoc.isObject() && userDoc.hasKey(StaticStrings::New));
+      userDoc = userDoc.get(StaticStrings::New);
+      userDoc = userDoc.resolveExternal();
 
       // parse user including document _key
       auth::User created = auth::User::fromDocument(userDoc);
@@ -381,8 +374,7 @@ void auth::UserManager::createRootUser() {
 
 VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _userCacheLock
-  TRI_ASSERT(_queryRegistry != nullptr);
-  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server, _queryRegistry);
+  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server);
 
   VPackBuilder result;
   {

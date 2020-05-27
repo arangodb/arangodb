@@ -25,8 +25,10 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Basics/VelocyPackHelper.h"
@@ -56,7 +58,7 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slic
       _isModificationSubquery(basics::VelocyPackHelper::getBooleanValue(
           base, "isModificationSubquery", false)) {}
 
-SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
                                  Variable const* outVariable, bool isModificationSubquery)
     : ExecutionNode(plan, id),
       _inVariable(inVariable),
@@ -86,31 +88,28 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  transaction::Methods* trx = _plan->getAst()->query()->trx();
-  TRI_ASSERT(trx != nullptr);
 
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet{};
+  auto outputRegisters = RegIdSet{};
 
   auto inReg = variableToRegisterOptionalId(_inVariable);
   if (inReg != RegisterPlan::MaxRegisterId) {
-    inputRegisters->emplace(inReg);
+    inputRegisters.emplace(inReg);
   }
   auto outReg = variableToRegisterId(_outVariable);
-  outputRegisters->emplace(outReg);
+  outputRegisters.emplace(outReg);
 
-  auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
-  SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
-                                 getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                 getRegisterPlan()->nrRegs[getDepth()],
-                                 getRegsToClear(), calcRegsToKeep(), vpackOptions,
-                                 inReg, outReg, isModificationNode());
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
-  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
-                                                                   std::move(infos));
+  auto const& vpackOptions = engine.getQuery().vpackOptions();
+  auto executorInfos =
+      SubqueryEndExecutorInfos(&vpackOptions, inReg, outReg, isModificationNode());
+
+  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,

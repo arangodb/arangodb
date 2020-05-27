@@ -32,12 +32,17 @@
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
 
+#include "pdd30.h"
+#include "pdd31.h"
+#include "pdd40.h"
 #include "Basics/voc-errors.h"
 
 namespace {
 
+using namespace arangodb::iresearch;
+
 irs::parametric_description readParametricDescription(
-    std::pair<std::initializer_list<irs::byte_type>, size_t> args) {
+    std::pair<irs::bytes_ref, size_t> args) {
   auto const rawSize = args.second;
   const auto& data = args.first;
 
@@ -74,32 +79,16 @@ irs::parametric_description const DESCRIPTIONS[] = {
   irs::make_parametric_description(2, false),
   irs::make_parametric_description(2, true),
 
-#if defined(_WIN32) && defined(_MSC_VER)
   // distance 3
-  irs::make_parametric_description(3, false),
-  irs::make_parametric_description(3, true),
+  readParametricDescription(
+    { { pdd30::PDD, pdd30::PDD_COMPRESSED_LEN }, pdd30::PDD_RAW_LEN }),
 
-  // distance 4
-  irs::make_parametric_description(4, false),
-#else
-  // distance 3
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   readParametricDescription(
-    #include "PD30"
-  ),
-  readParametricDescription(
-    #include "PD31"
-  ),
-#else
-  irs::make_parametric_description(3, false),
-  irs::make_parametric_description(3, true),
-#endif
+    { { pdd31::PDD, pdd31::PDD_COMPRESSED_LEN }, pdd31::PDD_RAW_LEN }),
 
   // distance 4
   readParametricDescription(
-    #include "PD40"
-  ),
-#endif
+    { { pdd40::PDD, pdd40::PDD_COMPRESSED_LEN }, pdd40::PDD_RAW_LEN }),
 };
 
 size_t args2index(irs::byte_type distance,

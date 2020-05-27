@@ -31,7 +31,7 @@ NS_ROOT
 doc_iterator::ptr multiterm_query::execute(
     const sub_reader& segment,
     const order::prepared& ord,
-    const attribute_view& /*ctx*/) const {
+    const attribute_provider* /*ctx*/) const {
   typedef disjunction<doc_iterator::ptr> disjunction_t;
 
   // get term state for the specified reader
@@ -67,22 +67,27 @@ doc_iterator::ptr multiterm_query::execute(
   auto& stats = this->stats();
 
   // add an iterator for each of the scored states
+  const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
-    assert(entry.first);
-    if (!terms->seek(bytes_ref::NIL, *entry.first)) {
+    assert(entry.cookie);
+    if (!terms->seek(bytes_ref::NIL, *entry.cookie)) {
       return doc_iterator::empty(); // internal error
     }
 
     auto docs = terms->postings(features);
-    auto& attrs = docs->attributes();
 
-    // set score
-    auto& score = attrs.get<irs::score>();
-    if (score) {
-      assert(entry.second < stats.size());
-      auto* stat = stats[entry.second].c_str();
+    if (!no_score) {
+      auto* score = irs::get_mutable<irs::score>(docs.get());
 
-      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stat, attrs, boost()));
+      if (score) {
+        assert(entry.stat_offset < stats.size());
+        auto* stat = stats[entry.stat_offset].c_str();
+
+        score->prepare(
+          ord,
+          ord.prepare_scorers(segment, *state->reader,
+                              stat, *docs, entry.boost*boost()));
+      }
     }
 
     itrs.emplace_back(std::move(docs));
@@ -93,11 +98,9 @@ doc_iterator::ptr multiterm_query::execute(
     }
   }
 
-  return make_disjunction<disjunction_t>(std::move(itrs), ord, state->estimation);
+  return make_disjunction<disjunction_t>(
+    std::move(itrs), ord,
+    merge_type_, state->estimation());
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

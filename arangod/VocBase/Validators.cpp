@@ -40,145 +40,124 @@ namespace arangodb {
 std::string const&  to_string(ValidationLevel level) {
   switch (level) {
     case ValidationLevel::None:
-      return StaticStrings::ValidatorLevelNone;
+      return StaticStrings::ValidationLevelNone;
     case ValidationLevel::New:
-      return StaticStrings::ValidatorLevelNew;
+      return StaticStrings::ValidationLevelNew;
     case ValidationLevel::Moderate:
-      return StaticStrings::ValidatorLevelModerate;
+      return StaticStrings::ValidationLevelModerate;
     case ValidationLevel::Strict:
-      return StaticStrings::ValidatorLevelStrict;
+      return StaticStrings::ValidationLevelStrict;
   }
   TRI_ASSERT(false);
-  return StaticStrings::ValidatorLevelStrict;  // <- avoids: reaching end of non-void function ....
+  return StaticStrings::ValidationLevelStrict;  // <- avoids: reaching end of non-void function ....
 }
-
-std::string const&  to_string(validation::SpecialProperties special) {
-  switch (special) {
-    case validation::SpecialProperties::All:
-      return StaticStrings::ValidatorPropertyAll;
-    case validation::SpecialProperties::None:
-      return StaticStrings::ValidatorPropertyNone;
-    case validation::SpecialProperties::Key:
-    case validation::SpecialProperties::Id:
-    case validation::SpecialProperties::Rev:
-    case validation::SpecialProperties::From:
-    case validation::SpecialProperties::To:
-      return StaticStrings::ValidatorPropertyNone;
-  }
-  TRI_ASSERT(false);
-  return StaticStrings::ValidatorPropertyNone;  // <- avoids: reaching end of non-void function ....
-}
-
 
 //////////////////////////////////////////////////////////////////////////////
 
 ValidatorBase::ValidatorBase(VPackSlice params)
     : _level(ValidationLevel::Strict), _special(validation::SpecialProperties::None) {
   // parse message
-  auto msgSlice = params.get(StaticStrings::ValidatorParameterMessage);
+  auto msgSlice = params.get(StaticStrings::ValidationParameterMessage);
   if (msgSlice.isString()) {
     this->_message = msgSlice.copyString();
   }
 
   // parse level
-  auto levelSlice = params.get(StaticStrings::ValidatorParameterLevel);
+  auto levelSlice = params.get(StaticStrings::ValidationParameterLevel);
   if (!levelSlice.isNone() && levelSlice.isString()) {
-    if (levelSlice.compareString(StaticStrings::ValidatorLevelNone) == 0) {
+    if (levelSlice.compareString(StaticStrings::ValidationLevelNone) == 0) {
       this->_level = ValidationLevel::None;
-    } else if (levelSlice.compareString(StaticStrings::ValidatorLevelNew) == 0) {
+    } else if (levelSlice.compareString(StaticStrings::ValidationLevelNew) == 0) {
       this->_level = ValidationLevel::New;
-    } else if (levelSlice.compareString(StaticStrings::ValidatorLevelModerate) == 0) {
+    } else if (levelSlice.compareString(StaticStrings::ValidationLevelModerate) == 0) {
       this->_level = ValidationLevel::Moderate;
-    } else if (levelSlice.compareString(StaticStrings::ValidatorLevelStrict) == 0) {
+    } else if (levelSlice.compareString(StaticStrings::ValidationLevelStrict) == 0) {
       this->_level = ValidationLevel::Strict;
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER,
-                                     "Valid validation levels are: " + StaticStrings::ValidatorLevelNone +
-                                         ", " + StaticStrings::ValidatorLevelNew +
-                                         ", " + StaticStrings::ValidatorLevelModerate +
-                                         ", " + StaticStrings::ValidatorLevelStrict);
-    }
-  }
-
-  // special attributes
-  // eventually we want something like:
-  // "key|from|to" and not only "all" or "none"
-  auto specialSlice = params.get(StaticStrings::ValidatorParameterSpecialProperties);
-  if (!specialSlice.isNone() && specialSlice.isString()) {
-    if (specialSlice.compareString(StaticStrings::ValidatorPropertyNone) == 0) {
-      this->_special = validation::SpecialProperties::None;
-    } else if (specialSlice.compareString(StaticStrings::ValidatorPropertyAll) == 0) {
-      this->_special = validation::SpecialProperties::All;
-    } else {
-      using namespace std::literals::string_literals;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER,
-                                     "Valid built-in attributes are: "s + StaticStrings::ValidatorPropertyNone +
-                                         ", " + StaticStrings::ValidatorPropertyAll +
-                                         "");
+                                     "Valid validation levels are: " + StaticStrings::ValidationLevelNone +
+                                         ", " + StaticStrings::ValidationLevelNew +
+                                         ", " + StaticStrings::ValidationLevelModerate +
+                                         ", " + StaticStrings::ValidationLevelStrict);
     }
   }
 }
 
-bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
+Result ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert, VPackOptions const* options) const {
   // This function performs the validation depending on operation (Insert /
   // Update / Replace) and requested validation level (None / Insert / New /
   // Strict / Moderate).
 
   if (this->_level == ValidationLevel::None) {
-    return true;
+    return {};
   }
 
   if (isInsert) {
-    return this->validateDerived(newDoc, options);
+    return this->validateOne(newDoc, options);
   }
 
   /* update replace case */
   if (this->_level == ValidationLevel::New) {
     // Level NEW is for insert only.
-    return true;
+    return {};
   }
 
   if (this->_level == ValidationLevel::Strict) {
     // Changed document must be good!
-    return validateDerived(newDoc, options);
+    return validateOne(newDoc, options);
   }
 
   TRI_ASSERT(this->_level == ValidationLevel::Moderate);
   // Changed document must be good IIF the unmodified
   // document passed validation.
-  return (this->validateDerived(newDoc, options) || !this->validateDerived(oldDoc, options));
+
+  auto resNew = this->validateOne(newDoc, options);
+  if (resNew.ok()) {
+    return {};
+  }
+
+  if (this->validateOne(oldDoc, options).fail()) {
+    return {};
+  }
+
+  return resNew;
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
   VPackObjectBuilder guard(&b);
-  b.add(StaticStrings::ValidatorParameterMessage, VPackValue(_message));
-  b.add(StaticStrings::ValidatorParameterLevel, VPackValue(to_string(this->_level)));
-  b.add(StaticStrings::ValidatorParameterType, VPackValue(this->type()));
-  b.add(StaticStrings::ValidatorParameterSpecialProperties, VPackValue(to_string(this->_special)));
+  b.add(StaticStrings::ValidationParameterMessage, VPackValue(_message));
+  b.add(StaticStrings::ValidationParameterLevel, VPackValue(to_string(this->_level)));
   this->toVelocyPackDerived(b);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 
 ValidatorBool::ValidatorBool(VPackSlice params) : ValidatorBase(params) {
-  _result = params.get(StaticStrings::ValidatorParameterRule).getBool();
+  _result = params.get(StaticStrings::ValidationParameterRule).getBool();
 }
-bool ValidatorBool::validateDerived(VPackSlice slice, VPackOptions const* options) const { return _result; }
+Result ValidatorBool::validateOne(VPackSlice slice, VPackOptions const* options) const {
+  if (_result) {
+    return {};
+  }
+  return {TRI_ERROR_VALIDATION_FAILED, _message};
+}
+
 void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
-  b.add(StaticStrings::ValidatorParameterRule, VPackValue(_result));
+  b.add(StaticStrings::ValidationParameterRule, VPackValue(_result));
 }
+
 std::string const& ValidatorBool::type() const {
-  return StaticStrings::ValidatorTypeBool;
+  static std::string const rv = std::string("bool");
+  return rv;
 }
 
 /////////////////////////////////////////////////////////////////////////////
 
 ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(params) {
-  auto rule = params.get(StaticStrings::ValidatorParameterRule);
+  auto rule = params.get(StaticStrings::ValidationParameterRule);
   if (!rule.isObject()) {
     std::string msg = "No valid schema in rule attribute given (no object): ";
     msg += params.toJson();
-    LOG_TOPIC("ababf", ERR, Logger::VALIDATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
   auto taoRuleValue = validation::slice_to_value(rule);
@@ -192,15 +171,21 @@ ValidatorJsonSchema::ValidatorJsonSchema(VPackSlice params) : ValidatorBase(para
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER, msg);
   }
 }
-bool ValidatorJsonSchema::validateDerived(VPackSlice slice, VPackOptions const* options) const {
-  return validation::validate(*_schema, _special, slice, options);
+
+Result ValidatorJsonSchema::validateOne(VPackSlice slice, VPackOptions const* options) const {
+  auto res = validation::validate(*_schema, _special, slice, options);
+  if (res) {
+    return {};
+  }
+  return {TRI_ERROR_VALIDATION_FAILED, _message};
 }
 void ValidatorJsonSchema::toVelocyPackDerived(VPackBuilder& b) const {
   TRI_ASSERT(!_builder.slice().isNone());
-  b.add(StaticStrings::ValidatorParameterRule, _builder.slice());
+  b.add(StaticStrings::ValidationParameterRule, _builder.slice());
 }
 std::string const& ValidatorJsonSchema::type() const {
-  return StaticStrings::ValidatorTypeJsonSchema;
+  static std::string const rv = std::string("json");
+  return rv;
 }
 
 }  // namespace arangodb

@@ -55,7 +55,7 @@ using namespace arangodb::methods;
 using namespace arangodb::basics::StringUtils;
 
 static std::vector<std::string> const cmp{JOURNAL_SIZE, WAIT_FOR_SYNC,
-                                          DO_COMPACT, VALIDATION, CACHE_ENABLED};
+                                          DO_COMPACT, SCHEMA, CACHE_ENABLED};
 
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
@@ -192,11 +192,15 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
   bool shouldBeLeading = serverId == leaderId;
   bool shouldResign = UNDERSCORE + serverId == leaderId;
 
+
   commonShrds.emplace(shname);
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
+
     auto const lcol = ldb.get(shname);
-    bool leading = lcol.get(THE_LEADER).copyString().empty();
+    std::string_view const localLeader = lcol.get(THE_LEADER).stringView();
+    bool const leaderTouched = localLeader != LEADER_NOT_YET_KNOWN;
+    bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
@@ -259,12 +263,24 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     // be the leader and now somebody else is the leader. However, it does
     // not handle the case of a controlled leadership resignation, see below
     // in handleLocalShard for this.
-    if (leading != shouldBeLeading && !shouldResign) {
+    if (shouldResign && !leading) {
+      // This case is a special one which is triggered if a server
+      // restarts, has `NOT_YET_TOUCHED` in its local shard as theLeader
+      // and finds a resignation sign. In that case, it should first officially
+      // take over leadership. In the following round it will then resign.
+      // This enables cleanOutServer jobs to continue to work in case of
+      // a leader restart.
+      shouldBeLeading = true;
+      shouldResign = false;
+    }
+    if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
           << "Triggering TakeoverShardLeadership job for shard " << dbname
           << "/" << colname << "/" << shname
           << ", local leader: " << lcol.get(THE_LEADER).copyString()
-          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId);
+          << ", leader id: " << leaderId << ", my id: " << serverId
+          << ", should be leader: " << (shouldBeLeading ? std::string() : leaderId)
+          << ", leaderTouched = " << (leaderTouched ? "yes" : "no");
       actions.emplace_back(ActionDescription(
           std::map<std::string, std::string>{
               {NAME, TAKEOVER_SHARD_LEADERSHIP},
@@ -272,7 +288,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
               {COLLECTION, colname},
               {SHARD, shname},
               {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-              {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
+              {LOCAL_LEADER, std::string(localLeader)},
               {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
           LEADER_PRIORITY));
     }
@@ -287,7 +303,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       // Index errors are checked in `compareIndexes`. THe loop below only
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
-        for (auto const& index : VPackArrayIterator(difference.slice())) {
+        for (auto&& index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(ActionDescription(
               {{NAME, "EnsureIndex"},
                {DATABASE, dbname},
@@ -421,9 +437,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!local.hasKey(dbname)) {
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
-            ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)},
+            ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                                {std::string(DATABASE), std::string(dbname)}},
-                              HIGHER_PRIORITY));
+                              HIGHER_PRIORITY,
+                              std::make_shared<VPackBuilder>(pdb.value)));
       } else {
         LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";
@@ -436,7 +453,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     auto const& dbname = ldb.key.copyString();
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(
-          ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)},
+          ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)}, {std::string("tick"), std::to_string(TRI_NewTickServer())},
                              {std::string(DATABASE), std::string(dbname)}},
                             HIGHER_PRIORITY));
     }
@@ -878,12 +895,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
         if (!pdbs.hasKey(planPath)) {
           LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
-              << "Ooops, we have a shard for which we believe to be the "
-                 "leader,"
-                 " but the Plan does not have it any more, we do not report "
-                 "in "
-                 "Current about this, database: "
-              << dbName << ", shard: " << shName;
+            << "Ooops, we have a shard for which we believe to be the "
+               "leader, but the Plan does not have it any more, we do not "
+               "report in Current about this, database: "
+            << dbName << ", shard: " << shName;
           continue;
         }
 

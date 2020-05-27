@@ -559,7 +559,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   bool isSystem = cname[0] == '_';
   if (isSystem) {
     // disallow access to _system/_users for everyone
-    if (dbname == TRI_VOC_SYSTEM_DATABASE && cname == TRI_COL_NAME_USERS) {
+    if (dbname == StaticStrings::SystemDatabase && cname == TRI_COL_NAME_USERS) {
       return auth::Level::NONE;
     } else if (cname == "_queues") {
       return auth::Level::RO;

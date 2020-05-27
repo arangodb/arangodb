@@ -210,11 +210,6 @@ void AuthenticationFeature::start() {
 
   out << "Authentication is turned " << (_active ? "on" : "off");
 
-  if (_userManager != nullptr) {
-    auto& queryRegistryFeature = server().getFeature<QueryRegistryFeature>();
-    _userManager->setQueryRegistry(queryRegistryFeature.queryRegistry());
-  }
-
   if (_active && _authenticationSystemOnly) {
     out << " (system only)";
   }

@@ -24,6 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -75,6 +76,11 @@ RestStatus RestTasksHandler::execute() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestTasksHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
@@ -162,7 +168,7 @@ void RestTasksHandler::registerTask(bool byId) {
   std::string name =
       VelocyPackHelper::getStringValue(body, "name", "user-defined task");
 
-  bool isSystem = VelocyPackHelper::getBooleanValue(body, "isSystem", false);
+  bool isSystem = VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
 
   // offset in seconds into period or from now on if no period
   double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);

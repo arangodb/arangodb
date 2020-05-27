@@ -24,13 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionNodeStats.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
 
 #include <cstdint>
-#include <deque>
 #include <utility>
 #include <vector>
 
@@ -44,6 +43,7 @@ class AqlCallStack;
 class InputAqlItemRow;
 class ExecutionEngine;
 class ExecutionNode;
+struct ExecutionStats;
 class SharedAqlItemBlockPtr;
 
 class ExecutionBlock {
@@ -71,9 +71,9 @@ class ExecutionBlock {
   /// @brief Number to use when we skip all. Should really be inf, but don't
   /// use something near std::numeric_limits<size_t>::max() to avoid overflows
   /// in calculations.
-  /// This is used as an argument for skipSome(), e.g. when counting everything.
+  /// This is used as an argument for skipRowsRange(), e.g. when counting everything.
   /// Setting this to any other value >0 does not (and must not) affect the
-  /// results. It's only to reduce the number of necessary skipSome calls.
+  /// results. It's only to reduce the number of necessary skipRowsRange calls.
   [[nodiscard]] static constexpr inline size_t SkipAllSize() {
     return 1000000000;
   }
@@ -96,42 +96,10 @@ class ExecutionBlock {
   /// @brief shutdown, will be called exactly once for the whole query
   [[nodiscard]] virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
 
-  /// @brief getSome, gets some more items, semantic is as follows: not
-  /// more than atMost items may be delivered. The method tries to
-  /// return a block of at most atMost items, however, it may return
-  /// less (for example if there are not enough items to come). However,
-  /// if it returns an actual block, it must contain at least one item.
-  /// getSome() also takes care of tracing and clearing registers; don't do it
-  /// in getOrSkipSome() implementations.
-  [[nodiscard]] virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
-
-  // Trace the start of a getSome call
-  void traceGetSomeBegin(size_t atMost);
-
-  // Trace the end of a getSome call, potentially with result
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
-      ExecutionState state, SharedAqlItemBlockPtr result);
-
-  void traceSkipSomeBegin(size_t atMost);
-
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(std::pair<ExecutionState, size_t> res);
-
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state,
-                                                                   size_t skipped);
-
-  /// @brief skipSome, skips some more items, semantic is as follows: not
-  /// more than atMost items may be skipped. The method tries to
-  /// skip a block of at most atMost items, however, it may skip
-  /// less (for example if there are not enough items to come). The number of
-  /// elements skipped is returned.
-  [[nodiscard]] virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
-
   [[nodiscard]] ExecutionState getHasMoreState();
 
   // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   [[nodiscard]] ExecutionNode const* getPlanNode() const;
-
-  [[nodiscard]] velocypack::Options const* trxVpackOptions() const noexcept;
 
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
@@ -148,31 +116,33 @@ class ExecutionBlock {
   ///        2. SkipResult: Amount of documents skipped.
   ///        3. SharedAqlItemBlockPtr: The next data block.
   virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
-
+  
+  virtual void collectExecStats(ExecutionStats&) const;
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
-
+  
+  [[nodiscard]] auto printBlockInfo() const -> std::string const;
+  [[nodiscard]] auto printTypeInfo() const -> std::string const;
+  
  protected:
+  
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
                          std::string const& clientId = "");
 
   // Trace the end of a execute call, potentially with result
-  auto traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-                       std::string const& clientId = "")
-      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  [[nodiscard]] auto printBlockInfo() const -> std::string const;
-  [[nodiscard]] auto printTypeInfo() const -> std::string const;
+  void traceExecuteEnd(std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
+                       std::string const& clientId = "");
 
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
-  velocypack::Options const* _trxVpackOptions;
-
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.
   Result _shutdownResult;
+  
+  /// @brief profiling level
+  uint32_t _profile;
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
@@ -189,34 +159,12 @@ class ExecutionBlock {
   ///        used in initializeCursor and shutdown.
   ///        Needs to be set to .end() everytime we modify _dependencies
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
-
-  /// @brief profiling level
-  uint32_t _profile;
-
-  /// @brief getSome begin point in time
-  double _getSomeBegin;
+  
+  ExecutionNodeStats _execNodeStats;
 
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
-
-  /// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
-  /// We keep the following invariant between this and the other two variables
-  /// _pos and _done: If _buffer.size() != 0, then 0 <= _pos <
-  /// _buffer[0]->size()
-  /// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
-  /// then no more documents will ever be returned. _done will be set to
-  /// true if and only if we have no more data ourselves (i.e.
-  /// _buffer.size()==0)
-  /// and we have unsuccessfully tried to get another block from our dependency.
-  std::deque<SharedAqlItemBlockPtr> _buffer;
-
-  /// @brief current working position in the first entry of _buffer
-  size_t _pos;
-
-  /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
-  /// be a member variable due to possible WAITING interruptions.
-  aql::BlockCollector _collector;
 };
 
 }  // namespace aql

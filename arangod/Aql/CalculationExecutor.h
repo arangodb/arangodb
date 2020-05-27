@@ -24,11 +24,13 @@
 #define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
+#include "Transaction/Methods.h"
 
 #include <unordered_set>
 #include <vector>
@@ -44,17 +46,14 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class Expression;
 class OutputAqlItemRow;
-class Query;
+class QueryContext;
 template <BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
-struct CalculationExecutorInfos : public ExecutorInfos {
-  CalculationExecutorInfos(RegisterId outputRegister, RegisterId nrInputRegisters,
-                           RegisterId nrOutputRegisters,
-                           std::unordered_set<RegisterId> registersToClear,
-                           std::unordered_set<RegisterId> registersToKeep, Query& query,
-                           Expression& expression, std::vector<Variable const*>&& expInVars,
+struct CalculationExecutorInfos {
+  CalculationExecutorInfos(RegisterId outputRegister, QueryContext& query, Expression& expression,
+                           std::vector<Variable const*>&& expInVars,
                            std::vector<RegisterId>&& expInRegs);
 
   CalculationExecutorInfos() = delete;
@@ -64,7 +63,8 @@ struct CalculationExecutorInfos : public ExecutorInfos {
 
   RegisterId getOutputRegisterId() const noexcept;
 
-  Query& getQuery() const noexcept;
+  QueryContext& getQuery() const noexcept;
+  transaction::Methods* getTrx() const noexcept;
 
   Expression& getExpression() const noexcept;
 
@@ -75,9 +75,9 @@ struct CalculationExecutorInfos : public ExecutorInfos {
  private:
   RegisterId _outputRegisterId;
 
-  Query& _query;
+  QueryContext& _query;
   Expression& _expression;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<Variable const*> _expInVars;  // input variables for expression
   std::vector<RegisterId> _expInRegs;       // input registers for expression
 };
 
@@ -102,19 +102,10 @@ class CalculationExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
-   */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
-
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
   // specialized implementations
@@ -131,6 +122,8 @@ class CalculationExecutor {
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const;
 
  private:
+  transaction::Methods _trx;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;

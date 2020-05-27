@@ -22,11 +22,11 @@
 
 #include "MaterializeExecutor.h"
 
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -34,12 +34,9 @@ using namespace arangodb::aql;
 template <typename T>
 arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::copyDocumentCallback(
     ReadContext& ctx) {
-  auto* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
-  static CallbackFactory const callbackFactories[]{
+  static CallbackFactory const callbackFactory{
       [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
         return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
           TRI_ASSERT(ctx._outputRow);
           TRI_ASSERT(ctx._inputRow);
@@ -52,49 +49,25 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
                                         *ctx._inputRow, guard);
           return true;
         };
-      },
+      }
+    };
 
-      [](ReadContext& ctx) {
-        // capture only one reference to potentially avoid heap allocation
-        return [&ctx](LocalDocumentId /*id*/, VPackSlice doc) {
-          TRI_ASSERT(ctx._outputRow);
-          TRI_ASSERT(ctx._inputRow);
-          TRI_ASSERT(ctx._inputRow->isInitialized());
-          TRI_ASSERT(ctx._infos);
-          arangodb::aql::AqlValue a{arangodb::aql::AqlValueHintDocumentNoCopy(doc.begin())};
-          bool mustDestroy = true;
-          arangodb::aql::AqlValueGuard guard{a, mustDestroy};
-          ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(),
-                                        *ctx._inputRow, guard);
-          return true;
-        };
-      }};
-
-  return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
+  return callbackFactory(ctx);
 }
 
 template <typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, T const collectionSource,
-    RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
-    : ExecutorInfos(getReadableInputRegisters(collectionSource, inNmDocId),
-                    make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _collectionSource(collectionSource),
+    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId, aql::QueryContext& query)
+    : _collectionSource(collectionSource),
       _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId),
-      _trx(trx) {}
+      _query(query) {}
 
 template <typename T>
-std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(MaterializeExecutor<T>::Fetcher& fetcher, Infos& infos)
+    : _trx(infos.query().newTrxContext()),
+      _readDocumentContext(infos),
+      _infos(infos) {}
 
 template <typename T>
 std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T>::produceRows(
@@ -109,13 +82,12 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     auto& callback = _readDocumentContext._callback;
     auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
     T collectionSource = _readDocumentContext._infos->collectionSource();
-    auto* trx = _readDocumentContext._infos->trx();
-    auto const [state, input] = inputRange.nextDataRow();
+    auto const [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     arangodb::LogicalCollection const* collection = nullptr;
     if constexpr (std::is_same<T, std::string const&>::value) {
       if (_collection == nullptr) {
-        _collection = trx->documentCollection(collectionSource);
+        _collection = _trx.documentCollection(collectionSource);
       }
       collection = _collection;
     } else {
@@ -126,7 +98,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
     written = collection->readDocumentWithCallback(
-        trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
+        &_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
     if (written) {
       output.advanceRow();
     }
@@ -149,12 +121,6 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> arangodb::aql::MaterializeEx
   call.didSkip(skipped);
 
   return {inputRange.upstreamState(), NoStats{}, skipped, call};
-}
-
-template <typename T>
-std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializeExecutor<T>::skipRows(size_t toSkipRequested) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template class ::arangodb::aql::MaterializeExecutor<RegisterId>;

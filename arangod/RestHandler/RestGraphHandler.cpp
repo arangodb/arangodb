@@ -31,7 +31,6 @@
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -971,7 +970,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   VPackBuilder builder;
-  _gmngr.readGraphs(builder, arangodb::aql::PART_MAIN);
+  _gmngr.readGraphs(builder);
 
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 

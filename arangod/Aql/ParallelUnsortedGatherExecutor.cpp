@@ -32,13 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ParallelUnsortedGatherExecutorInfos::ParallelUnsortedGatherExecutorInfos(
-    RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
-                    nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}
-
 ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&, Infos& infos) {}
 
 ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
@@ -50,7 +43,7 @@ auto ParallelUnsortedGatherExecutor::upstreamCallSkip(AqlCall const& clientCall)
   // Only skip, don't ask for rows
   if (clientCall.getOffset() > 0) {
     auto upstreamCall = clientCall;
-    upstreamCall.softLimit = 0;
+    upstreamCall.softLimit = 0u;
     upstreamCall.hardLimit = AqlCall::Infinity{};
     upstreamCall.fullCount = false;
     return upstreamCall;
@@ -91,19 +84,17 @@ auto ParallelUnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& in
   auto callSet = AqlCallSet{};
 
   for (size_t dep = 0; dep < input.numberDependencies(); ++dep) {
-    while (!output.isFull()) {
-      auto [state, row] = input.nextDataRow(dep);
-      if (row) {
-        output.copyRow(row);
-        output.advanceRow();
-      } else {
-        // This output did not produce anything
-        if (state == ExecutorState::HASMORE) {
-          callSet.calls.emplace_back(
-              AqlCallSet::DepCallPair{dep, upstreamCallProduce(clientCall)});
-        }
-        break;
-      }
+    auto& range = input.rangeForDependency(dep);
+    while (!output.isFull() && range.hasDataRow()) {
+      auto [state, row] = range.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+      TRI_ASSERT(row);
+      output.copyRow(row);
+      output.advanceRow();
+    }
+    // Produce a new call if necessary (we consumed all, and the state is still HASMORE)
+    if (!range.hasDataRow() && range.upstreamState() == ExecutorState::HASMORE) {
+      callSet.calls.emplace_back(
+          AqlCallSet::DepCallPair{dep, AqlCallList{upstreamCallProduce(clientCall)}});
     }
   }
 
@@ -158,7 +149,8 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& 
   if (call.needSkipMore()) {
     // We are not done with skipping.
     // Prepare next call.
-    callSet.calls.emplace_back(AqlCallSet::DepCallPair{waitingDep, upstreamCallSkip(call)});
+    callSet.calls.emplace_back(
+        AqlCallSet::DepCallPair{waitingDep, AqlCallList{upstreamCallSkip(call)}});
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
 }

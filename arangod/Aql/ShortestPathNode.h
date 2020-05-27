@@ -53,7 +53,7 @@ class ShortestPathNode : public virtual GraphNode {
   ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& node);
 
  public:
-  ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                    AstNode const* direction, AstNode const* start, AstNode const* target,
                    AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
@@ -62,14 +62,14 @@ class ShortestPathNode : public virtual GraphNode {
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
-  ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                   std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                   std::vector<std::unique_ptr<Collection>> const& vertexColls,
+  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                   std::vector<Collection*> const& edgeColls,
+                   std::vector<Collection*> const& vertexColls,
                    TRI_edge_direction_e defaultDirection,
                    std::vector<TRI_edge_direction_e> const& directions,
                    Variable const* inStartVariable, std::string const& startVertexId,
                    Variable const* inTargetVariable, std::string const& targetVertexId,
-                   std::unique_ptr<graph::BaseOptions> options);
+                   std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
  public:
   /// @brief return the type of the node
@@ -96,6 +96,8 @@ class ShortestPathNode : public virtual GraphNode {
 
   std::string const getStartVertex() const { return _startVertexId; }
 
+  void setStartInVariable(Variable const* inVariable);
+
   /// @brief Test if this node uses an in variable or constant for target
   bool usesTargetInVariable() const { return _inTargetVariable != nullptr; }
 
@@ -117,7 +119,7 @@ class ShortestPathNode : public virtual GraphNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override {
+  void getVariablesUsedHere(VarSet& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

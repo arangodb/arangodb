@@ -195,7 +195,11 @@ check_ret_t Store::applyTransaction(Slice const& query) {
   check_ret_t ret(true);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
-  switch (query.length()) {
+
+  if (query.isObject()) {
+    ret.successful(applies(query.get("query")));
+  } else {
+    switch (query.length()) {
     case 1:  // No precondition
       ret.successful(applies(query[0]));
       break;
@@ -210,9 +214,10 @@ check_ret_t Store::applyTransaction(Slice const& query) {
       break;
     default:  // Wrong
       LOG_TOPIC("18f6d", ERR, Logger::AGENCY)
-          << "We can only handle log entry with or without precondition! "
-          << "However we received " << query.toJson();
+        << "We can only handle log entry with or without precondition! "
+        << "However we received " << query.toJson();
       break;
+    }
   }
   // Wake up TTL processing
   {
@@ -281,8 +286,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                 MUTEX_LOCKER(storeLocker, _storeLock);
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second,
-                             std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
+                  in.emplace(
+                    it->second,
+                    std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
                 }
               }
               size_t pos = uri.find_last_of('/');
@@ -905,41 +911,44 @@ Store& Store::operator=(VPackSlice const& s) {
   TRI_ASSERT(s.isObject());
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
-  TRI_ASSERT(slice.length() == 4);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
-  _node.applies(slice[0]);
+  if (slice.isArray()) {
+    TRI_ASSERT(slice.length() == 4);
+    _node.applies(slice[0]);
 
-  if (s.hasKey("version")) {
-    TRI_ASSERT(slice[1].isObject());
-    for (auto const& entry : VPackObjectIterator(slice[1])) {
-      if (entry.value.isNumber()) {
-        auto const& key = entry.key.copyString();
-        if (_node.has(key)) {
-          auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
-          _node(key).timeToLive(tp);
-          _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+    if (s.hasKey("version")) {
+      TRI_ASSERT(slice[1].isObject());
+      for (auto const& entry : VPackObjectIterator(slice[1])) {
+        if (entry.value.isNumber()) {
+          auto const& key = entry.key.copyString();
+          if (_node.has(key)) {
+            auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+            _node(key).timeToLive(tp);
+            _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+          }
         }
       }
     }
-  }
 
-  TRI_ASSERT(slice[2].isArray());
-  for (VPackSlice entry : VPackArrayIterator(slice[2])) {
-    TRI_ASSERT(entry.isObject());
-    _observerTable.emplace(
+    TRI_ASSERT(slice[2].isArray());
+    for (VPackSlice entry : VPackArrayIterator(slice[2])) {
+      TRI_ASSERT(entry.isObject());
+      _observerTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
                                             entry.valueAt(0).copyString()));
-  }
+    }
 
-  TRI_ASSERT(slice[3].isArray());
-  for (VPackSlice entry : VPackArrayIterator(slice[3])) {
-    TRI_ASSERT(entry.isObject());
-    _observedTable.emplace(
+    TRI_ASSERT(slice[3].isArray());
+    for (VPackSlice entry : VPackArrayIterator(slice[3])) {
+      TRI_ASSERT(entry.isObject());
+      _observedTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
                                             entry.valueAt(0).copyString()));
+    }
+  } else if (slice.isObject()) {
+    _node.applies(slice);
   }
-
   return *this;
 }
 

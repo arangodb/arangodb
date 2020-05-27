@@ -32,9 +32,9 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -62,7 +62,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection& collection,
                                   arangodb::RocksDBIndex* oldIndex) {
   arangodb::Result res;
-  TRI_idx_iid_t iid = oldIndex->id();
+  IndexId iid = oldIndex->id();
 
   VPackBuilder oldDesc;
   oldIndex->toVelocyPack(oldDesc, Index::makeFlags());
@@ -113,7 +113,7 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
         LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
-            << "Upgrading legacy geo index '" << rIndex->id() << "'";
+            << "Upgrading legacy geo index '" << rIndex->id().id() << "'";
 
         auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
 
@@ -281,9 +281,8 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
         // if not found, create it
         VPackBuilder options;
         options.openObject();
-        options.add("isSystem", VPackSlice::trueSlice());
-        options.add("waitForSync", VPackSlice::falseSlice());
-        options.add("journalSize", VPackValue(1024 * 1024));
+        options.add(StaticStrings::DataSourceSystem, VPackSlice::trueSlice());
+        options.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
         options.close();
 
         systemCollectionsToCreate.emplace_back(
@@ -545,24 +544,10 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   return true;
 }
 
-bool UpgradeTasks::persistLocalDocumentIds(TRI_vocbase_t& vocbase,
-                                           arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() != MMFilesEngine::EngineName) {
-    return true;
-  }
-  Result res = basics::catchToResult([&vocbase]() -> Result {
-    MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    return engine->persistLocalDocumentIds(vocbase);
-  });
-  return res.ok();
-}
-
 bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
                                                       arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
-    return true;
-  }
-
+  TRI_ASSERT(EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string const path = engine->databasePath(&vocbase);
 

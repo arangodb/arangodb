@@ -32,6 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/container/flat_set.hpp>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -64,18 +65,27 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void InsertNewShadowRowAfterEachDataRow(size_t targetNumberOfRows,
                                           SharedAqlItemBlockPtr const& inputBlock,
                                           SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
-    outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows, numRegisters));
+    auto numRegisters = inputBlock->getNrRegs();
+    outputBlock = itemBlockManager.requestBlock(targetNumberOfRows, numRegisters);
     // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
+    auto outputRegisters = RegIdSet{};
+    int64_t maxShadowRowDepth = 0;
+    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+      if (inputBlock->isShadowRow(rowIdx)) {
+        maxShadowRowDepth =
+            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx).toInt64() + 1);
+      }
     }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+
+    auto protoRegSet = RegIdFlatSet{};
+    for (RegisterId r = 0; r < numRegisters; ++r) {
+      protoRegSet.emplace(r);
+    }
+
+    RegIdFlatSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+
+    auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
@@ -108,19 +118,28 @@ class AqlShadowItemRowTest : public ::testing::Test {
   void ConsumeRelevantShadowRows(size_t targetNumberOfRows,
                                  SharedAqlItemBlockPtr const& inputBlock,
                                  SharedAqlItemBlockPtr& outputBlock) {
-    RegisterId numRegisters = inputBlock->getNrRegs();
+    auto numRegisters = inputBlock->getNrRegs();
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
-    auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{numRegisters});
-    auto registersToKeep = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    for (RegisterId r = 0; r < numRegisters; ++r) {
-      registersToKeep->emplace(r);
+    auto outputRegisters = RegIdSet{static_cast<RegisterId>(numRegisters)};
+    int64_t maxShadowRowDepth = 0;
+    for (size_t rowIdx = 0; rowIdx < inputBlock->size(); ++rowIdx) {
+      if (inputBlock->isShadowRow(rowIdx)) {
+        maxShadowRowDepth =
+            std::max(maxShadowRowDepth, inputBlock->getShadowRowDepth(rowIdx).toInt64() + 1);
+      }
     }
-    auto registersToClear = std::make_shared<const std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+
+    auto protoRegSet = RegIdFlatSet{};
+    for (RegisterId r = 0; r < numRegisters; ++r) {
+      protoRegSet.emplace(r);
+    }
+
+    RegIdFlatSetStack registersToKeep;
+    std::generate_n(std::back_inserter(registersToKeep), maxShadowRowDepth + 2, [&]{ return protoRegSet; });
+
+    auto registersToClear = RegIdFlatSet{};
     OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
                             registersToKeep, registersToClear);
 
@@ -139,7 +158,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
             bool mustDestroy = true;
             AqlValue clonedValue = shadowRowData.clone();
             AqlValueGuard guard{clonedValue, mustDestroy};
-            testee.consumeShadowRow(numRegisters, source, guard);
+            testee.consumeShadowRow(static_cast<RegisterId>(numRegisters), source, guard);
           }
           ASSERT_TRUE(testee.produced());
           testee.advanceRow();

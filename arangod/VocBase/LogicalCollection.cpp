@@ -87,7 +87,8 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
   }
 
   auto version = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
-      info, "version", static_cast<uint32_t>(LogicalCollection::currentVersion()));
+      info, StaticStrings::Version,
+      static_cast<uint32_t>(LogicalCollection::currentVersion()));
 
   // predictable UUID for legacy collections
   if (static_cast<LogicalCollection::Version>(version) < LogicalCollection::Version::v33 && info.isObject()) {
@@ -143,7 +144,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
               Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
-          info, "version", static_cast<uint32_t>(currentVersion())))),
+          info, StaticStrings::Version, static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
                                                          TRI_COL_TYPE_UNKNOWN)),
@@ -151,18 +152,19 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
+      _isDisjoint(Helper::getBooleanValue(info, StaticStrings::IsDisjoint, false)),
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
       _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
+      _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
+      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _minRevision(isSmartChild()
+      _syncByRevision(determineSyncByRevision()),
+      _minRevision((system() || isSmartChild())
                        ? 0
                        : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
                                                                 0)),
-      _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
-      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
-      _syncByRevision(determineSyncByRevision()),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
@@ -184,8 +186,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  auto res = updateValidators(info.get(StaticStrings::Validation));
-  if(res.fail()){
+  auto res = updateValidators(info.get(StaticStrings::Schema));
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -260,6 +262,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
 
+  if (_physical->didPartialUpgrade()) {
+    _physical->cleanupAfterUpgrade();
+  }
+
   prepareIndexes(info.get("indexes"));
 }
 
@@ -271,19 +277,24 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
 Result LogicalCollection::updateValidators(VPackSlice validatorSlice) {
   using namespace std::literals::string_literals;
-  if(validatorSlice.isNone() || validatorSlice.isNull()) {
+  if (validatorSlice.isNone() || validatorSlice.isNull()) {
     return { TRI_ERROR_NO_ERROR };
   } else if (!validatorSlice.isObject()) {
     return {TRI_ERROR_VALIDATION_BAD_PARAMETER, "Validator description is not an object."};
   }
 
+  TRI_ASSERT(validatorSlice.isObject());
+
   std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
 
-  try {
-    auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
-    newVec->push_back(std::move(validator));
-  } catch (std::exception const& ex) {
-    return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+  // delete validators if empty object is given
+  if (!validatorSlice.isEmptyObject()) {
+    try {
+      auto validator = std::make_unique<ValidatorJsonSchema>(validatorSlice);
+      newVec->push_back(std::move(validator));
+    } catch (std::exception const& ex) {
+      return { TRI_ERROR_VALIDATION_BAD_PARAMETER, "Error when building validator: "s + ex.what() };
+    }
   }
 
   std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
@@ -434,21 +445,6 @@ void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> cons
   callback();
 }
 
-void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
-  READ_LOCKER(locker, _statusLock);
-  callback();
-}
-
-bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
-  TRY_READ_LOCKER(readLocker, _statusLock);
-  if (!readLocker.isLocked()) {
-    return false;
-  }
-
-  callback();
-  return true;
-}
-
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
   TRY_READ_LOCKER(locker, _statusLock);
   if (locker.isLocked()) {
@@ -467,7 +463,13 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
 }
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
-  return _usesRevisionsAsDocumentIds;
+  return _usesRevisionsAsDocumentIds.load();
+}
+
+void LogicalCollection::setUsesRevisionsAsDocumentIds(bool usesRevisions) {
+  if (!_usesRevisionsAsDocumentIds.load() && usesRevisions && _version >= Version::v37) {
+    _usesRevisionsAsDocumentIds.store(true);
+  }
 }
 
 TRI_voc_rid_t LogicalCollection::minRevision() const {
@@ -478,16 +480,29 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
+bool LogicalCollection::syncByRevision() const {
+  return _syncByRevision.load();
+}
+
+void LogicalCollection::setSyncByRevision(bool usesRevisions) {
+  if (!_syncByRevision.load() && _usesRevisionsAsDocumentIds.load() && usesRevisions) {
+    _syncByRevision.store(true);
+  }
+}
+
+bool LogicalCollection::useSyncByRevision() const {
+  return !_isAStub && _syncByRevision.load();
+}
 
 bool LogicalCollection::determineSyncByRevision() const {
-  if (!system() && version() >= LogicalCollection::Version::v37) {
+  if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
     if (server.hasFeature<EngineSelectorFeature>() &&
         server.hasFeature<ReplicationFeature>()) {
       auto& engine = server.getFeature<EngineSelectorFeature>();
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision();
+      return engine.isRocksDB() && replication.syncByRevision() &&
+             usesRevisionsAsDocumentIds();
     }
   }
   return false;
@@ -606,9 +621,6 @@ arangodb::Result LogicalCollection::drop() {
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->destroyCollection(vocbase(), *this);
   deleted(true);
   _physical->drop();
 
@@ -633,9 +645,14 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.openObject();
   result.add(VPackValue("parameters"));
 
-  std::unordered_set<std::string> ignoreKeys{
-      "allowUserKeys",        "cid",      "count",  "statusString", "version",
-      "distributeShardsLike", "objectId", "indexes"};
+  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
+                                             "cid",
+                                             "count",
+                                             "statusString",
+                                             StaticStrings::Version,
+                                             "distributeShardsLike",
+                                             StaticStrings::ObjectId,
+                                             StaticStrings::Indexes};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
@@ -687,7 +704,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
-  result.add("version", VPackValue(static_cast<uint32_t>(_version)));
+  result.add(StaticStrings::Version, VPackValue(static_cast<uint32_t>(_version)));
 
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
@@ -732,17 +749,19 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   // Validators
   {
-    result.add(VPackValue(StaticStrings::Validation));
+    result.add(VPackValue(StaticStrings::Schema));
     validatorsToVelocyPack(result);
   }
 
   // Cluster Specific
+  result.add(StaticStrings::IsDisjoint, VPackValue(isDisjoint()));
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
   result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
-             
+  result.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
+
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
@@ -815,8 +834,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
-  auto res = updateValidators(slice.get(StaticStrings::Validation));
-  if(res.fail()){
+  auto res = updateValidators(slice.get(StaticStrings::Schema));
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -955,15 +974,9 @@ futures::Future<OperationResult> LogicalCollection::figures() const {
   return getPhysical()->figures();
 }
 
-/// @brief opens an existing collection
-void LogicalCollection::open(bool ignoreErrors) {
-  getPhysical()->open(ignoreErrors);
-  TRI_UpdateTickServer(id());
-}
-
 /// SECTION Indexes
 
-std::shared_ptr<Index> LogicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
+std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
   return getPhysical()->lookupIndex(idxId);
 }
 
@@ -991,7 +1004,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice const& info, bo
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
+bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
@@ -1019,9 +1032,7 @@ void LogicalCollection::persistPhysicalCollection() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), *this);
-
-  getPhysical()->setPath(path);
+  engine->createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() {
@@ -1040,9 +1051,9 @@ void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection
 /// @brief reads an element from the document collection
 Result LogicalCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool lock) {
+                               ManagedDocumentResult& result) {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  return getPhysical()->read(trx, key, result, lock);
+  return getPhysical()->read(trx, key, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1061,24 +1072,27 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 /// @brief compact-data operation
 Result LogicalCollection::compact() { return getPhysical()->compact(); }
 
+Result LogicalCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
+                                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const { 
+  return getPhysical()->lookupKey(trx, key, result);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::insert(transaction::Methods* trx, VPackSlice const slice,
-                                 ManagedDocumentResult& result, OperationOptions& options,
-                                 bool lock, KeyLockInfo* keyLockInfo,
-                                 std::function<void()> const& cbDuringLock) {
+                                 ManagedDocumentResult& result, OperationOptions& options) {
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->insert(trx, slice, result, options, lock, keyLockInfo, cbDuringLock);
+  return getPhysical()->insert(trx, slice, result, options);
 }
 
 /// @brief updates a document or edge in a collection
-Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const newSlice,
+Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
                                  ManagedDocumentResult& result, OperationOptions& options,
-                                 bool lock, ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1087,13 +1101,13 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice const new
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  return getPhysical()->update(trx, newSlice, result, options, lock, previous);
+  return getPhysical()->update(trx, newSlice, result, options, previous);
 }
 
 /// @brief replaces a document or edge in a collection
-Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
+Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice newSlice,
                                   ManagedDocumentResult& result, OperationOptions& options,
-                                  bool lock, ManagedDocumentResult& previous) {
+                                  ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1101,18 +1115,17 @@ Result LogicalCollection::replace(transaction::Methods* trx, VPackSlice const ne
     return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  return getPhysical()->replace(trx, newSlice, result, options, lock, previous);
+  return getPhysical()->replace(trx, newSlice, result, options, previous);
 }
 
 /// @brief removes a document or edge
 Result LogicalCollection::remove(transaction::Methods& trx, velocypack::Slice const slice,
-                                 OperationOptions& options, bool lock,
-                                 ManagedDocumentResult& previous, KeyLockInfo* keyLockInfo,
-                                 std::function<void()> const& cbDuringLock) {
+                                 OperationOptions& options,
+                                 ManagedDocumentResult& previous) {
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
-  return getPhysical()->remove(trx, slice, previous, options, lock, keyLockInfo, cbDuringLock);
+  return getPhysical()->remove(trx, slice, previous, options);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx, LocalDocumentId const& token,
@@ -1145,7 +1158,7 @@ VPackSlice LogicalCollection::keyOptions() const {
 
 void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
-  if(vals == nullptr || vals->empty()){
+  if (vals == nullptr || vals->empty()) {
     b.add(VPackSlice::nullSlice());
     return;
   }
@@ -1156,8 +1169,9 @@ Result LogicalCollection::validate(VPackSlice s, VPackOptions const* options) co
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(s, VPackSlice::noneSlice(), true, options)) {
-      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    auto rv = validator->validate(s, VPackSlice::noneSlice(), true, options);
+    if (rv.fail()) {
+      return rv;
     }
   }
   return {};
@@ -1167,8 +1181,9 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VP
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   if (vals == nullptr) { return {}; }
   for(auto const& validator : *vals) {
-    if(!validator->validate(modifiedDoc, oldDoc, false, options)) {
-      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
+    auto rv = validator->validate(modifiedDoc, oldDoc, false, options);
+    if (rv.fail()) {
+      return rv;
     }
   }
   return {};

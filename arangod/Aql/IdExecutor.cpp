@@ -40,17 +40,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
-                                 // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToKeep,
-                                 // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToClear,
-                                 bool doCount, RegisterId outputRegister,
+IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
                                  std::string distributeId, bool isResponsibleForInitializeCursor)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
-                    nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _doCount(doCount),
+    : _doCount(doCount),
       _outputRegister(outputRegister),
       _distributeId(std::move(distributeId)),
       _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {
@@ -88,25 +80,22 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
     -> std::tuple<ExecutorState, CountStats, AqlCall> {
   CountStats stats;
   TRI_ASSERT(output.numRowsWritten() == 0);
-  // TODO: We can implement a fastForward copy here.
-  // We know that all rows we have will fit into the output
-  while (!output.isFull() && inputRange.hasDataRow()) {
-    auto const& [state, inputRow] = inputRange.nextDataRow();
-    TRI_ASSERT(inputRow);
-
+  if (inputRange.hasDataRow()) {
+    TRI_ASSERT(!output.isFull());
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    auto const& [state, inputRow] = inputRange.peekDataRow();
 
-    /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
-    output.copyRow(inputRow, std::is_same_v<UsedFetcher, ConstFetcher>);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
+    output.fastForwardAllRows(inputRow, inputRange.countDataRows());
+
+    std::ignore = inputRange.skipAllRemainingDataRows();
 
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
+  TRI_ASSERT(!inputRange.hasDataRow());
   if (_infos.doCount()) {
     stats.addCounted(output.numRowsWritten());
   }
@@ -127,14 +116,7 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, 
   }
   call.didSkip(skipped);
   // TODO: Do we need to do counting here?
-  return {inputRange.upstreamState(), stats, skipped, call};
-}
-
-template <class UsedFetcher>
-std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;

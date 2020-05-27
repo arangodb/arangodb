@@ -588,30 +588,66 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       HealthRecord persist(shortName, endpoint, hostId, engine, serverVersion, externalEndpoint);
 
       // Get last health entries from transient and persistent key value stores
+      bool transientHealthRecordFound = true;
       if (_transient.has(healthPrefix + serverID)) {
         transist = _transient.hasAsNode(healthPrefix + serverID).first;
+      } else {
+        // In this case this is the first time we look at this server during our
+        // new leadership. So we do not touch the persisted health record and
+        // only create a new transient health record.
+        transientHealthRecordFound = false;
       }
       if (snapshot().has(healthPrefix + serverID)) {
         persist = snapshot().hasAsNode(healthPrefix + serverID).first;
       }
 
+      // Here is an important subtlety: We will derive the health status of this
+      // server a bit further down by looking at the time when we saw the last
+      // heartbeat. The heartbeat is stored in transient in `Sync/ServerStates`.
+      // It has a timestamp, however, this was taken on the other server, so we
+      // cannot trust this time stamp because of possible clock skew. Since we
+      // do not actually know when this heartbeat came in, we have to proceed as
+      // follows: We make a copy of the `syncTime` and store it into the health
+      // record in transient `Supervision/Health`. If we detect a difference, it
+      // is the first time we have seen the new heartbeat and we can then take
+      // a reading of our local system clock and use that time. However, if we
+      // do not yet have a previous reading in our transient health record,
+      // we must not touch the persisted health record at all. This is what the
+      // flag `transientHealthRecordFound` means.
+
       // New health record (start with old add current information from sync)
       // Sync.time is copied to Health.syncTime
       // Sync.status is copied to Health.syncStatus
-      std::string syncTime =
-          _transient.has(syncPrefix + serverID)
-              ? _transient.hasAsString(syncPrefix + serverID + "/time").first
-              : timepointToString(std::chrono::system_clock::time_point());
-      std::string syncStatus =
-          _transient.has(syncPrefix + serverID)
-              ? _transient.hasAsString(syncPrefix + serverID + "/status").first
-              : "UNKNOWN";
+      std::string syncTime;
+      std::string syncStatus;
+      bool heartBeatVisible = _transient.has(syncPrefix + serverID);
+      if (heartBeatVisible) {
+        syncTime = _transient.hasAsString(syncPrefix + serverID + "/time").first;
+        syncStatus = _transient.hasAsString(syncPrefix + serverID + "/status").first;
+      } else {
+        syncTime = timepointToString(std::chrono::system_clock::time_point()); // beginning of time
+        syncStatus = "UNKNOWN";
+      }
 
-      // Last change registered in sync (transient != sync)
-      // Either now or value in transient
-      auto lastAckedTime = (syncTime != transist.syncTime)
-                               ? startTimeLoop
-                               : stringToTimepoint(transist.lastAcked);
+      // Compute the time when we last discovered a new heartbeat from that server:
+      std::chrono::system_clock::time_point lastAckedTime;
+      if (heartBeatVisible) {
+        if (transientHealthRecordFound) {
+          lastAckedTime = (syncTime != transist.syncTime)
+                          ? startTimeLoop
+                          : stringToTimepoint(transist.lastAcked);
+        } else {
+          // in this case we do no really know when this heartbeat came in,
+          // however, it must have been after we became a leader, and since we
+          // do not have a transient health record yet, we just assume that we
+          // got it recently and set it to "now". Note that this will not make
+          // a FAILED server "GOOD" again, since we do not touch the persisted
+          // health record if we do not have a transient health record yet.
+          lastAckedTime = startTimeLoop;
+        }
+      } else {
+        lastAckedTime = std::chrono::system_clock::time_point();
+      }
       transist.lastAcked = timepointToString(lastAckedTime);
       transist.syncTime = syncTime;
       transist.syncStatus = syncStatus;
@@ -623,19 +659,27 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       transist.hostId = hostId;
       transist.endpoint = endpoint;
 
-      // Calculate elapsed since lastAcked
-      auto elapsed = std::chrono::duration<double>(startTimeLoop - lastAckedTime);
+      // We have now computed a new transient health record under all circumstances.
 
-      if (elapsed.count() <= _okThreshold) {
-        transist.status = Supervision::HEALTH_STATUS_GOOD;
-      } else if (elapsed.count() <= _gracePeriod) {
-        transist.status = Supervision::HEALTH_STATUS_BAD;
+      bool changed;
+      if (transientHealthRecordFound) {
+        // Calculate elapsed since lastAcked
+        auto elapsed = std::chrono::duration<double>(startTimeLoop - lastAckedTime);
+
+        if (elapsed.count() <= _okThreshold) {
+          transist.status = Supervision::HEALTH_STATUS_GOOD;
+        } else if (elapsed.count() <= _gracePeriod) {
+          transist.status = Supervision::HEALTH_STATUS_BAD;
+        } else {
+          transist.status = Supervision::HEALTH_STATUS_FAILED;
+        }
+
+        // Status changed?
+        changed = transist.statusDiff(persist);
       } else {
-        transist.status = Supervision::HEALTH_STATUS_FAILED;
+        transist.status = persist.status;
+        changed = false;
       }
-
-      // Status changed?
-      bool changed = transist.statusDiff(persist);
 
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
@@ -644,12 +688,11 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId, envelope);
+        persist = transist;  // Now copy Status, SyncStatus from transient to persited
       } else {
         LOG_TOPIC("44253", TRACE, Logger::SUPERVISION)
             << "Health of server " << machine.first << " remains " << transist.status;
       }
-
-      persist = transist;  // Now copy Status, SyncStatus from transient to persited
 
       // Transient report
       std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
@@ -1520,6 +1563,10 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenCollections";
   checkBrokenCollections();
 
+  LOG_TOPIC("83402", TRACE, Logger::SUPERVISION)
+      << "Begin checkBrokenAnalyzers";
+  checkBrokenAnalyzers();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1729,6 +1776,12 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
           VPackObjectBuilder o(envelope.get(), _agencyPrefix + planColPrefix + database);
           envelope->add("op", VPackValue("delete"));
         }
+
+        // delete the database from Plan/Analyzers
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + planAnalyzersPrefix + database);
+          envelope->add("op", VPackValue("delete"));
+        }
       }
       {
         // precondition that this database is still in Plan and is building
@@ -1810,37 +1863,105 @@ void Supervision::deleteBrokenCollection(std::string const& database,
   }
 }
 
+void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
+                                                 AnalyzersRevision::Revision revision,
+                                                 AnalyzersRevision::Revision buildingRevision,
+                                                 std::string const& coordinatorID,
+                                                 uint64_t rebootID,
+                                                 bool coordinatorFound) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      std::string anPath = _agencyPrefix + planAnalyzersPrefix + database + "/";
+
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+        // restore the analyzers revision from Plan/Analyzers/<db>/
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AnalyzersBuildingRevision);
+          envelope->add("op", VPackValue("decrement"));
+        }
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AttrCoordinatorRebootId);
+          envelope->add("op", VPackValue("delete"));
+        }
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AttrCoordinator);
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
+      {
+        // precondition that this analyzers revision is still in Plan and is building
+        VPackObjectBuilder preconditions(envelope.get());
+        envelope->add(anPath + StaticStrings::AnalyzersRevision,
+                      VPackValue(revision));
+        envelope->add(anPath + StaticStrings::AnalyzersBuildingRevision,
+                      VPackValue(buildingRevision));
+        envelope->add(anPath + StaticStrings::AttrCoordinatorRebootId,
+                      VPackValue(rebootID));
+        envelope->add(anPath + StaticStrings::AttrCoordinator,
+                      VPackValue(coordinatorID));
+        {
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix +
+                                          "/" + coordinatorID);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
+      }
+    }
+  }
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
+        << "failed to resore broken analyzers revision in agency. Will retry. "
+        << envelope->toJson();
+  }
+}
+
+void Supervision::resourceCreatorLost(
+    std::shared_ptr<Node> const& resource,
+    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+  //  check if the coordinator exists and its reboot is the same as specified
+  auto [rebootID, rebootIDExists] =
+      resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
+  auto [coordinatorID, coordinatorIDExists] =
+      resource->hasAsString(StaticStrings::AttrCoordinator);
+
+  bool keepResource = true;
+  bool coordinatorFound = false;
+
+  if (rebootIDExists && coordinatorIDExists) {
+    keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID,
+                                                          rebootID, coordinatorFound);
+    // incomplete data, should not happen
+  } else {
+    //          v---- Please note this awesome log-id
+    LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
+        << "resource has set `isBuilding` but is missing coordinatorID and "
+           "rebootID";
+  }
+
+  if (!keepResource) {
+    action(ResourceCreatorLostEvent{resource, coordinatorID,
+                                    rebootID, coordinatorFound});
+  }
+}
+
 void Supervision::ifResourceCreatorLost(
     std::shared_ptr<Node> const& resource,
     std::function<void(const ResourceCreatorLostEvent&)> const& action) {
   // check if isBuilding is set and it is true
-  std::pair<bool, bool> isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
+  auto isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
   if (isBuilding.first && isBuilding.second) {
-    // this database is currently being built
-    //  check if the coordinator exists and its reboot is the same as specified
-    std::pair<uint64_t, bool> rebootID =
-        resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
-    std::pair<std::string, bool> coordinatorID =
-        resource->hasAsString(StaticStrings::AttrCoordinator);
-
-    bool keepResource = true;
-    bool coordinatorFound = false;
-
-    if (rebootID.second && coordinatorID.second) {
-      keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID.first,
-                                                            rebootID.first, coordinatorFound);
-      // incomplete data, should not happen
-    } else {
-      //          v---- Please note this awesome log-id
-      LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
-          << "resource has set `isBuilding` but is missing coordinatorID and "
-             "rebootID";
-    }
-
-    if (!keepResource) {
-      action(ResourceCreatorLostEvent{resource, coordinatorID.first,
-                                      rebootID.first, coordinatorFound});
-    }
+    // this database or collection is currently being built
+    resourceCreatorLost(resource, action);
   }
 }
 
@@ -1901,6 +2022,31 @@ void Supervision::checkBrokenCollections() {
         // delete this database and all of its collections
         deleteBrokenCollection(dbpair.first, collectionPair.first, ev.coordinatorId,
                                ev.coordinatorRebootId, ev.coordinatorFound);
+      });
+    }
+  }
+}
+
+void Supervision::checkBrokenAnalyzers() {
+  _lock.assertLockedByCurrentThread();
+
+  // check if snapshot has analyzers
+  auto [node, exists] = snapshot().hasAsNode(planAnalyzersPrefix);
+  if (!exists) {
+    return;
+  }
+
+  for (auto const& dbData : node.children()) {
+    auto const& revisions = dbData.second;
+    auto const revision = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
+    auto const buildingRevision = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
+    if (revision.second && buildingRevision.second && revision.first != buildingRevision.first) {
+      resourceCreatorLost(revisions, [this, &dbData, &revision, &buildingRevision](ResourceCreatorLostEvent const& ev) {
+        LOG_TOPIC("ae5a3", INFO, Logger::SUPERVISION)
+            << "checkBrokenAnalyzers: fixing broken analyzers revision with database name "
+            << dbData.first;
+        restoreBrokenAnalyzersRevision(dbData.first, revision.first, buildingRevision.first,
+                                       ev.coordinatorId, ev.coordinatorRebootId, ev.coordinatorFound);
       });
     }
   }

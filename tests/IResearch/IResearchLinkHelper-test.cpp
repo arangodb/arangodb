@@ -239,28 +239,30 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer0\", \"type\": \"identity\" } ], \
       \"analyzers\": [\"testAnalyzer0\" ], \
-      \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] \
+      \"storedValues\":[[], [\"\"], [\"test.t\"], [\"a.a\", \"b.b\"]] \
     }");
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), true, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::AnalyzersRevision::LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
       \"type\":\"arangosearch\", \
       \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
       \"fields\":{}, \
       \"includeAllFields\": false, \
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
       ], \
       \"analyzers\": [\"testAnalyzer0\" ], \
-      \"storedValues\":[[\"test.t\"], [\"a.a\", \"b.b\"]] \
+      \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
@@ -277,7 +279,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::AnalyzersRevision::LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
@@ -302,7 +305,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
+                                     arangodb::AnalyzersRevision::LATEST));
   }
 
   // analyzer single-server, for creation, missing "testAanalyzer0"
@@ -316,7 +320,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_FALSE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0", 
+                                     arangodb::AnalyzersRevision::LATEST));
   }
 
   // analyzer single-server (inRecovery), for creation
@@ -325,7 +330,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ], \
       \"analyzers\": [\"testAnalyzer1\" ], \
-      \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] \
+      \"storedValues\":[[], [\"\"], [\"test.t\"], [\"a.a\", \"b.b\"]] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
@@ -336,21 +341,23 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), true, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                     arangodb::AnalyzersRevision::LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
       \"type\":\"arangosearch\", \
       \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
       \"fields\":{}, \
       \"includeAllFields\": false, \
       \"trackListPositions\": false, \
       \"storeValues\": \"none\", \
       \"analyzerDefinitions\": [ \
-        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
       ], \
       \"analyzers\": [\"testAnalyzer1\" ], \
-      \"storedValues\":[[\"test.t\"], [\"a.a\", \"b.b\"]] \
+      \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"lz4\"}] \
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
@@ -371,7 +378,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
                   builder, json->slice(), false, sysVocbase).ok());
     builder.close();
-    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                     arangodb::AnalyzersRevision::LATEST));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
     "{ \
@@ -384,4 +392,42 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
-}
+  // analyzer single-server (inRecovery), for creation with specified compression
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \
+      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ], \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[[], [\"\"], {\"fields\":[\"test.t\"], \"compression\":\"lz4\",\
+      \"some_unknown\":1}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
+    }");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+      builder, json->slice(), true, sysVocbase).ok());
+    builder.close();
+    EXPECT_EQ(nullptr, analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", 
+                                     arangodb::AnalyzersRevision::LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+      "{ \
+      \"type\":\"arangosearch\", \
+      \"primarySort\":[], \
+      \"primarySortCompression\":\"lz4\",\
+      \"fields\":{}, \
+      \"includeAllFields\": false, \
+      \"trackListPositions\": false, \
+      \"storeValues\": \"none\", \
+      \"analyzerDefinitions\": [ \
+        { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[], \"revision\":0 } \
+      ], \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] \
+    }");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
+  }
+} 

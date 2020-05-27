@@ -31,7 +31,6 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -44,11 +43,20 @@ using namespace arangodb::graph;
 
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options) {
+  // cppcheck-suppress *
   _forwardCursor = options.buildCursor(false);
+  // cppcheck-suppress *
   _backwardCursor = options.buildCursor(true);
 }
 
 KShortestPathsFinder::~KShortestPathsFinder() = default;
+
+void KShortestPathsFinder::clear() {
+  _shortestPaths.clear();
+  _candidatePaths.clear();
+  _vertexCache.clear();
+  _traversalDone = true;
+}
 
 // Sets up k-shortest-paths traversal from start to end
 bool KShortestPathsFinder::startKShortestPathsTraversal(
@@ -58,10 +66,11 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   _start = arangodb::velocypack::StringRef(start);
   _end = arangodb::velocypack::StringRef(end);
 
-  _traversalDone = false;
-
+  _vertexCache.clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
+
+  _traversalDone = false;
 
   TRI_IF_FAILURE("Travefalse") { THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); }
 
@@ -82,13 +91,11 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
 
   // We will not improve anymore if we have found a best path and the smallest
   // combined distance between left and right is bigger than that path
-  while (!left._frontier.empty() && !right._frontier.empty() &&
-         !(currentBest.has_value() &&
-           (left._closest + right._closest > currentBest.value()))) {
+  while (!left.done(currentBest) && !right.done(currentBest)) {
     _options.isQueryKilledCallback();
 
     // Choose the smaller frontier to expand.
-    if (left._frontier.size() < right._frontier.size()) {
+    if (!left.done(currentBest) && (left._frontier.size() < right._frontier.size())) {
       advanceFrontier(left, right, forbiddenVertices, forbiddenEdges, join, currentBest);
     } else {
       advanceFrontier(right, left, forbiddenVertices, forbiddenEdges, join, currentBest);

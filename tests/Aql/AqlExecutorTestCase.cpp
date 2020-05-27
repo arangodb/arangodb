@@ -26,8 +26,8 @@ using namespace arangodb::tests::aql;
 template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
     : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
-  auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-  fakedQuery->setEngine(engine.release());
+  auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, manager(), SerializationFormat::SHADOWROWS);
+  /// TODO fakedQuery->setEngine(engine.release());
   if constexpr (enableQueryTrace) {
     Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   }
@@ -42,14 +42,16 @@ AqlExecutorTestCase<enableQueryTrace>::~AqlExecutorTestCase() {
 
 template <bool enableQueryTrace>
 auto AqlExecutorTestCase<enableQueryTrace>::generateNodeDummy() -> ExecutionNode* {
-  auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+  auto dummy = std::make_unique<SingletonNode>(const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+                                               ExecutionNodeId{_execNodes.size()});
   auto res = dummy.get();
   _execNodes.emplace_back(std::move(dummy));
   return res;
 }
+
 template <bool enableQueryTrace>
 auto AqlExecutorTestCase<enableQueryTrace>::manager() const -> AqlItemBlockManager& {
-  return fakedQuery->engine()->itemBlockManager();
+  return fakedQuery->rootEngine()->itemBlockManager();
 }
 
 template class ::arangodb::tests::aql::AqlExecutorTestCase<true>;

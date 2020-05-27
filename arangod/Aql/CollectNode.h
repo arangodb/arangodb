@@ -26,6 +26,7 @@
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 
 #include <cstdint>
 #include <functional>
@@ -50,7 +51,7 @@ class CollectNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  CollectNode(ExecutionPlan* plan, size_t id, CollectOptions const& options,
+  CollectNode(ExecutionPlan* plan, ExecutionNodeId id, CollectOptions const& options,
               std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables,
               std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
               Variable const* expressionVariable, Variable const* outVariable,
@@ -95,24 +96,25 @@ class CollectNode : public ExecutionNode {
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the collect register
   void calcCollectRegister(RegisterId& collectRegister,
-                           std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                           RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the group registers
   void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
-                          std::unordered_set<RegisterId>& readableInputRegisters,
-                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                          RegIdSet& readableInputRegisters,
+                          RegIdSet& writeableOutputRegisters) const;
 
   /// @brief calculate the aggregate registers
   void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
-                              std::unordered_set<RegisterId>& readableInputRegisters,
-                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+                              RegIdSet& readableInputRegisters,
+                              RegIdSet& writeableOutputRegisters) const;
 
   void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
-  void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;
+
+  std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames() const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -142,6 +144,9 @@ class CollectNode : public ExecutionNode {
   /// @brief clear the out variable
   void clearOutVariable();
 
+  /// @brief clear all keep variables
+  void clearKeepVariables();
+
   void setAggregateVariables(
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
 
@@ -162,8 +167,9 @@ class CollectNode : public ExecutionNode {
   /// @brief return the keep variables
   std::vector<Variable const*> const& keepVariables() const;
 
-  /// @brief set list of variables to keep if INTO is used
-  void setKeepVariables(std::vector<Variable const*>&& variables);
+  /// @brief restrict the KEEP variables (which may also be the auto-collected
+  /// variables of an unrestricted `INTO var`) to the passed `variables`.
+  void restrictKeepVariables(std::unordered_set<const Variable*> const& variables);
 
   /// @brief return the variable map
   std::unordered_map<VariableId, std::string const> const& variableMap() const;
@@ -181,10 +187,13 @@ class CollectNode : public ExecutionNode {
   std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;
+
+  static void calculateAccessibleUserVariables(ExecutionNode const& node,
+                                               std::vector<Variable const*>& userVariables);
 
  private:
   /// @brief options for the aggregation

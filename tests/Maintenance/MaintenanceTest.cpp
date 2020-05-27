@@ -30,8 +30,8 @@
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Cluster/Maintenance.h"
-#include "MMFiles/MMFilesEngine.h"
 #include "Mocks/Servers.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
@@ -480,7 +480,7 @@ class MaintenanceTestActionPhaseOne : public ::testing::Test {
 
   std::map<std::string, Node> localNodes;
 
-  arangodb::MMFilesEngine engine;  // arbitrary implementation that has index types registered
+  arangodb::RocksDBEngine engine;  // arbitrary implementation that has index types registered
   arangodb::StorageEngine* origStorageEngine;
 
   MaintenanceTestActionPhaseOne()
