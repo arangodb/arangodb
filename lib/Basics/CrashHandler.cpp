@@ -110,6 +110,10 @@ CrashHandlerStackInitializer stackInitializer;
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
 
+/// @brief an atomic that controls whether we will log backtraces 
+/// (default: yes on Linux, false elsewhere) or not
+std::atomic<bool> enableStacktraces(true);
+
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
   // restore default signal action, so that we can write a core dump and crash "properly"
@@ -214,6 +218,10 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
   size_t length = buildLogMessage(p, context, signal, info);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+
+  if (!enableStacktraces.load(std::memory_order_relaxed)) {
+    return;
+  }
    
   // number of frames to skip in backtrace output
   static constexpr int skipFrames = 1;
@@ -316,18 +324,16 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
 /// the following assumptions are made for this crash handler:
 /// - it is invoked in fatal situations only, that we need as much information as possible
 ///   about. thus we try logging some information into the ArangoDB logfile. Our logger is
-///   not async-safe right now. Additionally, logging messages needs to allocate memory.
-///   the same is true for generating the backtrace.
+///   not async-safe right now, but everything in our own log message-building routine
+///   should be async-safe.
 ///   in case of a corrupted heap/stack all this will fall apart. However, it is better to
-///   try using our logger than doign nothing or writing somewhere else nobody will see
+///   try using our logger than doing nothing, or writing somewhere else nobody will see
 ///   the information later.
 /// - the interesting signals are delivered from the same thread that caused them. Thus we 
 ///   will have a few stack frames of the offending thread available.
 /// - it is not possible to generate the stack traces from other threads without substantial
 ///   efforts, so we are not even trying this.
-/// - the backtrace produced by the crash handler will contain addresses into the binary.
-///   these need to be resolved later (manually) using `addr2line`.
-/// - Windows is currently not supported.
+/// - Windows and macOS are currently not supported.
 void crashHandler(int signal, siginfo_t* info, void*) {
   if (!::crashHandlerInvoked.exchange(true)) {
     ::logBacktrace("signal handler invoked", signal, info);
@@ -386,7 +392,11 @@ void CrashHandler::installCrashHandler() {
   if (TRI_GETENV("ARANGODB_OVERRIDE_CRASH_HANDLER", value)) {
     bool toggle = arangodb::basics::StringUtils::boolean(value);
     if (!toggle) {
-      // crash handler turned off
+      // crash handler backtraces turned off
+      ::enableStacktraces.store(false, std::memory_order_relaxed);
+
+      // additionally, do not install signal handler and not
+      // handler for std::terminate()
       return;
     }
   }
