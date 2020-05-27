@@ -386,6 +386,7 @@ void RocksDBEngine::prepare() {
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   if (ServerState::instance()->isAgent() &&
       !server().options()->processingResult().touched(
