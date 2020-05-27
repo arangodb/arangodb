@@ -46,6 +46,10 @@ This contains statically generated files for the IResearch folder, and replaces 
 
 Only used on Linux/Mac, still uses autofoo.
 
+## libunwind
+
+Only used on Linux, still uses autofoo.
+
 ## linenoise-ng
 
 Our maintained fork of linenoise
