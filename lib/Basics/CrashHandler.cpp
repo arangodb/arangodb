@@ -57,8 +57,14 @@
 #include <libunwind.h>
 #endif
 
-#ifndef _WIN32
 namespace {
+
+#ifdef _WIN32
+
+// forward-declare a pseudo struct so the following code compiles
+struct siginfo_t;
+
+#else
 
 /// @brief helper struct that is used to create an alternative stack for the
 /// signal handler on construction and to tear it down on destruction
@@ -109,6 +115,7 @@ CrashHandlerStackInitializer stackInitializer;
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
+#endif
 
 /// @brief an atomic that controls whether we will log backtraces 
 /// (default: yes on Linux, false elsewhere) or not
@@ -116,6 +123,9 @@ std::atomic<bool> enableStacktraces(true);
 
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
+#ifdef _WIN32
+  exit(255 + signal);
+#else
   // restore default signal action, so that we can write a core dump and crash "properly"
   struct sigaction act;
   sigemptyset(&act.sa_mask);
@@ -123,9 +133,6 @@ std::atomic<bool> enableStacktraces(true);
   act.sa_handler = SIG_DFL;
   sigaction(signal, &act, nullptr);
 
-#ifdef _WIN32
-  exit(255 + signal);
-#else
   // resend signal to ourselves to invoke default action for the signal (e.g. coredump)
   ::kill(::getpid(), signal);
 #endif
@@ -193,6 +200,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   appendNullTerminatedString(arangodb::signals::name(signal), p);
   appendNullTerminatedString(")", p);
   
+#ifndef _WIN32
   if (info != nullptr && 
       (signal == SIGSEGV || signal == SIGBUS)) {
     // dump address that was accessed when the failure occurred (this is somewhat likely
@@ -202,6 +210,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
     unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
     appendHexValue(s, sizeof(unsigned char const*), p);
   }
+#endif
   
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, p);
@@ -336,7 +345,8 @@ void logBacktrace(char const* context, int signal, siginfo_t* info) try {
 /// - it is not possible to generate the stack traces from other threads without substantial
 ///   efforts, so we are not even trying this.
 /// - Windows and macOS are currently not supported.
-void crashHandler(int signal, siginfo_t* info, void*) {
+#ifndef _WIN32
+void crashHandlerSignalHandler(int signal, siginfo_t* info, void*) {
   if (!::crashHandlerInvoked.exchange(true)) {
     ::logBacktrace("signal handler invoked", signal, info);
     arangodb::Logger::flush();
@@ -352,9 +362,9 @@ void crashHandler(int signal, siginfo_t* info, void*) {
 
   killProcess(signal);
 }
+#endif
 
 } // namespace
-#endif
 
 namespace arangodb {
 
@@ -408,7 +418,7 @@ void CrashHandler::installCrashHandler() {
   struct sigaction act;
   sigemptyset(&act.sa_mask);
   act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
-  act.sa_sigaction = crashHandler;
+  act.sa_sigaction = crashHandlerSignalHandler;
   sigaction(SIGSEGV, &act,nullptr);
   sigaction(SIGBUS, &act, nullptr);
   sigaction(SIGILL, &act, nullptr);
