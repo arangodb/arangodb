@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <algorithm>
 #include <atomic>
 #include <exception>
 #include <thread>
