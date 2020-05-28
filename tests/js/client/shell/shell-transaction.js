@@ -4030,6 +4030,33 @@ function transactionAQLStreamSuite () {
       db._drop(cn + 'Edge');
     },
 
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx using multiple open cursors
+    // //////////////////////////////////////////////////////////////////////////////
+    testMultipleCursorsInSameTransaction: function () {
+      let trx, cursor1, cursor2;
+      try {
+        trx = db._createTransaction({
+          collections: {}
+        });
+        cursor1 = trx.query('FOR i IN 1..10000000000000 RETURN i', {}, {}, {stream: true});
+        try {
+          cursor2 = trx.query('FOR i IN 1..10000000000000 RETURN i', {}, {}, {stream: true});
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_LOCKED.code, err.errorNum)
+        }
+      } catch (err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (cursor1) {
+          cursor1.dispose();
+        }
+        if (trx) {
+          trx.abort();
+        }
+      }
+    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx using no collections
