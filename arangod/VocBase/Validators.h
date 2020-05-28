@@ -65,6 +65,7 @@ struct ValidatorBase {
   std::string const& message() const { return this->_message; }
   std::string const& specialProperties() const;
   void setLevel(ValidationLevel level) { _level = level; }
+  ValidationLevel level() { return _level; }
 
  protected:
   virtual void toVelocyPackDerived(VPackBuilder&) const = 0;

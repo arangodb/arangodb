@@ -27,7 +27,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ResourceUsage.h"
 
-#include <atomic>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -327,7 +326,7 @@ class AqlItemBlock {
 
   /// @brief number of SharedAqlItemBlockPtr instances. shall be returned to
   /// the _manager when it reaches 0.
-  mutable std::atomic<size_t> _refCount = 0;
+  mutable size_t _refCount = 0;
 
   /// @brief A list of indexes with all shadowRows within
   /// this ItemBlock. Used to easier split data based on them.
