@@ -95,6 +95,12 @@ build directory:
 
     cmake --build . --target frontend
 
+For Oskar you may use the following:
+
+    shellInAlpineContainer
+
+    apk add --no-cache nodejs npm && cd /work/ArangoDB/build && cmake --build . --target frontend
+
 To remove all available node modules and start a clean installation run:
 
     cmake --build . --target frontend_clean
@@ -544,7 +550,7 @@ or skipped depending on parameters:
 | `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.
 | `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date.
 
-### Javascript Framework
+### JavaScript Framework
 
 Since several testing technologies are utilized, and different ArangoDB startup
 options may be required (even different compilation options may be required) the
@@ -561,6 +567,19 @@ To locate the suite(s) associated with a specific test file use:
 Run all suite(s) associated with a specific test file:
 
     ./scripts/unittest auto --test tests/js/common/shell/shell-aqlfunctions.js
+
+Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
+
+    ./scripts/unittest gtest
+
+Run specific gtest tests:
+
+    ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:*ReturnExecutor*"
+    # equivalent to:
+    ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
+
+Note that the `arangodbtests` executable is not compiled and shipped for
+production releases (`-DUSE_GOOGLE_TESTS=off`).
 
 Run all tests:
 
@@ -626,7 +645,7 @@ suite (in this case `testTokens`):
 
     scripts/unittest shell_client --test shell-util-spec.js --testCase zip
 
-    scripts/unittest gtest --testCase IResearchDocumentTest.*
+    scripts/unittest gtest --testCase "IResearchDocumentTest.*"
 
 Testing a single test with the framework via arangosh:
 
