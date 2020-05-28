@@ -498,7 +498,7 @@ function SynchronousReplicationWithViewSuite () {
 
     tearDown : function () {
       if(failedState.leader != null) healLeader(failedState.leader);
-      if(failedState.follower != null) healFollower(failedState.leader);
+      if(failedState.follower != null) healFollower(failedState.follower);
       db._drop(cn);
       viewOperations("drop");
       //global.ArangoAgency.set('Target/FailedServers', {});
