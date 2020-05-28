@@ -160,7 +160,7 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       SCCValue& senders) override {
-    senders.vertexID = vertexIdRange++;
+    senders.vertexID = _vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}

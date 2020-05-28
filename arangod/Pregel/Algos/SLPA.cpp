@@ -147,7 +147,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         SLPAValue& value) override {
-    value.nodeId = (uint32_t)vertexIdRange++;
+    value.nodeId = (uint32_t)_vertexIdRange++;
   }
 
   void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {

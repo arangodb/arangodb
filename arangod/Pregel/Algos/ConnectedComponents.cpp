@@ -62,7 +62,7 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       uint64_t& targetPtr) override {
-    targetPtr = vertexIdRange++;
+    targetPtr = _vertexIdRange++;
   }
 };
 
