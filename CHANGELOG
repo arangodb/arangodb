@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added `securityScheme`, `securityScope` and `security` methods to Foxx
+  endpoints to allow defining Swagger security schemes.
+
+* Foxx routes now always have a Swagger `operationId`. If the route is unnamed,
+  a distinct operationId will be generated based on the HTTP method and URL.
+
 * Fixed, if you have a collection access within a Subquery, where the main query is fully skipped
   and the "splice-subqueries" rule is active. The information of the skip was not transported
   correctly. This could cause incorrect counting reports.
