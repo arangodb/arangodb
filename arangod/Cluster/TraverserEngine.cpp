@@ -211,7 +211,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          aql::QueryContext& query,
                                          VPackSlice info)
-    : BaseEngine(vocbase, query, info) {}
+    : BaseEngine(vocbase, query, info), _variables(query.ast()->variables()) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
@@ -337,6 +337,30 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   
 bool BaseTraverserEngine::produceVertices() const {
   return _opts->produceVertices();
+}
+
+aql::VariableGenerator const* BaseTraverserEngine::variables() const {
+  return _variables;
+}
+
+void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
+  if (variableSlice.isArray()) {
+    _opts->clearVariableValues();
+    for (auto const& pair : VPackArrayIterator(variableSlice)) {
+      if ((!pair.isArray()) || pair.length() != 2) {
+        // Invalid communication. Skip
+        TRI_ASSERT(false);
+        continue;
+      }
+      auto varId =
+          arangodb::basics::VelocyPackHelper::getNumericValue<aql::VariableId>(pair.at(0),
+                                                                          "id", 0);
+      aql::Variable* var = variables()->getVariable(varId);
+      TRI_ASSERT(var != nullptr);
+      aql::AqlValue val(pair.at(1).start());
+      _opts->setVariableValue(var, val);
+    }
+  }
 }
 
 ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
