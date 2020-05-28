@@ -21,31 +21,24 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rocksdb/utilities/transaction_db.h>
-
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/RocksDBUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesDatafile.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesWalMarker.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBFormat.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngineFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/FlushThread.h"
 
 using namespace arangodb::application_features;
@@ -61,10 +54,9 @@ FlushFeature::FlushFeature(application_features::ApplicationServer& server)
       _flushInterval(1000000),
       _stopped(false) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("StorageEngine");
-  startsAfter("MMFilesLogfileManager");
+  startsAfter<StorageEngineFeature>();
 }
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -72,7 +64,7 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.flush-interval",
                      "interval (in microseconds) for flushing data",
                      new UInt64Parameter(&_flushInterval),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription) {
@@ -125,19 +117,21 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   TRI_ASSERT(minTick <= engine->currentTick());
 
   TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
-    TRI_SegfaultDebugging("crashing before syncing min tick");
+    TRI_TerminateDebugging("crashing before syncing min tick");
   }
 
-  engine->waitForSyncTick(minTick);
-
+  // WAL tick has to be synced prior to releasing it, if the storage
+  // engine supports it
+  //   engine->waitForSyncTick(minTick);
+  
   TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
-    TRI_SegfaultDebugging("crashing after syncing min tick");
+    TRI_TerminateDebugging("crashing after syncing min tick");
   }
 
   engine->releaseTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
-    TRI_SegfaultDebugging("crashing after releasing min tick");
+    TRI_TerminateDebugging("crashing after releasing min tick");
   }
 
   return {};
@@ -165,7 +159,7 @@ void FlushFeature::prepare() {
 void FlushFeature::start() {
   {
     WRITE_LOCKER(lock, _threadLock);
-    _flushThread.reset(new FlushThread(_flushInterval));
+    _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback([this]() -> Result {

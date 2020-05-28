@@ -23,15 +23,24 @@
 #ifndef ARANGOD_AQL_REMOTE_EXECUTOR_H
 #define ARANGOD_AQL_REMOTE_EXECUTOR_H
 
+#include "Aql/AqlExecuteResult.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Basics/Mutex.h"
-#include "Cluster/ClusterComm.h"
-#include "Rest/CommonDefines.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Aql/RegisterInfos.h"
 
-namespace arangodb {
-namespace aql {
+#include <fuerte/message.h>
+
+#include <mutex>
+
+namespace arangodb::fuerte {
+inline namespace v1 {
+enum class RestVerb;
+}
+}  // namespace arangodb::fuerte
+
+namespace arangodb::aql {
+
+class SkipResult;
 
 // The RemoteBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
@@ -43,31 +52,30 @@ class RemoteExecutor final {};
 template <>
 class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
  public:
+  using Api = ::arangodb::aql::RemoteNode::Api;
+
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (server, ownName and queryId) should probably be
   // moved into some RemoteExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, RemoteNode const* node,
-                     ExecutorInfos&& infos, std::string const& server,
-                     std::string const& ownName, std::string const& queryId);
+                     RegisterInfos&& infos, std::string const& server,
+                     std::string const& distributeId, std::string const& queryId, Api);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
 
-  /// @brief handleAsyncResult
-  bool handleAsyncResult(ClusterCommResult* result) override;
+  std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+
+  [[nodiscard]] auto api() const noexcept -> Api;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
  public:
   std::string const& server() const { return _server; }
-  std::string const& ownName() const { return _ownName; }
+  std::string const& distributeId() const { return _distributeId; }
   std::string const& queryId() const { return _queryId; }
 #endif
 
@@ -76,41 +84,51 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
 
-  ExecutorInfos const& infos() const { return _infos; }
+  auto executeWithoutTrace(AqlCallStack stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
-  Query const& getQuery() const { return _query; }
+  auto executeViaOldApi(AqlCallStack stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
-  /**
-   * @brief Handle communication errors in Async case.
-   *
-   * @param result The network response we got from cluster comm.
-   *
-   * @return A wrapped Result Object, that is either ok() or contains
-   *         the error information to be thrown in get/skip some.
-   */
-  arangodb::Result handleCommErrors(ClusterCommResult* result) const;
+  auto executeViaNewApi(AqlCallStack stack)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+  [[nodiscard]] auto deserializeExecuteCallResultBody(velocypack::Slice) const
+      -> ResultT<AqlExecuteResult>;
+  [[nodiscard]] auto serializeExecuteCallBody(AqlCallStack const& callStack) const
+      -> velocypack::Buffer<uint8_t>;
+
+  RegisterInfos const& registerInfos() const { return _registerInfos; }
+
+  QueryContext const& getQuery() const { return _query; }
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
-  arangodb::Result sendAsyncRequest(rest::RequestType type, std::string const& urlPart,
-                                    std::shared_ptr<std::string const> body);
+  arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
+                                    velocypack::Buffer<uint8_t>&& body);
 
-  std::shared_ptr<velocypack::Builder> stealResultBody();
+  // _communicationMutex *must* be locked for this!
+  unsigned generateRequestTicket();
+
+  void traceExecuteRequest(velocypack::Slice slice, AqlCallStack const& callStack);
+  void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceInitializeCursorRequest(velocypack::Slice slice);
+  void traceShutdownRequest(velocypack::Slice slice, int errorCode);
+  void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 
  private:
-  /// @brief timeout
-  static double const defaultTimeOut;
 
-  ExecutorInfos _infos;
+  RegisterInfos _registerInfos;
 
-  Query const& _query;
+  QueryContext const& _query;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
 
   /// @brief our own identity, in case of the coordinator this is empty,
   /// in case of the DBservers, this is the shard ID as a string
-  std::string const _ownName;
+  std::string const _distributeId;
 
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;
@@ -119,26 +137,26 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 
+  std::mutex _communicationMutex;
+
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
-  std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
+  std::unique_ptr<fuerte::Response> _lastResponse;
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
 
-  /// @brief Mutex to cover against the race, that a getSome request
-  ///        is responded before the ticket id is registered.
-  arangodb::Mutex _communicationMutex;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::atomic<std::thread::id> _communicationMutexOwner; // current thread owning '_communicationMutex' lock (workaround for non-recusrive MutexLocker)
-#endif
+  unsigned _lastTicket;  /// used to check for canceled requests
 
-  OperationID _lastTicketId;
+  bool _requestInFlight;
 
   bool _hasTriggeredShutdown;
+
+  /// @brief Whether to use the pre-3.7 getSome/skipSome API, instead of the
+  ///        execute API. Used for rolling upgrades, so can be removed in 3.8.
+  Api _apiToUse = Api::EXECUTE;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_REMOTE_EXECUTOR_H

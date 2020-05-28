@@ -39,13 +39,15 @@ using namespace arangodb::velocypack;
 ValueLength const Collection::NotFound = UINT64_MAX;
   
 // fully append an array to the builder
-static void appendArray(Builder& builder, Slice const& slice) {
+Builder& Collection::appendArray(Builder& builder, Slice const& slice) {
   ArrayIterator it(slice);
 
   while (it.valid()) {
     builder.add(it.value());
     it.next();
   }
+
+  return builder;
 }
 
 // convert a vector of strings into an unordered_set of strings

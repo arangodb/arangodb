@@ -30,18 +30,6 @@
 
 using namespace arangodb::aql;
 
-size_t ExecutorExpressionContext::numRegisters() const {
-  return _inputRow.getNrRegisters();
-}
-
-AqlValue const& ExecutorExpressionContext::getRegisterValue(size_t i) const {
-  return _inputRow.getValue(static_cast<arangodb::aql::RegisterId>(i));
-}
-
-Variable const* ExecutorExpressionContext::getVariable(size_t i) const {
-  return (_vars)[i];
-}
-
 AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
                                                      bool& mustDestroy) const {
   mustDestroy = false;
@@ -66,3 +54,12 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable, b
   msg.append("' in executeSimpleExpression()");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
+
+ExecutorExpressionContext::ExecutorExpressionContext(arangodb::transaction::Methods& trx,
+                                                     QueryContext& context,
+                                                     AqlFunctionsInternalCache& cache,
+                                                     InputAqlItemRow const& inputRow,
+                                                     std::vector<Variable const*> const& vars,
+                                                     std::vector<RegisterId> const& regs)
+    : QueryExpressionContext(trx, context, cache),
+      _inputRow(inputRow), _vars(vars), _regs(regs) {}

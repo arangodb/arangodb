@@ -51,7 +51,7 @@ class ShardingStrategy {
 
   virtual bool usesDefaultShardKeys() = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result);
+  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard that is responsible for a document, which is given
@@ -73,7 +73,7 @@ class ShardingStrategy {
 
   virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                                   ShardID& shardID, bool& usesDefaultShardKeys,
-                                  std::string const& key = "") = 0;
+                                  arangodb::velocypack::StringRef const& key) = 0;
 };
 
 }  // namespace arangodb

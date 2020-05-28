@@ -1,0 +1,155 @@
+#==============================================================================
+#   Copyright (c) 2001-2011 Joel de Guzman
+#   Copyright (c) 2001-2012 Hartmut Kaiser
+#   Copyright (c)      2011 Bryce Lelbach
+#   Copyright (c) 2016-2019 Nikita Kniazev
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+
+import testing ;
+
+###############################################################################
+
+project spirit-qi
+    : requirements
+        <include>.
+        <c++-template-depth>512
+    ;
+
+###############################################################################
+
+cpp-pch pch : pch.hpp : : : <include>. <toolset>msvc:<cxxflags>"/FIpch.hpp" ;
+
+explicit pch ;
+
+###############################################################################
+
+local subproject-name = qi ;
+
+rule run ( sources + : args * : input-files *
+         : requirements * : target-name ? : default-build * )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.run $(sources) : $(args) : $(input-files)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) : $(default-build) ] ;
+}
+
+rule compile ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile $(sources)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) ] ;
+}
+
+rule compile-fail ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile-fail $(sources)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) ] ;
+}
+
+###############################################################################
+
+compile-fail grammar_fail.cpp ;
+compile-fail rule_fail.cpp ;
+run actions.cpp : : : <pch>off ; # Enable PCH when boostorg/proto#13 is merged.
+run actions2.cpp : : : <pch>off ;
+run alternative.cpp ;
+run attr.cpp ;
+run attribute1.cpp ;
+run attribute2.cpp ;
+run and_predicate.cpp ;
+run auto.cpp ;
+run binary.cpp ;
+run bool1.cpp ;
+run bool2.cpp ;
+run char1.cpp : : : <pch>off ; # Enable PCH after fixing interference from including auto.
+run char2.cpp ;
+run char_class.cpp : : : <pch>off ;
+run debug.cpp : : : <pch>off ;
+run difference.cpp ;
+run encoding.cpp ;
+run end.cpp ;
+run eps.cpp ;
+run expect.cpp ;
+run expectd.cpp ;
+run extract_int.cpp ;
+run grammar.cpp ;
+run int1.cpp ;
+run int2.cpp ;
+run int3.cpp ;
+run kleene.cpp ;
+run lazy.cpp ;
+run lexeme.cpp ;
+run lit1.cpp ;
+run lit2.cpp ;
+run list.cpp ;
+run hold.cpp ;
+run match_manip1.cpp ;
+run match_manip2.cpp ;
+run match_manip3.cpp ;
+run match_manip_attr.cpp ;
+run matches.cpp ;
+run no_case.cpp ;
+run no_skip.cpp ;
+run not_predicate.cpp ;
+run omit.cpp ;
+run optional.cpp ;
+run parse_attr.cpp ;
+run pass_container1.cpp ;
+run pass_container2.cpp ;
+run permutation.cpp ;
+run plus.cpp ;
+run range_run.cpp ;
+run raw.cpp ;
+run real1.cpp ;
+run real2.cpp ;
+run real3.cpp ;
+run real4.cpp ;
+run real5.cpp ;
+run repeat.cpp ;
+run rule1.cpp ;
+run rule2.cpp ;
+run rule3.cpp ;
+run rule4.cpp ;
+run sequence.cpp ;
+run sequential_or.cpp ;
+run skip.cpp ;
+run stream.cpp ;
+run symbols1.cpp ;
+run symbols2.cpp ;
+run terminal_ex.cpp ;
+run tst.cpp ;
+run uint1.cpp ;
+run uint2.cpp ;
+run uint3.cpp ;
+run uint_radix.cpp ;
+run utree1.cpp ;
+run utree2.cpp ;
+run utree3.cpp ;
+run utree4.cpp ;
+run iterator_check.cpp ;
+
+compile pass_container3.cpp ;
+compile regression_attr_with_action.cpp ;
+compile regression_container_attribute.cpp ;
+compile regression_debug_optional.cpp : <pch>off ;
+compile regression_fusion_proto_spirit.cpp ;
+compile regression_one_element_fusion_sequence.cpp ;
+compile regression_one_element_sequence_attribute.cpp ;
+
+run regression_adapt_adt.cpp ;
+run regression_clear.cpp ;
+#run regression_float_fraction.cpp ;
+run regression_lazy_repeat.cpp ;
+run regression_numeric_alternatives.cpp ;
+run regression_reorder.cpp ;
+run regression_repeat.cpp ;
+run regression_transform_assignment.cpp ;
+run regression_binary_action.cpp ;
+run regression_stream_eof.cpp ;
+
+run to_utf8.cpp : : : <pch>off ;

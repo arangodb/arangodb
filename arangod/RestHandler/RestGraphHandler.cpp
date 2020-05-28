@@ -23,7 +23,6 @@
 #include "RestGraphHandler.h"
 
 #include <velocypack/Collection.h>
-#include <boost/optional.hpp>
 #include <utility>
 
 #include "Aql/Query.h"
@@ -32,7 +31,6 @@
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -41,17 +39,30 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-RestGraphHandler::RestGraphHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _gmngr(_vocbase) {}
+RestGraphHandler::RestGraphHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _gmngr(_vocbase) {}
 
 RestStatus RestGraphHandler::execute() {
   Result res = executeGharial();
   if (res.fail()) {
-    generateError(res);
+    TRI_ASSERT(!_response->isResponseEmpty());
     return RestStatus::FAIL;
   }
   // The url is required to properly generate the result!
   return RestStatus::DONE;
+}
+
+Result RestGraphHandler::returnError(int errorNumber) {
+  auto res = Result(errorNumber);
+  generateError(res);
+  return res;
+}
+
+Result RestGraphHandler::returnError(int errorNumber, char const* message) {
+  auto res = Result(errorNumber, message);
+  generateError(res);
+  return res;
 }
 
 Result RestGraphHandler::executeGharial() {
@@ -86,7 +97,7 @@ Result RestGraphHandler::executeGharial() {
   const char* vertex = "vertex";
   const char* edge = "edge";
   if (collType != vertex && collType != edge) {
-    return {TRI_ERROR_HTTP_NOT_FOUND};
+    return returnError(TRI_ERROR_HTTP_NOT_FOUND);
   }
 
   if (noMoreSuffixes()) {
@@ -152,7 +163,7 @@ Result RestGraphHandler::executeGharial() {
     }
   }
 
-  return {TRI_ERROR_HTTP_NOT_FOUND};
+  return returnError(TRI_ERROR_HTTP_NOT_FOUND);
 }
 
 Result RestGraphHandler::graphAction(Graph& graph) {
@@ -163,7 +174,7 @@ Result RestGraphHandler::graphAction(Graph& graph) {
       return graphActionRemoveGraph(graph);
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::graphsAction() {
@@ -174,7 +185,7 @@ Result RestGraphHandler::graphsAction() {
       return graphActionCreateGraph();
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::vertexSetsAction(Graph& graph) {
@@ -185,7 +196,7 @@ Result RestGraphHandler::vertexSetsAction(Graph& graph) {
       return modifyVertexDefinition(graph, VertexDefinitionAction::CREATE, "");
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::edgeSetsAction(Graph& graph) {
@@ -196,7 +207,7 @@ Result RestGraphHandler::edgeSetsAction(Graph& graph) {
       return createEdgeDefinition(graph);
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::edgeSetAction(Graph& graph, const std::string& edgeDefinitionName) {
@@ -209,7 +220,7 @@ Result RestGraphHandler::edgeSetAction(Graph& graph, const std::string& edgeDefi
       return removeEdgeDefinition(graph, edgeDefinitionName);
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::vertexSetAction(Graph& graph, const std::string& vertexCollectionName) {
@@ -220,7 +231,7 @@ Result RestGraphHandler::vertexSetAction(Graph& graph, const std::string& vertex
       return modifyVertexDefinition(graph, VertexDefinitionAction::REMOVE, vertexCollectionName);
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::vertexAction(Graph& graph, const std::string& vertexCollectionName,
@@ -238,7 +249,7 @@ Result RestGraphHandler::vertexAction(Graph& graph, const std::string& vertexCol
       return vertexActionRemove(graph, vertexCollectionName, vertexKey);
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 Result RestGraphHandler::edgeAction(Graph& graph, const std::string& edgeDefinitionName,
@@ -255,7 +266,7 @@ Result RestGraphHandler::edgeAction(Graph& graph, const std::string& edgeDefinit
       return edgeActionReplace(graph, edgeDefinitionName, edgeKey);
     default:;
   }
-  return {TRI_ERROR_HTTP_METHOD_NOT_ALLOWED};
+  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
 void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collectionName,
@@ -341,7 +352,7 @@ void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
 #if 0
   // TODO fix this in a major release upgrade
   if (wasSynchronous) {
-    code = rest::ResponseCode::CREATED; 
+    code = rest::ResponseCode::CREATED;
   }
 #endif
   resetResponse(code);
@@ -512,7 +523,7 @@ void RestGraphHandler::generateResultMergedWithObject(VPackSlice obj,
     result.close();
     VPackBuilder merged = VelocyPackHelper::merge(result.slice(), obj, false, false);
 
-    writeResult(std::move(*merged.buffer().get()), options);
+    writeResult(merged.slice(), options);
   } catch (...) {
     // Building the error response failed
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -713,7 +724,7 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return {TRI_ERROR_BAD_PARAMETER, "unable to parse body"};
+    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
   // TODO maybe merge this function with modifyEdgeDefinition?
@@ -751,7 +762,6 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
 
   return Result();
 }
-
 Result RestGraphHandler::removeEdgeDefinition(graph::Graph& graph,
                                               const std::string& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE, edgeDefinitionName);
@@ -769,7 +779,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return {TRI_ERROR_BAD_PARAMETER, "unable to parse body"};
+    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -830,7 +840,7 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return {TRI_ERROR_BAD_PARAMETER, "unable to parse body"};
+    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -927,7 +937,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return {TRI_ERROR_BAD_PARAMETER, "unable to parse body"};
+    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
@@ -960,7 +970,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   VPackBuilder builder;
-  _gmngr.readGraphs(builder, arangodb::aql::PART_MAIN);
+  _gmngr.readGraphs(builder);
 
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -988,7 +998,7 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph, TRI_co
 
 RequestLane RestGraphHandler::lane() const { return RequestLane::CLIENT_SLOW; }
 
-boost::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
+std::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
@@ -1001,5 +1011,5 @@ boost::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
       revision = TRI_StringToRid(revString.data(), revString.size(), false);
     }
   }
-  return boost::make_optional(revision != 0, revision);
+  return revision != 0 ? std::optional{revision} : std::nullopt;
 }

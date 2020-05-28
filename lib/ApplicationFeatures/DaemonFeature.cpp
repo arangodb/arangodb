@@ -31,6 +31,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
@@ -73,7 +74,7 @@ namespace arangodb {
 DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
 #ifndef _WIN32
   _workingDirectory = "/var/tmp";
@@ -83,15 +84,15 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--daemon", "background the server, running it as daemon",
                      new BooleanParameter(&_daemon),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 
   options->addOption("--pid-file", "pid-file in daemon mode",
                      new StringParameter(&_pidFile),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 
   options->addOption("--working-directory", "working directory in daemon mode",
                      new StringParameter(&_workingDirectory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -105,9 +106,8 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  LoggerFeature* logger =
-      ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->setBackgrounded(true);
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  logger.setBackgrounded(true);
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();

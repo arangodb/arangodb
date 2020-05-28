@@ -30,8 +30,9 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef TRI_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
+#ifdef ARANGODB_SHOW_LOCK_TIME
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <thread>
@@ -72,14 +73,14 @@ class ReadLocker {
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
         _isLocked(false),
         _time(0.0) {
 #else
         _isLocked(false) {
 #endif
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // fetch current time
     double t = TRI_microtime();
 #endif
@@ -96,7 +97,7 @@ class ReadLocker {
       }
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // add elapsed time to time tracker
     _time = TRI_microtime() - t;
 #endif
@@ -108,10 +109,11 @@ class ReadLocker {
       _readWriteLock->unlockRead();
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("8e47e", INFO, arangodb::Logger::PERFORMANCE)
-          << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
+          << "ReadLocker for lock [" << _readWriteLock << "] " << _file << ":"
+          << _line << " took " << _time << " s";
     }
 #endif
   }
@@ -129,7 +131,7 @@ class ReadLocker {
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_readWriteLock->tryReadLock()) {
+    if (_readWriteLock->tryLockRead()) {
       _isLocked = true;
     }
     return _isLocked;
@@ -138,7 +140,7 @@ class ReadLocker {
   /// @brief acquire the read lock, blocking
   void lock() {
     TRI_ASSERT(!_isLocked);
-    _readWriteLock->readLock();
+    _readWriteLock->lockRead();
     _isLocked = true;
   }
 
@@ -174,7 +176,7 @@ class ReadLocker {
   /// @brief whether or not we acquired the lock
   bool _isLocked;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
   /// @brief lock time
   double _time;
 #endif

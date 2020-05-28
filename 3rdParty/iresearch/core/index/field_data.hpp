@@ -63,12 +63,12 @@ IRESEARCH_API bool memcmp_less(
   size_t lhs_size,
   const byte_type* rhs,
   size_t rhs_size
-) NOEXCEPT;
+) noexcept;
 
 inline bool memcmp_less(
     const bytes_ref& lhs,
     const bytes_ref& rhs
-) NOEXCEPT {
+) noexcept {
   return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
 }
 
@@ -81,23 +81,23 @@ class IRESEARCH_API field_data : util::noncopyable {
     bool random_access
   );
 
-  doc_id_t doc() const NOEXCEPT { return last_doc_; }
+  doc_id_t doc() const noexcept { return last_doc_; }
 
   // returns number of terms in a field within a document
-  size_t size() const NOEXCEPT { return len_; }
+  size_t size() const noexcept { return len_; }
 
-  const field_meta& meta() const NOEXCEPT { return meta_; }
+  const field_meta& meta() const noexcept { return meta_; }
 
   data_output& norms(columnstore_writer& writer);
 
   // returns false if field contains indexed data
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return !doc_limits::valid(last_doc_);
   }
 
   bool invert(token_stream& tokens, const flags& features, doc_id_t id);
 
-  bool prox_random_access() const NOEXCEPT {
+  bool prox_random_access() const noexcept {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
   }
 
@@ -142,7 +142,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
   explicit fields_data(const comparer* comparator);
 
-  const comparer* comparator() const NOEXCEPT {
+  const comparer* comparator() const noexcept {
     return comparator_;
   }
 
@@ -151,7 +151,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory_active() const NOEXCEPT {
+  size_t memory_active() const noexcept {
     return byte_writer_.pool_offset()
       + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
       + fields_.size() * sizeof(fields_map::value_type);
@@ -160,7 +160,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory reserved by this instance
   //////////////////////////////////////////////////////////////////////////////
-  size_t memory_reserved() const NOEXCEPT {
+  size_t memory_reserved() const noexcept {
     return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
   }
 
@@ -171,7 +171,7 @@ class IRESEARCH_API fields_data: util::noncopyable {
   }
   const flags& features() { return features_; }
   void flush(field_writer& fw, flush_state& state);
-  void reset() NOEXCEPT;
+  void reset() noexcept;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

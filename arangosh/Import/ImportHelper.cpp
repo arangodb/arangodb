@@ -53,6 +53,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
+using namespace std::literals::string_literals;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
@@ -137,6 +138,9 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 namespace arangodb {
 namespace import {
 
+ImportStatistics::ImportStatistics(application_features::ApplicationServer& server)
+    : _histogram(server) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,10 +158,11 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
-    : _httpClient(client->createHttpClient(endpoint, params)),
+    : _clientFeature(client),
+      _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
@@ -173,7 +178,9 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _progress(false),
       _firstChunk(true),
       _ignoreMissing(false),
+      _skipValidation(false),
       _numberLines(0),
+      _stats(client.server()),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -186,17 +193,18 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _columnNames(),
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
-    auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
-      CONDITION_LOCKER(guard, _threadsCondition);
-      guard.signal();
-    }));
+    auto http = client.createHttpClient(endpoint, params);
+    _senderThreads.emplace_back(
+        new SenderThread(client.server(), std::move(http), &_stats, [this]() {
+          CONDITION_LOCKER(guard, _threadsCondition);
+          guard.signal();
+        }));
     _senderThreads.back()->start();
   }
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread.reset(new AutoTuneThread(client.server(), *this));
     _autoTuneThread->start();
   }  // if
 
@@ -227,7 +235,8 @@ ImportHelper::~ImportHelper() {
 bool ImportHelper::importDelimited(std::string const& collectionName,
                                    std::string const& pathName,
                                    DelimitedImportType typeImport) {
-  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
@@ -333,7 +342,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
 bool ImportHelper::importJson(std::string const& collectionName,
                               std::string const& pathName, bool assumeLinewise) {
-  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
   std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
@@ -845,6 +855,9 @@ void ImportHelper::sendCsvBuffer() {
   if (!_toCollectionPrefix.empty()) {
     url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
   }
+  if (_skipValidation) {
+    url += "&"s + StaticStrings::SkipDocumentValidation + "=true";
+  }
   if (_firstChunk && _overwrite) {
     // url += "&overwrite=true";
     truncateCollection();
@@ -886,6 +899,10 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     // url += "&overwrite=true";
     truncateCollection();
   }
+  if (_skipValidation) {
+    url += "&"s + StaticStrings::SkipDocumentValidation + "=true";
+  }
+
   _firstChunk = false;
 
   SenderThread* t = findIdleSender();

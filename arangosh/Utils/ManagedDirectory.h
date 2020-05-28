@@ -42,6 +42,9 @@
 #endif
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 #ifndef USE_ENTERPRISE
 class EncryptionFeature;  // to reduce number of #ifdef
 #endif
@@ -108,7 +111,7 @@ class ManagedDirectory {
      * @param  length Maximum amount of data to read (no more than buffer
      *                length)
      */
-    ssize_t read(char* buffer, size_t length);
+    TRI_read_return_t read(char* buffer, size_t length);
 
     /**
      * @brief Read file contents into string
@@ -138,7 +141,7 @@ class ManagedDirectory {
      * @brief Count of bytes read from regular or gzip file, not amount returned by read
      */
 
-    ssize_t offset() const;
+    TRI_read_return_t offset() const;
 
    private:
     ManagedDirectory const& _directory;
@@ -165,12 +168,15 @@ class ManagedDirectory {
    * directory was opened successfully. If `status().fail()`, the directory
    * cannot be used safely.
    *
+   * @param server       The underlying application server, for access to the
+   *                     EncryptionFeature
    * @param path         The path to the directory
    * @param requireEmpty If `true`, opening a non-empty directory will fail
    * @param create       If `true` and directory does not exist, create it
    * @param writeGzip    True if writes should use gzip (reads autodetect .gz)
    */
-  ManagedDirectory(std::string const& path, bool requireEmpty, bool create, bool writeGzip = true);
+  ManagedDirectory(application_features::ApplicationServer& server,
+                   std::string const& path, bool requireEmpty, bool create, bool writeGzip);
   ~ManagedDirectory();
 
  public:

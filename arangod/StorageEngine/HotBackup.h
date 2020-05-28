@@ -31,28 +31,31 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+class ClusterFeature;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HotBackup engine selector operations
 ////////////////////////////////////////////////////////////////////////////////
 
-enum BACKUP_ENGINE {ROCKSDB, MMFILES, CLUSTER};
+enum BACKUP_ENGINE {ROCKSDB, CLUSTER};
 
 class HotBackup {
 public:
+ explicit HotBackup(application_features::ApplicationServer& server);
+ virtual ~HotBackup() = default;
 
-  HotBackup();
-  virtual ~HotBackup() = default;
-
-  /**
-   * @brief execute storage engine's command with payload and report back
-   * @param  command  backup command [create, delete, list, upload, download]
-   * @param  payload  JSON payload
-   * @param  report   operation's report
-   * @return 
-   */
-  arangodb::Result execute (
-    std::string const& command, VPackSlice const payload, VPackBuilder& report);
+ /**
+  * @brief execute storage engine's command with payload and report back
+  * @param  command  backup command [create, delete, list, upload, download]
+  * @param  payload  JSON payload
+  * @param  report   operation's report
+  * @return
+  */
+ arangodb::Result execute(std::string const& command, VPackSlice const payload,
+                          VPackBuilder& report);
   
 private:
 
@@ -70,13 +73,9 @@ private:
   arangodb::Result executeCoordinator(
     std::string const& command, VPackSlice const payload, VPackBuilder& report);
   
-  /**
-   * @brief select engine and create backup
-   * @param  payload  rest handling payload
-   */
-  arangodb::Result executeMMFiles(
-    std::string const& command, VPackSlice const payload, VPackBuilder& report);
-  
+#ifdef USE_ENTERPRISE
+  application_features::ApplicationServer& _server;
+#endif
   BACKUP_ENGINE _engine;
   
 };// class HotBackup

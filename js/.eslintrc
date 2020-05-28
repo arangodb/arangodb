@@ -78,7 +78,6 @@
     "wrap-iife": [2, "any"],
     "semi": [2, "always"],
     "spaced-comment": 1,
-    "quotes": 1,
     "space-unary-ops": 1,
     "no-eval": 1,
     "camelcase": 1,
@@ -88,12 +87,9 @@
     "no-multi-spaces": 1,
     "no-trailing-spaces": 1,
     "key-spacing": 1,
-    "padded-blocks": 1,
     "yoda": 1,
     "no-throw-literal": 1,
     "operator-linebreak": 1,
-    "indent": 1,
-    "one-var": 1,
     "no-unused-vars": 1,
     "comma-spacing": 1,
     "block-spacing": 1,
@@ -126,6 +122,12 @@
     "no-extra-boolean-cast": 1,
     "handle-callback-err": 1,
     "object-property-newline": 1,
-    "object-curly-spacing": 0
+    "object-curly-spacing": 0,
+    "standard/no-callback-literal": 0,
+    "guard-for-in": "off",
+    "one-var": "off",
+    "quotes": "off",
+    "padded-blocks": "off",
+    "indent": "off"
   }
 }

@@ -30,7 +30,7 @@ namespace pregel {
 // specify serialization, whatever
 template <class M>
 struct MessageCombiner {
-  virtual ~MessageCombiner() {}
+  virtual ~MessageCombiner() = default;
   virtual void combine(M& firstValue, M const& secondValue) const = 0;
 };
 

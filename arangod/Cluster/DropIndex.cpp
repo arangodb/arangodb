@@ -66,7 +66,7 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
   }
 }
 
-DropIndex::~DropIndex() {}
+DropIndex::~DropIndex() = default;
 
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);

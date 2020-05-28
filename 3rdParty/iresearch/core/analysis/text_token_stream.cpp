@@ -19,6 +19,8 @@
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cctype> // for std::isspace(...)
@@ -28,6 +30,7 @@
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
+#include <utils/utf8_utils.hpp>
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
 #if defined(_MSC_VER)
@@ -55,8 +58,10 @@
 #include "libstemmer.h"
 
 #include "utils/hash_utils.hpp"
+#include "utils/json_utils.hpp"
 #include "utils/locale_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/map_utils.hpp"
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
@@ -72,6 +77,11 @@ NS_BEGIN(analysis)
 // -----------------------------------------------------------------------------
 
 struct text_token_stream::state_t {
+  struct ngram_state_t {
+    const byte_type* it; // iterator
+    uint32_t length{};
+  };
+
   std::shared_ptr<icu::BreakIterator> break_iterator;
   icu::UnicodeString data;
   icu::Locale icu_locale;
@@ -81,12 +91,31 @@ struct text_token_stream::state_t {
   std::shared_ptr<sb_stemmer> stemmer;
   std::string tmp_buf; // used by processTerm(...)
   std::shared_ptr<icu::Transliterator> transliterator;
+  ngram_state_t ngram;
+  bstring term_buf;
+  bytes_ref term;
+  uint32_t start{};
+  uint32_t end{};
   state_t(const options_t& opts, const stopwords_t& stopw) :
     icu_locale("C"), options(opts), stopwords(stopw) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
     icu_locale.setToBogus(); // set to uninitialized
+  }
+
+  bool is_search_ngram() const {
+    // if min or max or preserveOriginal are set then search ngram
+    return options.min_gram_set || options.max_gram_set ||
+      options.preserve_original_set;
+  }
+
+  bool is_ngram_finished() const {
+    return 0 == ngram.length;
+  }
+
+  void set_ngram_finished() {
+    ngram.length = 0;
   }
 };
 
@@ -267,7 +296,7 @@ irs::analysis::analyzer::ptr construct(
   static auto generator = [](
       const irs::hashed_string_ref& key,
       cached_options_t& value
-  ) NOEXCEPT {
+  ) noexcept {
     if (key.null()) {
       return key;
     }
@@ -285,7 +314,7 @@ irs::analysis::analyzer::ptr construct(
     options_ptr = &(irs::map_utils::try_emplace_update_key(
       cached_state_by_key,
       generator,
-      irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>()),
+      irs::make_hashed_ref(cache_key),
       std::move(options),
       std::move(stopwords)
     ).first->second);
@@ -307,7 +336,7 @@ irs::analysis::analyzer::ptr construct(
   {
     SCOPED_LOCK(mutex);
     auto itr = cached_state_by_key.find(
-      irs::make_hashed_ref(irs::string_ref(cache_key), std::hash<irs::string_ref>())
+      irs::make_hashed_ref(irs::string_ref(cache_key))
     );
 
     if (itr != cached_state_by_key.end()) {
@@ -341,7 +370,6 @@ irs::analysis::analyzer::ptr construct(
 }
 
 bool process_term(
-  irs::analysis::text_token_stream::bytes_term& term,
   irs::analysis::text_token_stream::state_t& state,
   icu::UnicodeString const& data
 ) {
@@ -401,7 +429,8 @@ bool process_term(
 
     if (value) {
       static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
-      term.value(irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value), sb_stemmer_length(state.stemmer.get())));
+      state.term = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value),
+                                  sb_stemmer_length(state.stemmer.get()));
 
       return true;
     }
@@ -411,7 +440,8 @@ bool process_term(
   // use the value of the unstemmed token
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term.value(irs::bstring(irs::ref_cast<irs::byte_type>(word_utf8).c_str(), word_utf8.size()));
+  state.term_buf.assign(reinterpret_cast<const irs::byte_type*>(word_utf8.c_str()), word_utf8.size());
+  state.term = state.term_buf;
 
   return true;
 }
@@ -445,6 +475,10 @@ const irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
 const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
 const irs::string_ref ACCENT_PARAM_NAME            = "accent";
 const irs::string_ref STEMMING_PARAM_NAME          = "stemming";
+const irs::string_ref EDGE_NGRAM_PARAM_NAME        = "edgeNgram";
+const irs::string_ref MIN_PARAM_NAME               = "min";
+const irs::string_ref MAX_PARAM_NAME               = "max";
+const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
 
 const std::unordered_map<
     std::string, 
@@ -598,6 +632,41 @@ bool parse_json_options(const irs::string_ref& args,
       options.stemming = stemming.GetBool();
     }
 
+    if (json.HasMember(EDGE_NGRAM_PARAM_NAME.c_str())) {
+      auto& ngram = json[EDGE_NGRAM_PARAM_NAME.c_str()];
+
+      if (!ngram.IsObject()) {
+        IR_FRMT_WARN(
+            "Non-object value in '%s' while constructing text_token_stream "
+            "from jSON arguments: %s",
+            EDGE_NGRAM_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+
+      uint64_t min;
+      if (irs::get_uint64(ngram, MIN_PARAM_NAME, min)) {
+        options.min_gram = min;
+        options.min_gram_set = true;
+      }
+
+      uint64_t max;
+      if (irs::get_uint64(ngram, MAX_PARAM_NAME, max)) {
+        options.max_gram = max;
+        options.max_gram_set = true;
+      }
+
+      bool preserve_original;
+      if (irs::get_bool(ngram, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
+        options.preserve_original = preserve_original;
+        options.preserve_original_set = true;
+      }
+
+      if (options.min_gram_set && options.max_gram_set) {
+        return options.min_gram <= options.max_gram;
+      }
+    }
+
     return true;
   } catch (...) {
     IR_FRMT_ERROR(
@@ -659,7 +728,7 @@ bool make_json_config(
     // explicit_stopwords_set  marks that even empty stopwords list is valid
     rapidjson::Value stopwordsArray(rapidjson::kArrayType);
     if (!options.explicit_stopwords.empty()) {
-      // for simplifying comparsion between properties we need deterministic order of stopwords
+      // for simplifying comparison between properties we need deterministic order of stopwords
       std::vector<irs::string_ref> sortedWords;
       sortedWords.reserve(options.explicit_stopwords.size());
       for (const auto& stopword : options.explicit_stopwords) {
@@ -701,11 +770,49 @@ bool make_json_config(
       allocator);
   }
 
+  // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
+  static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
+
+  if (options.min_gram_set || options.max_gram_set || options.preserve_original_set) {
+    rapidjson::Document ngram(&allocator);
+    ngram.SetObject();
+
+    // min_gram
+    if (options.min_gram_set) {
+      ngram.AddMember(
+        rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
+        rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
+        allocator);
+    }
+
+    // max_gram
+    if (options.max_gram_set) {
+      ngram.AddMember(
+        rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
+        rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
+        allocator);
+    }
+
+    // preserve_original
+    if (options.preserve_original_set) {
+      ngram.AddMember(
+        rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
+        rapidjson::Value(options.preserve_original),
+        allocator);
+    }
+
+    json.AddMember(
+      rapidjson::StringRef(EDGE_NGRAM_PARAM_NAME.c_str(), EDGE_NGRAM_PARAM_NAME.size()),
+      ngram,
+      allocator);
+  }
+
   //output json to string
   rapidjson::StringBuffer buffer;
   rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
   json.Accept(writer);
   definition = buffer.GetString();
+
   return true;
 }
 
@@ -717,14 +824,16 @@ bool make_json_config(
 ///        "stemming"(bool): use stemming
 ///        "stopwords([string...]): set of words to ignore 
 ///        "stopwordsPath"(string): custom path, where to load stopwords
+///        "min" (number): minimum ngram size
+///        "max" (number): maximum ngram size
+///        "preserveOriginal" (boolean): preserve or not the original term
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     {
       SCOPED_LOCK(mutex);
-      auto itr = cached_state_by_key.find(
-          irs::make_hashed_ref(args, std::hash<irs::string_ref>()));
+      auto itr = cached_state_by_key.find(irs::make_hashed_ref(args));
 
       if (itr != cached_state_by_key.end()) {
         return irs::memory::make_unique<irs::analysis::text_token_stream>(
@@ -786,8 +895,6 @@ bool normalize_text_config(const irs::string_ref& args,
   return false;
 }
 
-
-
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
                        normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
@@ -798,8 +905,6 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
@@ -807,22 +912,16 @@ NS_BEGIN(analysis)
 char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE = "IRESEARCH_TEXT_STOPWORD_PATH";
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  static functions
-// -----------------------------------------------------------------------------
-
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stream, "text")
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 text_token_stream::text_token_stream(const options_t& options, const stopwords_t& stopwords)
-  : analyzer(text_token_stream::type()),
-    attrs_(3), // offset + bytes_term + increment
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offs_         },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_stream>::get()},
     state_(memory::make_unique<state_t>(options, stopwords)) {
-  attrs_.emplace(offs_);
-  attrs_.emplace(term_);
-  attrs_.emplace(inc_);
 }
 
 // -----------------------------------------------------------------------------
@@ -836,13 +935,23 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
                          normalize_text_config); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(
-    const irs::string_ref& locale
-) {
+/*static*/ analyzer::ptr text_token_stream::make(const irs::string_ref& locale) {
   return make_text(locale);
 }
 
 bool text_token_stream::reset(const string_ref& data) {
+  if (data.size() > integer_traits<uint32_t>::const_max) {
+    // can't handle data which is longer than integer_traits<uint32_t>::const_max
+    return false;
+  }
+
+  // reset term attribute
+  term_.value = bytes_ref::NIL;
+
+  // reset offset attribute
+  offs_.start = integer_traits<uint32_t>::const_max;
+  offs_.end = integer_traits<uint32_t>::const_max;
+
   if (state_->icu_locale.isBogus()) {
     state_->icu_locale = icu::Locale(
       std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
@@ -933,10 +1042,40 @@ bool text_token_stream::reset(const string_ref& data) {
   // ...........................................................................
   state_->break_iterator->setText(state_->data);
 
+  // reset term state for ngrams
+  state_->term = bytes_ref::NIL;
+  state_->start = integer_traits<uint32_t>::const_max;
+  state_->end = integer_traits<uint32_t>::const_max;
+  state_->set_ngram_finished();
+  inc_.value = 1;
+
   return true;
 }
 
 bool text_token_stream::next() {
+  if (state_->is_search_ngram()) {
+    while (true) {
+      // if a word has not started for ngrams yet
+      if (state_->is_ngram_finished() && !next_word()) {
+        return false;
+      }
+      // get next ngram taking into account min and max
+      if (next_ngram()) {
+        return true;
+      }
+    }
+  } else if (next_word()) {
+    term_.value = state_->term;
+    offs_.start = state_->start;
+    offs_.end = state_->end;
+
+    return true;
+  }
+
+  return false;
+}
+
+bool text_token_stream::next_word() {
   // ...........................................................................
   // find boundaries of the next word
   // ...........................................................................
@@ -948,22 +1087,81 @@ bool text_token_stream::next() {
     // skip whitespace and unsuccessful terms
     // ...........................................................................
     if (UWordBreak::UBRK_WORD_NONE == state_->break_iterator->getRuleStatus()
-        || !process_term(term_, *state_, state_->data.tempSubString(start, end - start))) {
+        || !process_term(*state_, state_->data.tempSubString(start, end - start))) {
       continue;
     }
 
-    offs_.start = start;
-    offs_.end = end;
+    state_->start = start;
+    state_->end = end;
     return true;
   }
 
   return false;
 }
 
+bool text_token_stream::next_ngram() {
+  auto begin = state_->term.begin();
+  auto end = state_->term.end();
+  assert(begin != end);
+
+  // if there are no ngrams yet then a new word started
+  if (state_->is_ngram_finished()) {
+    state_->ngram.it = begin;
+    inc_.value = 1;
+    // find the first ngram > min
+    do {
+      state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
+    } while (++state_->ngram.length < state_->options.min_gram &&
+             state_->ngram.it != end);
+  } else {
+    // not first ngram in a word
+    inc_.value = 0; // staying on the current pos
+    state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
+    ++state_->ngram.length;
+  }
+
+  bool finished{};
+  auto set_ngram_finished = irs::make_finally([this, &finished]()->void {
+    if (finished) {
+      state_->set_ngram_finished();
+    }
+  });
+
+  // if a word has finished
+  if (state_->ngram.it == end) {
+    // no unwatched ngrams in a word
+    finished = true;
+  }
+
+  // if length > max
+  if (state_->options.max_gram_set &&
+      state_->ngram.length > state_->options.max_gram) {
+    // no unwatched ngrams in a word
+    finished = true;
+    if (state_->options.preserve_original) {
+      state_->ngram.it = end;
+    } else {
+      return false;
+    }
+  }
+
+  // if length >= min or preserveOriginal
+  if (state_->ngram.length >= state_->options.min_gram ||
+      state_->options.preserve_original) {
+    // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
+    static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
+
+    auto size = static_cast<uint32_t>(std::distance(begin, state_->ngram.it));
+    term_buf_.assign(state_->term.c_str(), size);
+    term_.value = term_buf_;
+    offs_.start = state_->start;
+    offs_.end = state_->start + size;
+
+    return true;
+  }
+
+  return false;
+}
 
 NS_END // analysis
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

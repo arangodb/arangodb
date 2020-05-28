@@ -25,14 +25,13 @@
 #define ARANGOD_CLUSTER_CLUSTER_REST_EXPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/CollectionExport.h"
 
 namespace arangodb {
 class ClusterRestExportHandler : public RestVocbaseBaseHandler {
  public:
-  ClusterRestExportHandler(GeneralRequest*, GeneralResponse*);
+  ClusterRestExportHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "ClusterRestExportHandler"; }

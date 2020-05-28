@@ -27,14 +27,15 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace traverser {
-class TraverserEngineRegistry;
+namespace aql {
+class QueryRegistry;
 }
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
-  explicit InternalRestTraverserHandler(GeneralRequest*, GeneralResponse*,
-                                        traverser::TraverserEngineRegistry*);
+  explicit InternalRestTraverserHandler(application_features::ApplicationServer&,
+                                        GeneralRequest*, GeneralResponse*,
+                                        aql::QueryRegistry*);
 
  public:
   RestStatus execute() override final;
@@ -54,7 +55,7 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   void destroyEngine();
 
  private:
-  traverser::TraverserEngineRegistry* _registry;
+  aql::QueryRegistry* _registry;
 };
 }  // namespace arangodb
 #endif

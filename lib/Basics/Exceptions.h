@@ -34,9 +34,6 @@
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
-/// @brief diagnostic output
-#define DIAGNOSTIC_INFORMATION(e) e.what()
-
 /// @brief throws an arango exception with an error code
 #define THROW_ARANGO_EXCEPTION(code) \
   throw arangodb::basics::Exception(code, __FILE__, __LINE__)
@@ -62,12 +59,13 @@
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
 /// @brief throws an arango result if the result fails
-#define THROW_ARANGO_EXCEPTION_IF_FAIL(result)                         \
-  do {                                                                 \
-    if ((result).fail()) {                                             \
-      throw arangodb::basics::Exception((result), __FILE__, __LINE__); \
-    }                                                                  \
-  } while (0);
+#define THROW_ARANGO_EXCEPTION_IF_FAIL(expression)                                        \
+  do {                                                                                    \
+    auto&& expressionResult = (expression);                                               \
+    if (expressionResult.fail()) {                                                        \
+      throw arangodb::basics::Exception(std::move(expressionResult), __FILE__, __LINE__); \
+    }                                                                                     \
+  } while (0)
 
 namespace arangodb {
 namespace basics {
@@ -90,7 +88,7 @@ class Exception final : public virtual std::exception {
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
-  ~Exception();
+  ~Exception() = default;
 
  public:
   char const* what() const noexcept override;

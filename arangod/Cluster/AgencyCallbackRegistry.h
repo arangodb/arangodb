@@ -28,13 +28,17 @@
 #include "Cluster/AgencyCallback.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class AgencyCallbackRegistry {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
-  explicit AgencyCallbackRegistry(std::string const&);
+  explicit AgencyCallbackRegistry(application_features::ApplicationServer&,
+                                  std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dtor
@@ -44,7 +48,7 @@ class AgencyCallbackRegistry {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
   //////////////////////////////////////////////////////////////////////////////
-  bool registerCallback(std::shared_ptr<AgencyCallback>);
+  bool registerCallback(std::shared_ptr<AgencyCallback>, bool local = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister a callback
@@ -54,10 +58,10 @@ class AgencyCallbackRegistry {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get a callback by its key
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<AgencyCallback> getCallback(uint32_t);
+  std::shared_ptr<AgencyCallback> getCallback(uint64_t);
 
  private:
-  std::string getEndpointUrl(uint32_t);
+  std::string getEndpointUrl(uint64_t);
 
   AgencyComm _agency;
 
@@ -65,7 +69,7 @@ class AgencyCallbackRegistry {
 
   std::string const _callbackBasePath;
 
-  std::unordered_map<uint32_t, std::shared_ptr<AgencyCallback>> _endpoints;
+  std::unordered_map<uint64_t, std::shared_ptr<AgencyCallback>> _endpoints;
 };
 
 }  // namespace arangodb

@@ -41,7 +41,8 @@ class Slice;
 
 class RestBaseHandler : public rest::RestHandler {
  public:
-  explicit RestBaseHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestBaseHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
   void handleError(basics::Exception const&) override;
 
@@ -62,7 +63,7 @@ class RestBaseHandler : public rest::RestHandler {
   /// convenience function akin to generateError,
   /// renders payload in 'result' field
   /// adds proper `error`, `code` fields
-  void generateOk(rest::ResponseCode, velocypack::Slice const&);
+  void generateOk(rest::ResponseCode, velocypack::Slice);
 
   /// Add `error` and `code` fields into your response
   void generateOk(rest::ResponseCode, velocypack::Builder const&);
@@ -71,9 +72,7 @@ class RestBaseHandler : public rest::RestHandler {
   void generateCanceled();
 
  protected:
-  /// @brief parses the body as VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody(bool& success);
-
+  
   /// @brief parses the body as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
 

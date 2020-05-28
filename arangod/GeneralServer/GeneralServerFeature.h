@@ -24,22 +24,12 @@
 #define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/RestHandlerFactory.h"
 
 namespace arangodb {
-
-namespace aql {
-class QueryRegistry;
-}
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
-
-namespace rest {
-class AsyncJobManager;
-class RestHandlerFactory;
-class GeneralServer;
-}  // namespace rest
+class RestServerThread;
 
 class GeneralServerFeature final : public application_features::ApplicationFeature {
  public:
@@ -81,6 +71,10 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     return GENERAL_SERVER->_accessControlAllowOrigins;
   }
 
+  static Result reloadTLS() {
+    return GENERAL_SERVER->reloadTLSInternal();
+  }
+
  private:
   static GeneralServerFeature* GENERAL_SERVER;
 
@@ -97,8 +91,19 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
  
   bool proxyCheck() const { return _proxyCheck; }
   std::vector<std::string> trustedProxies() const { return _trustedProxies; }
- 
+
  private:
+  Result reloadTLSInternal() {  // reload TLS data from disk
+    Result res;
+    for (auto& up : _servers) {
+      Result res2 = up->reloadTLS();
+      if (!res2.fail()) {
+        res = res2;   // yes, we only report the last error if there is one
+      }
+    }
+    return res;
+  }
+
   void buildServers();
   void defineHandlers();
 
@@ -110,7 +115,6 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   std::vector<std::string> _accessControlAllowOrigins;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
 };

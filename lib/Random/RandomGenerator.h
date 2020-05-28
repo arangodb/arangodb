@@ -39,7 +39,7 @@ class RandomDevice {
 
  public:
   RandomDevice() {}
-  virtual ~RandomDevice() {}
+  virtual ~RandomDevice() = default;
 
  public:
   virtual uint32_t random() = 0;

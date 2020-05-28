@@ -29,11 +29,13 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
-#include "IResearchLinkMeta.h"
-#include "IResearchViewMeta.h"
-#include "IResearchVPackComparer.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchVPackComparer.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Indexes/Index.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -133,7 +135,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link
   //////////////////////////////////////////////////////////////////////////////
-  TRI_idx_iid_t id() const noexcept { return _id; }
+  IndexId id() const noexcept { return _id; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta' params
@@ -164,7 +166,7 @@ class IResearchLink {
   /// @brief amount of memory in bytes occupied by this iResearch Link
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const;
+  void toVelocyPackStats(VPackBuilder& builder) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a jSON description of a IResearchLink object
@@ -218,26 +220,53 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   Result unload();
 
- protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup referenced analyzer
+  ////////////////////////////////////////////////////////////////////////////////
+  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const;
+
   typedef std::function<void(irs::directory&)> InitCallback;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief construct an uninitialized IResearch link, must call init(...)
-  /// after
-  ////////////////////////////////////////////////////////////////////////////////
-  IResearchLink(TRI_idx_iid_t iid, LogicalCollection& collection);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice const& definition,
               InitCallback const& initCallback = {});
+              
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get stored values
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchViewStoredValues const& storedValues() const;
+
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief index stats
+  //////////////////////////////////////////////////////////////////////////////
+  struct Stats {
+    size_t docsCount{};       // total number of documents
+    size_t liveDocsCount{};   // number of live documents
+    size_t numBufferedDocs{}; // number of buffered docs
+    size_t indexSize{};       // size of the index in bytes
+    size_t numSegments{};     // number of segments
+    size_t numFiles{};        // number of files
+  };
+
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an uninitialized IResearch link, must call init(...)
+  /// after
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchLink(IndexId iid, LogicalCollection& collection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief link was created during recovery
   ////////////////////////////////////////////////////////////////////////////////
   bool createdInRecovery() const noexcept { return _createdInRecovery; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  Stats stats() const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -286,7 +315,10 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  Result initDataStore(InitCallback const& initCallback, bool sorted);
+  Result initDataStore(
+    InitCallback const& initCallback, bool sorted,
+    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+    irs::type_info::type_id primarySortCompression);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up asynchronous maintenance tasks
@@ -301,7 +333,7 @@ class IResearchLink {
   LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
   std::shared_ptr<FlushSubscription> _flushSubscription;
-  TRI_idx_iid_t const _id; // the index identifier
+  IndexId const _id;                 // the index identifier
   TRI_voc_tick_t _lastCommittedTick; // protected by _commitMutex
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::mutex _commitMutex; // prevents data store sequential commits
@@ -310,6 +342,9 @@ class IResearchLink {
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
+
+irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
+                                arangodb::iresearch::IResearchLink const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb

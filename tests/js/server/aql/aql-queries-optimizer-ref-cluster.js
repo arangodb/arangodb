@@ -51,26 +51,28 @@ function ahuacatlQueryOptimizerRefTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       users = internal.db._create(cn);
-      users.save({ "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" });
-      users.save({ "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" });
-      users.save({ "id" : 102, "name" : "Jacob", "age" : 35, "active" : false, "gender" : "m" });
-      users.save({ "id" : 103, "name" : "Ethan", "age" : 34, "active" : false, "gender" : "m" });
-      users.save({ "id" : 104, "name" : "Michael", "age" : 33, "active" : true, "gender" : "m" });
-      users.save({ "id" : 105, "name" : "Alexander", "age" : 32, "active" : true, "gender" : "m" });
-      users.save({ "id" : 106, "name" : "Daniel", "age" : 31, "active" : true, "gender" : "m" });
-      users.save({ "id" : 107, "name" : "Anthony", "age" : 30, "active" : true, "gender" : "m" });
-      users.save({ "id" : 108, "name" : "Jim", "age" : 29, "active" : true, "gender" : "m" });
-      users.save({ "id" : 109, "name" : "Diego", "age" : 28, "active" : true, "gender" : "m" });
+      users.insert([
+        { "id" : 100, "name" : "John", "age" : 37, "active" : true, "gender" : "m" },
+        { "id" : 101, "name" : "Fred", "age" : 36, "active" : true, "gender" : "m" },
+        { "id" : 102, "name" : "Jacob", "age" : 35, "active" : false, "gender" : "m" },
+        { "id" : 103, "name" : "Ethan", "age" : 34, "active" : false, "gender" : "m" },
+        { "id" : 104, "name" : "Michael", "age" : 33, "active" : true, "gender" : "m" },
+        { "id" : 105, "name" : "Alexander", "age" : 32, "active" : true, "gender" : "m" },
+        { "id" : 106, "name" : "Daniel", "age" : 31, "active" : true, "gender" : "m" },
+        { "id" : 107, "name" : "Anthony", "age" : 30, "active" : true, "gender" : "m" },
+        { "id" : 108, "name" : "Jim", "age" : 29, "active" : true, "gender" : "m" },
+        { "id" : 109, "name" : "Diego", "age" : 28, "active" : true, "gender" : "m" },
+      ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

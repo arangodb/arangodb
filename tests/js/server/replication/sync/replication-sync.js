@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertTrue, assertFalse, ARGUMENTS */
+/* global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the sync method of the replication
@@ -32,6 +32,7 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 var analyzers = require("@arangodb/analyzers");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
 const _ = require('lodash');
 
@@ -40,21 +41,16 @@ const internal = require('internal');
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
 
-var mmfilesEngine = false;
-if (db._engine().name === 'mmfiles') {
-  mmfilesEngine = true;
-}
-
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
 
 const connectToMaster = function () {
-  arango.reconnect(masterEndpoint, db._name(), 'root', '');
+  reconnectRetry(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
 const connectToSlave = function () {
-  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
+  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
@@ -103,11 +99,7 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testExistingPatchBrokenSlaveCounters1: function () {
-      // can only use this with failure tests enabled and RocksDB engine
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-          
+      // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
@@ -142,7 +134,7 @@ function BaseTestConfig () {
           arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
           c.insert({});
           arango.DELETE_RAW("/_admin/debug/failat", "");
-          assertEqual(5000, c.count());
+          assertEqual(5001, c.count());
           assertEqual(5001, c.toArray().length);
         },
         function (state) {
@@ -158,11 +150,7 @@ function BaseTestConfig () {
     },
     
     testExistingPatchBrokenSlaveCounters2: function () {
-      // can only use this with failure tests enabled and RocksDB engine
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-          
+      // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
@@ -203,7 +191,7 @@ function BaseTestConfig () {
             c.insert({ _key: "testmann" + i });
           }
           arango.DELETE_RAW("/_admin/debug/failat", "");
-          assertEqual(9000, c.count());
+          assertEqual(9100, c.count());
           assertEqual(9100, c.toArray().length);
         },
         function (state) {
@@ -732,10 +720,6 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if (mmfilesEngine) {
-            assertEqual(32, p.indexBuckets);
-            assertEqual(16 * 1024 * 1024, p.journalSize);
-          }
         },
         true
       );
@@ -766,10 +750,6 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if (mmfilesEngine) {
-            assertEqual(32, p.indexBuckets);
-            assertEqual(16 * 1024 * 1024, p.journalSize);
-          }
         },
         true
       );
@@ -860,10 +840,13 @@ function BaseTestConfig () {
     testSyncView: function () {
       connectToMaster();
 
+      // create custom analyzer
+      let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
+
       //  create view & collection on master
       db._flushCache();
       db._create(cn);
-      db._createView(cn + 'View', 'arangosearch');
+      db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
 
       db._flushCache();
       connectToSlave();
@@ -878,6 +861,7 @@ function BaseTestConfig () {
         assertTrue(view !== null);
         let props = view.properties();
         assertTrue(props.hasOwnProperty('links'));
+        assertEqual(0, props.consolidationIntervalMsec);
         assertEqual(Object.keys(props.links).length, 0);
       }
 
@@ -890,7 +874,7 @@ function BaseTestConfig () {
         links[cn] = {
           includeAllFields: true,
           fields: {
-            text: { analyzers: ['text_en'] }
+              text: { analyzers: ['text_en', 'custom' ] }
           }
         };
         view.properties({ links });
@@ -901,13 +885,73 @@ function BaseTestConfig () {
 
       replication.sync({ endpoint: masterEndpoint });
 
+      // check replicated analyzer
+      {
+        let analyzerSlave = analyzers.analyzer('custom');
+        assertEqual(analyzer.name, analyzerSlave.name());
+        assertEqual(analyzer.type, analyzerSlave.type());
+        assertEqual(analyzer.properties, analyzerSlave.properties());
+        assertEqual(analyzer.features, analyzerSlave.features());
+      }
+
       {
         let view = db._view(cn + 'View');
-        assertTrue(view !== null);
+        assertNotEqual(view, null);
         let props = view.properties();
+        assertEqual(0, props.consolidationIntervalMsec);
         assertTrue(props.hasOwnProperty('links'));
         assertEqual(Object.keys(props.links).length, 1);
         assertTrue(props.links.hasOwnProperty(cn));
+        assertTrue(props.links[cn].includeAllFields);
+        assertEqual(Object.keys(props.links[cn].fields).length, 1);
+        assertEqual(props.links[cn].fields.text.analyzers.length, 2);
+        assertEqual(props.links[cn].fields.text.analyzers[0], 'text_en');
+        assertEqual(props.links[cn].fields.text.analyzers[1], 'custom');
+      }
+    },
+
+    testSyncViewOnAnalyzersCollection: function () {
+      connectToMaster();
+
+      // create custom analyzer
+      assertNotEqual(null, db._collection("_analyzers"));
+      assertEqual(0, db._analyzers.count());
+      let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
+      assertEqual(1, db._analyzers.count());
+
+      //  create view & collection on master
+      db._flushCache();
+      db._createView('analyzersView', 'arangosearch', {
+        consolidationIntervalMsec:0,
+        links: { _analyzers: { analyzers: [ analyzer.name ], includeAllFields:true } }
+      });
+
+      db._flushCache();
+      connectToSlave();
+      internal.wait(0.1, false);
+      //  sync on slave
+      replication.sync({ endpoint: masterEndpoint });
+
+      db._flushCache();
+
+      assertEqual(1, db._analyzers.count());
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+
+      {
+        //  check state is the same
+        let view = db._view('analyzersView');
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('links'));
+        assertEqual(0, props.consolidationIntervalMsec);
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty('_analyzers'));
+        assertTrue(props.links['_analyzers'].includeAllFields);
+        assertTrue(props.links['_analyzers'].analyzers.length, 1);
+        assertTrue(props.links['_analyzers'].analyzers[0], 'custom');
       }
     },
 
@@ -1748,6 +1792,9 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
     },
@@ -1761,15 +1808,33 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
+      try {
+        analyzers.remove('smartCustom');
+      } catch (e) { }
 
       connectToSlave();
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
+      try {
+        analyzers.remove('smartCustom');
+      } catch (e) { }
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');

@@ -37,6 +37,10 @@
 namespace arangodb {
 class ClientFeature;
 
+namespace application_features {
+class ApplicationServer;
+}
+
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -56,15 +60,15 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  V8ClientConnection();
+  explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
   ~V8ClientConnection();
 
  public:
   void setInterrupted(bool interrupted);
   bool isConnected() const;
 
-  void connect(ClientFeature*);
-  void reconnect(ClientFeature*);
+  void connect();
+  void reconnect();
 
   double timeout() const;
 
@@ -72,6 +76,7 @@ class V8ClientConnection {
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }
+  void setForceJson(bool value) { _forceJson = value; };
   std::string username() const { return _builder.user(); }
   std::string password() const { return _builder.password(); }
   int lastHttpReturnCode() const { return _lastHttpReturnCode; }
@@ -80,6 +85,8 @@ class V8ClientConnection {
   std::string const& mode() const { return _mode; }
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
+
+  application_features::ApplicationServer& server();
 
   v8::Handle<v8::Value> getData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                 std::unordered_map<std::string, std::string> const& headerFields,
@@ -114,10 +121,11 @@ class V8ClientConnection {
                                   std::unordered_map<std::string, std::string> const& headerFields,
                                   bool raw);
 
-  void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
+  void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
   std::shared_ptr<fuerte::Connection> createConnection();
+  std::shared_ptr<fuerte::Connection> acquireConnection();
 
   v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
                                    arangodb::velocypack::StringRef const& location,
@@ -138,12 +146,20 @@ class V8ClientConnection {
   /// to a nullptr
   void shutdownConnection();
 
+  void setCustomError(int httpCode, std::string const& msg) {
+    _setCustomError = true;
+    _lastHttpReturnCode = httpCode;
+    _lastErrorMessage = msg;
+  }
  private:
+  application_features::ApplicationServer& _server;
+  ClientFeature& _client;
+
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
 
   mutable std::recursive_mutex _lock;
-  int _lastHttpReturnCode;
+  unsigned _lastHttpReturnCode;
   std::string _lastErrorMessage;
   std::string _version;
   std::string _mode;
@@ -153,6 +169,8 @@ class V8ClientConnection {
   fuerte::ConnectionBuilder _builder;
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
+  bool _forceJson;
+  bool _setCustomError;
 };
 }  // namespace arangodb
 

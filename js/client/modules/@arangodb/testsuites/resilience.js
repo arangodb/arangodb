@@ -34,6 +34,7 @@ const functionsDocumentation = {
   'resilience_failover_view': 'resilience "failover view" tests',
   'resilience_transactions': 'resilience "transactions" tests',
   'resilience_sharddist': 'resilience "sharddist" tests',
+  'resilience_analyzers': 'resilience analyzers tests',
   'client_resilience': 'client resilience tests',
   'active_failover': 'active failover tests'
 };
@@ -41,6 +42,7 @@ const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/test-utils');
+const _ = require('lodash');
 
 const testPaths = {
   'resilience_move': [tu.pathForTesting('server/resilience/move')],
@@ -51,6 +53,7 @@ const testPaths = {
   'resilience_failover_view': [tu.pathForTesting('server/resilience/failover-view')],
   'resilience_transactions': [tu.pathForTesting('server/resilience/transactions')],
   'resilience_sharddist': [tu.pathForTesting('server/resilience/sharddist')],
+  'resilience_analyzers': [tu.pathForTesting('server/resilience/analyzers')],
   'client_resilience': [tu.pathForTesting('client/resilience')],
   'active_failover': [tu.pathForTesting('client/active-failover')]
 };
@@ -63,17 +66,19 @@ var _resilience = function(path) {
   this.func = function resilience (options) {
     let suiteName = path;
     let testCases = tu.scanTestPaths(testPaths[path], options);
-    options.cluster = true;
-    options.propagateInstanceInfo = true;
-    if (options.test !== undefined) {
+    let localOptions = _.clone(options);
+    localOptions.cluster = true;
+    localOptions.propagateInstanceInfo = true;
+    localOptions.oneTestTimeout = 1800;
+    if (localOptions.test !== undefined) {
       // remove non ascii characters from our working directory:
       //                                       < A                           > Z && < a                   > z
-      suiteName += '_' + options.test.replace(/[\x00-\x40]/g, "_").replace(/[\x5B-\x60]/g, "_").replace(/[\x7B-\xFF]/g, "_");
+      suiteName += '_' + localOptions.test.replace(/[\x00-\x40]/g, "_").replace(/[\x5B-\x60]/g, "_").replace(/[\x7B-\xFF]/g, "_");
     }
-    if (options.dbServers < 5) {
-      options.dbServers = 5;
+    if (localOptions.dbServers < 5) {
+      localOptions.dbServers = 5;
     }
-    return tu.performTests(options, testCases, suiteName, tu.runThere, {
+    return tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
     });
@@ -88,6 +93,7 @@ const resilienceFailoverFailure = (new _resilience('resilience_failover_failure'
 const resilienceFailoverView = (new _resilience('resilience_failover_view')).func;
 const resilienceTransactions = (new _resilience('resilience_transactions')).func;
 const resilienceSharddist = (new _resilience('resilience_sharddist')).func;
+const resilienceAnalyzers = (new _resilience('resilience_analyzers')).func;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: client resilience
@@ -120,12 +126,13 @@ function activeFailover (options) {
       }
     };
   }
-
   let testCases = tu.scanTestPaths(testPaths.active_failover, options);
-  options.activefailover = true;
-  options.singles = 4;
-  options.disableMonitor = true;
-  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+  let localOptions = _.clone(options);
+  localOptions.activefailover = true;
+  localOptions.singles = 4;
+  localOptions.disableMonitor = true;
+  localOptions.Agency = true;
+  return tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'javascript.allow-external-process-control': 'true',
@@ -143,6 +150,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['resilience_failover_view'] = resilienceFailoverView;
   testFns['resilience_transactions'] = resilienceTransactions;
   testFns['resilience_sharddist'] = resilienceSharddist;
+  testFns['resilience_analyzers'] = resilienceAnalyzers;
   testFns['client_resilience'] = clientResilience;
   testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

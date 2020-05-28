@@ -7,7 +7,7 @@
 Delete a specific local backup identified by the given `id`.
 
 @RESTBODYPARAM{id,string,required,string}
-The identifier for this backup. 
+The identifier for this backup.
 
 @RESTRETURNCODES
 

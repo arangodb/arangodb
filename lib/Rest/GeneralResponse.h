@@ -56,6 +56,9 @@ class GeneralResponse {
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
 
+  // returns true if code will become a valid http response.
+  static bool isValidResponseCode(uint64_t code);
+
   // converts the response code string to the internal code
   static ResponseCode responseCode(std::string const& str);
 
@@ -91,10 +94,10 @@ class GeneralResponse {
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
-  explicit GeneralResponse(ResponseCode);
+  explicit GeneralResponse(ResponseCode, uint64_t mid);
 
  public:
-  virtual ~GeneralResponse() {}
+  virtual ~GeneralResponse() = default;
 
  public:
   // response codes are http response codes, but they are used in other
@@ -104,7 +107,7 @@ class GeneralResponse {
     _responseCode = responseCode;
   }
 
-  void setHeaders(std::unordered_map<std::string, std::string>&& headers) {
+  void setHeaders(std::unordered_map<std::string, std::string> headers) {
     _headers = std::move(headers);
   }
 
@@ -114,40 +117,34 @@ class GeneralResponse {
 
   // adds a header. the header field name will be lower-cased
   void setHeader(std::string const& key, std::string const& value) {
-    _headers[basics::StringUtils::tolower(key)] = value;
+    _headers.insert_or_assign(basics::StringUtils::tolower(key), value);
   }
 
   // adds a header. the header field name must be lower-cased
-  void setHeaderNC(std::string const& key, std::string const& value) {
-    _headers[key] = value;
-  }
-
-  // adds a header. the header field name must be lower-cased
-  void setHeaderNC(std::string const& key, std::string&& value) {
-    _headers[key] = std::move(value);
+  void setHeaderNC(std::string const& key, std::string value) {
+    _headers.insert_or_assign(key, std::move(value));
   }
 
   // adds a header if not set. the header field name must be lower-cased
   void setHeaderNCIfNotSet(std::string const& key, std::string const& value) {
-    if (_headers.find(key) != _headers.end()) {
-      // already set
-      return;
-    }
     _headers.emplace(key, value);
   }
 
+  virtual bool isResponseEmpty() const = 0;
+
  public:
-  virtual uint64_t messageId() const { return 1; }
+  uint64_t messageId() const { return _messageId; }
+  void setMessageId(uint64_t msgId) { _messageId = msgId; }
 
   virtual void reset(ResponseCode) = 0;
 
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
-  void setPayload(Payload&& payload, bool generateBody,
+  void setPayload(Payload&& payload,
                   velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
-    _generateBody = generateBody;
+    TRI_ASSERT(isResponseEmpty());
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
@@ -160,14 +157,18 @@ class GeneralResponse {
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
-  bool generateBody() const { return _generateBody; };
-  /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; };
+  bool generateBody() const { return _generateBody; }
 
+  /// used for head-responses
+  bool setGenerateBody(bool generateBody) {
+    return _generateBody = generateBody;
+  }
+  
   virtual int deflate(size_t size = 16384) = 0;
 
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
+  uint64_t _messageId;                                    // message ID
   ResponseCode _responseCode;                             // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;

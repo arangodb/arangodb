@@ -25,9 +25,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -47,7 +49,10 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
         arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
             [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
               auto off = std::chrono::seconds(1);
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+              // The RequestLane needs to be something which is `HIGH` priority, otherwise
+              // all threads executing this might be blocking, waiting for a lock to be
+              // released.
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
                                                                        off, gcfunc);
             },
             arangodb::Logger::TRANSACTIONS,
@@ -70,19 +75,21 @@ std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
   setOptional(false);
-  startsAfter("BasicsPhase");
-  startsAfter("EngineSelector");
-  startsAfter("Scheduler");
-  startsBefore("Database");
-      
+  startsAfter<BasicFeaturePhaseServer>();
+
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<SchedulerFeature>();
+
+  startsBefore<DatabaseFeature>();
+
   _gcfunc = [this] (bool canceled) {
     if (canceled) {
       return;
     }
     
     MANAGER->garbageCollect(/*abortAll*/false);
-    
-    if (!ApplicationServer::isStopping()) {
+
+    if (!this->server().isStopping()) {
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
     }
   };
@@ -90,8 +97,8 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
-  MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
+  TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
+  MANAGER = server().getFeature<EngineSelectorFeature>().engine().createTransactionManager(*this);
 }
   
 void ManagerFeature::start() {

@@ -54,7 +54,7 @@ function runSetup () {
     c[i].save({ _key: 'test50', a: 50, b: 'test50' });
   }
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -78,12 +78,8 @@ function recoverySuite () {
       for (i = 0; i < 10; ++i) {
         c = db._collection('UnitTestsRecovery' + i);
 
-        if (db._engine().name === "rocksdb") {
-          // rocksdb does not have this failure point
-          assertEqual(51, c.count());
-        } else {
-          assertEqual(50, c.count());
-        }
+        // rocksdb does not have this failure point
+        assertEqual(51, c.count());
         for (j = 0; j < 50; ++j) {
           assertEqual(j, c.document('test' + j).a);
           assertEqual('test' + j, c.document('test' + j).b);

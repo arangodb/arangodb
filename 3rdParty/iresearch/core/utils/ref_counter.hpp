@@ -41,14 +41,14 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   typedef std::shared_ptr<const Key> ref_t;
 
   struct equal_to : Equal {
-    bool operator()(const ref_t& lhs, const ref_t& rhs) const NOEXCEPT {
+    bool operator()(const ref_t& lhs, const ref_t& rhs) const noexcept {
       assert(lhs && rhs);
       return Equal::operator()(*lhs, *rhs);
     }
   }; // equal_to
 
   struct hash : Hash {
-    size_t operator()(const ref_t& value) const NOEXCEPT {
+    size_t operator()(const ref_t& value) const noexcept {
       assert(value);
       return Hash::operator()(*value);
     }
@@ -61,7 +61,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
 
     if (res.second) {
       try {
-        const_cast<ref_t&>(*res.first) = std::make_shared<const Key>(std::forward<Key>(key));
+        const_cast<ref_t&>(*res.first) = memory::make_shared<const Key>(std::forward<Key>(key));
       } catch (...) {
         // rollback
         refs_.erase(res.first);
@@ -79,14 +79,14 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
     return refs_.erase(ref) > 0;
   }
 
-  bool contains(const Key& key) const NOEXCEPT {
+  bool contains(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
     SCOPED_LOCK(lock_);
     return refs_.find(ref) != refs_.end();
   }
 
-  size_t find(const Key& key) const NOEXCEPT {
+  size_t find(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
     SCOPED_LOCK(lock_);
@@ -95,7 +95,7 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
     return itr == refs_.end() ? 0 : (itr->use_count() - 1); // -1 for usage by refs_ itself
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     SCOPED_LOCK(lock_);
     return refs_.empty();
   }

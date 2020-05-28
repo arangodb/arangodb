@@ -1,0 +1,219 @@
+# Copyright 2007 Andy Tompkins.
+# Copyright 2017 - 2018 James E. King III
+# Distributed under the Boost Software License, Version 1.0. (See
+# accompanying file LICENSE_1_0.txt or copy at
+# https://www.boost.org/LICENSE_1_0.txt)
+
+lib bcrypt ;
+
+project libs/uuid/test
+    : requirements
+
+      # boost.jam defines BOOST_ALL_NO_LIB, this makes library management
+      # near-impossible with the platform selection logic in the random_provider
+      <target-os>windows:<define>BOOST_UUID_FORCE_AUTO_LINK
+      <target-os>windows,<toolset>gcc:<library>bcrypt
+
+      # boost::lexical_cast needs this for a warning-free build (CHAR_MAX)
+      <toolset>clang:<cxxflags>-Wno-c99-extensions
+
+      # boost::random needs this setting for a warning free build:
+      <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+
+      # link static for easier debugging
+      <link>static
+
+;
+
+import os ;
+import path ;
+import regex ;
+import testing ;
+
+# this rule enumerates through all the headers and ensures
+# that inclusion of the header by itself is sufficient to
+# compile successfully, proving the header does not depend
+# on any other headers to be included first - adapted from
+# logic in the winapi test bjam script
+rule test_all
+{
+    local all_rules = ;
+    local file ;
+    local headers_path = [ path.make $(BOOST_ROOT)/libs/uuid/include/boost/uuid ] ;
+    for file in [ path.glob-tree $(headers_path) : *.hpp : uuid ]
+    {
+        local rel_file = [ path.relative-to $(headers_path) $(file) ] ;
+        # Note: The test name starts with '~' in order to group these tests in the test report table, preferably at the end.
+        #       All '/' are replaced with '-' because apparently test scripts have a problem with test names containing slashes.
+        local test_name = [ regex.replace $(rel_file) "/" "-" ] ;
+        local decl_test_name = ~hdr-decl-$(test_name) ;
+        # ECHO $(rel_file) ;
+        all_rules += [ compile compile/decl_header.cpp : <define>"BOOST_UUID_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(decl_test_name) ] ;
+    }
+
+    local tests_path = [ path.make $(BOOST_ROOT)/libs/uuid/test/compile-fail ] ;
+    for file in [ path.glob-tree $(tests_path) : *.cpp ]
+    {
+        local rel_file = [ path.relative-to $(tests_path) $(file) ] ;
+        local test_name = [ regex.replace [ regex.replace $(rel_file) "/" "-" ] ".cpp" "" ] ;
+        local decl_test_name = cf-$(test_name) ;
+        # ECHO $(rel_file) ;
+        all_rules += [ compile-fail $(file) : : $(decl_test_name) ] ;
+    }
+
+    # make sure compile time options work in isolation
+    all_rules += [ compile compile/decl_header.cpp :
+        <define>"BOOST_UUID_TEST_HEADER=uuid.hpp"
+        <define>"BOOST_UUID_NO_TYPE_TRAITS"
+        <dependency>$(BOOST_ROOT)/boost/uuid/uuid.hpp :
+            compile_uuid_no_type_traits ] ;
+    all_rules += [ compile compile/decl_header.cpp :
+        <define>"BOOST_UUID_TEST_HEADER=uuid.hpp"
+        <define>"BOOST_UUID_NO_SIMD"
+        <dependency>$(BOOST_ROOT)/boost/uuid/uuid.hpp :
+            compile_uuid_no_simd ] ;
+
+    # ECHO All rules: $(all_rules) ;
+    return $(all_rules) ;
+}
+
+# disabled in UBSAN builds due to issues in Boost.Serialization
+if ! [ os.environ UBSAN_OPTIONS ]
+{
+test-suite uuid-serialization :
+    # test serializing uuids
+    [ run test_serialization.cpp ../../serialization/build//boost_serialization ]
+
+    # TODO - This test fails to like with boost_wserialization
+    # [ run test_wserialization.cpp
+    #     ../../serialization/build//boost_serialization
+    #     ../../serialization/build//boost_wserialization
+    #     : : : <dependency>../../config/test/all//BOOST_NO_STD_WSTREAMBUF
+    # ]
+    ;
+}
+
+test-suite uuid :
+    [ test_all ]
+
+    # test inclucing all .hpp files in 2 translations units
+    # to look for issues when using multiple translation units
+    # eg. missing inline on a global functionstate is not missing
+    [ run test_include1.cpp test_include2.cpp ]
+
+    # main test
+    [ run test_uuid.cpp ]
+    [ run test_uuid_no_simd.cpp ]
+
+    # test uuid_io.hpp
+    [ run test_io.cpp ]
+
+    # test generators
+    [ run test_nil_generator.cpp ]
+    [ run test_name_generator.cpp ]
+    [ run test_name_generator.cpp : : : <define>BOOST_UUID_COMPAT_PRE_1_71_MD5 : test_name_generator_pre_1_71_compat ]
+    [ run test_string_generator.cpp ]
+    [ run test_random_generator.cpp ]
+
+    # test tagging an object
+    [ run test_tagging.cpp ]
+
+    # test use cases
+    [ run test_uuid_class.cpp ]
+    [ run test_uuid_in_map.cpp ]
+
+    # test hash functions
+    [ run test_hash.cpp ]
+    [ run test_md5.cpp ]
+    [ run test_md5.cpp : : : <define>BOOST_UUID_COMPAT_PRE_1_71_MD5 : test_md5_pre_1_71_compat ]
+    [ run test_sha1.cpp ]
+
+    # test MSVC 12 (VS2013) optimizer bug with SIMD operations.
+    # See https://svn.boost.org/trac/boost/ticket/8509#comment:3
+    # Only happens in Release x64 builds.
+    [ run test_msvc_simd_bug981648_main.cpp
+          test_msvc_simd_bug981648_foo.cpp
+          : : : <build>no <toolset>msvc-12.0:<build>yes <variant>release <debug-symbols>on : test_msvc_simd_bug981648 ]
+
+    # a small benchmark test for random generation
+    [ run test_bench_random.cpp ../../timer/build//boost_timer : : : <toolset>clang-cloudabi:<build>no ]
+
+    [ run test_entropy_error.cpp ]
+    
+    # tests for the header-only random provider
+    # there are a number of variations to test all compile-time branches
+    # and to make sure we test all the error handling code paths
+    [ run test_detail_random_provider.cpp 
+      : : :
+        <define>_WIN32_WINNT=0x0600                                     # will force bcrypt over wincrypt (on windows)
+      : test_detail_random_provider_happy ]
+    
+    [ run test_detail_random_provider.cpp
+      : : :
+        <define>BOOST_UUID_RANDOM_PROVIDER_NO_LIB                       # disable any auto-linking
+        <define>BOOST_UUID_TEST_RANDOM_MOCK                             # mock default provider to force error path testing
+        <define>_WIN32_WINNT=0x0600                                     # will force bcrypt over wincrypt (on windows)
+      :
+        test_detail_random_provider_sad ]
+
+    # CI builds in appveyor normally select the bcrypt provider, so
+    # force wincrypt to be selected and test both happy and sad paths:
+    [ lib mock_random
+      : mock_random.cpp
+      : <link>shared
+        <build>no                                                       # do not build on any target-os
+        <target-os>windows:<build>yes ]                                 # except for windows
+
+    [ run test_detail_random_provider.cpp 
+      : : :
+        <define>_WIN32_WINNT=0x0501                                     # will force wincrypt over bcrypt
+        <build>no                                                       # do not build on any target-os
+        <target-os>windows:<build>yes                                   # except for windows
+      : test_detail_random_provider_happy_wincrypt ]
+
+    [ run test_detail_random_provider.cpp
+        mock_random
+      : : :
+        <define>_WIN32_WINNT=0x0501                                     # will force wincrypt over bcrypt
+        <define>BOOST_UUID_RANDOM_PROVIDER_NO_LIB                       # disable any auto-linking
+        <define>BOOST_UUID_TEST_RANDOM_MOCK                             # mock wincrypt to force error path testing
+        <build>no                                                       # do not build on any target-os
+        <target-os>windows:<build>yes                                   # except for windows
+      : test_detail_random_provider_sad_wincrypt ]
+
+    # CI builds in travis will eventually select getrandom/getentropy when they move
+    # to a version of ubuntu with glibc-2.25 on it, so when that happens keep 
+    # testing the posix provider:
+    [ run test_detail_random_provider.cpp
+      : : :
+        <define>BOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX                  # will force POSIX over getrandom/getentropy
+        <target-os>windows:<build>no                                    # do not bother running on windows
+        <toolset>clang-cloudabi:<build>no                               # no need to build under cloudabi
+      : test_detail_random_provider_happy_posix ]
+
+    [ run test_detail_random_provider.cpp
+      : : :
+        <define>BOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX                  # will force POSIX over getrandom/getentropy
+        <define>BOOST_UUID_TEST_RANDOM_MOCK                             # redirect code to use mock system calls
+        <target-os>windows:<build>no                                    # do not bother running on windows
+        <toolset>clang-cloudabi:<build>no                               # no need to build under cloudabi
+      : test_detail_random_provider_sad_posix ]
+
+    # Force running tests for getentropy despite it's not going to be used on Linux. getentropy
+    # may be used on systems other than Linux, which are not part of the CI testers pool.
+    [ run test_detail_random_provider.cpp
+      : : :
+        <define>BOOST_UUID_RANDOM_PROVIDER_DISABLE_GETRANDOM            # will force getentropy over getrandom
+        <build>no
+        <target-os>linux:<build>yes                                     # build only on linux (or any other systems that support getentropy)
+      : test_detail_random_provider_happy_getentropy ]
+
+    [ run test_detail_random_provider.cpp
+      : : :
+        <define>BOOST_UUID_RANDOM_PROVIDER_DISABLE_GETRANDOM            # will force getentropy over getrandom
+        <define>BOOST_UUID_TEST_RANDOM_MOCK                             # redirect code to use mock system calls
+        <build>no
+        <target-os>linux:<build>yes                                     # build only on linux (or any other systems that support getentropy)
+      : test_detail_random_provider_sad_getentropy ]
+
+    ;

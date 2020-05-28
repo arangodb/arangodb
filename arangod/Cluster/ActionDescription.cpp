@@ -39,7 +39,7 @@ ActionDescription::ActionDescription(std::map<std::string, std::string> const& d
 }
 
 /// @brief Default dtor
-ActionDescription::~ActionDescription() {}
+ActionDescription::~ActionDescription() = default;
 
 /// @brief Does this description have a "p" parameter?
 bool ActionDescription::has(std::string const& p) const {
@@ -58,7 +58,7 @@ std::string ActionDescription::get(std::string const& p) const {
 
 /// @brief Get parameter
 Result ActionDescription::get(std::string const& p, std::string& r) const {
-  Result result;
+  Result result{};
   auto const& it = _description.find(p);
   if (it == _description.end()) {
     result.reset(TRI_ERROR_FAILED);

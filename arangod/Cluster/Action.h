@@ -180,6 +180,14 @@ class Action {
     return _action->getDoneTime();
   }
 
+  auto getRunDuration() const {
+    return _action->getDoneTime() - _action->getStartTime();
+  }
+
+  auto getQueueDuration() const {
+    return _action->getStartTime() - _action->getCreateTime();
+  }
+
   /// @brief fastTrack
   bool fastTrack() const {
     return _action->fastTrack();

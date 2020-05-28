@@ -40,7 +40,7 @@ namespace basics {
 template <typename TID, typename T>
 class DeadlockDetector {
  public:
-  explicit DeadlockDetector(bool enabled) : _enabled(enabled){};
+  explicit DeadlockDetector(bool enabled) : _enabled(enabled) {}
   ~DeadlockDetector() = default;
 
   DeadlockDetector(DeadlockDetector const&) = delete;

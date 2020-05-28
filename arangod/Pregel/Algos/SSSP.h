@@ -36,7 +36,8 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   std::string _sourceDocumentId, _resultField = "result";
 
  public:
-  explicit SSSPAlgorithm(VPackSlice userParams) : Algorithm("SSSP") {
+  explicit SSSPAlgorithm(application_features::ApplicationServer& server, VPackSlice userParams)
+      : Algorithm(server, "SSSP") {
     if (!userParams.isObject() || !userParams.hasKey("source")) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,

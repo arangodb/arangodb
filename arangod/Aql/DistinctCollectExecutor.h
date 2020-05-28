@@ -26,35 +26,34 @@
 #ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
-template <bool>
+class OutputAqlItemRow;
+class NoStats;
+class RegisterInfos;
+template <BlockPassthrough>
 class SingleRowFetcher;
 
-class DistinctCollectExecutorInfos : public ExecutorInfos {
+class DistinctCollectExecutorInfos {
  public:
-  DistinctCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep,
-                               std::unordered_set<RegisterId>&& readableInputRegisters,
-                               std::unordered_set<RegisterId>&& writeableInputRegisters,
-                               std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
-                               transaction::Methods* trxPtr);
+  DistinctCollectExecutorInfos(std::pair<RegisterId, RegisterId> groupRegister,
+                               velocypack::Options const* opts);
 
   DistinctCollectExecutorInfos() = delete;
   DistinctCollectExecutorInfos(DistinctCollectExecutorInfos&&) = default;
@@ -62,17 +61,15 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   ~DistinctCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
-    return _groupRegisters;
-  }
-  transaction::Methods* getTransaction() const { return _trxPtr; }
+  [[nodiscard]] std::pair<RegisterId, RegisterId> const& getGroupRegister() const;
+  velocypack::Options const* vpackOptions() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
-  std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
+  std::pair<RegisterId, RegisterId> _groupRegister;
 
   /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
+  velocypack::Options const* _vpackOptions;
 };
 
 /**
@@ -82,9 +79,9 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
 class DistinctCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = DistinctCollectExecutorInfos;
@@ -95,26 +92,30 @@ class DistinctCollectExecutor {
   DistinctCollectExecutor(DistinctCollectExecutor const&) = delete;
   DistinctCollectExecutor(Fetcher& fetcher, Infos&);
   ~DistinctCollectExecutor();
-  
+
   void initializeCursor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;
   void destroyValues();
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual> _seen;
+  std::unordered_set<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

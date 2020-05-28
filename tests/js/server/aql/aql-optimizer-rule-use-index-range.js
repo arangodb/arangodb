@@ -61,7 +61,7 @@ function optimizerRuleUseIndexRangeTester () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var n = collNames.map(function(x) { return collBaseName + x; });
       var colls = [];
       for (var i = 0; i < n.length; i++) {
@@ -87,7 +87,7 @@ function optimizerRuleUseIndexRangeTester () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       var n = collNames.map(function(x) { return collBaseName + x; });
       for (var i = 0; i < n.length; i++) {
         internal.db._drop(n[i]);
@@ -125,7 +125,7 @@ function optimizerRuleUseIndexRangeTester () {
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
-        if (db._engine().name !== "rocksdb" || query[1]) {
+        if (query[1]) {
           assertEqual([ ], removeAlwaysOnClusterRules(result.plan.rules), query);
         }
       });

@@ -35,9 +35,6 @@ function optimizerRuleTestSuite () {
 
   return {
 
-    setUp : function () {},
-    tearDown : function () {},
-
     testResults : function () {
       let queries = [ 
         [ "FOR i IN 1..10 FILTER i > 1 FILTER i < 4 SORT i RETURN i",  [ 2, 3 ] ],

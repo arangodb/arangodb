@@ -66,6 +66,8 @@ char const* arangodb::velocypack::valueTypeName(ValueType type) {
       return "binary";
     case ValueType::BCD:
       return "bcd";
+    case ValueType::Tagged:
+      return "tagged";
     case ValueType::Custom:
       return "custom";
   }

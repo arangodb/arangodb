@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -151,7 +151,7 @@ struct EdgeDocumentToken {
   struct LocalDocument {
     TRI_voc_cid_t cid;
     LocalDocumentId localDocumentId;
-    ~LocalDocument() {}
+    ~LocalDocument() = default;
   };
 
   /// fixed size union, works for both single server and
@@ -174,7 +174,7 @@ struct EdgeDocumentToken {
       return *this;
     }
 
-    ~TokenData() {}
+    ~TokenData() = default;
   };
 
   static_assert(sizeof(TokenData::document) >= sizeof(TokenData::vpack),

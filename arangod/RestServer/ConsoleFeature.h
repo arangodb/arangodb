@@ -25,10 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
+#include "RestServer/ConsoleThread.h"
 
 namespace arangodb {
-
-class ConsoleThread;
 
 class ConsoleFeature final : public application_features::ApplicationFeature {
  public:

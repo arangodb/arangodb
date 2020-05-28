@@ -30,7 +30,8 @@
 namespace arangodb {
 class RestQueryCacheHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestQueryCacheHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestQueryCacheHandler(application_features::ApplicationServer&,
+                                 GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestQueryCacheHandler"; }

@@ -27,12 +27,23 @@
 #include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+
+static_assert(
+    std::is_same_v<decltype(SchedulerFeature::SCHEDULER), RebootTracker::SchedulerPointer>,
+    "Type of SchedulerPointer must match SchedulerFeature::SCHEDULER");
+static_assert(std::is_pointer<RebootTracker::SchedulerPointer>::value,
+              "If SCHEDULER is changed to a non-pointer type, this class "
+              "might have to be adapted");
+static_assert(
+    std::is_base_of<Scheduler, std::remove_pointer<RebootTracker::SchedulerPointer>::type>::value,
+    "SchedulerPointer is expected to point to an instance of Scheduler");
 
 RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
     : _scheduler(scheduler) {
@@ -98,7 +109,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
   for (auto const& newIt : state) {
     auto const& serverId = newIt.first;
     auto const& rebootId = newIt.second;
-    auto rv = _rebootIds.emplace(serverId, rebootId);
+    auto const rv = _rebootIds.try_emplace(serverId, rebootId);
     auto const inserted = rv.second;
     // If we inserted a new server, we may NOT already have any callbacks for
     // it!
@@ -166,11 +177,9 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
     unregisterCallback(peerState, callbackId);
   });
 
-  auto emplaceRv =
-      callbackMap.emplace(callbackId, DescriptedCallback{std::move(callback),
+  auto const [iterator, inserted] =
+      callbackMap.try_emplace(callbackId, DescriptedCallback{std::move(callback),
                                                          std::move(callbackDescription)});
-  auto const iterator = emplaceRv.first;
-  bool const inserted = emplaceRv.second;
   TRI_ASSERT(inserted);
   TRI_ASSERT(callbackId == iterator->first);
 

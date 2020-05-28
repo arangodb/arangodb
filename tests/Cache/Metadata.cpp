@@ -21,96 +21,93 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "Basics/Common.h"
-#include "Cache/Metadata.h"
-#include "Cache/PlainCache.h"
-#include "Cache/Table.h"
 
 #include "gtest/gtest.h"
 
 #include <stdint.h>
 #include <memory>
 
+#include "Basics/SpinLocker.h"
+#include "Cache/Metadata.h"
+#include "Cache/PlainCache.h"
+#include "Cache/Table.h"
+
 using namespace arangodb::cache;
+using SpinLocker = ::arangodb::basics::SpinLocker;
 
 TEST(CacheMetadataTest, test_basic_constructor) {
-  uint64_t usageLimit = 1024;
-  uint64_t fixed = 128;
-  uint64_t table = Table::allocationSize(Table::minLogSize);
-  uint64_t max = UINT64_MAX;
+  std::uint64_t usageLimit = 1024;
+  std::uint64_t fixed = 128;
+  std::uint64_t table = Table::allocationSize(Table::minLogSize);
+  std::uint64_t max = UINT64_MAX;
   Metadata metadata(usageLimit, fixed, table, max);
 
-  ASSERT_TRUE(metadata.fixedSize == fixed);
-  ASSERT_TRUE(metadata.tableSize == table);
-  ASSERT_TRUE(metadata.maxSize == max);
+  ASSERT_EQ(metadata.fixedSize, fixed);
+  ASSERT_EQ(metadata.tableSize, table);
+  ASSERT_EQ(metadata.maxSize, max);
   ASSERT_TRUE(metadata.allocatedSize > (usageLimit + fixed + table));
-  ASSERT_TRUE(metadata.deservedSize == metadata.allocatedSize);
+  ASSERT_EQ(metadata.deservedSize, metadata.allocatedSize);
 
-  ASSERT_TRUE(metadata.usage == 0);
-  ASSERT_TRUE(metadata.softUsageLimit == usageLimit);
-  ASSERT_TRUE(metadata.hardUsageLimit == usageLimit);
+  ASSERT_EQ(metadata.usage, 0);
+  ASSERT_EQ(metadata.softUsageLimit, usageLimit);
+  ASSERT_EQ(metadata.hardUsageLimit, usageLimit);
 }
 
 TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly) {
-  uint64_t overhead = 80;
+  std::uint64_t overhead = 80;
   Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-  metadata.writeLock();
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
 
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
-  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(512));
 
-  ASSERT_TRUE(!metadata.adjustLimits(2048, 2048));
-  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
+  ASSERT_FALSE(metadata.adjustLimits(2048, 2048));
+  ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
   ASSERT_TRUE(metadata.adjustDeserved(2048 + overhead));
   ASSERT_TRUE(metadata.adjustLimits(2048, 2048));
-  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_EQ(metadata.allocatedSize, 2048 + overhead);
 
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(1024));
 
   ASSERT_TRUE(metadata.adjustLimits(1024, 2048));
-  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_EQ(metadata.allocatedSize, 2048 + overhead);
 
-  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(-512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(-1024));
-  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_FALSE(metadata.adjustUsageIfAllowed(512));
 
   ASSERT_TRUE(metadata.adjustLimits(1024, 1024));
-  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
-  ASSERT_TRUE(!metadata.adjustLimits(512, 512));
+  ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
+  ASSERT_FALSE(metadata.adjustLimits(512, 512));
 
-  ASSERT_TRUE(!metadata.adjustLimits(2049, 2049));
-  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
-
-  metadata.writeUnlock();
+  ASSERT_FALSE(metadata.adjustLimits(2049, 2049));
+  ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
 }
 
 TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
-  uint64_t overhead = 80;
+  std::uint64_t overhead = 80;
   Metadata metadata(1024, 0, 512, 2048 + overhead);
 
-  metadata.writeLock();
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
 
-  ASSERT_TRUE(!metadata.migrationAllowed(1024));
-  ASSERT_TRUE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));
+  ASSERT_FALSE(metadata.migrationAllowed(1024));
+  ASSERT_EQ(2048 + overhead, metadata.adjustDeserved(2048 + overhead));
 
   ASSERT_TRUE(metadata.migrationAllowed(1024));
   metadata.changeTable(1024);
-  ASSERT_TRUE(metadata.tableSize == 1024);
-  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_EQ(metadata.tableSize, 1024);
+  ASSERT_EQ(metadata.allocatedSize, 2048 + overhead);
 
-  ASSERT_TRUE(!metadata.migrationAllowed(1025));
+  ASSERT_FALSE(metadata.migrationAllowed(1025));
   ASSERT_TRUE(metadata.migrationAllowed(512));
   metadata.changeTable(512);
-  ASSERT_TRUE(metadata.tableSize == 512);
-  ASSERT_TRUE(metadata.allocatedSize == 1536 + overhead);
-
-  metadata.writeUnlock();
+  ASSERT_EQ(metadata.tableSize, 512);
+  ASSERT_EQ(metadata.allocatedSize, 1536 + overhead);
 }

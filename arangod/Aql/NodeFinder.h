@@ -27,21 +27,39 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace aql {
 
 template <typename T>
 class NodeFinder final : public WalkerWorker<ExecutionNode> {
+  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  
   T _lookingFor;
-
-  SmallVector<ExecutionNode*>& _out;
 
   bool _enterSubqueries;
 
  public:
-  NodeFinder(T, SmallVector<ExecutionNode*>&, bool);
+  NodeFinder(T const&, ::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
+
+  bool before(ExecutionNode*) override final;
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return _enterSubqueries;
+  }
+};
+
+template <typename T>
+class UniqueNodeFinder final : public UniqueWalkerWorker<ExecutionNode> {
+  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  
+  T _lookingFor;
+
+  bool _enterSubqueries;
+
+ public:
+  UniqueNodeFinder(T const&, ::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 
@@ -51,14 +69,14 @@ class NodeFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
-  SmallVector<ExecutionNode*>& _out;
+  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
 
   std::vector<bool> _found;
 
   bool _enterSubqueries;
 
  public:
-  EndNodeFinder(SmallVector<ExecutionNode*>&, bool);
+  EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>&, bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 

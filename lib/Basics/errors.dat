@@ -98,10 +98,10 @@ ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server wa
 
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
 ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
-ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier or handle is unknown."
+ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier is unknown."
 ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be raised when a collection with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
-ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document handle","Will be raised when a document handle is corrupt."
+ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document identifier","Will be raised when a document identifier is corrupt."
 ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
 ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name duplicate is detected."
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
@@ -109,7 +109,7 @@ ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no sui
 ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will be raised when there is a unique constraint violation."
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
-ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
+ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index identifier","Will be raised when a index identifier is corrupt."
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
 ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
 ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
@@ -170,6 +170,7 @@ ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a s
 ################################################################################
 
 ERROR_CLUSTER_SERVER_UNKNOWN,1449,"got a request from an unkown server","Will be raised on some occasions when one server gets a request from another, which has not (yet?) been made known via the agency."
+ERROR_CLUSTER_TOO_MANY_SHARDS,1450,"too many shards","Will be raised when the number of shards for a collection is higher than allowed."
 ERROR_CLUSTER_COLLECTION_ID_EXISTS,1453,"collection ID already exists","Will be raised when a coordinator in a cluster tries to create a collection and the collection ID already exists."
 ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,1454,"could not create collection in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new collection in the Plan hierarchy in the agency."
 ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,1456,"could not create collection","Will be raised when a coordinator in a cluster notices that some DBServers report problems when creating shards for a new collection."
@@ -278,6 +279,13 @@ ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is 
 ERROR_CURSOR_BUSY,1601,"cursor is busy","Will be raised when a cursor is requested via its id but a concurrent request is still using the cursor."
 
 ################################################################################
+## ArangoDB validation errors
+################################################################################
+
+ERROR_VALIDATION_FAILED,1620,"validation failed","Will be raised when a document does not pass validation."
+ERROR_VALIDATION_BAD_PARAMETER,1621,"invalid validation parameter","Will be raised when the validator description is invalid."
+
+################################################################################
 ## ArangoDB transaction errors
 ################################################################################
 
@@ -344,13 +352,13 @@ ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations - try increasing the v
 ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised when an invalid filter result is returned in a graph traversal."
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
-ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is required to create a graph.",
+ERROR_GRAPH_CREATE_MISSING_NAME,1922,"missing graph name","a graph name is required to create or drop a graph.",
 ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,1923,"malformed edge definition","the edge definition is malformed. It has to be an array of objects.",
 ERROR_GRAPH_NOT_FOUND,1924,"graph '%s' not found","a graph with this name could not be found.",
 ERROR_GRAPH_DUPLICATE,1925,"graph already exists","a graph with this name already exists.",
 ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,1926,"vertex collection does not exist or is not part of the graph","the specified vertex collection does not exist or is not part of the graph.",
-ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the collection is not a vertex collection.",
-ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
+ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"collection not a vertex collection","the collection is not a vertex collection.",
+ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"collection is not in list of orphan collections","Vertex collection not in list of orphan collections of the graph.",
 ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection already used in edge def","The collection is already used in an edge definition of the graph.",
 ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,1930,"edge collection not used in graph","The edge collection is not used in any edge definition of the graph.",
 ERROR_GRAPH_NO_GRAPH_COLLECTION,1932,"collection _graphs does not exist","collection _graphs does not exist.",
@@ -366,6 +374,8 @@ ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graph
 ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,1942,"edge collection already set","Tried to add an edge collection which is already defined."
 ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
 ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
+ERROR_GRAPH_COLLECTION_IS_INITIAL,1945,"initial collection is not allowed to be removed manually","the collection is used as the initial collection of this graph and is not allowed to be removed manually."
+ERROR_GRAPH_NO_INITIAL_COLLECTION,1946,"no valid initial collection found","during the graph creation process no collection could be selected as the needed initial collection. Happens if a distributeShardsLike or replicationFactor mismatch was found."
 
 ################################################################################
 ## Session errors
@@ -383,12 +393,7 @@ ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,2001,"could not connect to server","Will b
 ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised when the client could not write data."
 ERROR_SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
-################################################################################
-## Communicator errors
-################################################################################
-
-ERROR_COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
-ERROR_COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
+ERROR_WAS_ERLAUBE,2019,"was erlaube?!","Will be raised if was erlaube?!"
 
 ################################################################################
 ## internal AQL errors
@@ -443,6 +448,7 @@ ERROR_INVALID_SMART_JOIN_ATTRIBUTE,4006,"invalid smart join attribute declaratio
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE,4007,"shard key value must be prefixed with the value of the smart join attribute","when using smartJoinAttribute for a collection, the shard key value must be prefixed with the value of the smart join attribute."
 ERROR_NO_SMART_JOIN_ATTRIBUTE,4008,"smart join attribute not given or invalid","The given document does not have the required smart join attribute set or it has an invalid value."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the value of the smartJoinAttribute","Will be raised if there is an attempt to update the value of the smartJoinAttribute."
+ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised if there is an attempt to create an edge between separated graph components."
 
 ################################################################################
 ## Cluster repair errors
@@ -510,3 +516,8 @@ ERROR_LOCAL_LOCK_FAILED, 7009, "some db servers cannot be reached for transactio
 ERROR_LOCAL_LOCK_RETRY, 7010, "some db servers cannot be reached for transaction locks", "Some of the db servers cannot be reached for transaction locks."
 ERROR_HOT_BACKUP_CONFLICT, 7011, "hot backup conflict", "Conflict of multiple hot backup processes."
 ERROR_HOT_BACKUP_DBSERVERS_AWOL, 7012, "hot backup not all db servers reachable", "One or more db servers could not be reached for hot backup inquiry"
+
+################################################################################
+## Plan analyzers errors
+################################################################################
+ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN, 7021, "analyzers in plan could not be modified", "Plan could not be modified while creating or deleting analyzers revision"

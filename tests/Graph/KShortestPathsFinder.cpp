@@ -39,7 +39,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -70,12 +69,12 @@ class KShortestPathsFinderTest : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  arangodb::aql::Query* query;
-  arangodb::graph::ShortestPathOptions* spo;
+  std::unique_ptr<arangodb::aql::Query> query;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;
 
-  KShortestPathsFinderTest() : gdb("testVocbase") {
+  KShortestPathsFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection(
         "e", "v",
@@ -88,8 +87,8 @@ class KShortestPathsFinderTest : public ::testing::Test {
          {50, 46}, {40, 60}, {60, 61}, {61, 62}, {62, 63}, {63, 64}, {64, 47},
          {70, 71}, {70, 71}, {70, 71}});
 
-    query = gdb.getQuery("RETURN 1");
-    spo = gdb.getShortestPathOptions(query);
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+    spo = gdb.getShortestPathOptions(query.get());
 
     finder = new KShortestPathsFinder(*spo);
   }
@@ -104,8 +103,8 @@ TEST_F(KShortestPathsFinderTest, path_from_vertex_to_itself) {
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  ASSERT_TRUE(false == finder->getNextPathShortestPathResult(result));
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  ASSERT_FALSE(finder->getNextPathShortestPathResult(result));
 }
 
 TEST_F(KShortestPathsFinderTest, no_path_exists) {
@@ -114,9 +113,9 @@ TEST_F(KShortestPathsFinderTest, no_path_exists) {
   ShortestPathResult result;
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
-  ASSERT_TRUE(false == finder->getNextPathShortestPathResult(result));
+  ASSERT_FALSE(finder->getNextPathShortestPathResult(result));
   // Repeat to see that we keep returning false and don't crash
-  ASSERT_TRUE(false == finder->getNextPathShortestPathResult(result));
+  ASSERT_FALSE(finder->getNextPathShortestPathResult(result));
 }
 
 TEST_F(KShortestPathsFinderTest, path_of_length_1) {
@@ -127,8 +126,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -140,8 +139,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"1", "2", "3", "4"},
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
                        {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
@@ -153,8 +152,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_5_with_loops_to_start_end) {
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  ASSERT_TRUE(result.length() == 5);
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  ASSERT_EQ(result.length(), 5);
 }
 
 TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
@@ -165,15 +164,15 @@ TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo, result, {"21", "22", "23", "24", "25"},
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  auto cpr = checkPath(spo.get(), result, {"21", "22", "23", "24", "25"},
                        {{},
                         {"v/21", "v/22"},
                         {"v/22", "v/23"},
                         {"v/23", "v/24"},
                         {"v/24", "v/25"}},
                        msgs) ||
-             checkPath(spo, result, {"21", "26", "27", "28", "25"},
+             checkPath(spo.get(), result, {"21", "26", "27", "28", "25"},
                        {{},
                         {"v/21", "v/26"},
                         {"v/26", "v/27"},
@@ -181,15 +180,15 @@ TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
                         {"v/28", "v/25"}},
                        msgs);
   ASSERT_TRUE(cpr) << msgs;
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  cpr = checkPath(spo, result, {"21", "22", "23", "24", "25"},
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  cpr = checkPath(spo.get(), result, {"21", "22", "23", "24", "25"},
                   {{},
                    {"v/21", "v/22"},
                    {"v/22", "v/23"},
                    {"v/23", "v/24"},
                    {"v/24", "v/25"}},
                   msgs) ||
-        checkPath(spo, result, {"21", "26", "27", "28", "25"},
+        checkPath(spo.get(), result, {"21", "26", "27", "28", "25"},
                   {{},
                    {"v/21", "v/26"},
                    {"v/26", "v/27"},
@@ -206,10 +205,57 @@ TEST_F(KShortestPathsFinderTest, many_edges_between_two_nodes) {
 
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  ASSERT_TRUE(true == finder->getNextPathShortestPathResult(result));
-  ASSERT_TRUE(false == finder->getNextPathShortestPathResult(result));
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  ASSERT_FALSE(finder->getNextPathShortestPathResult(result));
+}
+
+class KShortestPathsFinderTestWeights : public ::testing::Test {
+ protected:
+  GraphTestSetup s;
+  MockGraphDatabase gdb;
+
+  std::unique_ptr<arangodb::aql::Query> query;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
+
+  KShortestPathsFinder* finder;
+
+  KShortestPathsFinderTestWeights() : gdb(s.server, "testVocbase") {
+    gdb.addVertexCollection("v", 10);
+    gdb.addEdgeCollection("e", "v",
+                          {{1, 2, 10},
+                           {1, 3, 10},
+                           {1, 10, 100},
+                           {2, 4, 10},
+                           {3, 4, 20},
+                           {7, 3, 10},
+                           {8, 3, 10},
+                           {9, 3, 10}});
+
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+
+    spo = gdb.getShortestPathOptions(query.get());
+    spo->weightAttribute = "cost";
+
+    finder = new KShortestPathsFinder(*spo);
+  }
+
+  ~KShortestPathsFinderTestWeights() { delete finder; }
+};
+
+TEST_F(KShortestPathsFinderTestWeights, diamond_path) {
+  auto start = velocypack::Parser::fromJson("\"v/1\"");
+  auto end = velocypack::Parser::fromJson("\"v/4\"");
+  ShortestPathResult result;
+  std::string msgs;
+
+  finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  auto cpr = checkPath(spo.get(), result, {"1", "2", "4"},
+                       {{}, {"v/1", "v/2"}, {"v/2", "v/4"}}, msgs);
+  ASSERT_TRUE(cpr) << msgs;
 }
 
 }  // namespace graph

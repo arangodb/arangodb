@@ -21,10 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "QueryOptions.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
-#include "QueryOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
@@ -34,11 +35,11 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions()
+QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
-      literalSizeThreshold(-1),
+      maxRuntime(0),
       satelliteSyncWait(60.0),
       ttl(0),
       profile(PROFILE_LEVEL_NONE),
@@ -51,30 +52,26 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       verboseErrors(false),
-      inspectSimplePlans(true) {
+      inspectSimplePlans(true)
+{
   // now set some default values from server configuration options
-  QueryRegistryFeature* q =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  TRI_ASSERT(q != nullptr);
-
   // use global memory limit value
-  uint64_t globalLimit = q->queryMemoryLimit();
+  uint64_t globalLimit = feature.queryMemoryLimit();
   if (globalLimit > 0) {
     memoryLimit = globalLimit;
   }
 
   // get global default ttl
-  ttl = q->registry()->defaultTTL();
+  ttl = feature.registry()->defaultTTL();
 
   // use global "failOnWarning" value
-  failOnWarning = q->failOnWarning();
+  failOnWarning = feature.failOnWarning();
 
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 
-  maxNumberOfPlans = q->maxQueryPlans();
+  maxNumberOfPlans = feature.maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
@@ -84,7 +81,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   }
 
   VPackSlice value;
-
+  
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
@@ -100,17 +97,18 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
       maxNumberOfPlans = 1;
     }
   }
+
   value = slice.get("maxWarningCount");
   if (value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
   }
-  value = slice.get("literalSizeThreshold");
+
+  value = slice.get("maxRuntime");
   if (value.isNumber()) {
-    int64_t v = value.getNumber<int64_t>();
-    if (v > 0) {
-      literalSizeThreshold = v;
-    }
+    maxRuntime = value.getNumber<double>();
   }
+
+
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
     satelliteSyncWait = value.getNumber<double>();
@@ -192,7 +190,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     while (it.valid()) {
       VPackSlice value = it.value();
       if (value.isString()) {
-        shardIds.emplace(value.copyString());
+        restrictToShards.emplace(value.copyString());
       }
       it.next();
     }
@@ -211,6 +209,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     }
   }
 #endif
+  
+  value = slice.get("exportCollection");
+  if (value.isString()) {
+    exportCollection = value.copyString();
+  }
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
@@ -222,7 +225,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
-  builder.add("literalSizeThreshold", VPackValue(literalSizeThreshold));
+  builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
@@ -252,9 +255,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   }
   builder.close();  // optimizer
 
-  if (!shardIds.empty()) {
+  if (!restrictToShards.empty()) {
     builder.add("shardIds", VPackValue(VPackValueType::Array));
-    for (auto const& it : shardIds) {
+    for (auto const& it : restrictToShards) {
       builder.add(VPackValue(it));
     }
     builder.close();  // shardIds
@@ -269,6 +272,8 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     builder.close();  // inaccessibleCollections
   }
 #endif
+  
+  // "exportCollection" is only used internally and not exposed via toVelocyPack
 
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

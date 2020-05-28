@@ -20,17 +20,19 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Basics/StaticStrings.h>
 #include <thread>
 
 #include "RestServer/AqlFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
-#include "Cluster/TraverserEngineRegistry.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 
 using namespace arangodb::application_features;
 
@@ -49,10 +51,9 @@ namespace arangodb {
 AqlFeature::AqlFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Aql") {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 
-  startsAfter("QueryRegistry");
-  startsAfter("TraverserEngineRegistry");
+  startsAfter<QueryRegistryFeature>();
 }
 
 AqlFeature::~AqlFeature() {
@@ -76,6 +77,11 @@ void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 void AqlFeature::start() {
   ::leases.fetch_or(::readyBit);
 
+  // register query time metrics
+  server().getFeature<arangodb::MetricsFeature>().counter(
+      StaticStrings::AqlQueryRuntimeMs, 0,
+      "Total execution time of all queries");
+
   LOG_TOPIC("cf921", DEBUG, Logger::QUERIES) << "AQL feature started";
 }
 
@@ -86,13 +92,11 @@ void AqlFeature::stop() {
 
   // Wait until all AQL queries are done
   auto queryRegistry = QueryRegistryFeature::registry();
-  auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
-  TRI_ASSERT(traverserEngineRegistry != nullptr);
+  unsigned i = 0;
   while (true) {
     try {
       queryRegistry->destroyAll();
-      traverserEngineRegistry->destroyAll();
     } catch (...) {
       // ignore errors here. if it fails, we'll try again in next round
     }
@@ -101,14 +105,12 @@ void AqlFeature::stop() {
     TRI_ASSERT((m & ::readyBit) == 0);
 
     size_t n = queryRegistry->numberRegisteredQueries();
-    size_t o = traverserEngineRegistry->numberRegisteredEngines();
 
-    if (n == 0 && m == 0 && o == 0) {
+    if (n == 0 && m == 0) {
       break;
     }
-    LOG_TOPIC("63d54", DEBUG, Logger::QUERIES)
-        << "AQLFeature shutdown, waiting for " << o
-        << " registered traverser engines to terminate and for " << n
+    LOG_TOPIC_IF("63d54", INFO, Logger::QUERIES, (i % 64) == 0)
+        << "AQLFeature shutdown, waiting for " << n
         << " registered queries to terminate and for " << m
         << " feature leases to be released";
     std::this_thread::sleep_for(std::chrono::milliseconds(250));

@@ -26,7 +26,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
+        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -122,28 +122,6 @@
             var status = this.model.get('status');
 
             if (status === 'loaded') {
-              var journalSize;
-              if (frontendConfig.engine !== 'rocksdb') {
-                try {
-                  journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
-                } catch (e) {
-                  arangoHelper.arangoError('Please enter a valid journal size number.');
-                  return 0;
-                }
-              }
-
-              var indexBuckets;
-              if (frontendConfig.engine !== 'rocksdb') {
-                try {
-                  indexBuckets = JSON.parse($('#change-index-buckets').val());
-                  if (indexBuckets < 1 || parseInt(indexBuckets, 10) !== Math.pow(2, Math.log2(indexBuckets))) {
-                    throw new Error('invalid indexBuckets value');
-                  }
-                } catch (e) {
-                  arangoHelper.arangoError('Please enter a valid number of index buckets.');
-                  return 0;
-                }
-              }
               var self = this;
 
               var callbackChange = function (error, data) {
@@ -163,22 +141,22 @@
                 } else {
                   var wfs = $('#change-collection-sync').val();
                   var replicationFactor;
-                  var minReplicationFactor;
+                  var writeConcern;
 
                   if (frontendConfig.isCluster) {
                     replicationFactor = $('#change-replication-factor').val();
-                    minReplicationFactor = $('#change-min-replication-factor').val();
+                    writeConcern = $('#change-write-concern').val();
                     try {
-                      if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
+                      if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
                         // validation here, as our Joi integration misses some core features
-                        arangoHelper.arangoError("Change Collection", "Minimal replication factor is not allowed to be greater then replication factor");
+                        arangoHelper.arangoError("Change Collection", "Write concern is not allowed to be greater than replication factor");
                         abort = true;
                       }
                     } catch (ignore) {
                     }
                   }
                   if (!abort) {
-                    this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, minReplicationFactor, callbackChange);
+                    this.model.changeCollection(wfs, replicationFactor, writeConcern, callbackChange);
                   }
                 }
               }.bind(this);
@@ -374,46 +352,6 @@
                 arangoHelper.arangoError('Collection', 'Could not fetch properties');
               } else {
                 var wfs = data.waitForSync;
-                if (data.journalSize) {
-                  var journalSize = data.journalSize / (1024 * 1024);
-                  var indexBuckets = data.indexBuckets;
-
-                  tableContent.push(
-                    window.modalView.createTextEntry(
-                      'change-collection-size',
-                      'Journal size',
-                      journalSize,
-                      'The maximal size of a journal or datafile (in MB). Must be at least 1.',
-                      '',
-                      true,
-                      [
-                        {
-                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                          msg: 'Must be a number.'
-                        }
-                      ]
-                    )
-                  );
-                }
-
-                if (indexBuckets) {
-                  tableContent.push(
-                    window.modalView.createTextEntry(
-                      'change-index-buckets',
-                      'Index buckets',
-                      indexBuckets,
-                      'The number of index buckets for this collection. Must be at least 1 and a power of 2.',
-                      '',
-                      true,
-                      [
-                        {
-                          rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                          msg: 'Must be a number greater than 1 and a power of 2.'
-                        }
-                      ]
-                    )
-                  );
-                }
                 if (data.replicationFactor && frontendConfig.isCluster) {
                   if (data.replicationFactor === 'satellite') {
                     tableContent.push(
@@ -428,10 +366,10 @@
                     );
                     tableContent.push(
                       window.modalView.createReadOnlyEntry(
-                        'change-min-replication-factor',
-                        'Minimal replication factor',
-                        data.minReplicationFactor,
-                        'This collection is a satellite collection. The minReplicationFactor is not changeable.',
+                        'change-write-concern',
+                        'Write concern',
+                        data.writeConcern,
+                        'This collection is a satellite collection. The write concern is not changeable.',
                         '',
                         true
                       )
@@ -455,10 +393,10 @@
                     );
                     tableContent.push(
                       window.modalView.createTextEntry(
-                        'change-min-replication-factor',
-                        'Minimal Replication factor',
-                        data.minReplicationFactor,
-                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.',
+                        'change-write-concern',
+                        'Write concern',
+                        data.writeConcern,
+                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
                         '',
                         true,
                         [

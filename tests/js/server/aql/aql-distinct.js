@@ -53,7 +53,7 @@ function ahuacatlDistinct () {
   var c;
         
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -62,7 +62,7 @@ function ahuacatlDistinct () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -86,8 +86,7 @@ function ahuacatlDistinct () {
         try {
           AQL_EXECUTE(query);
           fail();
-        }
-        catch (e) {
+        } catch (e) {
           assertEqual(errors.ERROR_QUERY_PARSE.code, e.errorNum);
         }
       });
@@ -322,7 +321,7 @@ function ahuacatlCollect () {
   var c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -334,7 +333,7 @@ function ahuacatlCollect () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

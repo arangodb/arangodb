@@ -29,6 +29,7 @@
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
+#include "Cluster/ClusterInfo.h"
 
 #ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
 #define ARANGOD_IRESEARCH__AQL_HELPER_H 1
@@ -235,6 +236,7 @@ struct QueryContext {
   aql::ExecutionPlan const* plan;
   aql::Ast* ast;
   aql::ExpressionContext* ctx;
+  irs::index_reader const* index;
   aql::Variable const* ref;
 };  // QueryContext
 
@@ -253,7 +255,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   ScopedAqlValue(ScopedAqlValue&& rhs) noexcept
-      : _value(rhs._value), _node(rhs._node), _type(rhs._type) {
+      : _value(rhs._value), _node(rhs._node), _type(rhs._type), _executed(rhs._executed) {
     rhs._node = &INVALID_NODE;
     rhs._type = SCOPED_VALUE_TYPE_INVALID;
     rhs._destroy = false;
@@ -326,8 +328,10 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   void toVelocyPack(velocypack::Builder& builder) const {
-    _node->isConstant() ? _node->toVelocyPackValue(builder)
-                        : _value.toVelocyPack(nullptr, builder, false);
+    _node->isConstant()
+        ? _node->toVelocyPackValue(builder)
+        : _value.toVelocyPack(static_cast<velocypack::Options const*>(nullptr),
+                              builder, false);
   }
 
  private:

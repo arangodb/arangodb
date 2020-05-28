@@ -60,23 +60,27 @@ function optimizerRuleTestSuite () {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, {numberOfShards:9});
       c2 = db._create(cn2);
+      let docs1 = [];
+      let docs2 = [];
       for (i = 0; i < 10; i++){ 
-          c1.insert({Hallo1:i});
-          c2.insert({Hallo2:i});
+          docs1.push({Hallo1:i});
+          docs2.push({Hallo2:i});
       }
+      c1.insert(docs1);
+      c2.insert(docs2);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
     },

@@ -22,6 +22,7 @@
 
 #include "SCC.h"
 #include <atomic>
+#include <climits>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -143,22 +144,14 @@ VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputa
   return new SCCComputation();
 }
 
+namespace {
+
 struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
-  std::atomic<uint64_t> vertexIdRange;
 
-  explicit SCCGraphFormat(std::string const& result)
-      : _resultField(result), vertexIdRange(0) {}
-
-  void willLoadVertices(uint64_t count) override {
-    // if we aren't running in a cluster it doesn't matter
-    if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {
-        vertexIdRange = ci->uniqid(count);
-      }
-    }
-  }
+  explicit SCCGraphFormat(application_features::ApplicationServer& server,
+                          std::string const& result)
+      : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
 
   size_t estimatedEdgeSize() const override { return 0; };
 
@@ -186,8 +179,10 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   }
 };
 
+}  // namespace
+
 GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
-  return new SCCGraphFormat(_resultField);
+  return new SCCGraphFormat(_server, _resultField);
 }
 
 struct SCCMasterContext : public MasterContext {

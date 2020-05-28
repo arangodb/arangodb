@@ -70,6 +70,7 @@ extern std::string const plannedServers;
 extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
 extern std::string const asyncReplTransientPrefix;
+extern std::string const planAnalyzersPrefix;
 
 struct Job {
   struct shard_t {
@@ -187,14 +188,38 @@ struct Job {
                              std::string const& jobId);
   static void addBlockShard(velocypack::Builder& trx, std::string const& shard,
                             std::string const& jobId);
+  static void addReadLockServer(velocypack::Builder& trx, std::string const& server,
+                               std::string const& jobId);
+  static void addWriteLockServer(velocypack::Builder& trx, std::string const& server,
+                                std::string const& jobId);
+  static void addReadUnlockServer(velocypack::Builder& trx, std::string const& server,
+                                 std::string const& jobId);
+  static void addWriteUnlockServer(velocypack::Builder& trx, std::string const& server,
+                                  std::string const& jobId);
   static void addReleaseServer(velocypack::Builder& trx, std::string const& server);
   static void addReleaseShard(velocypack::Builder& trx, std::string const& shard);
   static void addPreconditionServerNotBlocked(velocypack::Builder& pre,
                                               std::string const& server);
+  static void addPreconditionCurrentReplicaShardGroup(VPackBuilder& pre,
+                                                      std::string const& database,
+                                                      std::vector<shard_t> const&,
+                                                      std::string const& server);
   static void addPreconditionServerHealth(velocypack::Builder& pre, std::string const& server,
                                           std::string const& health);
   static void addPreconditionShardNotBlocked(velocypack::Builder& pre,
                                              std::string const& shard);
+  static void addPreconditionServerReadLockable(velocypack::Builder& pre,
+                                               std::string const& server,
+                                               std::string const& jobId);
+  static void addPreconditionServerReadLocked(velocypack::Builder& pre,
+                                             std::string const& server,
+                                             std::string const& jobId);
+  static void addPreconditionServerWriteLockable(velocypack::Builder& pre,
+                                                std::string const& server,
+                                                std::string const& jobId);
+  static void addPreconditionServerWriteLocked(velocypack::Builder& pre,
+                                              std::string const& server,
+                                              std::string const& jobId);
   static void addPreconditionUnchanged(velocypack::Builder& pre, std::string const& key,
                                        velocypack::Slice value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,

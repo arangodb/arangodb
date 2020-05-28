@@ -47,6 +47,7 @@ void Authenticated(GeneralRequest const&, rest::AuthenticationMethod);
 void NotAuthorized(GeneralRequest const&);
 void CreateCollection(std::string const& db, std::string const& name, int result);
 void DropCollection(std::string const& db, std::string const& name, int result);
+void PropertyUpdateCollection(std::string const& db, std::string const& collectionName, VPackSlice const& propertiesSlice);
 void TruncateCollection(std::string const& db, std::string const& name, int result);
 void CreateDatabase(std::string const& name, int result);
 void DropDatabase(std::string const& name, int result);
@@ -69,6 +70,9 @@ void IllegalDocumentOperation(GeneralRequest const&, int result);
 void QueryDocument(std::string const& db, std::string const&, std::string const&, int code);
 void QueryDocument(std::string const& db, VPackSlice const&, int code);
 void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&);
+void CreateHotbackup(std::string const& id, int result);
+void RestoreHotbackup(std::string const& id, int result);
+void DeleteHotbackup(std::string const& id, int result);
 }  // namespace events
 }  // namespace arangodb
 

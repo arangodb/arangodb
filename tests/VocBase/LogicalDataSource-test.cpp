@@ -23,7 +23,10 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../Mocks/StorageEngineMock.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -31,51 +34,70 @@
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
+namespace {
+
+class LogicalViewImpl : public arangodb::LogicalView {
+ public:
+  LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+      : LogicalView(vocbase, definition, 0) {}
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder&, Serialization) const override {
+    return arangodb::Result();
+  }
+  virtual arangodb::Result dropImpl() override {
+    return arangodb::Result();
+  }
+  virtual void open() override {}
+  virtual arangodb::Result renameImpl(std::string const&) override {
+    return arangodb::Result();
+  }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
+                                      bool partialUpdate) override {
+    return arangodb::Result();
+  }
+  virtual bool visitCollections(CollectionVisitor const& visitor) const override {
+    return true;
+  }
+};
+
+}
 
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   LogicalDataSourceTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
   }
 
   ~LogicalDataSourceTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
   }
 };
@@ -87,157 +109,76 @@ class LogicalDataSourceTest : public ::testing::Test {
 TEST_F(LogicalDataSourceTest, test_category) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_TRUE((arangodb::LogicalCollection::category() == instance.category()));
+    EXPECT_EQ(arangodb::LogicalCollection::category(), instance.category());
   }
 
   // LogicalView
   {
-    class LogicalViewImpl : public arangodb::LogicalView {
-     public:
-      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-          : LogicalView(vocbase, definition, 0) {}
-      virtual arangodb::Result appendVelocyPackImpl(
-          arangodb::velocypack::Builder&,
-          std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result dropImpl() override {
-        return arangodb::Result();
-      }
-      virtual void open() override {}
-      virtual arangodb::Result renameImpl(std::string const&) override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                          bool partialUpdate) override {
-        return arangodb::Result();
-      }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-        return true;
-      }
-    };
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_TRUE((arangodb::LogicalView::category() == instance.category()));
+    EXPECT_EQ(arangodb::LogicalView::category(), instance.category());
   }
 }
 
 TEST_F(LogicalDataSourceTest, test_construct) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_TRUE((1 == instance.id()));
-    EXPECT_TRUE((2 == instance.planId()));
-    EXPECT_TRUE((std::string("abc") == instance.guid()));
+    EXPECT_EQ(1, instance.id());
+    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(std::string("abc"), instance.guid());
   }
 
   // LogicalView
   {
-    class LogicalViewImpl : public arangodb::LogicalView {
-     public:
-      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-          : LogicalView(vocbase, definition, 0) {}
-      virtual arangodb::Result appendVelocyPackImpl(
-          arangodb::velocypack::Builder&,
-          std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result dropImpl() override {
-        return arangodb::Result();
-      }
-      virtual void open() override {}
-      virtual arangodb::Result renameImpl(std::string const&) override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                          bool partialUpdate) override {
-        return arangodb::Result();
-      }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-        return true;
-      }
-    };
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_TRUE((1 == instance.id()));
-    EXPECT_TRUE((2 == instance.planId()));
-    EXPECT_TRUE((std::string("abc") == instance.guid()));
+    EXPECT_EQ(1, instance.id());
+    EXPECT_EQ(2, instance.planId());
+    EXPECT_EQ(std::string("abc"), instance.guid());
   }
 }
 
 TEST_F(LogicalDataSourceTest, test_defaults) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
 
-    EXPECT_TRUE((0 != instance.id()));
-    EXPECT_TRUE((0 != instance.planId()));
-    EXPECT_TRUE((false == instance.guid().empty()));
+    EXPECT_NE(0, instance.id());
+    EXPECT_NE(0, instance.planId());
+    EXPECT_FALSE(instance.guid().empty());
   }
 
   // LogicalView
   {
-    class LogicalViewImpl : public arangodb::LogicalView {
-     public:
-      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-          : LogicalView(vocbase, definition, 0) {}
-      virtual arangodb::Result appendVelocyPackImpl(
-          arangodb::velocypack::Builder&,
-          std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result dropImpl() override {
-        return arangodb::Result();
-      }
-      virtual void open() override {}
-      virtual arangodb::Result renameImpl(std::string const&) override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                          bool partialUpdate) override {
-        return arangodb::Result();
-      }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-        return true;
-      }
-    };
-
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
 
-    EXPECT_TRUE((0 != instance.id()));
-    EXPECT_TRUE((0 != instance.planId()));
-    EXPECT_TRUE((instance.id() == instance.planId()));
-    EXPECT_TRUE((false == instance.guid().empty()));
+    EXPECT_NE(0, instance.id());
+    EXPECT_NE(0, instance.planId());
+    EXPECT_EQ(instance.id(), instance.planId());
+    EXPECT_FALSE(instance.guid().empty());
   }
 }

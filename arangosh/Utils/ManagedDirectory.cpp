@@ -29,11 +29,11 @@
 
 #include "ManagedDirectory.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
-#include "Logger/Logger.h"
 
 namespace {
 
@@ -170,9 +170,9 @@ inline void rawWrite(int fd, char const* data, size_t length,
 }
 
 /// @brief Performs a raw (non-decrypted) read
-inline ssize_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& status,
+inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& status,
                        std::string const& path, int flags) {
-  ssize_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
+  TRI_read_return_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
   }
@@ -217,11 +217,12 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, bool create, bool writeGzip)
+ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& server,
+                                   std::string const& path, bool requireEmpty,
+                                   bool create, bool writeGzip)
     :
 #ifdef USE_ENTERPRISE
-      _encryptionFeature{
-          application_features::ApplicationServer::getFeature<EncryptionFeature>("Encryption")},
+      _encryptionFeature{&server.getFeature<EncryptionFeature>()},
 #else
       _encryptionFeature(nullptr),
 #endif
@@ -244,12 +245,8 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
       return;
     }
 
-    std::vector<std::string> files(TRI_FullTreeDirectory(_path.c_str()));
-    bool isEmpty = (files.size() <= 1);
-    // TODO: TRI_FullTreeDirectory always returns at least one element ("")
-    // even if directory is empty?
-
-    if (!isEmpty) {
+    std::vector<std::string> files(TRI_FilesDirectory(_path.c_str()));
+    if (!files.empty()) {
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
@@ -281,19 +278,19 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
     }
   }
 
-  // currently gzip and encryption are mutually exclusive, encryption wins
-  if (::EncryptionTypeNone != _encryptionType) {
-    _writeGzip = false;
-  } // if
-
 #ifdef USE_ENTERPRISE
   ::writeEncryptionFile(_path, _encryptionType, _encryptionFeature);
 #else
   ::writeEncryptionFile(_path, _encryptionType);
 #endif
+
+  // currently gzip and encryption are mutually exclusive, encryption wins
+  if (::EncryptionTypeNone != _encryptionType) {
+    _writeGzip = false;
+  }  // if
 }
 
-ManagedDirectory::~ManagedDirectory() {}
+ManagedDirectory::~ManagedDirectory() = default;
 
 Result const& ManagedDirectory::status() const { return _status; }
 
@@ -546,8 +543,8 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
   }
 }
 
-ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
-  ssize_t bytesRead = -1;
+TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
+  TRI_read_return_t bytesRead = -1;
   if (!::isReadable(_fd, _flags, _path, _status)) {
     return bytesRead;
   }
@@ -574,7 +571,7 @@ std::string ManagedDirectory::File::slurp() {
   if (::isReadable(_fd, _flags, _path, _status)) {
     char buffer[::DefaultIOChunkSize];
     while (true) {
-      ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
+      TRI_read_return_t bytesRead = read(buffer, ::DefaultIOChunkSize);
       if (_status.ok()) {
         content.append(buffer, bytesRead);
       }
@@ -622,12 +619,12 @@ Result const& ManagedDirectory::File::close() {
 
 
 ssize_t ManagedDirectory::File::offset() const {
-  ssize_t fileBytesRead = -1;
+  TRI_read_return_t fileBytesRead = -1;
 
   if (isGzip()) {
     fileBytesRead = gzoffset(_gzFile);
   } else {
-    fileBytesRead = (ssize_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
+    fileBytesRead = (TRI_read_return_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
   } // else
 
   return fileBytesRead;

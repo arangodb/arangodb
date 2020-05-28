@@ -27,11 +27,13 @@
 
 #include <stddef.h>
 #include <cstdint>
+#include <memory>
 #include <set>
 #include <string>
 
 #include <unicode/coll.h>
 #include <unicode/umachine.h>
+#include <unicode/regex.h>
 
 #include "Basics/Common.h"
 
@@ -152,7 +154,7 @@ class Utf8Helper {
   /// @brief builds a regex matcher for the specified pattern
   //////////////////////////////////////////////////////////////////////////////
 
-  icu::RegexMatcher* buildMatcher(std::string const&);
+  std::unique_ptr<icu::RegexMatcher> buildMatcher(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not value matches a regex

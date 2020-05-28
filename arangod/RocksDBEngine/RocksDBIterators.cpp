@@ -73,10 +73,10 @@ bool RocksDBAllIndexIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
-bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBAllIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
-  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+  if (limit == 0 || ADB_UNLIKELY(!_iterator->Valid()) || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -85,7 +85,9 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     return false;
   }
 
-  while (limit > 0) {
+  TRI_ASSERT(limit > 0);
+
+  do {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
@@ -94,18 +96,20 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     --limit;
     _iterator->Next();
 
-    if (!_iterator->Valid() || outOfRange()) {
+    if (ADB_UNLIKELY(!_iterator->Valid())) {
       // validate that Iterator is in a good shape and hasn't failed
       arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
+    } else if (outOfRange()) {
+      return false;
     }
-  }
+  } while (limit > 0);
 
   return true;
 }
 
-bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
-                                           size_t limit) {
+bool RocksDBAllIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
+                                               size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -132,7 +136,7 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   return true;
 }
 
-void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+void RocksDBAllIndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   while (count > 0 && _iterator->Valid()) {
@@ -146,7 +150,7 @@ void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 }
 
-void RocksDBAllIndexIterator::reset() {
+void RocksDBAllIndexIterator::resetImpl() {
   TRI_ASSERT(_trx->state()->isRunning());
   _iterator->Seek(_bounds.start());
 }
@@ -193,7 +197,7 @@ bool RocksDBAnyIndexIterator::checkIter() {
   return true;
 }
 
-bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
+bool RocksDBAnyIndexIterator::nextImpl(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -224,8 +228,8 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   return true;
 }
 
-bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const& cb,
-                                           size_t limit) {
+bool RocksDBAnyIndexIterator::nextDocumentImpl(IndexIterator::DocumentCallback const& cb,
+                                               size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -255,7 +259,7 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
   return true;
 }
 
-void RocksDBAnyIndexIterator::reset() {
+void RocksDBAnyIndexIterator::resetImpl() {
   // the assumption is that we don't reset this iterator unless
   // it is out of range or invalid
   if (_total == 0 || (_iterator->Valid() && !outOfRange())) {
@@ -380,7 +384,7 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   options.fill_cache = false;
   options.verify_checksums = false;
 
-  auto index = col->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+  auto index = col->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
   TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 

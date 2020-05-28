@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "Utils/FlushThread.h"
 #include "VocBase/voc-types.h"
 
 #include <list>
@@ -33,8 +34,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription

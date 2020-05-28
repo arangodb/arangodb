@@ -85,6 +85,7 @@
       PASSWORD: 'password',
       SELECT: 'select',
       SELECT2: 'select2',
+      JSONEDITOR: 'jsoneditor',
       CHECKBOX: 'checkbox'
     },
 
@@ -100,16 +101,16 @@
 
       $('#modal-dialog .modal-body .collectionTh > input').unbind('keydown');
       $('#modal-dialog .modal-body .collectionTh > input').unbind('return');
-      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function () {
-        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled')) {
+      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
           $('#modal-dialog .modal-footer .button-success').click();
         }
       });
 
       $('#modal-dialog .modal-body .collectionTh > select').unbind('keydown');
       $('#modal-dialog .modal-body .collectionTh > select').unbind('return');
-      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function () {
-        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled')) {
+      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled') && e.keyCode === 13) {
           $('#modal-dialog .modal-footer .button-success').click();
         }
       });
@@ -201,6 +202,14 @@
     createSelect2Entry: function (
       id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
       var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
+        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
+      obj.id = id;
+      return obj;
+    },
+
+    createJsonEditor: function (
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
+      var obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
         mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
       obj.id = id;
       return obj;

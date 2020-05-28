@@ -23,4 +23,3 @@ the HTTP status code
 The current system time as a Unix timestamp with microsecond precision of the server
 
 @endDocuBlock
-

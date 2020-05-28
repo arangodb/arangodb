@@ -49,14 +49,14 @@ class QuickHistogram : public arangodb::Thread {
   QuickHistogram(QuickHistogram const&) = delete;
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
-public:
-  QuickHistogram()
-    : Thread("QuickHistogram"),
-    _writingLatencies(nullptr),
-    _readingLatencies(nullptr),
-    _objectsWriting(0),
-    _objectsReading(0),
-    _threadRunning(false) {}
+ public:
+  explicit QuickHistogram(application_features::ApplicationServer& server)
+      : Thread(server, "QuickHistogram"),
+        _writingLatencies(nullptr),
+        _readingLatencies(nullptr),
+        _objectsWriting(0),
+        _objectsReading(0),
+        _threadRunning(false) {}
 
   ~QuickHistogram() { shutdown(); }
 

@@ -9,8 +9,8 @@
 #include <algorithm>
 #include <deque>
 #include <unordered_map>
-#include <utility>
 #include <vector>
+
 #include <fst/log.h>
 
 #include <fst/encode.h>
@@ -41,10 +41,10 @@ struct EquivalenceUtil {
   using MappedId = StateId;  // ID for an equivalence class.
 
   // MappedId for an implicit dead state.
-  static FST_CONSTEXPR const MappedId kDeadState = 0;
+  static constexpr MappedId kDeadState = 0;
 
   // MappedId for lookup failure.
-  static FST_CONSTEXPR const MappedId kInvalidId = -1;
+  static constexpr MappedId kInvalidId = -1;
 
   // Maps state ID to the representative of the corresponding
   // equivalence class. The parameter 'which_fst' takes the values 1
@@ -79,11 +79,11 @@ struct EquivalenceUtil {
 };
 
 template <class Arc>
-FST_CONSTEXPR
+constexpr
     typename EquivalenceUtil<Arc>::MappedId EquivalenceUtil<Arc>::kDeadState;
 
 template <class Arc>
-FST_CONSTEXPR
+constexpr
     typename EquivalenceUtil<Arc>::MappedId EquivalenceUtil<Arc>::kInvalidId;
 
 }  // namespace internal
@@ -124,7 +124,7 @@ bool Equivalent(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
     return false;
   }
   // Check properties first.
-  static FST_CONSTEXPR const auto props = kNoEpsilons | kIDeterministic | kAcceptor;
+  static constexpr auto props = kNoEpsilons | kIDeterministic | kAcceptor;
   if (fst1.Properties(props, true) != props) {
     FSTERROR() << "Equivalent: 1st argument not an"
                << " epsilon-free deterministic acceptor";
@@ -174,7 +174,7 @@ bool Equivalent(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
   // Main loop: explores the two acceptors in a breadth-first manner, updating
   // the equivalence relation on the statesets. Loop invariant: each block of
   // the states contains either final states only or non-final states only.
-  for (q.push_back(std::make_pair(s1, s2)); ret && !q.empty(); q.pop_front()) {
+  for (q.emplace_back(s1, s2); ret && !q.empty(); q.pop_front()) {
     s1 = q.front().first;
     s2 = q.front().second;
     // Representatives of the equivalence classes of s1/s2.

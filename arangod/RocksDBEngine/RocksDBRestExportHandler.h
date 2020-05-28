@@ -36,7 +36,8 @@ class QueryRegistry;
 
 class RocksDBRestExportHandler : public RestCursorHandler {
  public:
-  RocksDBRestExportHandler(GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
+  RocksDBRestExportHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
 
  public:
   RestStatus execute() override;

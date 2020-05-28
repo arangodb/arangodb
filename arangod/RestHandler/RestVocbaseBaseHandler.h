@@ -35,8 +35,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 
-class SingleCollectionTransaction;
 class VocbaseContext;
 
 /// @brief abstract base request handler
@@ -133,16 +135,19 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const INTERNAL_TRAVERSER_PATH;
 
  public:
-  RestVocbaseBaseHandler(GeneralRequest*, GeneralResponse*);
+  RestVocbaseBaseHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
-  virtual bool cancel() override {
+  virtual void cancel() override {
+    RestBaseHandler::cancel();
     _context.cancel();
-
-    return RestBaseHandler::cancel();
   }
 
  protected:
+  /// @brief returns the short id of the server which should handle this request
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
+
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
   std::string assembleDocumentId(std::string const& collectionName, 
@@ -228,8 +233,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<SingleCollectionTransaction> createTransaction(std::string const& cname,
-                                                                 AccessMode::Type mode) const;
+  std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
+                                                          AccessMode::Type mode) const;
   
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext() const;

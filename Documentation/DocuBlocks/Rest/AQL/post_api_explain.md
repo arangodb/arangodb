@@ -22,15 +22,18 @@ if set to *true*, all possible execution plans will be returned.
 The default is *false*, meaning only the optimal plan will be returned.
 
 @RESTSTRUCT{maxNumberOfPlans,explain_options,integer,optional,int64}
-an optional maximum number of plans that the optimizer is 
+an optional maximum number of plans that the optimizer is
 allowed to generate. Setting this attribute to a low value allows to put a
 cap on the amount of work the optimizer does.
 
-@RESTSTRUCT{optimizer.rules,explain_options,array,optional,string}
-an array of to-be-included or to-be-excluded optimizer rules
-can be put into this attribute, telling the optimizer to include or exclude
-specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+@RESTSTRUCT{optimizer,explain_options,object,optional,explain_options_optimizer}
+Options related to the query optimizer.
+
+@RESTSTRUCT{rules,explain_options_optimizer,array,optional,string}
+A list of to-be-included or to-be-excluded optimizer rules can be put into this
+attribute, telling the optimizer to include or exclude specific rules. To disable
+a rule, prefix its name with a `-`, to enable a rule, prefix it with a `+`. There is
+also a pseudo-rule `all`, which matches all optimizer rules. `-all` disables all rules.
 
 @RESTDESCRIPTION
 
@@ -42,20 +45,20 @@ returned, but the query will not be executed.
 The execution plan that is returned by the server can be used to estimate the
 probable performance of the query. Though the actual performance will depend
 on many different factors, the execution plan normally can provide some rough
-estimates on the amount of work the server needs to do in order to actually run 
+estimates on the amount of work the server needs to do in order to actually run
 the query.
 
 By default, the explain operation will return the optimal plan as chosen by
 the query optimizer The optimal plan is the plan with the lowest total estimated
 cost. The plan will be returned in the attribute *plan* of the response object.
-If the option *allPlans* is specified in the request, the result will contain 
-all plans created by the optimizer. The plans will then be returned in the 
+If the option *allPlans* is specified in the request, the result will contain
+all plans created by the optimizer. The plans will then be returned in the
 attribute *plans*.
 
-The result will also contain an attribute *warnings*, which is an array of 
+The result will also contain an attribute *warnings*, which is an array of
 warnings that occurred during optimization or execution plan creation. Additionally,
 a *stats* attribute is contained in the result with some optimizer statistics.
-If *allPlans* is set to *false*, the result will contain an attribute *cacheable* 
+If *allPlans* is set to *false*, the result will contain an attribute *cacheable*
 that states whether the query results can be cached on the server if the query
 result cache were used. The *cacheable* attribute is not present when *allPlans*
 is set to *true*.
@@ -104,7 +107,7 @@ Valid query
     db._drop(cn);
     db._create(cn);
     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
-    body = { 
+    body = {
       query : "FOR p IN products RETURN p"
     };
 
@@ -125,7 +128,7 @@ A plan with some optimizer rules applied
     db._create(cn);
     db.products.ensureSkiplist("id");
     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
-    body = { 
+    body = {
       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
     };
 
@@ -146,7 +149,7 @@ Using some options
     db._create(cn);
     db.products.ensureSkiplist("id");
     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
-    body = { 
+    body = {
       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
       options : {
         maxNumberOfPlans : 2,
@@ -173,10 +176,10 @@ Returning all plans
     db._drop(cn);
     db._create(cn);
     db.products.ensureHashIndex("id");
-    body = { 
+    body = {
       query : "FOR p IN products FILTER p.id == 25 RETURN p",
       options: {
-        allPlans: true 
+        allPlans: true
       }
     };
 
@@ -192,7 +195,7 @@ A query that produces a warning
 
 @EXAMPLE_ARANGOSH_RUN{RestExplainWarning}
     var url = "/_api/explain";
-    body = { 
+    body = {
       query : "FOR i IN 1..10 RETURN 1 / 0"
     };
 
@@ -210,7 +213,7 @@ Invalid query (missing bind parameter)
     var cn = "products";
     db._drop(cn);
     db._create(cn);
-    body = { 
+    body = {
       query : "FOR p IN products FILTER p.id == @id LIMIT 2 RETURN p.n"
     };
 
@@ -244,4 +247,3 @@ the optimizer has removed so that there are less top-level statements.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -361,7 +361,7 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 
 /// 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
 /// "document not found"
-/// Will be raised when a document with a given identifier or handle is unknown.
+/// Will be raised when a document with a given identifier is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -376,8 +376,8 @@ constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            
 constexpr int TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     = 1204;
 
 /// 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
-/// "illegal document handle"
-/// Will be raised when a document handle is corrupt.
+/// "illegal document identifier"
+/// Will be raised when a document identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              = 1205;
 
 /// 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
@@ -416,8 +416,8 @@ constexpr int TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                  
 constexpr int TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                         = 1213;
 
 /// 1214: ERROR_ARANGO_INDEX_HANDLE_BAD
-/// "illegal index handle"
-/// Will be raised when a index handle is corrupt.
+/// "illegal index identifier"
+/// Will be raised when a index identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 = 1214;
 
 /// 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
@@ -663,6 +663,12 @@ constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              
 /// Will be raised on some occasions when one server gets a request from
 /// another, which has not (yet?) been made known via the agency.
 constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
+
+/// 1450: ERROR_CLUSTER_TOO_MANY_SHARDS
+/// "too many shards"
+/// Will be raised when the number of shards for a collection is higher than
+/// allowed.
+constexpr int TRI_ERROR_CLUSTER_TOO_MANY_SHARDS                                 = 1450;
 
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
@@ -1153,6 +1159,16 @@ constexpr int TRI_ERROR_CURSOR_NOT_FOUND                                        
 /// request is still using the cursor.
 constexpr int TRI_ERROR_CURSOR_BUSY                                             = 1601;
 
+/// 1620: ERROR_VALIDATION_FAILED
+/// "validation failed"
+/// Will be raised when a document does not pass validation.
+constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 1620;
+
+/// 1621: ERROR_VALIDATION_BAD_PARAMETER
+/// "invalid validation parameter"
+/// Will be raised when the validator description is invalid.
+constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 1621;
+
 /// 1650: ERROR_TRANSACTION_INTERNAL
 /// "internal transaction error"
 /// Will be raised when a wrong usage of transactions is detected. this is an
@@ -1345,7 +1361,7 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS                    
 
 /// 1922: ERROR_GRAPH_CREATE_MISSING_NAME
 /// "missing graph name"
-/// a graph name is required to create a graph.
+/// a graph name is required to create or drop a graph.
 constexpr int TRI_ERROR_GRAPH_CREATE_MISSING_NAME                               = 1922;
 
 /// 1923: ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION
@@ -1369,13 +1385,13 @@ constexpr int TRI_ERROR_GRAPH_DUPLICATE                                         
 constexpr int TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         = 1926;
 
 /// 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
-/// "not a vertex collection"
+/// "collection not a vertex collection"
 /// the collection is not a vertex collection.
 constexpr int TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      = 1927;
 
 /// 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
-/// "not in orphan collection"
-/// Vertex collection not in orphan collection of the graph.
+/// "collection is not in list of orphan collections"
+/// Vertex collection not in list of orphan collections of the graph.
 constexpr int TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          = 1928;
 
 /// 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
@@ -1454,6 +1470,19 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      
 /// collection, it cannot be used here.
 constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
 
+/// 1945: ERROR_GRAPH_COLLECTION_IS_INITIAL
+/// "initial collection is not allowed to be removed manually"
+/// the collection is used as the initial collection of this graph and is not
+/// allowed to be removed manually.
+constexpr int TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL                             = 1945;
+
+/// 1946: ERROR_GRAPH_NO_INITIAL_COLLECTION
+/// "no valid initial collection found"
+/// during the graph creation process no collection could be selected as the
+/// needed initial collection. Happens if a distributeShardsLike or
+/// replicationFactor mismatch was found.
+constexpr int TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                             = 1946;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
@@ -1484,15 +1513,10 @@ constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE                           
 /// Will be raised when the client could not read data.
 constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            = 2003;
 
-/// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
-/// "Request aborted"
-/// Request was aborted.
-constexpr int TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED                            = 2100;
-
-/// 2101: ERROR_COMMUNICATOR_DISABLED
-/// "Communication was disabled"
-/// Communication was disabled.
-constexpr int TRI_ERROR_COMMUNICATOR_DISABLED                                   = 2101;
+/// 2019: ERROR_WAS_ERLAUBE
+/// "was erlaube?!"
+/// Will be raised if was erlaube?!
+constexpr int TRI_ERROR_WAS_ERLAUBE                                             = 2019;
 
 /// 2200: ERROR_INTERNAL_AQL
 /// "General internal AQL error"
@@ -1670,6 +1694,12 @@ constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 
 /// Will be raised if there is an attempt to update the value of the
 /// smartJoinAttribute.
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
+
+/// 4010: ERROR_INVALID_DISJOINT_SMART_EDGE
+/// "non disjoint edge found"
+/// Will be raised if there is an attempt to create an edge between separated
+/// graph components.
+constexpr int TRI_ERROR_INVALID_DISJOINT_SMART_EDGE                             = 4010;
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"
@@ -1870,6 +1900,11 @@ constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     
 /// " "hot backup not all db servers reachable""
 ///  "One or more db servers could not be reached for hot backup inquiry"
 constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
+
+///  7021: ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN
+/// " "analyzers in plan could not be modified""
+///  "Plan could not be modified while creating or deleting analyzers revision"
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              =  7021;
 
 
 /// register all errors for ArangoDB

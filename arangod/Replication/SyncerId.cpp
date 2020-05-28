@@ -27,7 +27,6 @@
 #include "Rest/GeneralRequest.h"
 
 #include <algorithm>
-#include <cctype>
 
 using namespace arangodb;
 
@@ -42,7 +41,9 @@ SyncerId SyncerId::fromRequest(GeneralRequest const& request) {
     if (idStr.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId, if set, must not be empty");
     }
-    if (!std::all_of(idStr.begin(), idStr.end(), [](char c) { return std::isdigit(c); })) {
+    if (!std::all_of(idStr.begin(), idStr.end(), [](char c) { 
+      return c >= '0' && c <= '9';
+    })) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be an integer");
     }
     if (idStr[0] == '0') {

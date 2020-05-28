@@ -90,58 +90,6 @@ var shardList = function (dbName, collectionName) {
 };
 
 // /////////////////////////////////////////////////////////////////////////////
-// / @brief wait for a distributed response
-// /////////////////////////////////////////////////////////////////////////////
-
-var waitForDistributedResponse = function (data, numberOfRequests, ignoreHttpErrors) {
-  var received = [];
-  try {
-    while (received.length < numberOfRequests) {
-      var result = global.ArangoClusterComm.wait(data);
-      var status = result.status;
-
-      if (status === 'ERROR') {
-        raiseError(arangodb.errors.ERROR_INTERNAL.code,
-          'received an error from a DB server: ' + JSON.stringify(result));
-      } else if (status === 'TIMEOUT') {
-        raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code,
-          arangodb.errors.ERROR_CLUSTER_TIMEOUT.message);
-      } else if (status === 'DROPPED') {
-        raiseError(arangodb.errors.ERROR_INTERNAL.code,
-          'the operation was dropped');
-      } else if (status === 'RECEIVED') {
-        received.push(result);
-
-        if (result.headers && result.headers.hasOwnProperty('x-arango-response-code')) {
-          var code = parseInt(result.headers['x-arango-response-code'].substr(0, 3), 10);
-          result.statusCode = code;
-
-          if (code >= 400 && !ignoreHttpErrors) {
-            var body;
-
-            try {
-              body = JSON.parse(result.body);
-            } catch (err) {
-              raiseError(arangodb.errors.ERROR_INTERNAL.code,
-                'error parsing JSON received from a DB server: ' + err.message);
-            }
-
-            raiseError(body.errorNum,
-              body.errorMessage);
-          }
-        }
-      } else {
-        // something else... wait without GC
-        require('internal').wait(0.1, false);
-      }
-    }
-  } finally {
-    global.ArangoClusterComm.drop(data);
-  }
-  return received;
-};
-
-// /////////////////////////////////////////////////////////////////////////////
 // / @brief whether or not clustering is enabled
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -493,7 +441,6 @@ exports.isCoordinator = isCoordinator;
 exports.role = role;
 exports.shardList = shardList;
 exports.status = status;
-exports.wait = waitForDistributedResponse;
 exports.endpointToURL = endpointToURL;
 exports.shardDistribution = shardDistribution;
 exports.collectionShardDistribution = collectionShardDistribution;

@@ -29,10 +29,11 @@ namespace arangodb {
 
 class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  RocksDBRestCollectionHandler(GeneralRequest*, GeneralResponse*);
+  RocksDBRestCollectionHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  protected:
-  Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+  Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll, std::string const& command,
                                velocypack::Builder& builder) override final;
 };
 

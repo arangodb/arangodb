@@ -22,10 +22,10 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns an error if document handle is missing" do
+      it "returns an error if document identifier is missing" do
         cmd = "/_api/document"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-missing-handle", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-missing-identifier", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -36,10 +36,10 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document identifier is corrupted" do
         cmd = "/_api/document/123456"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-bad-handle", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-bad-identifier", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -50,10 +50,10 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is corrupted with empty cid" do
+      it "returns an error if document identifier is corrupted with empty cid" do
         cmd = "/_api/document//123456"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-bad-handle2", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-bad-identifier2", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -78,10 +78,10 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is unknown" do
+      it "returns an error if document identifier is unknown" do
         cmd = "/_api/document/#{@cid}/234567"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-unknown-handle", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-unknown-identifier", cmd, :body => body)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -117,6 +117,25 @@ describe ArangoDB do
         ArangoDB.delete(location)
 
         ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "create a document and update it with invalid JSON" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+        did = doc.parsed_response['_id']
+
+        # update document
+        cmd = "/_api/document/#{did}"
+        body = "{ \"World\" : \"Hallo\xff\" }"
+        doc = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['code'].should eq(400)
       end
     end
 

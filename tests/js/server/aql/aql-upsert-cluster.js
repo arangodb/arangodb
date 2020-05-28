@@ -58,10 +58,11 @@ function ahuacatlClusterUpsertKeySuite () {
     setUp : function () {
       db._drop(cn1);
       c1 = db._create(cn1, { numberOfShards: 5 });
-
+      let docs = [];
       for (var i = 0; i < 20; ++i) {
-        c1.save({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c1.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,9 +171,11 @@ function ahuacatlClusterUpsertNonKeySuite () {
       db._drop(cn1);
       c1 = db._create(cn1, { numberOfShards: 5, shardKeys: [ "value" ] });
 
+      let docs = [];
       for (var i = 0; i < 20; ++i) {
-        c1.save({ value: i });
+        docs.push({ value: i });
       }
+      c1.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

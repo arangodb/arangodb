@@ -37,11 +37,12 @@ class Acceptor {
 
  public:
   Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);
-  virtual ~Acceptor() {}
+  virtual ~Acceptor() = default;
 
  public:
   virtual void open() = 0;
   virtual void close() = 0;
+  virtual void cancel() = 0;
 
   /// start accepting connections
   virtual void asyncAccept() = 0;

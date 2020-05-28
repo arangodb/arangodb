@@ -98,19 +98,10 @@ to the [naming conventions](../NamingConventions/README.md).
   checksums for datafiles (as there are no datafiles).
   This option is meaningful for the MMFiles storage engine only.
 
-* *indexBuckets* (optional, default is *16*, **mmfiles-only**): The number of buckets 
-  into which indexes using a hash table are split. The default is 16 and 
-  this number has to be a power of 2 and less than or equal to 1024. 
-
-  For very large collections one should increase this to avoid long pauses 
-  when the hash table has to be initially built or resized, since buckets 
-  are resized individually and can be initially built in parallel. For 
-  example, 64 might be a sensible value for a collection with 100
-  000 000 documents. Currently, only the edge index respects this
-  value, but other index types might follow in future ArangoDB versions. 
-  Changes (see below) are applied when the collection is loaded the next 
-  time.
-  This option is meaningful for the MMFiles storage engine only.
+* *schema* (optional, default is *null*): 
+  Object that specifies the collection level schema for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
 `db._create(collection-name, properties, type)`
 

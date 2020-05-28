@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SortCondition.h"
+
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
@@ -56,7 +58,7 @@ SortCondition::SortCondition()
 SortCondition::SortCondition(
     ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+    ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
       _constAttributes(constAttributes),
@@ -147,7 +149,7 @@ SortCondition::SortCondition(
 }
 
 /// @brief destroy the sort condition
-SortCondition::~SortCondition() {}
+SortCondition::~SortCondition() = default;
   
 bool SortCondition::onlyUsesNonNullSortAttributes(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
@@ -187,25 +189,21 @@ size_t SortCondition::coveredAttributes(
     }
 
     // no match
-    bool isConstant = false;
-
     if (isContained(indexAttributes, field.attributes) &&
         isContained(_constAttributes, field.attributes)) {
       // no field match, but a constant attribute
-      isConstant = true;
       ++fieldsPosition;
       ++numCovered;
+      continue;
     }
 
-    if (!isConstant && isContained(_constAttributes, indexAttributes[i])) {
+    if (isContained(_constAttributes, indexAttributes[i])) {
       // no field match, but a constant attribute
-      isConstant = true;
       ++i;  // next index field
+      continue;
     }
 
-    if (!isConstant) {
-      break;
-    }
+    break;
   }
 
   TRI_ASSERT(numCovered <= _fields.size());

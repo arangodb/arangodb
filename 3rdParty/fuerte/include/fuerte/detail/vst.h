@@ -142,7 +142,7 @@ RequestHeader requestHeaderFromSlice(velocypack::Slice const& header);
 /// creates a RequestHeader from a given slice
 ResponseHeader responseHeaderFromSlice(velocypack::Slice const& header);
 
-// Validates if payload consitsts of valid velocypack slices
+// Validates if payload consists of valid velocypack slices
 std::size_t validateAndCount(uint8_t const* vpHeaderStart, std::size_t len);
 
 }  // namespace parser

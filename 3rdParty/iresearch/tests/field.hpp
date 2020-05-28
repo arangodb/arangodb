@@ -39,8 +39,8 @@ class IRESEARCH_API field {
   field() = default;
   virtual ~field();
 
-  field(field&& rhs) NOEXCEPT;
-  field& operator=(field&& rhs) NOEXCEPT;
+  field(field&& rhs) noexcept;
+  field& operator=(field&& rhs) noexcept;
 
   field(const field&) = default;
   field& operator=(const field&) = default;
@@ -68,7 +68,7 @@ class IRESEARCH_API long_field : public field, private util::noncopyable {
   typedef int64_t value_t;
 
   long_field() = default;
-  long_field(long_field&& other) NOEXCEPT;
+  long_field(long_field&& other) noexcept;
 
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
@@ -91,7 +91,7 @@ class IRESEARCH_API int_field : public field, private util::noncopyable {
   typedef int32_t value_t;
 
   int_field() = default;
-  int_field(int_field&& other) NOEXCEPT;
+  int_field(int_field&& other) noexcept;
 
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
@@ -114,7 +114,7 @@ class IRESEARCH_API double_field : public field, private util::noncopyable {
   typedef double_t value_t;
 
   double_field() = default;
-  double_field(double_field&& other) NOEXCEPT;
+  double_field(double_field&& other) noexcept;
 
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
@@ -137,7 +137,7 @@ class IRESEARCH_API float_field : public field, private util::noncopyable {
   typedef float_t value_t;
 
   float_field() = default;
-  float_field(float_field&& other) NOEXCEPT;
+  float_field(float_field&& other) noexcept;
 
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
@@ -158,7 +158,7 @@ class IRESEARCH_API float_field : public field, private util::noncopyable {
 class IRESEARCH_API string_field : public field, private util::noncopyable {
  public:
   string_field() = default;
-  string_field(string_field&& other) NOEXCEPT;
+  string_field(string_field&& other) noexcept;
 
   const std::string& value() const { return value_; }
   void value(std::string&& value) { value_ = std::move(value); }
@@ -187,7 +187,7 @@ class IRESEARCH_API string_field : public field, private util::noncopyable {
 class IRESEARCH_API binary_field : public field, private util::noncopyable {
  public:
   binary_field() = default;
-  binary_field(binary_field&& other) NOEXCEPT;
+  binary_field(binary_field&& other) noexcept;
 
   const bstring& value() const { return value_; }
   void value(const bstring& value);

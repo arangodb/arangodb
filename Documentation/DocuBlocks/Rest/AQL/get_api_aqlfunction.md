@@ -26,7 +26,7 @@ boolean flag to indicate whether an error occurred (*false* in this case)
 the HTTP status code
 
 @RESTREPLYBODY{result,array,required,aql_userfunction_struct}
-All functions, or the ones matching the *namespace* parameter 
+All functions, or the ones matching the *namespace* parameter
 
 @RESTSTRUCT{name,aql_userfunction_struct,string,required,}
 The fully qualified name of the user function
@@ -40,7 +40,6 @@ results are fully deterministic (function return value solely depends on
 the input value and return value is the same for repeated calls with same
 input). The *isDeterministic* attribute is currently not used but may be
 used later for optimizations.
-
 
 @RESTRETURNCODE{400}
 If the user function name is malformed, the server will respond with *HTTP 400*.
@@ -57,7 +56,6 @@ the server error number
 @RESTREPLYBODY{errorMessage,string,required,string}
 a descriptive error message
 
-
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionsGetAll}
@@ -70,4 +68,3 @@ a descriptive error message
   logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

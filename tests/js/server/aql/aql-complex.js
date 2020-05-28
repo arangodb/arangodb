@@ -47,7 +47,7 @@ function ahuacatlComplexTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlNumbers");
       numbers = internal.db._create("UnitTestsAhuacatlNumbers");
 
@@ -60,7 +60,7 @@ function ahuacatlComplexTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlNumbers");
     },
 

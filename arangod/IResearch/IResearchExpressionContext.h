@@ -26,7 +26,8 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryExpressionContext.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
 
 namespace arangodb {
@@ -35,6 +36,8 @@ namespace aql {
 class AqlItemBlock;
 struct AstNode;
 class ExecutionEngine;
+class QueryContext;
+class AqlFunctionsInternalCache;
 }  // namespace aql
 
 namespace iresearch {
@@ -44,38 +47,57 @@ class IResearchViewNode;
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct ViewExpressionContextBase
 /// @brief FIXME remove this struct once IResearchView will be able to evaluate
-///        epxressions with loop variable in SEARCH expressions
+///        epxressions with loop variable in SEARCH expressions.
+///        simon: currently also used in tests
 ///////////////////////////////////////////////////////////////////////////////
-struct ViewExpressionContextBase : public aql::QueryExpressionContext {
-  explicit ViewExpressionContextBase(arangodb::aql::Query* query)
-      : aql::QueryExpressionContext(query) {}
+struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
+  explicit ViewExpressionContextBase(arangodb::transaction::Methods* trx,
+                                     aql::QueryContext* query,
+                                     aql::AqlFunctionsInternalCache* cache)
+  : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
+  
+  void registerWarning(int errorCode, char const* msg) override final;
+  void registerError(int errorCode, char const* msg) override final;
+  
+  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+                                       bool caseInsensitive) override final;
+  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+                                      bool caseInsensitive) override final;
+  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression, velocypack::Options const* opts,
+                                       bool& isEmptyExpression) override final;
+
+  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
+
+  TRI_vocbase_t& vocbase() const override final;
+  /// may be inaccessible on some platforms
+  transaction::Methods& trx() const override final;
+  bool killed() const override final;
 
   aql::AstNode const* _expr{};  // for troubleshooting
+  
+protected:
+  arangodb::transaction::Methods* _trx;
+  arangodb::aql::QueryContext* _query;
+  arangodb::aql::AqlFunctionsInternalCache* _aqlFunctionsInternalCache;
 };                              // ViewExpressionContextBase
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::ExecutionNode::VarInfo>;
+  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
 
-  ViewExpressionContext(aql::Query* query, aql::RegisterId numRegs,
-                        aql::Variable const& outVar,
+  ViewExpressionContext(arangodb::transaction::Methods& trx,
+                        aql::QueryContext& query,
+                        aql::AqlFunctionsInternalCache& cache, aql::Variable const& outVar,
                         VarInfoMap const& varInfoMap, int nodeDepth)
-      : ViewExpressionContextBase(query),
-        _numRegs(numRegs),
+      : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
-  virtual size_t numRegisters() const override;
-
-  virtual aql::AqlValue const& getRegisterValue(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  virtual aql::Variable const* getVariable(size_t i) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  virtual bool isDataFromCollection(aql::Variable const* variable) const override {
+    return variable->isDataFromCollection;
   }
 
   virtual aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
@@ -86,7 +108,6 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   inline int nodeDepth() const noexcept { return _nodeDepth; }
 
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
-  aql::RegisterId const _numRegs;
   aql::Variable const& _outVar;
   VarInfoMap const& _varInfoMap;
   int const _nodeDepth;

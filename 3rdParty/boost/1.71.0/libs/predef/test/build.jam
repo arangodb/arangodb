@@ -1,0 +1,57 @@
+# Copyright Rene Rivera 2011-2019
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import ../tools/check/predef : require check : predef-require predef-check ;
+import path ;
+
+# This deals with the unfortunate aspect of a Boost monolithic release
+# not having the modular include dirs. This is a kludge that just removes
+# the direct depdndency to the header if it can't find it.
+local PREDEF_H = $(BOOST_PREDEF_INCLUDE)/boost/predef.h ;
+if ! [ path.exists $(PREDEF_H) ]
+{
+    PREDEF_H = ;
+}
+
+project
+    :   requirements
+        <include>$(BOOST_PREDEF_INCLUDE)
+        # Add explicit dependency since we don't have header scanner for
+        # .m and .mm files.
+        <dependency>$(PREDEF_H)
+    ;
+
+using testing ;
+
+test-suite predef :
+    [ run info_as_cpp.cpp : : : <test-info>always_show_run_output ]
+    [ run info_as_c.c : : : <test-info>always_show_run_output ]
+    [ run info_as_objcpp.mm : : : <test-info>always_show_run_output ]
+    [ run info_as_objc.m : : : <test-info>always_show_run_output ]
+    [ run version.cpp ]
+    [ run make.cpp ]
+    [ compile macos_endian.c : [ predef-require "BOOST_OS_MACOS" : cpp ] ]
+    [ compile macos_vs_bsd.c : [ predef-require "BOOST_OS_MACOS" : cpp ] ]
+    [ run check_value.cpp : : : <test-info>always_show_run_output
+        [ predef-check "BOOST_COMP_CLANG > 0.0.0" "BOOST_OS_LINUX == 0" : : <cxxflags>-DCHECK_VALUE=true ] ]
+    [ run workaround.cpp ]
+    [ compile workaround_strict_config.cpp ]
+    [ run tested_at.cpp ]
+    [ compile-fail tested_at_outdated.cpp : <test-info>always_show_run_output ]
+	[ compile platform_windows.cpp ]
+    ;
+
+# Minimal testing done for predef for CI. Since
+# we don't have many we can just do all of them.
+alias minimal : predef ;
+
+# Full testing target for regular regression tests.
+alias full : predef ;
+
+# Extra's target. Nothing for Predef.
+alias extra ;
+
+explicit minimal ;
+explicit extra ;

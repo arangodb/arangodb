@@ -176,7 +176,10 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
     }
   }
 
-  // isCommunity ^= isEnterprise;
+  // make sure the compiler does not complain about these variables
+  // being unused
+  (void) isCommunity;
+  (void) isEnterprise;
 
   // all is well
   if (endPassAfterwards) {

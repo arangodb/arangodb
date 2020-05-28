@@ -37,9 +37,11 @@ function ahuacatlDocumentsTestSuite () {
     c = internal.db._create("UnitTestsDocument", { numberOfShards });
 
     let i;
+    let docs = [];
     for (i = 1; i <= 2000; ++i) {
-      c.insert({ _key: "test" + i, value: i });
-    } 
+      docs.push({ _key: "test" + i, value: i });
+    }
+    c.insert(docs);
 
     var query = "FOR i IN 1..2000 RETURN DOCUMENT(CONCAT('" + cn + "/test', TO_NUMBER(i)))";
     var nodes = helper.removeClusterNodesFromPlan(AQL_EXPLAIN(query).plan.nodes);

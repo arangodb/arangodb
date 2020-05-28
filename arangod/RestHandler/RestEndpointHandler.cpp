@@ -23,6 +23,7 @@
 
 #include "RestEndpointHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/EndpointFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -32,8 +33,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEndpointHandler::RestEndpointHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestEndpointHandler::RestEndpointHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestEndpointHandler::execute() {
   // extract the sub-request type
@@ -54,8 +56,7 @@ RestStatus RestEndpointHandler::execute() {
 }
 
 void RestEndpointHandler::retrieveEndpoints() {
-  auto server = application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
-      "Endpoint");
+  auto& server = _vocbase.server().getFeature<HttpEndpointProvider>();
 
   if (!_vocbase.isSystem()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
@@ -65,7 +66,7 @@ void RestEndpointHandler::retrieveEndpoints() {
   VPackBuilder result;
   result.openArray();
 
-  for (auto const& it : server->httpEndpoints()) {
+  for (auto const& it : server.httpEndpoints()) {
     result.openObject();
     result.add("endpoint", VPackValue(it));
     result.close();

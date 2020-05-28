@@ -44,11 +44,26 @@ using namespace arangodb;
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-class TestFeature : public application_features::ApplicationFeature {
+class TestFeatureA : public application_features::ApplicationFeature {
  public:
-  TestFeature(application_features::ApplicationServer& server,
-              std::string const& name, std::vector<std::string> const& startsAfter,
-              std::vector<std::string> const& startsBefore)
+  TestFeatureA(application_features::ApplicationServer& server,
+               std::string const& name, std::vector<std::type_index> const& startsAfter,
+               std::vector<std::type_index> const& startsBefore)
+      : ApplicationFeature(server, name) {
+    for (auto const& it : startsAfter) {
+      this->startsAfter(it);
+    }
+    for (auto const& it : startsBefore) {
+      this->startsBefore(it);
+    }
+  }
+};
+
+class TestFeatureB : public application_features::ApplicationFeature {
+ public:
+  TestFeatureB(application_features::ApplicationServer& server,
+               std::string const& name, std::vector<std::type_index> const& startsAfter,
+               std::vector<std::type_index> const& startsBefore)
       : ApplicationFeature(server, name) {
     for (auto const& it : startsAfter) {
       this->startsAfter(it);
@@ -69,31 +84,29 @@ TEST(ApplicationServerTest, test_startsAfterValid) {
       std::make_shared<options::ProgramOptions>("arangod", "something", "",
                                                 "path");
   application_features::ApplicationServer server(options, "path");
-
-  auto feature1 = std::make_unique<TestFeature>(server, "feature1",
-                                                std::vector<std::string>{},
-                                                std::vector<std::string>{});
-  auto feature2 =
-      std::make_unique<TestFeature>(server, "feature2", std::vector<std::string>{"feature1"},
-                                    std::vector<std::string>{});
-
   server.registerFailCallback(callback);
-  server.addFeature(feature1.get());
-  server.addFeature(feature2.get());
+
+  auto& feature1 =
+      server.addFeature<TestFeatureA>("feature1", std::vector<std::type_index>{},
+                                      std::vector<std::type_index>{});
+
+  auto& feature2 =
+      server.addFeature<TestFeatureB>("feature2",
+                                      std::vector<std::type_index>{
+                                          std::type_index(typeid(TestFeatureA))},
+                                      std::vector<std::type_index>{});
+
   server.setupDependencies(true);
 
-  EXPECT_TRUE(!failed);
-  EXPECT_TRUE(feature1->doesStartBefore("feature2"));
-  EXPECT_TRUE(!feature1->doesStartAfter("feature2"));
-  EXPECT_TRUE(!feature1->doesStartBefore("feature1"));
-  EXPECT_TRUE(feature1->doesStartAfter("feature1"));
-  EXPECT_TRUE(!feature2->doesStartBefore("feature1"));
-  EXPECT_TRUE(feature2->doesStartAfter("feature1"));
-  EXPECT_TRUE(!feature2->doesStartBefore("feature2"));
-  EXPECT_TRUE(feature2->doesStartAfter("feature2"));
-
-  feature1.release();
-  feature2.release();
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(feature1.doesStartBefore<TestFeatureB>());
+  EXPECT_FALSE(feature1.doesStartAfter<TestFeatureB>());
+  EXPECT_FALSE(feature1.doesStartBefore<TestFeatureA>());
+  EXPECT_TRUE(feature1.doesStartAfter<TestFeatureA>());
+  EXPECT_FALSE(feature2.doesStartBefore<TestFeatureA>());
+  EXPECT_TRUE(feature2.doesStartAfter<TestFeatureA>());
+  EXPECT_FALSE(feature2.doesStartBefore<TestFeatureB>());
+  EXPECT_TRUE(feature2.doesStartAfter<TestFeatureB>());
 }
 
 TEST(ApplicationServerTest, test_startsAfterCyclic) {
@@ -106,28 +119,24 @@ TEST(ApplicationServerTest, test_startsAfterCyclic) {
       std::make_shared<options::ProgramOptions>("arangod", "something", "",
                                                 "path");
   application_features::ApplicationServer server(options, "path");
-
-  auto feature1 =
-      std::make_unique<TestFeature>(server, "feature1", std::vector<std::string>{"feature2"},
-                                    std::vector<std::string>{});
-  auto feature2 =
-      std::make_unique<TestFeature>(server, "feature2", std::vector<std::string>{"feature1"},
-                                    std::vector<std::string>{});
-
   server.registerFailCallback(callback);
-  server.addFeature(feature1.get());
-  server.addFeature(feature2.get());
+
+  server.addFeature<TestFeatureA>("feature1",
+                                  std::vector<std::type_index>{
+                                      std::type_index(typeid(TestFeatureB))},
+                                  std::vector<std::type_index>{});
+  server.addFeature<TestFeatureB>("feature2",
+                                  std::vector<std::type_index>{
+                                      std::type_index(typeid(TestFeatureA))},
+                                  std::vector<std::type_index>{});
 
   try {
     server.setupDependencies(true);
   } catch (basics::Exception const& ex) {
-    EXPECT_TRUE(ex.code() == TRI_ERROR_INTERNAL);
+    EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
     failed = true;
   }
   EXPECT_TRUE(failed);
-
-  feature1.release();
-  feature2.release();
 }
 
 TEST(ApplicationServerTest, test_startsBeforeCyclic) {
@@ -140,26 +149,20 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
       std::make_shared<options::ProgramOptions>("arangod", "something", "",
                                                 "path");
   application_features::ApplicationServer server(options, "path");
-
-  auto feature1 =
-      std::make_unique<TestFeature>(server, "feature1", std::vector<std::string>{},
-                                    std::vector<std::string>{"feature2"});
-  auto feature2 =
-      std::make_unique<TestFeature>(server, "feature2", std::vector<std::string>{},
-                                    std::vector<std::string>{"feature1"});
-
   server.registerFailCallback(callback);
-  server.addFeature(feature1.get());
-  server.addFeature(feature2.get());
+
+  server.addFeature<TestFeatureA>("feature1", std::vector<std::type_index>{},
+                                  std::vector<std::type_index>{
+                                      std::type_index(typeid(TestFeatureB))});
+  server.addFeature<TestFeatureB>("feature2", std::vector<std::type_index>{},
+                                  std::vector<std::type_index>{
+                                      std::type_index(typeid(TestFeatureA))});
 
   try {
     server.setupDependencies(true);
   } catch (basics::Exception const& ex) {
-    EXPECT_TRUE(ex.code() == TRI_ERROR_INTERNAL);
+    EXPECT_EQ(ex.code(), TRI_ERROR_INTERNAL);
     failed = true;
   }
   EXPECT_TRUE(failed);
-
-  feature1.release();
-  feature2.release();
 }

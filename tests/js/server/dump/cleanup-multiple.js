@@ -30,7 +30,11 @@
 
 (function () {
   'use strict';
-  db._dropDatabase('UnitTestsDumpSrc');
+  ["UnitTestsDumpSrc", "UnitTestsDumpProperties1", "UnitTestsDumpProperties2"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+  });
 })();
 
 return {

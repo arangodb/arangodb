@@ -22,13 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionAccessingNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -39,31 +42,24 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 CollectionAccessingNode::CollectionAccessingNode(aql::Collection const* collection)
-    : _collection(collection),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
-  TRI_ASSERT(_collection != nullptr);
+    : _collectionAccess(collection) {
+  TRI_ASSERT(_collectionAccess.collection() != nullptr);
+  TRI_ASSERT(_usedShard.empty());
 }
 
 CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
-                                                 arangodb::velocypack::Slice slice)
-    : _collection(plan->getAst()->query()->collections()->get(
-          slice.get("collection").copyString())),
-      _prototypeCollection(nullptr),
-      _prototypeOutVariable(nullptr) {
-    
-  if (slice.get("prototype").isString()) {
-    _prototypeCollection = plan->getAst()->query()->collections()->get(slice.get("prototype").copyString());
+                                                 arangodb::velocypack::Slice slice) {
+  aql::QueryContext& query = plan->getAst()->query();
+  auto colName = slice.get("collection").copyString();
+  auto typeId = basics::VelocyPackHelper::getNumericValue<int>(slice, "typeID", 0);
+  if (typeId == ExecutionNode::DISTRIBUTE) {
+    // This is a special case, the distribute node can inject a collection
+    // that is NOT yet known to the plan
+    query.collections().add(colName, AccessMode::Type::NONE, aql::Collection::Hint::Collection);
   }
-
-  TRI_ASSERT(_collection != nullptr);
-
-  if (_collection == nullptr) {
-    std::string msg("collection '");
-    msg.append(slice.get("collection").copyString());
-    msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
+  // After we optionally added the collection for distribute we can create
+  // the CollectionAccess:
+  _collectionAccess = CollectionAccess{&plan->getAst()->query().collections(), slice};
 
   VPackSlice restrictedTo = slice.get("restrictedTo");
 
@@ -73,38 +69,106 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
 }
 
 TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
-  return _collection->vocbase();
+  return collection()->vocbase();
 }
 
 /// @brief modify collection after cloning
 /// should be used only in smart-graph context!
 void CollectionAccessingNode::collection(aql::Collection const* collection) {
   TRI_ASSERT(collection != nullptr);
-  _collection = collection;
+  _collectionAccess.setCollection(collection);
 }
 
-void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
-  builder.add("database", VPackValue(_collection->vocbase()->name()));
-  builder.add("collection", VPackValue(_collection->name()));
-  if (_prototypeCollection != nullptr) {
-    builder.add("prototype", VPackValue(_prototypeCollection->name()));
+void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                           unsigned /*flags*/) const {
+  builder.add("database", VPackValue(collection()->vocbase()->name()));
+  if (!_usedShard.empty()) {
+    builder.add("collection", VPackValue(_usedShard));
+  } else {
+    builder.add("collection", VPackValue(collection()->name()));
   }
-  builder.add("satellite", VPackValue(_collection->isSatellite()));
-    
+
+  if (prototypeCollection() != nullptr) {
+    builder.add("prototype", VPackValue(prototypeCollection()->name()));
+  }
+  builder.add(StaticStrings::Satellite, VPackValue(collection()->isSatellite()));
+
   if (ServerState::instance()->isCoordinator()) {
-    builder.add(StaticStrings::NumberOfShards, VPackValue(_collection->numberOfShards()));
+    builder.add(StaticStrings::NumberOfShards, VPackValue(collection()->numberOfShards()));
   }
 
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
+#ifdef USE_ENTERPRISE
+  builder.add("isSatellite", VPackValue(isUsedAsSatellite()));
+  builder.add("isSatelliteOf", isUsedAsSatellite()
+                                   ? VPackValue(getRawSatelliteOf().value().id(), VPackValueType::UInt)
+                                   : VPackValue(VPackValueType::Null));
+#endif
 }
 
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
-  auto col = _collection->getCollection();
+  auto col = collection()->getCollection();
   builder.add(VPackValue("indexes"));
-  col->getIndexesVPack(builder, Index::makeFlags(Index::Serialize::Basics),
-                       [](arangodb::Index const* idx) {
-                         return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+  col->getIndexesVPack(builder, [](arangodb::Index const* idx, uint8_t& flags) {
+                         if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+                           flags = Index::makeFlags(Index::Serialize::Basics);
+                           return true;
+                         }
+
+                         return false;
                        });
+}
+
+bool CollectionAccessingNode::isUsedAsSatellite() const {
+  return _collectionAccess.isUsedAsSatellite();
+}
+
+void CollectionAccessingNode::useAsSatelliteOf(ExecutionNodeId prototypeAccessId) {
+  TRI_ASSERT(collection()->isSatellite());
+  _collectionAccess.useAsSatelliteOf(prototypeAccessId);
+}
+
+auto CollectionAccessingNode::getSatelliteOf(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+    -> ExecutionNode* {
+  return _collectionAccess.getSatelliteOf(nodesById);
+}
+
+auto CollectionAccessingNode::getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId> {
+  return _collectionAccess.getRawSatelliteOf();
+}
+
+aql::Collection const* CollectionAccessingNode::collection() const {
+  return _collectionAccess.collection();
+}
+
+void CollectionAccessingNode::restrictToShard(std::string const& shardId) {
+  _restrictedTo = shardId;
+}
+
+bool CollectionAccessingNode::isRestricted() const {
+  return !_restrictedTo.empty();
+}
+
+std::string const& CollectionAccessingNode::restrictedShard() const {
+  return _restrictedTo;
+}
+
+void CollectionAccessingNode::setPrototype(arangodb::aql::Collection const* prototypeCollection,
+                                           arangodb::aql::Variable const* prototypeOutVariable) {
+  _collectionAccess.setPrototype(prototypeCollection, prototypeOutVariable);
+}
+
+aql::Collection const* CollectionAccessingNode::prototypeCollection() const {
+  return _collectionAccess.prototypeCollection();
+}
+
+aql::Variable const* CollectionAccessingNode::prototypeOutVariable() const {
+  return _collectionAccess.prototypeOutVariable();
+}
+
+auto CollectionAccessingNode::collectionAccess() const -> aql::CollectionAccess const& {
+  return _collectionAccess;
 }

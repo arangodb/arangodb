@@ -34,7 +34,6 @@
 
 struct TRI_vocbase_t;
 namespace arangodb {
-class SingleCollectionTransaction;
 namespace pregel {
 
 template <typename V, typename E, typename M>
@@ -67,7 +66,7 @@ class WorkerConfig {
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
-  inline TRI_vocbase_t* const& vocbase() const { return _vocbase; }
+  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
   inline std::string const& database() const { return _vocbase->name(); }
 
   // collection shards on this worker

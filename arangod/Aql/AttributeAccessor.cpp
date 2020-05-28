@@ -39,7 +39,7 @@ class AttributeAccessorKey final : public AttributeAccessor {
   explicit AttributeAccessorKey(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     return value.getKeyAttribute(mustDestroy, true);
   }
@@ -50,7 +50,7 @@ class AttributeAccessorId final : public AttributeAccessor {
   explicit AttributeAccessorId(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     return value.getIdAttribute(resolver, mustDestroy, true);
   }
@@ -61,7 +61,7 @@ class AttributeAccessorFrom final : public AttributeAccessor {
   explicit AttributeAccessorFrom(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     return value.getFromAttribute(mustDestroy, true);
   }
@@ -72,7 +72,7 @@ class AttributeAccessorTo final : public AttributeAccessor {
   explicit AttributeAccessorTo(Variable const* variable)
       : AttributeAccessor(variable) {}
 
-  AqlValue get(CollectionNameResolver const&, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const&, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     return value.getToAttribute(mustDestroy, true);
   }
@@ -83,7 +83,7 @@ class AttributeAccessorSingle final : public AttributeAccessor {
   explicit AttributeAccessorSingle(Variable const* variable, std::string&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
-  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     // use optimized version for single attribute (e.g. variable.attr)
     return value.get(resolver, _path, mustDestroy, true);
@@ -98,7 +98,7 @@ class AttributeAccessorMulti final : public AttributeAccessor {
   explicit AttributeAccessorMulti(Variable const* variable, std::vector<std::string>&& path)
       : AttributeAccessor(variable), _path(std::move(path)) {}
 
-  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext* context, bool& mustDestroy) override {
+  AqlValue get(CollectionNameResolver const& resolver, ExpressionContext const* context, bool& mustDestroy) override {
     AqlValue const& value = context->getVariableValue(_variable, false, mustDestroy);
     // use general version for multiple attributes (e.g. variable.attr.subattr)
     return value.get(resolver, _path, mustDestroy, true);

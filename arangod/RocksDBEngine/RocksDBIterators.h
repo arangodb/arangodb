@@ -46,15 +46,14 @@ class RocksDBPrimaryIndex;
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
-  ~RocksDBAllIndexIterator() {}
+  ~RocksDBAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  void skipImpl(uint64_t count, uint64_t& skipped) override;
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;
@@ -69,13 +68,14 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
-  ~RocksDBAnyIndexIterator() {}
+  ~RocksDBAnyIndexIterator() = default;
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  // cppcheck-suppress virtualCallInConstructor ; desired impl
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;
@@ -101,7 +101,7 @@ class RocksDBGenericIterator {
                          RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
-  ~RocksDBGenericIterator() {}
+  ~RocksDBGenericIterator() = default;
 
   //* The following functions returns true if the iterator is valid within bounds on return.
   //  @param limit - number of documents the callback should be applied to

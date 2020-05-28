@@ -1,0 +1,31 @@
+#
+# Copyright (c) 2018 Stefan Seefeld
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import ac ;
+
+# work around a bug in Boost.Build
+import ../../opencl ;
+import ../../clblas ;
+using opencl ;
+using clblas ;
+
+project boost/ublas/test/opencl
+    : requirements
+      <toolset>gcc:<cxxflags>-Wno-ignored-attributes
+      [ ac.check-library /clblas//clblas : <library>/clblas//clblas <library>/opencl//opencl : <build>no ]
+    ;
+
+test-suite ocl
+    : [ run prod_test.cpp ]
+      [ run elementwise_operations_test.cpp ]
+      [ run inner_prod_test.cpp ]
+      [ run outer_prod_test.cpp ]
+      [ run transposition_test.cpp ]
+      [ run norm_test.cpp ]
+      [ run norm2_test.cpp ]
+      [ run elementwise_operations_with_constants_test.cpp ]
+    ;

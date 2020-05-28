@@ -7,8 +7,6 @@ OUT=${2:-README}
 fgrep -v "[Build Status]" $IN \
   | fgrep -v "ArangoDB-Logo" \
   | fgrep -v "[Build Status]" \
-  | markdown \
-  | html2text -style compact -nobs \
   | sed -e 's:&gt;:>:g' \
   | awk 'BEGIN { s = 0; } /^\*\*\*\*/ {if (s > 0) print ""} {if (length($0) == 0) {if (s != 0) print $0;} else {s = 1; print $0; }} /^\*\*\*\*/ {print ""}' \
   > $OUT

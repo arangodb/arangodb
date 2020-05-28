@@ -53,7 +53,7 @@ function singleAttributeTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn);
       c = db._create(cn);
 
@@ -71,7 +71,7 @@ function singleAttributeTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn);
     },
 

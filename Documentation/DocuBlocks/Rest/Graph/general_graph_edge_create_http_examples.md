@@ -6,7 +6,7 @@
 @RESTDESCRIPTION
 Creates a new edge in the collection.
 Within the body the edge has to contain a *_from* and *_to* value referencing to valid vertices in the graph.
-Furthermore the edge has to be valid in the definition of the used 
+Furthermore the edge has to be valid in the definition of the used
 [edge collection](../../Manual/Appendix/Glossary.html#edge-collection).
 
 @RESTURLPARAMETERS
@@ -14,7 +14,7 @@ Furthermore the edge has to be valid in the definition of the used
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the edge collection the edge belongs to.
 
 @RESTQUERYPARAMETERS
@@ -76,7 +76,7 @@ Will only be present if returnNew is true.
 
 @RESTRETURNCODE{400}
 Returned if the input document is invalid.
-This can for instance be the case if `_from` or `_to` is mising.
+This can for instance be the case if `_from` or `_to` is missing.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).
@@ -86,15 +86,14 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to insert edges into the graph  you at least need to have the following privileges:
-
+In order to insert edges into the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
 
@@ -106,7 +105,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -125,7 +124,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.

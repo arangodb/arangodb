@@ -32,7 +32,7 @@ class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                           transaction::Options const& options);
-  ~ClusterTransactionState() {}
+  ~ClusterTransactionState() = default;
 
   /// @brief begin a transaction
   Result beginTransaction(transaction::Hints hints) override;

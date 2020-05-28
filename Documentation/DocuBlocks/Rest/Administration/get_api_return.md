@@ -98,7 +98,7 @@ which openssl version do we link?
 the host os - *linux*, *windows* or *darwin*
 
 @RESTSTRUCT{reactor-type,version_details_struct,string,optional,}
-*epoll* TODO 
+*epoll* TODO
 
 @RESTSTRUCT{rocksdb-version,version_details_struct,string,optional,}
 the rocksdb version this release bundles
@@ -155,4 +155,3 @@ Return the version information with details
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

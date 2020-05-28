@@ -43,9 +43,18 @@ struct Range {
   int64_t at(size_t position) const;
 
   bool isIn(int64_t value) const;
+    
+  /// @brief throws an exception when called with a parameter
+  /// that is beyond MaterializationLimit. Else does nothing 
+  static void throwIfTooBigForMaterialization(uint64_t values);
 
   int64_t const _low;
   int64_t const _high;
+  
+  /// @brief maximum number of Range values that can be materialized
+  /// trying to materialize a Range with more values will throw an
+  /// exception
+  static constexpr uint64_t MaterializationLimit = 10ULL * 1000ULL * 1000ULL;
 };
 }  // namespace aql
 }  // namespace arangodb
