@@ -344,16 +344,13 @@
 
           var pos = 0;
           _.each(toFetch, function (val, key) {
-
-            try {
+            if (collections[toFetch[pos]]) {
               _.each(collections[toFetch[pos]].Current, function (shardVal, shardName) {
                 combined.Current[shardName] = shardVal;
               });
               _.each(collections[toFetch[pos]].Plan, function (shardVal, shardName) {
                 combined.Plan[shardName] = shardVal;
               });
-            } catch (ignore) {
-              // will fail (expected) for _from_ and _to_ in case of DisjointSmartGraphs
             }
 
             delete collections[toFetch[pos]];
