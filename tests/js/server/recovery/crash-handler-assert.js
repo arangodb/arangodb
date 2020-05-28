@@ -68,7 +68,9 @@ function recoverySuite () {
       assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*assertion failed.*: a == 2/, line);
      
       // check debug symbols
-      let expected = [ /assertionFailure/, /TerminateDebugging/ ];
+      // it is a bit compiler- and optimization-level-dependent what
+      // symbols we get
+      let expected = [ /assertionFailure/, /TerminateDebugging/, /JS_DebugTerminate/ ];
       let matches = 0;
       lines.forEach(function(line) {
         expected.forEach(function(ex) {
@@ -77,7 +79,7 @@ function recoverySuite () {
           }
         });
       });
-      assertEqual(expected.length, matches, lines);
+      assertTrue(matches > 0, lines);
     }
 
   };

@@ -105,21 +105,27 @@ void TRI_TerminateDebugging(char const* message) {
   // crash handler
   velocypack::StringRef const s(message);
   if (s == "CRASH-HANDLER-TEST-ABORT") {
+    // intentionally crashes the program!
     std::abort();
   } else if (s == "CRASH-HANDLER-TEST-TERMINATE") {
+    // intentionally crashes the program!
     std::terminate();
   } else if (s == "CRASH-HANDLER-TEST-TERMINATE-ACTIVE") {
     auto f = []() noexcept {
+      // intentionally crashes the program!
       return std::string(nullptr);
     };
     f();
     std::terminate();
   } else if (s == "CRASH-HANDLER-TEST-SEGFAULT") {
     std::unique_ptr<int> x;
-    *x;
+    // intentionally crashes the program!
+    int a = *x;
     *x = 2;
+    TRI_ASSERT(a == 1);
   } else if (s == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
+    // intentionally crashes the program!
     TRI_ASSERT(a == 2);
   }
 
