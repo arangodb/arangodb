@@ -1,0 +1,48 @@
+  <div id="applierContent" class="innerContent applierContent replicationContent">
+    <div class="repl-applier">
+
+      <% _.each(data, function (properties, name) { %>
+
+        <div class="categoryBar">
+          <h4 style="text-transform: capitalize;"><%=name%></h4>
+        </div>
+
+          <table id="applier-<%=name%>" class="pure-table">
+            <tbody>
+              <% if (typeof properties === 'string') { %>
+                <tr>
+                  <td><%=name%></td>
+                  <td><%=properties%></td>
+                </tr>
+              <% } else { %>
+                <% _.each(properties, function (val, key) { %>
+                  <tr>
+                    <td><%=key%></td>
+
+                    <td>
+                      <% if (typeof val !== 'string' && typeof val !== 'number' && typeof val !== 'boolean') { %>
+                        <table>
+                          <tbody>
+                            <% _.each(val, function (v, k) { %>
+                              <tr>
+                                <td><%=k%></td>
+                                <td><%=v%></td>
+                              </tr>
+                            <% }); %>
+                          <tbody>
+                        </table>
+                      <% } else {%>
+                        <%=val%>
+                      <% } %>
+                    </td>
+
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+
+      <% }); %>
+
+    </div>
+  </div>

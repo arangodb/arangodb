@@ -60,14 +60,14 @@ using namespace arangodb::aql;
 
 namespace {
 /// resolve constant attribute accesses
-static void resolveFCallConstAttributes(AstNode* fcall) {
+static void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
   TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
   TRI_ASSERT(fcall->numMembers() == 1);
   AstNode* array = fcall->getMemberUnchecked(0);
   for (size_t x = 0; x < array->numMembers(); x++) {
     AstNode* child = array->getMemberUnchecked(x);
     if (child->type == NODE_TYPE_ATTRIBUTE_ACCESS && child->isConstant()) {
-      child = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(child));
+      child = const_cast<AstNode*>(ast->resolveConstAttributeAccess(child));
       array->changeMember(x, child);
     }
   }
@@ -218,7 +218,7 @@ IndexExecutorInfos::IndexExecutorInfos(
 
         // geo index condition i.e. GEO_CONTAINS, GEO_INTERSECTS
         if (leaf->type == NODE_TYPE_FCALL) {
-          ::resolveFCallConstAttributes(leaf);
+          ::resolveFCallConstAttributes(_ast, leaf);
           continue;  //
         } else if (leaf->numMembers() != 2) {
           continue;  // Otherwise we only support binary conditions
@@ -228,16 +228,16 @@ IndexExecutorInfos::IndexExecutorInfos(
         AstNode* lhs = leaf->getMemberUnchecked(0);
         AstNode* rhs = leaf->getMemberUnchecked(1);
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->isConstant()) {
-          lhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(lhs));
+          lhs = const_cast<AstNode*>(_ast->resolveConstAttributeAccess(lhs));
           leaf->changeMember(0, lhs);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-          rhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
+          rhs = const_cast<AstNode*>(_ast->resolveConstAttributeAccess(rhs));
           leaf->changeMember(1, rhs);
         }
         // geo index condition i.e. `GEO_DISTANCE(x, y) <= d`
         if (lhs->type == NODE_TYPE_FCALL) {
-          ::resolveFCallConstAttributes(lhs);
+          ::resolveFCallConstAttributes(_ast, lhs);
         }
       }
     }
@@ -593,7 +593,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
         _infos.getNonConstExpressions()[posInExpressions].get();
     auto exp = toReplace->expression.get();
 
-    auto& regex = _documentProducingFunctionContext.regexCache();
+    auto& regex = _documentProducingFunctionContext.aqlFunctionsInternalCache();
 
     ExecutorExpressionContext ctx(_trx, query, regex,
                                   input, _infos.getExpInVars(),

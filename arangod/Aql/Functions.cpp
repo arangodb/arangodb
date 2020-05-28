@@ -66,6 +66,7 @@
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -1567,6 +1568,7 @@ template <bool search_semantics>
 AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
+  TRI_ASSERT(ctx);
   if (args.size() < 3) {
     registerWarning(ctx, AFN,
                     arangodb::Result{TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
@@ -1633,6 +1635,7 @@ AqlValue Functions::NgramPositionalSimilarity(ExpressionContext* ctx,
 /// Executes NGRAM_MATCH based on binary ngram similarity
 AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx,
                                VPackFunctionParameters const& args) {
+  TRI_ASSERT(ctx);
   static char const* AFN = "NGRAM_MATCH";
 
   auto const argc = args.size();
@@ -1702,7 +1705,8 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, transaction::Methods* trx
     arangodb::aql::registerWarning(ctx, AFN, TRI_ERROR_INTERNAL);
     return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
   }
-  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase);
+  auto analyzer = analyzerFeature.get(analyzerId, trx->vocbase(), *sysVocbase,
+                                      trx->state()->analyzersRevision());
   if (!analyzer) {
     arangodb::aql::registerWarning(
         ctx, AFN,
@@ -3052,7 +3056,7 @@ AqlValue Functions::Split(ExpressionContext* expressionContext, transaction::Met
   Stringify(trx, adapter, aqlValueToSplit.slice());
   icu::UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
-  
+
   // the matcher is owned by the context!
   icu::RegexMatcher* matcher =
       expressionContext->buildSplitMatcher(aqlSeparatorExpression,
@@ -7563,10 +7567,22 @@ AqlValue Functions::SchemaValidate(ExpressionContext* expressionContext,
         TRI_ERROR_BAD_PARAMETER, "second parameter is not a schema object: " +
                                      schemaValue.slice().toJson());
   }
+  auto* validator = expressionContext->buildValidator(schemaValue.slice());
 
-  arangodb::ValidatorJsonSchema validator(schemaValue.slice());
-  validator.setLevel(ValidationLevel::Strict); //override level so the validation will be executed no matter what
-  auto res = validator.validateOne(docValue.slice(), vpackOptions);
+  //store and restore validation level this is cheaper than modifying the VPack
+  auto storedLevel = validator->level();
+
+  //override level so the validation will be executed no matter what
+  validator->setLevel(ValidationLevel::Strict);
+
+  Result res;
+  {
+    arangodb::ScopeGuard guardi([storedLevel, &validator]{
+        validator->setLevel(storedLevel);
+    });
+
+    res = validator->validateOne(docValue.slice(), vpackOptions);
+  }
 
   transaction::BuilderLeaser resultBuilder(trx);
   {
