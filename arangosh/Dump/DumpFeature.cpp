@@ -506,7 +506,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     auto file = jobData.directory.writableFile(
         jobData.name + (jobData.options.clusterMode ? "" : ("_" + hexString)) +
             ".structure.json",
-        true, 0, false);
+        true /*overwrite*/, 0, false /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
@@ -543,7 +543,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     // always create the file so that arangorestore does not complain
     auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
                                                    ".data.json",
-                                               true);
+                                               true /*overwrite*/, 0, true /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }

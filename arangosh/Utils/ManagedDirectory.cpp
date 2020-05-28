@@ -266,6 +266,9 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       }
 
       _status.reset(::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
+      if (::EncryptionTypeNone != _encryptionType) {
+        _writeGzip = false;
+      }  
       return;
     }
     // fall through to write encryption file
@@ -450,19 +453,15 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-}
+      _status {::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-}
+      _status {::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    const char * gzFlags(nullptr);
+    char const* gzFlags = nullptr;
 
     // gzip is going to perform a redundant close,
     //  simpler code to give it redundant handle
@@ -488,19 +487,15 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
       _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
-      _status {
-  ::initialStatus(_fd, _path, _flags, _context.get())
-      }
+      _status {::initialStatus(_fd, _path, _flags, _context.get())}
 #else
-      _status {
-  ::initialStatus(_fd, _path, _flags)
-      }
+      _status {::initialStatus(_fd, _path, _flags)}
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
 
   if (isGzip) {
-    const char * gzFlags(nullptr);
+    char const* gzFlags = nullptr;
 
     // gzip is going to perform a redundant close,
     //  simpler code to give it redundant handle
@@ -517,7 +512,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
 
 ManagedDirectory::File::~File() {
   try {
-    if (_gzfd >=0) {
+    if (_gzfd >= 0) {
       gzclose(_gzFile);
       _gzfd = -1;
       _gzFile = nullptr;
@@ -617,7 +612,7 @@ void ManagedDirectory::File::spit(std::string const& content) {
 }
 
 Result const& ManagedDirectory::File::close() {
-  if (_gzfd >=0) {
+  if (_gzfd >= 0) {
     gzclose(_gzFile);
     _gzfd = -1;
     _gzFile = nullptr;
