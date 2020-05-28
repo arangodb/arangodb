@@ -11,6 +11,7 @@ will be reloaded and the internal encryption key will be re-encrypted with the
 new user key.
 
 This is a protected API and can only be executed with superuser rights.
+This API is not available on coordinator nodes.
 
 @RESTRETURNCODES
 
