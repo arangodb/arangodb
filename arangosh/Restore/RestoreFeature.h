@@ -24,6 +24,8 @@
 #ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
 #define ARANGODB_RESTORE_RESTORE_FEATURE_H 1
 
+#include <shared_mutex>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/VelocyPackHelper.h"
@@ -94,6 +96,51 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool preserveRevisionIds{false};
   };
 
+  enum CollectionState {
+    UNKNOWN = 0,
+    CREATED = 1,
+    RESTORING = 2,
+    RESTORED = 3,
+  };
+
+  struct CollectionStatus {
+    CollectionState state = UNKNOWN;
+    size_t bytes_acked = 0;
+
+    CollectionStatus() = default;
+    CollectionStatus(CollectionState state, size_t bytes_acked = 0u) : state(state), bytes_acked(bytes_acked) {}
+    CollectionStatus(VPackSlice slice) {
+        state = slice.get("state").getNumericValue<CollectionState>();
+        bytes_acked = slice.get("bytes-acked").getNumericValue<size_t>();
+    };
+
+    void toVelocyPack(VPackBuilder &builder) const {
+      {
+        VPackObjectBuilder object(&builder);
+        builder.add("state", VPackValue(state));
+        builder.add("bytes-acked", VPackValue(bytes_acked));
+      }
+    }
+  };
+
+  struct ProgressTracker {
+    ProgressTracker(ManagedDirectory& directory);
+
+    ProgressTracker(ProgressTracker const&) = delete;
+    ProgressTracker(ProgressTracker &&) noexcept = delete;
+    ProgressTracker& operator=(ProgressTracker const&) = delete;
+    ProgressTracker& operator=(ProgressTracker &&) noexcept = delete;
+
+    CollectionStatus getStatus(std::string const& filename);
+
+    void updateStauts(std::string const& filename, CollectionStatus const& status);
+
+    ManagedDirectory& directory;
+    std::shared_mutex _collectionStatesMutex;
+    std::unordered_map<std::string, CollectionStatus> _collectionStates;
+  };
+
+
   /// @brief Stores stats about the overall restore progress
   struct Stats {
     std::atomic<uint64_t> totalBatches{0};
@@ -107,18 +154,21 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   struct JobData {
     ManagedDirectory& directory;
     RestoreFeature& feature;
+    ProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
 
     VPackSlice collection;
 
-    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&, VPackSlice const&);
+    JobData(ManagedDirectory&, RestoreFeature&, ProgressTracker& progressTracker,
+            Options const&, Stats&, VPackSlice const&);
   };
 
  private:
   ClientManager _clientManager;
   ClientTaskQueue<JobData> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
+  std::unique_ptr<ProgressTracker> _progressTracker;
   int& _exitCode;
   Options _options;
   Stats _stats;

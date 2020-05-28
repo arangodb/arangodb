@@ -286,7 +286,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   // get client feature for configuration info
   arangodb::ClientFeature& client =
       server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
-         
+
   client.setDatabaseName(arangodb::StaticStrings::SystemDatabase);
 
   // get httpclient by hand rather than using manager, to bypass any built-in
@@ -344,7 +344,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   }
 
   std::string const body = builder.slice().toJson();
-      
+
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(RequestType::POST, "/_api/database", body.c_str(), body.size()));
   if (response == nullptr || !response->isComplete()) {
@@ -594,7 +594,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
                   arangodb::StaticStrings::MimeTypeDump);
-  
+
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
   return ::checkHttpResponse(httpClient, response, "restoring data", "");
@@ -699,6 +699,13 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
                                                                       "type", 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
+  if (jobData.progressTracker.getStatus(cname).state >= arangodb::RestoreFeature::RESTORED) {
+    LOG_TOPIC("94913", INFO, Logger::RESTORE)
+        << "# Loading data into " << collectionType << " collection '" << cname
+        << "was restored previously.";
+    return result;
+  }
+
   // import data. check if we have a datafile
   //  ... there are 4 possible names
   auto datafile = jobData.directory.readableFile(
@@ -730,6 +737,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   int64_t numReadSinceLastReport = 0;
 
   bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
+
+  jobData.progressTracker.updateStauts(cname, {arangodb::RestoreFeature::RESTORING, 0});
 
   buffer.clear();
   while (true) {
@@ -818,6 +827,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
     }
   }
 
+  jobData.progressTracker.updateStauts(cname, {arangodb::RestoreFeature::RESTORED, 0});
+
   return result;
 }
 
@@ -873,7 +884,9 @@ arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
     arangodb::RestoreFeature& feature, arangodb::RestoreFeature::Options const& options,
-    arangodb::ManagedDirectory& directory, arangodb::RestoreFeature::Stats& stats) {
+    arangodb::ManagedDirectory& directory,
+    arangodb::RestoreFeature::ProgressTracker& progressTracker,
+    arangodb::RestoreFeature::Stats& stats) {
   using arangodb::Logger;
   using arangodb::Result;
   using arangodb::StaticStrings;
@@ -1017,15 +1030,20 @@ arangodb::Result processInputDirectory(
       }
 
       auto jobData =
-          std::make_unique<arangodb::RestoreFeature::JobData>(directory, feature, options,
+          std::make_unique<arangodb::RestoreFeature::JobData>(directory, feature,
+                                                              progressTracker, options,
                                                               stats, collection);
 
       // take care of collection creation now, serially
-      if (options.importStructure) {
+      if (options.importStructure &&
+          progressTracker.getStatus(name.copyString()).state <
+              arangodb::RestoreFeature::CREATED) {
         Result result = ::recreateCollection(httpClient, *jobData);
         if (result.fail()) {
           return result;
         }
+
+        progressTracker.updateStauts(name.copyString(), {arangodb::RestoreFeature::CREATED});
       }
 
       if (name.isString() && name.stringRef() == "_users") {
@@ -1182,7 +1200,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
       return result;
     }
   } else {
-    // restore indexes first 
+    // restore indexes first
     result = ::restoreIndexes(httpClient, jobData);
     if (result.fail()) {
       return result;
@@ -1225,9 +1243,10 @@ void handleJobResult(std::unique_ptr<arangodb::RestoreFeature::JobData>&& jobDat
 namespace arangodb {
 
 RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
+                                 ProgressTracker& progressTracker,
                                  RestoreFeature::Options const& o,
                                  RestoreFeature::Stats& s, VPackSlice const& c)
-    : directory{d}, feature{f}, options{o}, stats{s}, collection{c} {}
+    : directory{d}, feature{f}, progressTracker(progressTracker), options{o}, stats{s}, collection{c} {}
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, RestoreFeature::featureName()),
@@ -1602,7 +1621,7 @@ void RestoreFeature::start() {
     LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
   }
-  
+
   if (!isRocksDB) {
     LOG_TOPIC("ae10c", WARN, arangodb::Logger::RESTORE) << "You connected to a server with a potentially incompatible storage engine.";
   }
@@ -1687,10 +1706,13 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
+    // TODO load from file
+    ProgressTracker pt(*_directory);
+
     // run the actual restore
     try {
       result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
-                                      _options, *_directory, _stats);
+                                      _options, *_directory, pt, _stats);
     } catch (basics::Exception const& ex) {
       LOG_TOPIC("52b22", ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
       result = {ex.code(), ex.what()};
@@ -1750,5 +1772,46 @@ Result RestoreFeature::getFirstError() const {
   }
   return {TRI_ERROR_NO_ERROR};
 }
+
+void RestoreFeature::ProgressTracker::updateStauts(const std::string& filename,
+                                                   const RestoreFeature::CollectionStatus& status) {
+  std::unique_lock guard(_collectionStatesMutex);
+  _collectionStates[filename] = status;
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder object(&builder);
+
+    for (auto const& [filename, state] : _collectionStates) {
+      builder.add(VPackValue(filename));
+      state.toVelocyPack(builder);
+    }
+  }
+  LOG_DEVEL << "Continuation file = " << builder.toJson();
+
+  auto file = directory.writableFile("continue.json", true, 0, false);
+  file->spit(builder.toJson());
+}
+
+RestoreFeature::CollectionStatus RestoreFeature::ProgressTracker::getStatus(const std::string& filename) {
+  std::shared_lock guard(_collectionStatesMutex);
+  return _collectionStates[filename];
+}
+
+RestoreFeature::ProgressTracker::ProgressTracker(ManagedDirectory& directory)
+    : directory(directory) {
+  VPackBuilder progressBuilder = directory.vpackFromJsonFile("continue.json");
+  VPackSlice progress = progressBuilder.slice();
+
+  if (progress.isNone()) {
+    return ;
+  }
+
+  // TODO add error checking
+  for (auto&& [key, value] : VPackObjectIterator(progress)) {
+    _collectionStates[key.copyString()] = CollectionStatus(value);
+  }
+}
+
 
 }  // namespace arangodb
