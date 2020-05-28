@@ -78,7 +78,8 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
       std::vector<const filter*>& /*incl*/,
       std::vector<const filter*>& /*excl*/,
       const order::prepared& /*ord*/,
-      boost_t& /*boost*/) const {
+      boost_t& /*boost*/,
+      filters_t& /*aux_filters*/) const{
     // noop
   }
 
@@ -93,13 +94,10 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
  private:
   void group_filters(
     std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl
-  ) const;
+    std::vector<const filter*>& excl) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
-  all all_docs_;
-  all all_docs_zero_boost_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
@@ -123,7 +121,8 @@ class IRESEARCH_API And: public boolean_filter {
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
     const order::prepared& ord,
-    boost_t& boost
+    boost_t& boost,
+    filters_t& aux_filters
   ) const override;
 
   virtual filter::prepared::ptr prepare(
@@ -168,7 +167,8 @@ class IRESEARCH_API Or : public boolean_filter {
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
     const order::prepared& ord,
-    boost_t& boost) const override;
+    boost_t& boost,
+    filters_t& aux_filters) const override;
 
   virtual filter::prepared::ptr prepare(
     const std::vector<const filter*>& incl,
@@ -180,6 +180,7 @@ class IRESEARCH_API Or : public boolean_filter {
 
  private:
   size_t min_match_count_;
+  mutable size_t optimized_match_count_{0}; // count of always matched filters optimized away
 }; // Or
 
 //////////////////////////////////////////////////////////////////////////////
