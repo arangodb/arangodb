@@ -56,6 +56,11 @@ RestStatus RestAdminStatisticsHandler::execute() {
   }
 
   if (_request->requestPath() == "/_admin/statistics") {
+    if (_request->value("sync") == "true") {
+      // processAll operates on a lock-free queue, and the statistic updates
+      // themselves are also thread-safe
+      RequestStatistics::processAll();
+    }
     getStatistics();
   } else if (_request->requestPath() == "/_admin/statistics-description") {
     getStatisticsDescription();

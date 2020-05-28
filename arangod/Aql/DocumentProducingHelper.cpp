@@ -318,14 +318,14 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_trx, _query, _regexCache, slice);
+  DocumentExpressionContext ctx(_trx, _query, _aqlFunctionsInternalCache, slice);
   return checkFilter(ctx);
 }
 
 bool DocumentProducingFunctionContext::checkFilter(
     AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
     void const* filterContext) {
-  DocumentIndexExpressionContext ctx(_trx, _query, _regexCache, getValue, filterContext);
+  DocumentIndexExpressionContext ctx(_trx, _query, _aqlFunctionsInternalCache, getValue, filterContext);
   return checkFilter(ctx);
 }
 
