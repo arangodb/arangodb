@@ -4044,7 +4044,7 @@ function transactionAQLStreamSuite () {
           cursor2 = trx.query('FOR i IN 1..10000000000000 RETURN i', {}, {}, {stream: true});
           fail();
         } catch (err) {
-          assertEqual(internal.errors.ERROR_LOCKED.code, err.errorNum)
+          assertEqual(internal.errors.ERROR_LOCKED.code, err.errorNum);
         }
       } catch (err) {
         fail("Transaction failed with: " + JSON.stringify(err));
