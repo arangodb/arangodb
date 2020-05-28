@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fixed bad behavior when dropping followers. A follower should be dropped
+  immediately when it is officially FAILED, not only after a longish timeout.
+
+* Fixed a bug in CollectionNameResolver which could lead to an extended
+  busy spin on a core when a collection was dropped, but documents of it
+  still remained in the WAL.
+
+* Fixed return value of fuerte::H1Connection in case of timeout.
+
 * Usability improvements for arangodump and arangorestore:
   - when a dump is restricted to one or multiple collections using the 
     `--collection` option of arangodump, warnings are issued for all specified

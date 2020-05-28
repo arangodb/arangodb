@@ -161,6 +161,7 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;
   bool _messageComplete = false;
+  bool _timeoutOnReadWrite = false;   // indicates that a timeout has happened
 };
 }}}}  // namespace arangodb::fuerte::v1::http
 
