@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fixed bad behaviour when dropping followers. A follower should be dropped
+  immediately when it is officially FAILED, not only after a longish timeout.
+
+* Fixed a bug in CollectionNameResolver which could lead to an extended
+  busy spin on a core when a collection was dropped, but documents of it
+  still remained in the WAL.
+
+* Fixed return value of fuerte::H1Connection in case of timeout.
+
 * Fixed traversal issue: If you have a traversal with different minDepth and maxDepth
   values and filter on path elements that are larger then minDepth, in a way that a
   shorter path would match the condition, the shorter paths would in some cases
