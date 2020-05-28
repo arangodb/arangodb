@@ -209,6 +209,12 @@ build directory:
 
     cmake --build . --target frontend
 
+For Oskar you may use the following:
+
+    shellInAlpineContainer
+
+    apk add --no-cache nodejs npm && cd /work/ArangoDB/build && cmake --build . --target frontend
+
 To remove all available node modules and start a clean installation run:
 
     cmake --build . --target frontend_clean
