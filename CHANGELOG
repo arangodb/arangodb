@@ -19,7 +19,7 @@ devel
   a sharded GeneralGraph the filter was not applied correctly.
   SmartGraphs and SingleServer traversals are not effected by this issue.
   Also OneShard traversals are not effected.
-  
+
 * Include all requests to the web interface at endpoint `/_admin/aardvark` in 
   a node's requests statistics. Previously, requests going to `/_admin/aardvark`
   were excluded from the request statistics if and only if the requested
