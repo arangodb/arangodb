@@ -161,7 +161,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function healLeader(leader) {
-    if (leader == null) leader = cinfo.shards[shards[0]][1];
+    if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceInfo:
     var pos = _.findIndex(global.instanceInfo.arangods,
