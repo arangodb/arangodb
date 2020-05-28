@@ -415,6 +415,7 @@ function componentsTestSuite() {
   const numComponents = 20; // components
   const n = 200; // vertices
   const m = 300; // edges
+  const problematicGraphName = 'problematic';
 
   return {
 
@@ -483,6 +484,66 @@ function componentsTestSuite() {
       
       console.log("Got %s edges", db[eColl].count());
       assertEqual(db[eColl].count(), numComponents * m + numComponents * n);
+
+      {
+        const v = 'problematic_components';
+        const e = 'problematic_connections';
+
+        const edges = [
+          ["A1", "A2"],
+          ["A2", "A3"],
+          ["A3", "A4"],
+          ["A4", "A1"],
+          ["B1", "B3"],
+          ["B2", "B4"],
+          ["B3", "B6"],
+          ["B4", "B3"],
+          ["B4", "B5"],
+          ["B6", "B7"],
+          ["B7", "B8"],
+          ["B7", "B9"],
+          ["B7", "B10"],
+          ["B7", "B19"],
+          ["B11", "B10"],
+          ["B12", "B11"],
+          ["B13", "B12"],
+          ["B13", "B20"],
+          ["B14", "B13"],
+          ["B15", "B14"],
+          ["B15", "B16"],
+          ["B17", "B15"],
+          ["B17", "B18"],
+          ["B19", "B17"],
+          ["B20", "B21"],
+          ["B20", "B22"],
+          ["C1", "C2"],
+          ["C2", "C3"],
+          ["C3", "C4"],
+          ["C4", "C5"],
+          ["C4", "C7"],
+          ["C5", "C6"],
+          ["C5", "C7"],
+          ["C7", "C8"],
+          ["C8", "C9"],
+          ["C8", "C10"],
+        ];
+
+        const vertices = new Set(edges.flat());
+
+        try {
+          graph_module._drop(problematicGraphName, true);
+        } catch (err) { }
+
+        const graph = graph_module._create(problematicGraphName, [graph_module._relation(e, v, v)]);
+
+        vertices.forEach(vertex => {
+          graph[v].save({ _key: vertex });
+        });
+
+        edges.forEach(([from, to]) => {
+          graph[e].save({ _from: `${v}/${from}`, _to: `${v}/${to}` });
+        });
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -491,6 +552,7 @@ function componentsTestSuite() {
 
     tearDownAll: function () {
       graph_module._drop(graphName, true);
+      graph_module._drop(problematicGraphName, true);
     },
 
     testWCC: function () {
@@ -518,6 +580,40 @@ function componentsTestSuite() {
       if (i === 0) {
         assertTrue(false, "timeout in WCC execution");
       }
+    },
+
+    testWCC2: function() {
+      const v = 'problematic_components';
+
+      // weakly connected components algorithm
+      var handle = pregel.start('wcc', problematicGraphName, {
+        maxGSS: 250, resultField: 'component'
+      });
+
+      while (true) {
+        var status = pregel.status(handle);
+        if (status.state !== 'running') {
+          console.log(status);
+          break;
+        } else {
+          console.log('Waiting for Pregel result...');
+          internal.sleep(1);
+        }
+      }
+
+      const counts = db._query(
+        `FOR vert IN @@v
+          COLLECT component = vert.component
+          WITH COUNT INTO count
+          SORT count DESC
+          RETURN count`,
+        { "@v": v }
+      ).toArray();
+
+      assertEqual(counts.length, 3);
+      assertEqual(counts[0], 22);
+      assertEqual(counts[1], 10);
+      assertEqual(counts[2], 4);
     }
   };
 }
