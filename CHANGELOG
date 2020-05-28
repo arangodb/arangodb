@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed, if you have a collection access within a Subquery, where the main query is fully skipped
+  and the "splice-subqueries" rule is active. The information of the skip was not transported
+  correctly. This could cause incorrect counting reports.
+  If splice-subqueries are disabled, or the main-query is only partly skipped, everything worked
+  as expected.
+
 * Expanded -std=c++17 flag to all compilers.
 
 * Include all requests to the web interface at endpoint `/_admin/aardvark` in 
