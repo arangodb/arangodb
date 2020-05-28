@@ -1,6 +1,25 @@
 devel
 -----
 
+* Fixed traversal issue: If you have a traversal with different minDepth and maxDepth
+  values and filter on path elements that are larger then minDepth, in a way that a
+  shorter path would match the condition, the shorter paths would in some cases
+  not be returned, even if they are valid. e.g.
+
+  FOR v, e, p IN 1..3 OUTBOUND @start Graph "myGraph"
+    FILTER p.vertices[2].label != "foo"
+    RETURN p
+
+  In the above query, a path of length 1 would be valid. There p.vertices[2]
+  does not exist => Evaluated to `null`. `null`.label is again evaluated to `null`
+  => `null != "foo"` is true, so the path is valid.
+
+* Fixed traversal issue: If you have a filter on the path that is based on a
+  variable value, which could not be deduced as constant during runtime, in
+  a sharded GeneralGraph the filter was not applied correctly.
+  SmartGraphs and SingleServer traversals are not effected by this issue.
+  Also OneShard traversals are not effected.
+
 * Added `securityScheme`, `securityScope` and `security` methods to Foxx
   endpoints to allow defining Swagger security schemes.
 
