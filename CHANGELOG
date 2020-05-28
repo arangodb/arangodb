@@ -7,8 +7,6 @@ devel
 * Foxx routes now always have a Swagger `operationId`. If the route is unnamed,
   a distinct operationId will be generated based on the HTTP method and URL.
 
-* Fixed adding an orphan collections as the first collection in a SmartGraph. 
-
 * Expanded -std=c++17 flag to all compilers.
 
 * Include all requests to the web interface at endpoint `/_admin/aardvark` in 
