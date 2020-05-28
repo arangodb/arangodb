@@ -568,9 +568,12 @@ Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
 
 Run specific gtest tests:
 
-    ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:IResearchQueryLateMaterializationTest.*"
+    ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:*ReturnExecutor*"
     # equivalent to:
-    ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:IResearchQueryLateMaterializationTest.*"
+    ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
+
+Note that the `arangodbtests` executable is not compiled and shipped for
+production releases (`-DUSE_GOOGLE_TESTS=off`).
 
 Run all tests:
 
