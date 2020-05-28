@@ -53,10 +53,6 @@
 #include "Ssl/SslInterface.h"
 #include "Utils/ManagedDirectory.h"
 
-//#ifdef USE_ENTERPRISE
-//#include "Enterprise/Encryption/EncryptionFeature.h"
-//#endif
-
 namespace {
 
 /// @brief fake client id we will send to the server. the server keeps
