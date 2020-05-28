@@ -63,9 +63,11 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
 class ClusterTraverserEdgeCursor final : public ClusterEdgeCursor {
  public:
 
-  explicit ClusterTraverserEdgeCursor(graph::BaseOptions const* opts);
+  explicit ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts);
   
   void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+
+  traverser::TraverserOptions const* traverserOptions() const;
 };
 
 class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {

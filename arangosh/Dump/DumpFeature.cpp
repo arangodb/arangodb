@@ -53,10 +53,6 @@
 #include "Ssl/SslInterface.h"
 #include "Utils/ManagedDirectory.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
-
 namespace {
 
 /// @brief fake client id we will send to the server. the server keeps
@@ -155,9 +151,9 @@ std::pair<arangodb::Result, std::vector<std::string>> getDatabases(arangodb::htt
 
   // sort by name, with _system first
   std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
-    if (lhs == "_system" && rhs != "_system") {
+    if (lhs == arangodb::StaticStrings::SystemDatabase && rhs != arangodb::StaticStrings::SystemDatabase) {
       return true;
-    } else if (rhs == "_system" && lhs != "_system") {
+    } else if (rhs == arangodb::StaticStrings::SystemDatabase && lhs != arangodb::StaticStrings::SystemDatabase) {
       return false;
     }
     return lhs < rhs;
@@ -241,6 +237,7 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
 }
 
 /// @brief execute a WAL flush request
+/// TODO: remove this in 3.8, because it is only needed for MMFiles
 void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
   static std::string const url =
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
@@ -505,7 +502,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     auto file = jobData.directory.writableFile(
         jobData.name + (jobData.options.clusterMode ? "" : ("_" + hexString)) +
             ".structure.json",
-        true, 0, false);
+        true /*overwrite*/, 0, false /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
@@ -542,7 +539,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
     // always create the file so that arangorestore does not complain
     auto file = jobData.directory.writableFile(jobData.name + "_" + hexString +
                                                    ".data.json",
-                                               true);
+                                               true /*overwrite*/, 0, true /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
     }
@@ -728,6 +725,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   TRI_DEFER(::endBatch(client, "", batchId));
 
   // flush the wal and so we know we are getting everything
+  // TODO: remove this in 3.8, because it is only needed for MMFiles
   flushWal(client);
 
   // fetch the collection inventory
@@ -788,17 +786,20 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   }
 
   // create a lookup table for collections
-  std::map<std::string, bool> restrictList;
+  std::map<std::string, arangodb::velocypack::Slice> restrictList;
   for (size_t i = 0; i < _options.collections.size(); ++i) {
     auto const& name = _options.collections[i];
-    restrictList.insert(std::pair<std::string, bool>(name, true));
     if (!name.empty() && name[0] == '_') {
       // if the user explictly asked for dumping certain collections, toggle the system collection flag automatically
       _options.includeSystemCollections = true;
     }
+    
+    restrictList.emplace(name, arangodb::velocypack::Slice::noneSlice());
   }
 
-  // Step 3. iterate over collections, queue dump jobs
+  // restrictList now contains all collections the user has requested (can be empty)
+
+  // basic validation
   for (VPackSlice const& collection : VPackArrayIterator(collections)) {
     // extract parameters about the individual collection
     if (!collection.isObject()) {
@@ -808,38 +809,62 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
     if (!parameters.isObject()) {
       return ::ErrorMalformedJsonResponse;
     }
-
+    
     // extract basic info about the collection
     uint64_t const cid = basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name =
-        arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName,
-                                                           "");
+        arangodb::basics::VelocyPackHelper::getStringValue(parameters, StaticStrings::DataSourceName, "");
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
         parameters, StaticStrings::DataSourceDeleted.c_str(), false);
-    int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-        parameters, StaticStrings::DataSourceType.c_str(), 2);
-    std::string const collectionType(type == 2 ? "document" : "edge");
-
+    
     // basic filtering
-    if (cid == 0 || name == "") {
+    if (cid == 0 || name.empty()) {
       return ::ErrorMalformedJsonResponse;
     }
 
     if (deleted) {
       continue;
     }
-
+    
     if (name[0] == '_' && !_options.includeSystemCollections) {
       continue;
     }
 
     // filter by specified names
-    if (!restrictList.empty() && restrictList.find(name) == restrictList.end()) {
+    if (!_options.collections.empty() && restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
     }
+ 
+    restrictList[name] = collection;
+  }
+
+  // restrictList now contains all collections the user requested, or all collections
+  // in case the user did not restrict the dump to any collections
+
+  // Step 3. iterate over collections, queue dump jobs
+  for (auto const& [name, collection] : restrictList) {
+    if (collection.isNone()) {
+      LOG_TOPIC("e650c", WARN, arangodb::Logger::DUMP)
+          << "Requested collection '" << name << "' not found in database";
+      continue;
+    }
+
+    // extract parameters about the individual collection
+    TRI_ASSERT(collection.isObject());
+    VPackSlice const parameters = collection.get("parameters");
+    TRI_ASSERT(parameters.isObject());
+
+    // extract basic info about the collection
+    uint64_t const cid = basics::VelocyPackHelper::extractIdValue(parameters);
+    int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+        parameters, StaticStrings::DataSourceType.c_str(), 2);
+
+    TRI_ASSERT(cid != 0);
+    TRI_ASSERT(!name.empty());
 
     // queue job to actually dump collection
+    std::string const collectionType(type == 2 ? "document" : "edge");
     auto jobData =
         std::make_unique<JobData>(*_directory, *this, _options, _maskings.get(),
                                   _stats, collection, batchId,
