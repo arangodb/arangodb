@@ -43,11 +43,10 @@ struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessa
   WCCComputation() {}
   void compute(MessageIterator<SenderMessage<uint64_t>> const& messages) override {
     uint64_t currentComponent = vertexData();
-    
-    std::set<PregelID> tosend;
-        
-    if (globalSuperstep() > 0) {
-            
+
+    if (globalSuperstep() > 0) {  
+      bool halt = true;
+
       for (const SenderMessage<uint64_t>* msg : messages) {
         if (msg->value < currentComponent) {
           currentComponent = msg->value;
@@ -56,24 +55,28 @@ struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessa
         }
       }
       
+      SenderMessage<uint64_t> message(pregelId(), currentComponent);
       for (const SenderMessage<uint64_t>* msg : messages) {
         if (msg->value > currentComponent) {
-         TRI_ASSERT(msg->senderId != pregelId());
-          SenderMessage<uint64_t> message(pregelId(), currentComponent);
+          TRI_ASSERT(msg->senderId != pregelId());
           sendMessage(msg->senderId, message);
+          halt = false;
         }
       }
 
       if (currentComponent != vertexData()) {
-        voteActive();
         *mutableVertexData() = currentComponent;
-      } else {
+        halt = false;
+      }
+      
+      if (halt) {
         voteHalt();
+      } else {
+        voteActive();
       }
     }
         
-    SenderMessage<uint64_t> message(pregelId(), currentComponent);
-    
+    SenderMessage<uint64_t> message(pregelId(), currentComponent);    
     RangeIterator<Edge<uint64_t>> edges = this->getEdges();
     for (; edges.hasMore(); ++edges) {
       Edge<uint64_t>* edge = *edges;
@@ -81,13 +84,10 @@ struct WCCComputation : public VertexComputation<uint64_t, uint64_t, SenderMessa
         continue; // no need to send message to self
       }
     
-      if (edge->data() > currentComponent) {
-        // remember the value we send
-        edge->data() = currentComponent;
-        sendMessage(edge, message);
-      } else {
-        TRI_ASSERT(globalSuperstep() != 0);
-      }
+      // remember the value we send
+      edge->data() = currentComponent;
+
+      sendMessage(edge, message);
     }
   }
 };
