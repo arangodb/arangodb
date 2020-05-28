@@ -575,7 +575,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto* oldOpts = options();
-  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, true);
+  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, /*allowAlreadyBuiltCopy*/true);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);
