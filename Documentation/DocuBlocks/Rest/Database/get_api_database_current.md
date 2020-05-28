@@ -5,7 +5,7 @@
 @RESTHEADER{GET /_api/database/current, Information of the database, getDatabases:current}
 
 @RESTDESCRIPTION
-Retrieves information about the current database
+Retrieves the properties of the current database
 
 The response is a JSON object with the following attributes:
 
@@ -16,6 +16,12 @@ The response is a JSON object with the following attributes:
 - *path*: the filesystem path of the current database
 
 - *isSystem*: whether or not the current database is the *_system* database
+
+- *sharding*: the default sharding method for collections created in this database
+
+- *replicationFactor*: the default replication factor for collections in this database
+
+- *writeConcern*: the default write concern for collections in this database
 
 @RESTRETURNCODES
 
@@ -39,4 +45,3 @@ is returned if the database could not be found.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

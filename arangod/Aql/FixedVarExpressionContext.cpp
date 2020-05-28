@@ -24,21 +24,15 @@
 #include "FixedVarExpressionContext.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-size_t FixedVarExpressionContext::numRegisters() const { return 0; }
-
-AqlValue const& FixedVarExpressionContext::getRegisterValue(size_t i) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-Variable const* FixedVarExpressionContext::getVariable(size_t i) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+bool FixedVarExpressionContext::isDataFromCollection(Variable const* variable) const {
+  return false;
 }
 
 AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
@@ -59,16 +53,21 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, b
 void FixedVarExpressionContext::clearVariableValues() { _vars.clear(); }
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
-  _vars.emplace(var, value);
+  _vars.try_emplace(var, value);
 }
 
-void FixedVarExpressionContext::serializeAllVariables(transaction::Methods* trx,
-                                                      VPackBuilder& builder) const {
+void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
+                                                      velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(trx, builder, true);
+    it.second.toVelocyPack(&opts, builder, true);
     builder.close();
   }
 }
+
+FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
+                                                     QueryContext& context,
+                                                     AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache) {}

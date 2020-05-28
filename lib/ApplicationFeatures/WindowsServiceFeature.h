@@ -24,6 +24,9 @@
 #define ARANGODB_APPLICATION_FEATURES_WINDOWS_SERVICE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+
+#include <atomic>
 
 extern SERVICE_STATUS_HANDLE ServiceStatus;
 
@@ -49,9 +52,9 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
 
   void startupFinished();
 
-  void shutDownBegins();
-  void shutDownComplete();
-  void shutDownFailure();
+  void shutdownBegins();
+  void shutdownComplete();
+  void shutdownFailure();
   void abortFailure(uint16_t exitCode);
   static void abortService(uint16_t exitCode);
 
@@ -69,6 +72,9 @@ class WindowsServiceFeature final : public application_features::ApplicationFeat
 
  private:
   uint16_t _progress;
+
+  /// @brief flag that tells us whether we have been informed about the shutdown before
+  std::atomic<bool> _shutdownNoted;
 };
 
 }  // namespace arangodb

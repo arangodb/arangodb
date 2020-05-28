@@ -25,6 +25,10 @@
 #include "NonAction.h"
 #include "MaintenanceFeature.h"
 
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
@@ -45,4 +49,4 @@ bool NonAction::first() {
   return false;
 }
 
-NonAction::~NonAction() {}
+NonAction::~NonAction() = default;

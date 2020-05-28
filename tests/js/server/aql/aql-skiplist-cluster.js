@@ -54,11 +54,13 @@ function ahuacatlSkiplistTestSuite () {
       internal.db._drop("UnitTestsAhuacatlSkiplist");
       skiplist = internal.db._create("UnitTestsAhuacatlSkiplist");
 
+      let docs = [];
       for (var i = 1; i <= 5; ++i) {
         for (var j = 1; j <= 5; ++j) {
-          skiplist.save({ "a" : i, "b": j });
+          docs.push({ "a" : i, "b": j });
         }
       }
+      skiplist.insert(docs);
 
       skiplist.ensureSkiplist("a", "b");
     },

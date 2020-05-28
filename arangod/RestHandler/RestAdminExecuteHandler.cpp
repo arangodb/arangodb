@@ -26,16 +26,18 @@
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-actions.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-actions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
@@ -44,8 +46,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminExecuteHandler::RestAdminExecuteHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestAdminExecuteHandler::RestAdminExecuteHandler(application_features::ApplicationServer& server,
+                                                 GeneralRequest* request,
+                                                 GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminExecuteHandler::execute() {
   if (!V8DealerFeature::DEALER) {
@@ -83,15 +87,19 @@ RestStatus RestAdminExecuteHandler::execute() {
     {
       v8::Isolate* isolate = guard.isolate();
       v8::HandleScope scope(isolate);
+      auto context = TRI_IGETC;
 
       v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
       v8::TryCatch tryCatch(isolate);
 
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-      v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
-          current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+      v8::Local<v8::Function> ctor =
+        v8::Local<v8::Function>::Cast(current->Get(context,
+                                                   TRI_V8_ASCII_STRING(isolate, "Function"))
+                                      .FromMaybe(v8::Handle<v8::Value>())
+                                      );
       v8::Handle<v8::Value> args[1] = {TRI_V8_PAIR_STRING(isolate, body, bodySize)};
-      v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 1, args).FromMaybe(v8::Local<v8::Object>());
+      v8::Local<v8::Object> function = ctor->NewInstance(context, 1, args).FromMaybe(v8::Local<v8::Object>());
       v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
       v8::Handle<v8::Value> rv;
@@ -112,7 +120,7 @@ RestStatus RestAdminExecuteHandler::execute() {
         });
 
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
-        rv = action->Call(current, 0, args);
+        rv = action->Call(TRI_IGETC, current, 0, args).FromMaybe(v8::Local<v8::Value>());
       }
 
       if (tryCatch.HasCaught()) {
@@ -133,12 +141,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
         switch (_response->transportType()) {
           case Endpoint::TransportType::HTTP: {
-            HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-            if (httpResponse == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast response object");
-            }
             _response->setContentType(rest::ContentType::TEXT);
-            httpResponse->body().appendText(errorMessage.data(), errorMessage.size());
+            _response->addRawPayload(VPackStringRef(errorMessage));
             break;
           }
           case Endpoint::TransportType::VST: {
@@ -146,7 +150,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             VPackBuilder builder(buffer);
             builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(errorMessage.data()), errorMessage.size()));
             _response->setContentType(rest::ContentType::VPACK);
-            _response->setPayload(std::move(buffer), true);
+            _response->setPayload(std::move(buffer));
             break;
           }
         }

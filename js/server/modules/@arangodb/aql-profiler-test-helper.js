@@ -1,4 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
+/* global global */
 
 "use strict";
 
@@ -29,13 +30,11 @@ const db = require('@arangodb').db;
 const expect = require('chai').expect;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
-
-
+const { getResponsibleServers } = global.ArangoClusterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file common variables and functions for aql-profiler* tests
 ////////////////////////////////////////////////////////////////////////////////
-
 
 const colName = 'UnitTestProfilerCol';
 const edgeColName = 'UnitTestProfilerEdgeCol';
@@ -46,6 +45,7 @@ const defaultBatchSize = 1000;
 const defaultTestRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
 const defaultClusterTestRowCounts = [1, 999, 1000, 1001];
 
+const AsyncNode = 'AsyncNode';
 const CalculationNode = 'CalculationNode';
 const CollectNode = 'CollectNode';
 const DistributeNode = 'DistributeNode';
@@ -57,6 +57,7 @@ const GatherNode = 'GatherNode';
 const IndexNode = 'IndexNode';
 const InsertNode = 'InsertNode';
 const LimitNode = 'LimitNode';
+const MutexNode = 'MutexNode';
 const NoResultsNode = 'NoResultsNode';
 const RemoteNode = 'RemoteNode';
 const RemoveNode = 'RemoveNode';
@@ -72,14 +73,16 @@ const UpdateNode = 'UpdateNode';
 const UpsertNode = 'UpsertNode';
 
 const nodeTypesList = [
-  CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+  AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-  InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+  InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
   ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
   SubqueryNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
+const AsyncBlock = 'AsyncNode';
 const CalculationBlock = 'CalculationNode';
+const ConstrainedSortBlock = 'SortLimitNode';
 const CountCollectBlock = 'CountCollectNode';
 const DistinctCollectBlock = 'DistinctCollectNode';
 const EnumerateCollectionBlock = 'EnumerateCollectionNode';
@@ -88,6 +91,7 @@ const FilterBlock = 'FilterNode';
 const HashedCollectBlock = 'HashedCollectNode';
 const IndexBlock = 'IndexNode';
 const LimitBlock = 'LimitNode';
+const MutexBlock = 'MutexNode';
 const NoResultsBlock = 'NoResultsNode';
 const RemoteBlock = 'RemoteNode';
 const ReturnBlock = 'ReturnNode';
@@ -111,9 +115,9 @@ const IResearchViewBlock = 'IResearchViewNode';
 const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 
 const blockTypesList = [
-  CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+  AsyncBlock, CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-  HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
+  HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
   SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
@@ -140,6 +144,14 @@ let translateType = function(nodes, node) {
         type = 'SortingGatherNode';
       } else {
         type = 'UnsortingGatherNode';
+      }
+    } else if (node.type === 'SortNode') {
+      if (node.strategy === 'standard') {
+        type = 'SortNode';
+      } else if (node.strategy === 'constrained-heap') {
+        type = 'SortLimitNode';
+      } else {
+        throw new Error('Unhandled sort strategy');
       }
     }
     types[node.id] = type;
@@ -180,7 +192,6 @@ function assertFuzzyNumArrayEquality(expected, actual, details) {
     }
   }
 }
-
 
 function zipPlanNodesIntoStatsNodes (profile) {
   const statsNodesById = profile.stats.nodes.reduce(
@@ -226,8 +237,7 @@ function getPlanNodesWithId (profile) {
 function getStatsNodesWithId (profile) {
   return profile.stats.nodes.map(
     node => ({
-      id: node.id,
-      type: node.type,
+      id: node.id
     })
   );
 }
@@ -236,7 +246,7 @@ function getStatsNodesWithId (profile) {
 /// @brief assert structure of profile.stats
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsProfileStatsObject (stats, {level}) {
+function assertIsProfileStatsObject (stats, {level, fullCount}) {
   // internal argument check
   expect(level)
     .to.be.a('number')
@@ -259,6 +269,10 @@ function assertIsProfileStatsObject (stats, {level}) {
     statsKeys.push('nodes');
   }
 
+  if (fullCount) {
+    statsKeys.push('fullCount');
+  }
+
   expect(stats).to.have.all.keys(statsKeys);
 
   // check types
@@ -270,6 +284,9 @@ function assertIsProfileStatsObject (stats, {level}) {
   expect(stats.httpRequests).to.be.a('number');
   expect(stats.peakMemoryUsage).to.be.a('number');
   expect(stats.executionTime).to.be.a('number');
+  if (fullCount) {
+    expect(stats.fullCount).to.be.a('number');
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +337,6 @@ function assertIsProfilePlanObject (plan) {
     'variables',
     'estimatedCost',
     'estimatedNrItems',
-    'initialize',
     'isModificationQuery',
   ]);
 
@@ -330,7 +346,6 @@ function assertIsProfilePlanObject (plan) {
   expect(plan.variables).to.be.an('array');
   expect(plan.estimatedCost).to.be.a('number');
   expect(plan.estimatedNrItems).to.be.a('number');
-  expect(plan.initialize).to.be.a('boolean');
 
   for (let node of plan.nodes) {
     expect(node).to.include.all.keys([
@@ -365,19 +380,19 @@ function assertIsProfilePlanObject (plan) {
     expect(variable).to.have.all.keys([
       'id',
       'name',
+      'isDataFromCollection'
     ]);
 
     expect(variable.id).to.be.a('number');
     expect(variable.name).to.be.a('string');
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assert that the passed variable looks like a level 0 profile
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsLevel0Profile (profile) {
+function assertIsLevel0Profile (profile, {fullCount} = {}) {
   expect(profile)
     .to.be.an('object')
     .that.has.all.keys([
@@ -385,7 +400,7 @@ function assertIsLevel0Profile (profile) {
     'warnings',
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 0});
+  assertIsProfileStatsObject(profile.stats, {level: 0, fullCount});
   assertIsProfileWarningsArray(profile.warnings);
 }
 
@@ -393,7 +408,7 @@ function assertIsLevel0Profile (profile) {
 /// @brief assert that the passed variable looks like a level 1 profile
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsLevel1Profile (profile) {
+function assertIsLevel1Profile (profile, {fullCount} = {}) {
   expect(profile)
     .to.be.an('object')
     .that.has.all.keys([
@@ -402,7 +417,7 @@ function assertIsLevel1Profile (profile) {
     'profile',
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 1});
+  assertIsProfileStatsObject(profile.stats, {level: 1, fullCount});
   assertIsProfileWarningsArray(profile.warnings);
   assertIsProfileProfileObject(profile.profile);
 }
@@ -411,7 +426,7 @@ function assertIsLevel1Profile (profile) {
 /// @brief assert that the passed variable looks like a level 2 profile
 ////////////////////////////////////////////////////////////////////////////////
 
-function assertIsLevel2Profile (profile) {
+function assertIsLevel2Profile (profile, {fullCount} = {}) {
   expect(profile)
     .to.be.an('object')
     .that.has.all.keys([
@@ -421,7 +436,7 @@ function assertIsLevel2Profile (profile) {
     'plan',
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 2});
+  assertIsProfileStatsObject(profile.stats, {level: 2, fullCount});
   assertIsProfileWarningsArray(profile.warnings);
   assertIsProfileProfileObject(profile.profile);
   assertIsProfilePlanObject(profile.plan);
@@ -505,17 +520,19 @@ function runDefaultChecks (
     prepare = () => {},
     bind = rows => ({rows}),
     options = {},
+    testRowCounts = defaultTestRowCounts,
     additionalTestRowCounts = [],
   }
 ) {
-  const testRowCounts = _.uniq(defaultTestRowCounts.concat(additionalTestRowCounts).sort());
+  const {fullCount} = options;
+  testRowCounts = _.uniq(testRowCounts.concat(additionalTestRowCounts).sort());
   for (const rows of testRowCounts) {
     prepare(rows);
     const profile = db._query(query, bind(rows),
       _.merge(options, {profile: 2, defaultBatchSize})
     ).getExtra();
 
-    assertIsLevel2Profile(profile);
+    assertIsLevel2Profile(profile, {fullCount});
     assertStatsNodesMatchPlanNodes(profile);
 
     const batches = Math.ceil(rows / defaultBatchSize);
@@ -573,9 +590,9 @@ function clusterTestRowCounts({numberOfShards}) {
 /// @param exampleDocumentsByShard Object, keys are shard ids and values are
 ///        arrays of documents which the specified shard is responsible for.
 /// @param query string - is assumed to have no bind parameter
-/// @param genNodeList function: (rowsByShard) => [ { type, calls, items } ]
+/// @param genNodeList function: (rowsByShard, rowsByServer) => [ { type, calls, items } ]
 ///        must generate the list of expected nodes, gets a { shard => rows }
-///        map (string to number).
+///        map (string to number) and a { server => rows } map (string to number).
 ////////////////////////////////////////////////////////////////////////////////
 
 function runClusterChecks (
@@ -602,8 +619,20 @@ function runClusterChecks (
     assert.assertEqual(_.values(countByShard).sort(), rowCounts.slice().sort());
     return countByShard;
   };
+  const getRowsPerServer = rowsByShard => {
+    const shardIds = Object.keys(rowsByShard);
+    const shardToServerMapping = getResponsibleServers(shardIds);
+    const result = {};
+    for (const [shard, server] of Object.entries(shardToServerMapping)) {
+      // Init with 0
+      result[server] = result[server] || 0;
+      result[server] += rowsByShard[shard];
+    }
+    return result;
+  };
   for (const rowCounts of testRowCounts) {
     const rowsByShard = prepareCollection(rowCounts);
+    const rowsByServer = getRowsPerServer(rowsByShard);
     const profile = db._query(query, {},
       _.merge(options, {profile: 2, defaultBatchSize})
     ).getExtra();
@@ -611,7 +640,7 @@ function runClusterChecks (
     assertIsLevel2Profile(profile);
     assertStatsNodesMatchPlanNodes(profile);
 
-    const expected = genNodeList(rowsByShard);
+    const expected = genNodeList(rowsByShard, rowsByServer);
     const actual = getCompactStatsNodes(profile);
 
     assertNodesItemsAndCalls(expected, actual,
@@ -695,6 +724,7 @@ exports.viewName = viewName;
 exports.edgeColName = edgeColName;
 exports.defaultBatchSize = defaultBatchSize;
 exports.defaultTestRowCounts = defaultTestRowCounts;
+exports.AsyncNode = AsyncNode;
 exports.CalculationNode = CalculationNode;
 exports.CollectNode = CollectNode;
 exports.DistributeNode = DistributeNode;
@@ -706,6 +736,7 @@ exports.GatherNode = GatherNode;
 exports.IndexNode = IndexNode;
 exports.InsertNode = InsertNode;
 exports.LimitNode = LimitNode;
+exports.MutexNode = MutexNode;
 exports.NoResultsNode = NoResultsNode;
 exports.RemoteNode = RemoteNode;
 exports.RemoveNode = RemoveNode;
@@ -720,7 +751,9 @@ exports.TraversalNode = TraversalNode;
 exports.UpdateNode = UpdateNode;
 exports.UpsertNode = UpsertNode;
 exports.nodeTypesList = nodeTypesList;
+exports.AsyncBlock = AsyncBlock;
 exports.CalculationBlock = CalculationBlock;
+exports.ConstrainedSortBlock = ConstrainedSortBlock;
 exports.CountCollectBlock = CountCollectBlock;
 exports.DistinctCollectBlock = DistinctCollectBlock;
 exports.EnumerateCollectionBlock = EnumerateCollectionBlock;
@@ -729,6 +762,7 @@ exports.FilterBlock = FilterBlock;
 exports.HashedCollectBlock = HashedCollectBlock;
 exports.IndexBlock = IndexBlock;
 exports.LimitBlock = LimitBlock;
+exports.MutexBlock = MutexBlock;
 exports.NoResultsBlock = NoResultsBlock;
 exports.RemoteBlock = RemoteBlock;
 exports.ReturnBlock = ReturnBlock;

@@ -1,0 +1,31 @@
+# Boost Timer Library test Jamfile
+
+# Copyright Beman Dawes 2003, 2006, 2011
+
+# Distributed under the Boost Software License, Version 1.0.
+# See http://www.boost.org/LICENSE_1_0.txt
+
+# See library home page at http://www.boost.org/libs/timer
+
+import testing ;
+
+path-constant parent : .. ;  # so that inspect will start in boost-root/libs/timer
+                             # when run from another directory, such as boost-root/status
+
+project
+    : requirements
+      <library>/boost/timer//boost_timer
+    ;
+ 
+run ../example/auto_cpu_timer_example.cpp : : : <test-info>always_show_run_output ;
+
+run cpu_timer_info.cpp : : : <test-info>always_show_run_output ;
+run cpu_timer_test.cpp : : : <test-info>always_show_run_output ;
+
+run ../example/timex.cpp : echo "Hello, world" : : <test-info>always_show_run_output ;
+
+compile original_timer_test.cpp ;
+run chrono_conflict_test.cpp /boost/chrono//boost_chrono : : : <link>static ;
+
+run /boost/tools/inspect//inspect/<variant>release : $(parent) -text -brief : : <test-info>always_show_run_output : inspect ;
+explicit inspect ;

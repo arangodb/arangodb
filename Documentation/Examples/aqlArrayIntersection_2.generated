@@ -1,7 +1,0 @@
-@Q:
-RETURN INTERSECTION( [<span class="hljs-number">2</span>,<span class="hljs-number">4</span>,<span class="hljs-number">6</span>], [<span class="hljs-number">8</span>,<span class="hljs-number">10</span>,<span class="hljs-number">12</span>], [<span class="hljs-number">14</span>,<span class="hljs-number">16</span>,<span class="hljs-number">18</span>] )
-
-@R
-[
-  []
-]

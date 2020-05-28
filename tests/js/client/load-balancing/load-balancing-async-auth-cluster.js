@@ -182,10 +182,18 @@ function AsyncAuthSuite () {
       require('internal').wait(11.0, false);
 
       url = `${baseJobUrl}/${jobId}`;
-      result = sendRequest(users[0], 'PUT', url, {}, {}, false);
+      let tries = 0;
+      while (++tries < 30) {
+        result = sendRequest(users[0], 'PUT', url, {}, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.body.error);
+        assertFalse(result === undefined || result === {});
+        assertFalse(result.body.error);
+        if (result.status === 201) {
+          // jobs API may return HTTP 204 until job is ready
+          break;
+        }
+        require("internal").wait(1.0, false);
+      }
       assertEqual(result.status, 201);
       assertFalse(result.headers["x-arango-async-id"] === undefined);
       assertEqual(result.body.result.length, 1);

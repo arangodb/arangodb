@@ -107,11 +107,17 @@ class StringRef {
   
   std::size_t rfind(char c) const;
 
-  int compare(std::string const& other) const noexcept;
-  
   int compare(StringRef const& other) const noexcept;
+  
+  int compare(std::string const& other) const noexcept { return compare(StringRef(other)); }
+  
+  int compare(char const* other) const noexcept { return compare(StringRef(other)); }
 
   bool equals(StringRef const& other) const noexcept;
+  
+  bool equals(std::string const& other) const noexcept { return equals(StringRef(other)); }
+  
+  bool equals(char const* other) const noexcept { return equals(StringRef(other)); }
 
   inline std::string toString() const {
     return std::string(_data, _length);
@@ -120,18 +126,28 @@ class StringRef {
   constexpr inline bool empty() const noexcept {
     return (_length == 0);
   }
-  
-  constexpr inline char const* begin() const noexcept {
+ 
+  inline char const* begin() const noexcept {
     return _data;
   }
   
-  constexpr inline char const* end() const noexcept {
+  inline char const* cbegin() const noexcept {
+    return _data;
+  }
+ 
+  inline char const* end() const noexcept {
+    return _data + _length;
+  }
+  
+  inline char const* cend() const noexcept {
     return _data + _length;
   }
 
   inline char front() const noexcept { return _data[0]; }
 
   inline char back() const noexcept { return _data[_length - 1]; }
+
+  inline void pop_back() { --_length; }
   
   inline char operator[](std::size_t index) const noexcept { 
     return _data[index];

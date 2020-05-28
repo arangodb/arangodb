@@ -33,7 +33,8 @@ namespace arangodb {
 namespace pregel {
 
 struct AlgoRegistry {
-  static IAlgorithm* createAlgorithm(std::string const& algorithm, VPackSlice userParams);
+  static IAlgorithm* createAlgorithm(application_features::ApplicationServer& server,
+                                     std::string const& algorithm, VPackSlice userParams);
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase, VPackSlice body);
 
  private:

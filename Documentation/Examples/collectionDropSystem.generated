@@ -1,5 +1,0 @@
-arangosh&gt; col = db._example;
-[ArangoCollection <span class="hljs-number">109911</span>, <span class="hljs-string">"_example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
-arangosh&gt; col.drop({ <span class="hljs-attr">isSystem</span>: <span class="hljs-literal">true</span> });
-arangosh&gt; col;
-[ArangoCollection <span class="hljs-number">109911</span>, <span class="hljs-string">"_example"</span> (type <span class="hljs-built_in">document</span>, status deleted)]

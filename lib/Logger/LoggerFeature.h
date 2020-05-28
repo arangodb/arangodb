@@ -23,10 +23,19 @@
 #ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
 #define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Logger/LogTimeFormat.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:

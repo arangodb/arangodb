@@ -23,13 +23,15 @@
 
 #include "RestAuthHandler.h"
 
+#include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/Events.h"
 
@@ -37,24 +39,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAuthHandler::RestAuthHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _validFor(60 * 60 * 24 * 30) {}
+RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _validFor(60 * 60 * 24 * 30) {}
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
-  std::chrono::seconds exp = std::chrono::duration_cast<std::chrono::seconds>(
-                                 std::chrono::system_clock::now().time_since_epoch()) +
-                             _validFor;
-  VPackBuilder bodyBuilder;
-  {
-    VPackObjectBuilder p(&bodyBuilder);
-    bodyBuilder.add("preferred_username", VPackValue(username));
-    bodyBuilder.add("iss", VPackValue("arangodb"));
-    bodyBuilder.add("exp", VPackValue(exp.count()));
-  }
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return af->tokenCache().generateJwt(bodyBuilder.slice());
+  return fuerte::jwt::generateUserToken(af->tokenCache().jwtSecret(), username, _validFor);
 }
 
 RestStatus RestAuthHandler::execute() {
@@ -66,8 +60,8 @@ RestStatus RestAuthHandler::execute() {
 
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
-    return badRequest();
+  if (!parseSuccess) { // error already set
+    return RestStatus::DONE;
   }
 
   if (!slice.isObject()) {

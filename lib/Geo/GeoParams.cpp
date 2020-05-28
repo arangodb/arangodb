@@ -33,6 +33,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 using namespace arangodb::geo;

@@ -24,7 +24,8 @@
 #ifndef ARANGO_SHARED_PRNG_H
 #define ARANGO_SHARED_PRNG_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+
 #include "Basics/Thread.h"
 #include "Basics/fasthash.h"
 #include "Basics/xoroshiro128plus.h"
@@ -33,6 +34,7 @@ namespace arangodb {
 namespace basics {
 
 struct PaddedPRNG {
+  PaddedPRNG();
   void seed(uint64_t seed1, uint64_t seed2);
   inline uint64_t next() { return _prng.next(); }
 

@@ -46,7 +46,7 @@ struct TraverserOptions;
 namespace aql {
 
 /// @brief class TraversalNode
-class TraversalNode : public GraphNode {
+class TraversalNode : public virtual GraphNode {
   class TraversalEdgeConditionBuilder final : public EdgeConditionBuilder {
    private:
     /// @brief reference to the outer traversal node
@@ -66,7 +66,7 @@ class TraversalNode : public GraphNode {
 
     TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
 
-    ~TraversalEdgeConditionBuilder() {}
+    ~TraversalEdgeConditionBuilder() = default;
 
     void toVelocyPack(arangodb::velocypack::Builder&, bool);
   };
@@ -76,7 +76,7 @@ class TraversalNode : public GraphNode {
 
   /// @brief constructor with a vocbase and a collection name
  public:
-  TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
                 AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
                 std::unique_ptr<graph::BaseOptions> options);
@@ -86,19 +86,31 @@ class TraversalNode : public GraphNode {
   ~TraversalNode();
 
   /// @brief Internal constructor to clone the node.
-  TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
-                std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
-                Variable const* inVariable, std::string const& vertexId,
+  TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                std::vector<Collection*> const& edgeColls,
+                std::vector<Collection*> const& vertexColls, Variable const* inVariable,
+                std::string const& vertexId, TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
-                std::unique_ptr<graph::BaseOptions> options);
+                std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+
+ protected:
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  /// When allowAlreadyBuiltCopy is true, allows copying a node which options
+  /// are already prepared. prepareOptions() has to be called on the copy if
+  /// the options were already prepared on other (_optionsBuilt)!
+  TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
+                bool allowAlreadyBuiltCopy = false);
 
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -107,20 +119,23 @@ class TraversalNode : public GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& result) const override final {
+  void getVariablesUsedHere(VarSet& result) const override final {
     for (auto const& condVar : _conditionVariables) {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
       }
     }
     for (auto const& pruneVar : _pruneVariables) {
-      result.emplace(pruneVar);
+      if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
+          pruneVar != pathOutVariable()) {
+        result.emplace(pruneVar);
+      }
     }
     if (usesInVariable()) {
       result.emplace(_inVariable);
@@ -143,24 +158,26 @@ class TraversalNode : public GraphNode {
   }
 
   /// @brief checks if the path out variable is used
-  bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
+  bool usesPathOutVariable() const;
 
   /// @brief return the path out variable
-  Variable const* pathOutVariable() const { return _pathOutVariable; }
+  Variable const* pathOutVariable() const;
 
   /// @brief set the path out variable
-  void setPathOutput(Variable const* outVar) { _pathOutVariable = outVar; }
+  void setPathOutput(Variable const* outVar);
 
   /// @brief return the in variable
-  Variable const* inVariable() const { return _inVariable; }
+  Variable const* inVariable() const;
 
-  std::string const getStartVertex() const { return _vertexId; }
+  std::string const getStartVertex() const;
+
+  void setInVariable(Variable const* inVariable);
 
   /// @brief remember the condition to execute for early traversal abortion.
-  void setCondition(Condition* condition);
+  void setCondition(std::unique_ptr<Condition> condition);
 
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition; }
+  Condition* condition() const { return _condition.get(); }
 
   /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
   int checkIsOutVariable(size_t variableId) const;
@@ -193,10 +210,16 @@ class TraversalNode : public GraphNode {
   //        You are not responsible for it!
   Expression* pruneExpression() const { return _pruneExpression.get(); }
 
+  /// @brief Overrides GraphNode::options() with a more specific return type
+  ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
+  auto options() const -> traverser::TraverserOptions*;
+
  private:
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
+
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
 
  private:
   /// @brief vertex output variable
@@ -209,10 +232,10 @@ class TraversalNode : public GraphNode {
   std::string _vertexId;
 
   /// @brief early abort traversal conditions:
-  Condition* _condition;
+  std::unique_ptr<Condition> _condition;
 
   /// @brief variables that are inside of the condition
-  arangodb::HashSet<Variable const*> _conditionVariables;
+  VarSet _conditionVariables;
 
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
@@ -237,7 +260,7 @@ class TraversalNode : public GraphNode {
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning
-  arangodb::HashSet<Variable const*> _pruneVariables;
+  VarSet _pruneVariables;
 };
 
 }  // namespace aql

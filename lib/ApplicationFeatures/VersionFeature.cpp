@@ -22,6 +22,7 @@
 
 #include "ApplicationFeatures/VersionFeature.h"
 
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/Version.h"
 
@@ -36,13 +37,13 @@ VersionFeature::VersionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Version"), _printVersion(false) {
   setOptional(false);
 
-  startsAfter("ShellColors");
+  startsAfter<ShellColorsFeature>();
 }
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--version", "reports the version and exits",
                      new BooleanParameter(&_printVersion),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Command));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

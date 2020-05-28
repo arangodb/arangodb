@@ -24,7 +24,9 @@
 #ifndef ARANGODB_BASICS_LOCKS__WIN32_H
 #define ARANGODB_BASICS_LOCKS__WIN32_H 1
 
-#include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-compiler.h"
 
 #ifdef TRI_HAVE_WIN32_THREADS
 

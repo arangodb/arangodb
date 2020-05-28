@@ -24,59 +24,52 @@
 #ifndef ARANGOD_VOC_BASE_VOCBASE_H
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
+#include <stddef.h>
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "Replication/ReplicationClients.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/VocbaseInfo.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Slice.h"
-
-#include <functional>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace aql {
 class QueryList;
 }
-class CollectionNameResolver;
-class CollectionKeysRepository;
+namespace velocypack {
+class Builder;
+class Slice;
+class StringRef;
+}  // namespace velocypack
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
+class ReplicationClientsProgressTracker;
 class StorageEngine;
 }  // namespace arangodb
 
 /// @brief predefined collection name for users
 constexpr auto TRI_COL_NAME_USERS = "_users";
 
-/// @brief name of the system database
-constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
-
 /// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 64;
-
-/// @brief default maximal collection journal size
-constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimal collection journal size (for testing, we allow very small
-/// file sizes in maintainer mode)
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 16 * 1024;  // 16 KiB
-
-#else
-
-constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 1024 * 1024;  // 1 MiB
-
-#endif
+constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief document handle separator as character
 constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
@@ -120,14 +113,11 @@ enum TRI_vocbase_col_status_e : int {
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
-  /// @brief database state
-  enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
-
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
-  // explicitly document implicit behaviour (due to presence of locks)
+  // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;
   TRI_vocbase_t(TRI_vocbase_t const&) = delete;
   TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
@@ -143,11 +133,12 @@ struct TRI_vocbase_t {
     DROP_PERFORM  // drop done, must perform actual cleanup routine
   };
 
-  TRI_voc_tick_t const _id;  // internal database id
-  std::string _name;         // database name
+  arangodb::application_features::ApplicationServer& _server;
+
+  arangodb::CreateDatabaseInfo _info;
+
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
-  State _state;
   bool _isOwnAppsDirectory;
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
@@ -165,10 +156,9 @@ struct TRI_vocbase_t {
 
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
-  std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
-  arangodb::ReplicationClientsProgressTracker _replicationClients;
+  std::unique_ptr<arangodb::ReplicationClientsProgressTracker> _replicationClients;
 
  public:
   arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
@@ -189,15 +179,22 @@ struct TRI_vocbase_t {
   /// @brief determine whether a data-source name is a system data-source name
   static bool IsSystemName(std::string const& name) noexcept;
 
-  TRI_voc_tick_t id() const { return _id; }
-  std::string const& name() const { return _name; }
-  std::string path() const;
-  TRI_vocbase_type_e type() const { return _type; }
-  State state() const { return _state; }
-  void setState(State state) { _state = state; }
+  arangodb::application_features::ApplicationServer& server() const {
+    return _server;
+  }
 
+  TRI_voc_tick_t id() const { return _info.getId(); }
+  std::string const& name() const { return _info.getName(); }
+  std::string path() const;
+  std::uint32_t replicationFactor() const;
+  std::uint32_t writeConcern() const;
+  std::string const& sharding() const;
+  bool isShardingSingle() const;
+  TRI_vocbase_type_e type() const { return _type; }
+
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
-    return _replicationClients;
+    return *_replicationClients;
   }
 
   arangodb::DatabaseReplicationApplier* replicationApplier() const {
@@ -209,15 +206,9 @@ struct TRI_vocbase_t {
   arangodb::CursorRepository* cursorRepository() const {
     return _cursorRepository.get();
   }
-  arangodb::CollectionKeysRepository* collectionKeys() const {
-    return _collectionKeys.get();
-  }
 
   bool isOwnAppsDirectory() const { return _isOwnAppsDirectory; }
   void setIsOwnAppsDirectory(bool value) { _isOwnAppsDirectory = value; }
-
-  /// @brief signal the cleanup thread to wake up
-  void signalCleanup();
 
   /// @brief increase the reference counter for a database.
   /// will return true if the refeence counter was increased, false otherwise
@@ -239,7 +230,7 @@ struct TRI_vocbase_t {
   bool markAsDropped();
 
   /// @brief returns whether the database is the system database
-  bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
+  bool isSystem() const;
 
   /// @brief stop operations in this vocbase. must be called prior to
   /// shutdown to clean things up
@@ -247,6 +238,15 @@ struct TRI_vocbase_t {
 
   /// @brief closes a database and all collections
   void shutdown();
+
+  /// @brief sets prototype collection for sharding (_users or _graphs)
+  void setShardingPrototype(ShardingPrototype type);
+
+  /// @brief gets prototype collection for sharding (_users or _graphs)
+  ShardingPrototype shardingPrototype() const;
+ 
+  /// @brief gets name of prototype collection for sharding (_users or _graphs)
+  std::string const& shardingPrototypeName() const;
 
   /// @brief returns all known views
   std::vector<std::shared_ptr<arangodb::LogicalView>> views();
@@ -314,59 +314,51 @@ struct TRI_vocbase_t {
   /// write lock for using the collection.
   arangodb::Result dropCollection(TRI_voc_cid_t cid, bool allowDropSystem, double timeout);
 
-  /// @brief callback for collection dropping
-  static bool DropCollectionCallback(arangodb::LogicalCollection& collection);
-
   /// @brief unloads a collection
-  int unloadCollection(arangodb::LogicalCollection* collection, bool force);
-
-  /// @brief locks a collection for usage, loading or manifesting it
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself.
-  int useCollection(arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e&);
+  arangodb::Result unloadCollection(arangodb::LogicalCollection* collection, bool force);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid,
-                                                             TRI_vocbase_col_status_e&);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(TRI_voc_cid_t cid, bool checkPermissions);
 
   /// @brief locks a collection for usage by name
   /// Note that this will READ lock the collection you have to release the
   /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
   /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
-                                                             TRI_vocbase_col_status_e&);
+  std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name, bool checkPermissions);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
 
   /// @brief visit all DataSources registered with this vocbase
   /// @param visitor returns if visitation should continue
-  /// @param lockWrite aquire write lock (if 'visitor' will modify vocbase)
+  /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
   /// @return visitation compleated successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor, bool lockWrite = false);
 
  private:
+  /// @brief callback for collection dropping
+  static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
+
   /// @brief check some invariants on the various lists of collections
   void checkCollectionInvariants() const;
 
   std::shared_ptr<arangodb::LogicalCollection> useCollectionInternal(
-      std::shared_ptr<arangodb::LogicalCollection>, TRI_vocbase_col_status_e& status);
+      std::shared_ptr<arangodb::LogicalCollection> const&, bool checkPermissions);
 
-  int loadCollection(arangodb::LogicalCollection* collection,
-                     TRI_vocbase_col_status_e& status, bool setStatus = true);
+  arangodb::Result loadCollection(arangodb::LogicalCollection& collection,
+                                  bool checkPermissions);
 
   /// @brief adds a new collection
   /// caller must hold _dataSourceLock in write mode or set doLock
-  void registerCollection(bool doLock,
-                          std::shared_ptr<arangodb::LogicalCollection> const& collection);
+  void registerCollection(bool doLock, std::shared_ptr<arangodb::LogicalCollection> const& collection);
 
   /// @brief removes a collection from the global list of collections
   /// This function is called when a collection is dropped.
-  bool unregisterCollection(arangodb::LogicalCollection* collection);
+  void unregisterCollection(arangodb::LogicalCollection& collection);
 
   /// @brief creates a new collection, worker function
   std::shared_ptr<arangodb::LogicalCollection> createCollectionWorker(arangodb::velocypack::Slice parameters);
@@ -386,9 +378,6 @@ struct TRI_vocbase_t {
 
 /// @brief extract the _rev attribute from a slice
 TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
-
-/// @brief extract the _rev attribute from a slice as a slice
-arangodb::velocypack::Slice TRI_ExtractRevisionIdAsSlice(arangodb::velocypack::Slice const slice);
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open

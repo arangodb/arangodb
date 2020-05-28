@@ -21,8 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFunctionFeature.h"
+
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -38,8 +43,9 @@ AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("V8Phase");
-  startsAfter("Aql");
+  startsAfter<V8FeaturePhase>();
+
+  startsAfter<AqlFeature>();
 }
 
 // This feature does not have any options
@@ -77,9 +83,10 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 }
 
 void AqlFunctionFeature::add(Function const& func) {
+  TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
-  _functionNames.emplace(func.name, func);
+  _functionNames.try_emplace(func.name, func);
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& original) {
@@ -212,7 +219,11 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
-
+  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.", flags, &Functions::LevenshteinMatch});  // (attribute, target, max distance, [include transpositions, max terms])
+  add({"NGRAM_MATCH", ".,.|.,.", flags, &Functions::NgramMatch}); // (attribute, target, [threshold, analyzer]) OR (attribute, target, [analyzer])
+  add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
+  add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
+  add({"IN_RANGE", ".,.,.,.,.", flags, &Functions::InRange }); // (attribute, lower, upper, include lower, include upper)
   // special flags:
   add({"RANDOM_TOKEN", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::RandomToken});  // not deterministic and not cacheable
@@ -261,6 +272,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"MINUS", ".,.|+", flags, &Functions::Minus});
   add({"OUTERSECTION", ".,.|+", flags, &Functions::Outersection});
   add({"INTERSECTION", ".,.|+", flags, &Functions::Intersection});
+  add({"JACCARD", ".,.", flags, &Functions::Jaccard});
   add({"FLATTEN", ".|.", flags, &Functions::Flatten});
   add({"LENGTH", ".", flags, &Functions::Length});
   // COUNT is an alias for LENGTH
@@ -303,6 +315,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_VALUE", ".,.|.", flags, &Functions::RemoveValue});
   add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
+  add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
+  add({"INTERLEAVE", ".,.|+", flags, &Functions::Interleave});
 
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
@@ -345,7 +359,7 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"IS_IN_POLYGON", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::IsInPolygon});
-  add({"GEO_DISTANCE", ".,.",
+  add({"GEO_DISTANCE", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.",
@@ -357,6 +371,9 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_EQUALS", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoEquals});
+  add({"GEO_AREA", ".|.",
+    Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+    &Functions::GeoArea});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
@@ -398,6 +415,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
+  add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer),
@@ -418,6 +436,10 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
   add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
+                                                                            //
+  auto validationFlags = Function::makeFlags(FF::None);
+  add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
+  add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
   // special flags:
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on
@@ -440,14 +462,13 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn});  // not deterministic and not cacheable
 
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
-  // optimizer with collection-based subqueries they are all not marked as
-  // non-deterministic and non-cacheable here as they refer to documents
-  // note further that all of these function call will be replaced by equivalent
-  // subqueries by the optimizer
-  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
+  // optimizer with collection-/index-based subqueries. they are all
+  // marked as deterministic and cacheable here as they are just
+  // placeholders for collection/index accesses nowaways.
+  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
 }
 
 }  // namespace aql

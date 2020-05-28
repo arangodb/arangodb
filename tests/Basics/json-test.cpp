@@ -72,10 +72,10 @@ TEST_F(CJsonTest, tst_json_null) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNullJson();
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("null") == STRING_VALUE);
+  EXPECT_EQ(std::string("null"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -88,10 +88,10 @@ TEST_F(CJsonTest, tst_json_true) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateBooleanJson(true);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("true") == STRING_VALUE);
+  EXPECT_EQ(std::string("true"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -104,10 +104,10 @@ TEST_F(CJsonTest, tst_json_false) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateBooleanJson(false);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("false") == STRING_VALUE);
+  EXPECT_EQ(std::string("false"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -120,10 +120,10 @@ TEST_F(CJsonTest, tst_json_number0) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(0.0);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("0") == STRING_VALUE);
+  EXPECT_EQ(std::string("0"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -136,10 +136,10 @@ TEST_F(CJsonTest, tst_json_number_positive1) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(1.0);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("1") == STRING_VALUE);
+  EXPECT_EQ(std::string("1"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -152,10 +152,10 @@ TEST_F(CJsonTest, tst_json_number_positive2) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(46281);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("46281") == STRING_VALUE);
+  EXPECT_EQ(std::string("46281"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -168,10 +168,10 @@ TEST_F(CJsonTest, tst_json_number_negative1) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(-1.0);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("-1") == STRING_VALUE);
+  EXPECT_EQ(std::string("-1"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -184,10 +184,10 @@ TEST_F(CJsonTest, tst_json_number_negative2) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateNumberJson(-2342);
-  EXPECT_TRUE(false == TRI_IsStringJson(json));
+  EXPECT_FALSE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("-2342") == STRING_VALUE);
+  EXPECT_EQ(std::string("-2342"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -200,10 +200,10 @@ TEST_F(CJsonTest, tst_json_string_empty) {
   INIT_BUFFER
 
   TRI_json_t* json = TRI_CreateStringCopyJson("", strlen(""));
-  EXPECT_TRUE(true == TRI_IsStringJson(json));
+  EXPECT_TRUE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("\"\"") == STRING_VALUE);
+  EXPECT_EQ(std::string("\"\""), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -217,10 +217,10 @@ TEST_F(CJsonTest, tst_json_string1) {
 
   TRI_json_t* json = TRI_CreateStringCopyJson("the quick brown fox",
                                               strlen("the quick brown fox"));
-  EXPECT_TRUE(true == TRI_IsStringJson(json));
+  EXPECT_TRUE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("\"the quick brown fox\"") == STRING_VALUE);
+  EXPECT_EQ(std::string("\"the quick brown fox\""), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -234,10 +234,10 @@ TEST_F(CJsonTest, tst_json_string2) {
 
   TRI_json_t* json = TRI_CreateStringCopyJson("The Quick Brown Fox",
                                               strlen("The Quick Brown Fox"));
-  EXPECT_TRUE(true == TRI_IsStringJson(json));
+  EXPECT_TRUE(TRI_IsStringJson(json));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("\"The Quick Brown Fox\"") == STRING_VALUE);
+  EXPECT_EQ(std::string("\"The Quick Brown Fox\""), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -253,7 +253,7 @@ TEST_F(CJsonTest, tst_json_string_escaped) {
       "\"the quick \"fox\" jumped over the \\brown\\ dog '\n\\\" \\' \\\\ lazy";
 
   TRI_json_t* json = TRI_CreateStringCopyJson(value, strlen(value));
-  EXPECT_TRUE(true == TRI_IsStringJson(json));
+  EXPECT_TRUE(TRI_IsStringJson(json));
 
   STRINGIFY
   EXPECT_TRUE(
@@ -276,7 +276,7 @@ TEST_F(CJsonTest, tst_json_string_utf8_1) {
       "스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 "
       "전체보기";
   TRI_json_t* json = TRI_CreateStringCopyJson(value, strlen(value));
-  EXPECT_TRUE(true == TRI_IsStringJson(json));
+  EXPECT_TRUE(TRI_IsStringJson(json));
 
   STRINGIFY
   EXPECT_TRUE(
@@ -301,7 +301,7 @@ TEST_F(CJsonTest, tst_json_string_utf8_2) {
   TRI_json_t* json = TRI_CreateStringCopyJson(value, strlen(value));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("\"äöüßÄÖÜ€µ\"") == STRING_VALUE);
+  EXPECT_EQ(std::string("\"äöüßÄÖÜ€µ\""), STRING_VALUE);
 
   FREE_JSON
   FREE_BUFFER
@@ -318,7 +318,7 @@ TEST_F(CJsonTest, tst_json_string_utf8_3) {
   TRI_json_t* json = TRI_CreateStringCopyJson(value, strlen(value));
 
   STRINGIFY
-  EXPECT_TRUE(std::string("\"a𝛢\"") == STRING_VALUE);
+  EXPECT_EQ(std::string("\"a𝛢\""), STRING_VALUE);
 
   FREE_JSON
   FREE_BUFFER
@@ -334,7 +334,7 @@ TEST_F(CJsonTest, tst_json_list_empty) {
   TRI_json_t* json = TRI_CreateArrayJson();
 
   STRINGIFY
-  EXPECT_TRUE(std::string("[]") == STRING_VALUE);
+  EXPECT_EQ(std::string("[]"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }
@@ -406,7 +406,7 @@ TEST_F(CJsonTest, tst_json_array_empty) {
   TRI_json_t* json = TRI_CreateObjectJson();
 
   STRINGIFY
-  EXPECT_TRUE(std::string("{}") == STRING_VALUE);
+  EXPECT_EQ(std::string("{}"), STRING_VALUE);
   FREE_JSON
   FREE_BUFFER
 }

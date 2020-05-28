@@ -18,11 +18,9 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_meta.hpp"
 #include "index_reader.hpp"
 #include "segment_reader.hpp"
 #include "index_meta.hpp"
@@ -77,7 +75,7 @@ NS_ROOT
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ const sub_reader& sub_reader::empty() NOEXCEPT {
+/*static*/ const sub_reader& sub_reader::empty() noexcept {
   return empty_sub_reader::instance();
 }
 
@@ -88,7 +86,3 @@ const columnstore_reader::column_reader* sub_reader::column_reader(
 }
 
 NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

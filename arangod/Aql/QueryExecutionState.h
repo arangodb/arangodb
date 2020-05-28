@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include <iosfwd>
+#include <string>
 
 namespace arangodb {
 namespace aql {
@@ -43,6 +44,7 @@ enum class ValueType {
   EXECUTION,
   FINALIZATION,
   FINISHED,
+  KILLED,
 
   INVALID_STATE
 };

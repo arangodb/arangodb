@@ -51,7 +51,7 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   db.UnitTestsRecovery2.rename('UnitTestsRecovery1');
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

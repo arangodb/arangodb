@@ -29,6 +29,9 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 class StringBuffer;
 }
@@ -46,7 +49,8 @@ class SenderThread final : public arangodb::Thread {
   SenderThread& operator=(SenderThread const&) = delete;
 
  public:
-  explicit SenderThread(std::unique_ptr<httpclient::SimpleHttpClient>,
+  explicit SenderThread(application_features::ApplicationServer& server,
+                        std::unique_ptr<httpclient::SimpleHttpClient>,
                         ImportStatistics* stats, std::function<void()> const& wakeup);
 
   ~SenderThread();
@@ -55,7 +59,8 @@ class SenderThread final : public arangodb::Thread {
   /// @brief imports a delimited file
   //////////////////////////////////////////////////////////////////////////////
 
-  void sendData(std::string const& url, basics::StringBuffer* sender);
+  void sendData(std::string const& url, basics::StringBuffer* sender,
+                size_t lowLine = 0, size_t highLine = 0);
 
   bool hasError();
   /// Ready to start sending
@@ -80,6 +85,8 @@ class SenderThread final : public arangodb::Thread {
   bool _hasError;
   bool _idle;
   bool _ready;
+  size_t _lowLineNumber;
+  size_t _highLineNumber;
 
   ImportStatistics* _stats;
   std::string _errorMessage;

@@ -1,0 +1,484 @@
+#  (C) Copyright Gennadiy Rozental 2001-2015.
+#  Use, modification, and distribution are subject to the
+#  Boost Software License, Version 1.0. (See accompanying file
+#  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+#  See http://www.boost.org/libs/test for the library home page.
+
+import path ;
+import project ;
+import property ;
+import property-set ;
+import regex ;
+import "class" : new ;
+
+import ../../config/checks/config : requires ;
+
+project boost/test-tests
+    : requirements
+    ;
+
+import ../../predef/check/predef
+    : check require
+    : predef-check predef-require ;
+
+local check_msg = "Boost.Test feature check: " ;
+
+# documentation requirements: we use new style examples in the doc and compile on compilers supporting that
+requirements_documentation = [ requires cxx11_decltype cxx11_hdr_random cxx11_hdr_tuple cxx11_hdr_initializer_list cxx11_variadic_macros cxx11_template_aliases ] ;
+
+# requirements for BOOST_TEST feature, full extension
+requirements_boost_test_full_support = [ requires cxx11_variadic_macros cxx11_decltype cxx11_auto_declarations ] ;
+# requirements_boost_test_full_support += [ check-target-builds ../tools/check_boost_test_support.cpp "Boost.Test feature check: BOOST_TEST full support"  : : <build>no ] ;
+
+# requirements for dataset feature
+requirements_datasets = [ requires cxx11_decltype cxx11_hdr_random cxx11_hdr_tuple cxx11_hdr_initializer_list cxx11_variadic_macros cxx11_trailing_result_types cxx11_template_aliases ] ;
+
+# avoiding some broken compilers (seen on Travis)
+local l_gcc_c11_rvalue_full_support = [ predef-require "!BOOST_COMP_GNUC" or "BOOST_COMP_GNUC >= 5.0" ] ;
+
+#_________________________________________________________________________________________________#
+
+# lib gcov : : <name>gcov : ;
+
+rule boost.test-self-test ( test-rule : test-suite : test-name : usage-variant ? : pattern_file * : source_files * : extra-libs ? : extra-options ? : requirements * )
+{
+    source_files ?= $(test-suite)/$(test-name).cpp ;
+    usage-variant ?= boost_unit_test_framework/<link>static ;
+
+    return [ $(test-rule) $(source_files) ../build//$(usage-variant) $(extra-libs)
+#             gcov
+             : -- "" #args
+             : $(pattern_file)
+             : # Activating -pedantic finds more gotchas
+               # Unfortunately, this warns about the use of "long long" in gcc's own stdlib
+               # So deactivate those warnings again
+               <toolset>gcc:<cxxflags>-pedantic
+               <toolset>gcc:<cxxflags>-Wno-long-long
+               [ predef-check "BOOST_COMP_GNUC >= 4.3.0" : : <cxxflags>-Wno-variadic-macros ]
+               <toolset>clang:<cxxflags>-Wno-c99-extensions
+               <toolset>clang:<cxxflags>-Wno-variadic-macros
+               <toolset>clang:<cxxflags>-Werror=address-of-temporary
+               #<toolset>clang:<cxxflags>-Werror=bind-to-temporary-copy
+               <toolset>clang:<cxxflags>-Werror=return-stack-address
+               # <toolset>clang:<cxxflags>-Werror=dangling
+#               <toolset>gcc:<cxxflags>--coverage
+               <warnings>all
+               $(extra-options)
+               $(requirements)
+             : $(test-name)
+           ] ;
+}
+
+#_________________________________________________________________________________________________#
+
+rule boost.test-mt-test ( test-rule : test-suite : test-name : usage-variant ? : pattern_file * : source_files * : extra-libs ? )
+{
+    return [ boost.test-self-test $(test-rule)
+             : $(test-suite)
+             : $(test-name)
+             : $(usage-variant)
+             : $(pattern_file)
+             : $(source_files)
+             : $(extra-libs)
+             : <threading>multi
+           ] ;
+}
+
+#_________________________________________________________________________________________________#
+
+rule docs-example-as-test ( test-file )
+{
+    test-file-name = [ path.basename $(test-file) ] ;
+    test-name-rule = [ MATCH (.+)\\.(.+)\\.cpp : $(test-file-name) ] ;
+
+
+    return [ boost.test-self-test $(test-name-rule[2])
+              : ../doc/examples
+              : doc-$(test-name-rule[1])
+              : included
+              :
+              : $(test-file)
+              :
+              :
+              : $(requirements_documentation) # requirements
+            ] ;
+}
+
+#_________________________________________________________________________________________________#
+
+test-suite "utils-ts"
+:
+  [ boost.test-self-test run : utils-ts : algorithm-test ]
+  [ boost.test-self-test run : utils-ts : basic_cstring-test ]
+  [ boost.test-self-test run : utils-ts : class_properties-test ]
+  [ boost.test-self-test run : utils-ts : foreach-test ]
+  [ boost.test-self-test run : utils-ts : named_params-test ]
+  [ boost.test-self-test run : utils-ts : runtime-param-test : : : : : : [ requires cxx11_auto_declarations cxx11_function_template_default_args cxx11_lambdas cxx11_hdr_initializer_list cxx11_template_aliases ] ]
+  [ boost.test-self-test run : utils-ts : string_cast-test ]
+  [ boost.test-self-test run : utils-ts : token_iterator-test ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "usage-variants-ts"
+:
+  [ boost.test-self-test run : usage-variants-ts : single-header-test : included ]
+  [ boost.test-self-test run : usage-variants-ts : single-header-custom-init-test : included ]
+  [ boost.test-self-test run : usage-variants-ts : single-header-custom-main-test : included ]
+
+  [ boost.test-self-test run : usage-variants-ts : static-library-test ]
+  [ boost.test-self-test run : usage-variants-ts : static-library-custom-init-test ]
+
+  [ boost.test-self-test run : usage-variants-ts : shared-library-test : boost_unit_test_framework/<link>shared ]
+  [ boost.test-self-test run : usage-variants-ts : shared-library-custom-init-test : boost_unit_test_framework/<link>shared ]
+  [ boost.test-self-test run : usage-variants-ts : shared-library-custom-main-test : boost_unit_test_framework/<link>shared ]
+
+  [ boost.test-self-test run : test-organization-ts : header-only-over-multiple-files : included : : usage-variants-ts/single-header-multiunit-1-test.cpp usage-variants-ts/single-header-multiunit-2-test.cpp ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "framework-ts"
+:
+  [ boost.test-self-test run : framework-ts : result-report-test : : baseline-outputs/result-report-test.pattern baseline-outputs/result_report_test.pattern.default_behaviour ]
+  [ boost.test-self-test run : framework-ts : log-formatter-test : : baseline-outputs/log-formatter-test.pattern baseline-outputs/log-formatter-test.pattern.junit ] # should be ordered alphabetically
+  [ boost.test-self-test run : framework-ts : run-by-name-or-label-test ]
+  [ boost.test-self-test run : framework-ts : version-uses-module-name : included ]
+  [ boost.test-self-test run : framework-ts : test-macro-global-fixture : : baseline-outputs/global-fixtures-test.pattern ]
+  [ boost.test-self-test run : framework-ts : message-in-datatestcase-test : : baseline-outputs/messages-in-datasets-test.pattern : : : : $(requirements_datasets) ]
+  [ boost.test-self-test run : framework-ts : decorators-datatestcase-test : : : : : : $(requirements_datasets) ]
+  [ compile-fail framework-ts/master-test-suite-non-copyable-test.cpp ../build//included ]
+
+  # ticket 13371: "Use-after-free with --log_sink=file"
+  # this single check is not enough as we should check for various command line options: we make extensive
+  # checks in the smoke-tests (see below)
+  # [ boost.test-self-test run : framework-ts : check-streams-on-exit : included ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "writing-test-ts"
+:
+  [ boost.test-self-test run : writing-test-ts : assertion-construction-test : : : : : : $(requirements_boost_test_full_support) [ requires cxx11_trailing_result_types cxx11_nullptr ] ]
+  [ boost.test-self-test run : writing-test-ts : boost_check_equal-str-test ]
+  [ boost.test-self-test run : writing-test-ts : collection-comparison-test : : : : : : $(requirements_boost_test_full_support)  [ requires cxx11_unified_initialization_syntax ] ] # required by the test content
+  [ boost.test-self-test run : writing-test-ts : dont_print_log_value-test : : : : : : $(requirements_datasets) ]
+  [ boost.test-self-test run : writing-test-ts : fp-comparisons-test : : : : : : $(requirements_boost_test_full_support) ]
+  [ boost.test-self-test run : writing-test-ts : fp-multiprecision-comparison-test : : : : : : $(requirements_boost_test_full_support) ]
+  [ boost.test-self-test run : writing-test-ts : fp-no-comparison-for-incomplete-types-test ]
+  [ boost.test-self-test run : writing-test-ts : fp-relational-operator ]
+  [ boost.test-self-test run : writing-test-ts : output_test_stream-test ]
+  [ boost.test-self-test run : writing-test-ts : test_tools-test : : baseline-outputs/test_tools-test.pattern : : : : $(requirements_boost_test_full_support) ]
+  [ boost.test-self-test run : writing-test-ts : windows-headers-test ]
+  [ boost.test-self-test run : writing-test-ts : tools-under-debugger-test ]
+  [ boost.test-self-test run : writing-test-ts : tools-debuggable-test  : : : : : : $(requirements_boost_test_full_support) ]
+  [ boost.test-self-test run : writing-test-ts : test-dataset-over-tuples  : : : : : : $(requirements_datasets) ]
+  [ boost.test-self-test run : writing-test-ts : nullptr-support-test : : : : : : [ requires cxx11_nullptr ] ]
+  [ boost.test-self-test run : writing-test-ts : user-defined-types-logging-customization-points ]
+  [ boost.test-self-test run : writing-test-ts : test-fixture-detect-setup-teardown ]
+  [ boost.test-self-test run : writing-test-ts : test-fixture-detect-setup-teardown-cpp11 : : : : : : [ requires cxx11_decltype cxx11_trailing_result_types ] ]
+  [ boost.test-self-test run : writing-test-ts : test-with-precondition : : : : : : [ requires cxx11_auto_declarations cxx11_lambdas ] ]
+  [ boost.test-self-test run : writing-test-ts : test-timeout : : : : : : [ requires cxx11_hdr_thread cxx11_hdr_chrono ] ]
+  [ boost.test-self-test run-fail : writing-test-ts : test-timeout-fail : : : : : : [ requires cxx11_hdr_thread cxx11_hdr_chrono ] ]
+  [ boost.test-self-test run : writing-test-ts : test-timeout-suite : : : : : : $(requirements_datasets) [ requires cxx11_hdr_thread cxx11_hdr_chrono ] ]
+  [ boost.test-self-test run-fail : writing-test-ts : test-timeout-suite-fail : : : : : : $(requirements_datasets) [ requires cxx11_hdr_thread cxx11_hdr_chrono ] ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "test-organization-ts"
+:
+  [ boost.test-self-test run : test-organization-ts : parameterized_test-test ]
+  [ boost.test-self-test run : test-organization-ts : test_case_template-test ]
+  [ boost.test-self-test run : test-organization-ts : test_case_template-with-tuples-test : : : : : : [ requires cxx11_hdr_tuple cxx11_auto_declarations cxx11_variadic_templates ] ]
+  [ boost.test-self-test run : test-organization-ts : test_case_template-with-variadic-typelist : : : : : : [ requires cxx11_hdr_tuple cxx11_auto_declarations cxx11_variadic_templates ] ]
+  [ boost.test-self-test run : test-organization-ts : datasets-test : : : [ glob test-organization-ts/datasets-test/*.cpp ] : : : $(requirements_datasets) ]
+  [ boost.test-self-test run : test-organization-ts : dataset-variadic_and_move_semantic-test : : : : : : $(requirements_datasets) ]
+  [ boost.test-self-test run : test-organization-ts : test_unit-order-test ]
+  [ boost.test-self-test run : test-organization-ts : test_unit-order-shuffled-test : : : : : : $(requirements_boost_test_full_support) ]
+  [ boost.test-self-test run : test-organization-ts : test_unit-nested-suite-dependency ]
+  [ boost.test-self-test run : test-organization-ts : test_unit-sanitize-names ]
+  [ boost.test-self-test run : test-organization-ts : test-tree-management-test ]
+  [ boost.test-self-test run : test-organization-ts : test-tree-several-suite-decl ]
+  [ boost.test-self-test run : test-organization-ts : test_unit-report-clashing-names ]
+  [ boost.test-self-test run : test-organization-ts : test_unit-several-ts-same-name ]
+  # cannot pass parameters from the command line, another test developed below
+  # [ boost.test-self-test run : test-organization-ts : dataset-master-test-suite-accessible-test : : --param1=1 --param2=2 : : : : $(requirements_datasets) ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "multithreading-ts"
+:
+  [ boost.test-mt-test run : multithreading-ts : sync-access-test : : : : /boost/thread//boost_thread/<link>static ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "prg_exec_monitor-ts"
+:
+  [ boost.test-self-test run-fail : prg_exec_monitor-ts : result-code-test : boost_prg_exec_monitor/<link>static ]
+  [ boost.test-self-test run-fail : prg_exec_monitor-ts : system-exception-test : boost_prg_exec_monitor/<link>static ]
+  [ boost.test-self-test run-fail : prg_exec_monitor-ts : uncatched-exception-test : included ]
+  [ boost.test-self-test run-fail : prg_exec_monitor-ts : user-fatal-exception-test : boost_prg_exec_monitor/<link>static ]
+;
+
+#_________________________________________________________________________________________________#
+
+test-suite "execution_monitor-ts"
+:
+  [ boost.test-self-test run : execution_monitor-ts : errors-handling-test : : baseline-outputs/errors-handling-test.pattern
+                                                                               baseline-outputs/errors-handling-test.pattern2 ]
+  [ boost.test-self-test run : execution_monitor-ts : custom-exception-test ]
+  [ boost.test-self-test run : execution_monitor-ts : boost_exception-test ]
+;
+
+#_________________________________________________________________________________________________#
+
+import sequence ;
+
+test-suite "doc-examples-ts"
+:
+  [ sequence.transform docs-example-as-test : [ glob ../doc/examples/*.cpp ] ]
+;
+
+#_________________________________________________________________________________________________#
+
+class bt-conditional-sink
+{
+    import property-set ;
+    import targets ;
+    import property ;
+
+    rule __init__ ( logger : log_or_report : sink_is_file : log_new_style )
+    {
+        self.logger = $(logger) ;
+        sink_is_file ?= "no" ;
+        self.sink_is_file = $(sink_is_file) ;
+        self.log_or_report = $(log_or_report) ;
+        self.log_new_style = $(log_new_style) ;
+    }
+
+    rule check ( properties * )
+    {
+        local ps = [ property-set.create $(properties) ] ;
+        local path,relative-to-build-dir = [ $(ps).target-path ] ;
+        local path = $(path,relative-to-build-dir[1]) ;
+
+        local ret ;
+        if $(self.log_new_style) = "yes" && $(self.log_or_report) = "log"
+        {
+          ret += "<testing.arg>--logger=$(self.logger)" ;
+
+          if $(self.sink_is_file) = "yes"
+          {
+            ret += ",,smoke-ts-sink-new-style.$(self.logger):" ;
+          }
+
+          ret = $(ret:J) ;
+        }
+        else
+        {
+          ret += <testing.arg>--$(self.log_or_report)_format=$(self.logger) ;
+
+          if $(self.sink_is_file) = "yes"
+          {
+              ret += <testing.arg>--$(self.log_or_report)_sink=smoke-ts-sink.$(self.logger) ;
+          }
+        }
+        #ECHO ret is $(ret) ;
+        #ECHO ret2 is $(ret:J) ;
+        return $(ret) ;
+    }
+}
+
+rule boost.test-smoke-ts-logger ( test-name-prefix : logger ? : log_or_report ? : requirements ? : log_new_style ? )
+{
+    logger ?= HRF ;
+    log_or_report ?= log ;
+    log_new_style ?= no ;
+
+    local detailed_name = all ;
+    if $(log_or_report) = report
+    {
+      detailed_name = detailed ;
+    }
+
+    requirements ?= $(requirements_datasets) ;
+
+    local bt-format-instance = [ new bt-conditional-sink $(logger) : $(log_or_report) : "no" : $(log_new_style) ] ;
+    local bt-format-sink-instance = [ new bt-conditional-sink $(logger) : $(log_or_report) : "yes" : $(log_new_style) ] ;
+
+    local conditions-format = <conditional>@$(bt-format-instance).check ;
+    local conditions-format-sink  = <conditional>@$(bt-format-sink-instance).check ;
+
+    to-return =
+      [ run smoke-ts-included :
+                              : : $(requirements) $(conditions-format) : $(test-name-prefix)-0-$(log_or_report)-format-$(log_new_style) ]
+      [ run smoke-ts-included : --$(log_or_report)_level=$(detailed_name)
+                              : : $(requirements) $(conditions-format) : $(test-name-prefix)-1-$(log_or_report)-format-$(log_new_style)-all ]
+      [ run smoke-ts-included :
+                              : : $(requirements) $(conditions-format-sink)  : $(test-name-prefix)-2-$(log_or_report)-format-to-file-$(log_new_style) ]
+      [ run smoke-ts-included : --$(log_or_report)_level=$(detailed_name)
+                              : : $(requirements) $(conditions-format-sink)  : $(test-name-prefix)-3-$(log_or_report)-format-to-file-$(log_new_style)-all ]
+      [ run smoke-ts-included : --run_test=test1/_2
+                              : : $(requirements) $(conditions-format) : $(test-name-prefix)-4-$(log_or_report)-format-$(log_new_style)-filter ]
+
+      [ run check-streams-on-exit :
+                              : : $(requirements) $(conditions-format) : $(test-name-prefix)-5--$(log_or_report)-format--newstyle-$(log_new_style) ]
+      [ run check-streams-on-exit :
+                              : : $(requirements) $(conditions-format-sink) : $(test-name-prefix)-6--$(log_or_report)-format--newstyle-$(log_new_style)--with-sink ]
+
+      ;
+
+   return $(to-return) ;
+}
+
+exe smoke-ts-included : smoke-ts/basic-smoke-test.cpp
+                      : $(requirements_datasets) ;
+
+exe smoke-ts-included-2 : smoke-ts/basic-smoke-test2.cpp ;
+
+exe smoke-ts-included-3 : smoke-ts/basic-smoke-test3.cpp ;
+
+exe check-streams-on-exit : framework-ts/check-streams-on-exit.cpp ;
+
+exe dataset-master-test-suite-accessible-test : test-organization-ts/dataset-master-test-suite-accessible-test.cpp
+                                              : $(requirements_datasets) ;
+
+alias "smoke-ts"
+:
+[ boost.test-smoke-ts-logger bt-st-txml : XML : log ]
+[ boost.test-smoke-ts-logger bt-st-txml : XML : log : : yes ]
+[ boost.test-smoke-ts-logger bt-st-txml : XML : report ]
+[ boost.test-smoke-ts-logger bt-st-thrf : HRF : log ]
+[ boost.test-smoke-ts-logger bt-st-thrf : HRF : log : : yes ]
+[ boost.test-smoke-ts-logger bt-st-thrf : HRF : report ]
+[ boost.test-smoke-ts-logger bt-st-tjunit : JUNIT : log ]
+[ boost.test-smoke-ts-logger bt-st-tjunit : JUNIT : log : : yes ]
+[ run smoke-ts-included-2 : <testing.arg>\"--run_test=test<*\" : : : bt-st-runtest-with-colons ]
+[ run check-streams-on-exit : --list_content --report_sink=stdout : : $(requirements_datasets) : cla-check-list-content-with-report-sink ]
+[ run check-streams-on-exit : --list_content --report_sink=test.txt : : $(requirements_datasets) : cla-check-list-content-with-report-sink-2 ]
+
+# check being able to pass arguments command line arguments to the dataset generator
+[ run dataset-master-test-suite-accessible-test : -- --param1=1 --param2=2 : : $(requirements_datasets) : dataset-lazy-generator  ]
+
+# several command line parameter checks
+[ run smoke-ts-included : --version : : $(requirements_datasets) : cla-check-print-version ]
+[ run smoke-ts-included : -c true : : $(requirements_datasets) : cla-result-code-short ]
+[ run smoke-ts-included : -c false : : $(requirements_datasets) : cla-result-code-short-false ]
+[ run smoke-ts-included : --result_code=true : : $(requirements_datasets) : cla-result-code-long ]
+[ run smoke-ts-included : --result_code=false : : $(requirements_datasets) : cla-result-code-long-false ]
+[ run smoke-ts-included : --no_result_code : : $(requirements_datasets) : cla-result-code-long-false-short ]
+[ run smoke-ts-included : -x no -c --list_content=HRF : : $(requirements_datasets) : cla-mixed-long-short1 ]
+[ run smoke-ts-included : -x -c no --list_content=HRF : : $(requirements_datasets) : cla-mixed-long-short2 ]
+[ run smoke-ts-included : -x -c no --list_content=HRF -- --some-ignored : : $(requirements_datasets) : cla-mixed-long-short3 ]
+
+# those checks are mainly for consistency: we run a very simple thing, pass command line and
+# check behaviour wrt. to the command line arguments
+
+[ run-fail smoke-ts-included-3 : : : : cla-no-args-checking-fail ] # sanity check
+
+# short vs. long arguments with optional value
+[ run-fail smoke-ts-included-3 : --result_code : : : cla-ignore-result-code-long-fail-optional ]
+[ run smoke-ts-included-3 : --result_code=0 : : : cla-ignore-result-code-long-no-fail ]
+[ run-fail smoke-ts-included-3 : --no_result_code=0 : : : cla-ignore-result-code-long-fail-negated-wrong ]
+[ run smoke-ts-included-3 : --no_result_code : : : cla-ignore-result-code-long-no-fail-negated ]
+[ run-fail smoke-ts-included-3 : --result_code=1 : : : cla-ignore-result-code-long-fail ]
+[ run-fail smoke-ts-included-3 : -c : : : cla-ignore-result-code-short-fail-optional ]
+[ run smoke-ts-included-3 : -c no : : : cla-ignore-result-code-short-no-fail ]
+[ run-fail smoke-ts-included-3 : -c yes : : : cla-ignore-result-code-short-fail ]
+
+# short vs. long arguments without optional arguments
+[ run-fail smoke-ts-included-3 : --run_test : : : cla-runtest-long-fail-no-optional ]
+[ run smoke-ts-included-3 : --run_test=case2 : : : cla-runtest-long-no-fail ]
+[ run smoke-ts-included-3 : --run_test=case2 : : : cla-runtest-long-fail1 ]
+[ run-fail smoke-ts-included-3 : --run_test=case2 --run_test=some_suite : : : cla-runtest-repeated-long-fail ]
+[ run-fail smoke-ts-included-3 : --run_test=some_suite/case1  : : : cla-runtest-long-fail2 ]
+[ run-fail smoke-ts-included-3 : -t : : : cla-runtest-short-fail-no-optional ]
+[ run-fail smoke-ts-included-3 : -t some_suite : : : cla-runtest-short-fail1 ]
+[ run-fail smoke-ts-included-3 : -t some_suite/case1 : : : cla-runtest-short-fail2 ]
+[ run smoke-ts-included-3 : -t case2 : : : cla-runtest-short-no-fail ]
+
+# mixed short/long
+[ run-fail smoke-ts-included-3 : --run_test=case2 -t some_suite : : : cla-runtest-repeated-mixed-long-fail1 ]
+[ run-fail smoke-ts-included-3 : -t some_suite --run_test=case2 : : : cla-runtest-repeated-mixed-long-fail2 ]
+[ run smoke-ts-included-3 : --run_test=case2 -t some_suite -c no : : : cla-runtest-repeated-mixed-long-no-fail1 ]
+[ run smoke-ts-included-3 : -t some_suite -c no --run_test=case2 : : : cla-runtest-repeated-mixed-long-no-fail2 ]
+[ run smoke-ts-included-3 : -c no --run_test=case2 -t some_suite : : : cla-runtest-repeated-mixed-long-no-fail3 ]
+[ run-fail smoke-ts-included-3 : --result_code=1 --run_test=case2 -t some_suite : : : cla-runtest-repeated-mixed-long-fail3 ]
+[ run smoke-ts-included-3 : --result_code=0 --run_test=case2 -t some_suite : : : cla-runtest-repeated-mixed-long-fail4 ]
+;
+
+exe custom-command-line-binary-1 : ../doc/examples/runtime-configuration_1.run-fail.cpp ;
+exe custom-command-line-binary-2 : ../doc/examples/runtime-configuration_2.run-fail.cpp
+                                 : $(requirements_boost_test_full_support) ;
+exe custom-command-line-binary-3 : ../doc/examples/runtime-configuration_3.run-fail.cpp
+                                 : $(requirements_boost_test_full_support) ;
+exe custom-command-line-binary-4 : ../doc/examples/runtime-configuration_4.run-fail.cpp
+                                 : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) ;
+
+alias "custom-command-line-ts"
+:
+# custom command line interface tests
+[ run custom-command-line-binary-1 : -- --specific-param \"'additional value with quotes'\" : : : cla-specific-api1-test-1-1 ]
+[ run custom-command-line-binary-1 : --log_level=all --no_color -- --specific-param \"'additional value with quotes'\" : : : cla-specific-api1-test-1-2 ]
+
+[ run-fail custom-command-line-binary-2 : -- --random-string \"mock_device\" : : $(requirements_boost_test_full_support) : cla-specific-api1-test-2-0 ]
+[ run custom-command-line-binary-2 : -- --device-name \"mock_device\" : : $(requirements_boost_test_full_support) : cla-specific-api1-test-2-1 ]
+[ run custom-command-line-binary-2 : --log_level=all --no_color -- --device-name \"mock_device\" : : $(requirements_boost_test_full_support) : cla-specific-api1-test-2-2 ]
+
+[ run-fail custom-command-line-binary-3 : -- : : $(requirements_boost_test_full_support) : cla-specific-api1-test-3-0 ]
+[ run-fail custom-command-line-binary-3 : -- --create-parametrized : : $(requirements_boost_test_full_support) : cla-specific-api1-test-3-1 ]
+[ run-fail custom-command-line-binary-3 : -- --create-parametrized 3 : : $(requirements_boost_test_full_support) : cla-specific-api1-test-3-2 ]
+[ run custom-command-line-binary-3 : -- --create-parametrized 3 2 : : $(requirements_boost_test_full_support) : cla-specific-api1-test-3-3 ]
+
+[ run-fail custom-command-line-binary-4 : --              : : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) : cla-specific-api1-test-4-0 ]
+[ run-fail custom-command-line-binary-4 : -- --test-file  : : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) : cla-specific-api1-test-4-1 ]
+[ run-fail custom-command-line-binary-4 : -- --test-file  : ../doc/examples/runtime-configuration_4-test-fail.txt : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) : cla-specific-api1-test-4-2 ]
+[ run-fail custom-command-line-binary-4 : --log_level=all --no_color -- --test-file : ../doc/examples/runtime-configuration_4-test-fail.txt : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) : cla-specific-api1-test-4-3 ]
+[ run custom-command-line-binary-4      : -- --test-file  : ../doc/examples/runtime-configuration_4-test.txt : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) : cla-specific-api1-test-4-4 ]
+[ run custom-command-line-binary-4      : --log_level=all --no_color -- --test-file : ../doc/examples/runtime-configuration_4-test.txt : $(requirements_datasets) [ requires cxx11_trailing_result_types cxx11_auto_declarations ] $(l_gcc_c11_rvalue_full_support) : cla-specific-api1-test-4-5 ]
+
+;
+
+#_________________________________________________________________________________________________#
+
+# A target that runs all the tests
+alias test
+:
+  smoke-ts
+  utils-ts
+  usage-variants-ts
+  framework-ts
+  writing-test-ts
+  test-organization-ts
+  multithreading-ts
+  prg_exec_monitor-ts
+  execution_monitor-ts
+  doc-examples-ts
+  custom-command-line-ts
+;
+
+#_________________________________________________________________________________________________#
+
+rule test-selfcontained ( path )
+{
+    for local file in [ path.glob-tree $(path) : *.hpp ]
+    {
+        result += [ compile selfcontained.cpp : $(requirements_datasets) <define>BOOST_HEADER_TEST_NAME=$(file) : [ regex.replace [ path.relative-to $(path) $(file) ] "/" "_" ] ] ;
+    }
+
+    return $(result) ;
+}
+
+# Test for self-contained headers
+alias test_selfcontained_headers : [ test-selfcontained ../include ] ;
+
+
+#_________________________________________________________________________________________________#
+# Tests of the examples
+
+build-project ../example ;
+# EOF

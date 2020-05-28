@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_MEMORY_H
 #define ARANGODB_BASICS_MEMORY_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 /// @brief basic memory management for allocate
 void* TRI_Allocate(size_t);
 

@@ -24,8 +24,9 @@
 #include "SslInterface.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/memory.h"
 #include "Random/UniformCharacter.h"
 
 #include <cstring>
@@ -192,21 +193,6 @@ void sslHEX(char const* inputStr, size_t length, char*& outputStr, size_t& outpu
 
 void sslHEX(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslHEX(inputStr, strlen(inputStr), outputStr, outputLen);
-}
-
-void sslBASE64(char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
-  std::string b = StringUtils::encodeBase64(std::string(inputStr, length));
-
-  if (outputStr == nullptr) {
-    outputStr = new char[b.size() + 1];
-    outputLen = length * 2;
-  }
-
-  memcpy(outputStr, b.c_str(), outputLen);
-}
-
-void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslBASE64(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
 std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,

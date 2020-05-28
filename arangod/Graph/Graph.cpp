@@ -22,12 +22,12 @@
 
 #include "Graph.h"
 
+#include <Logger/LogMacros.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/AstNode.h"
@@ -37,6 +37,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -44,62 +45,72 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using VelocyPackHelper = basics::VelocyPackHelper;
+using Helper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
+  if (slice.hasKey(StaticStrings::WriteConcern)) {
+    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern,
+                                             serverDefaults.writeConcern);
+  }
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor,
+                                           serverDefaults.writeConcern);
+}
+}  // namespace
 
 #ifndef USE_ENTERPRISE
 // Factory methods
-std::unique_ptr<Graph> Graph::fromPersistence(VPackSlice document, TRI_vocbase_t& vocbase) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
-  std::unique_ptr<Graph> result{new Graph{document}};
+std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase, VPackSlice document) {
+  document = document.resolveExternal();
+  std::unique_ptr<Graph> result(new Graph(document, ServerDefaults(vocbase.server())));
   return result;
 }
 
-std::unique_ptr<Graph> Graph::fromUserInput(std::string&& name, VPackSlice document,
-                                            VPackSlice options) {
-  if (document.isExternal()) {
-    document = document.resolveExternal();
-  }
-  std::unique_ptr<Graph> result{new Graph{std::move(name), document, options}};
+std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
+                                            VPackSlice document, VPackSlice options) {
+  document = document.resolveExternal();
+  std::unique_ptr<Graph> result{new Graph{vocbase, std::move(name), document, options}};
   return result;
 }
 #endif
 
-std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name,
+std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase, std::string const& name,
                                             VPackSlice document, VPackSlice options) {
-  return Graph::fromUserInput(std::string{name}, document, options);
+  return Graph::fromUserInput(vocbase, std::string{name}, document, options);
 }
 
 // From persistence
-Graph::Graph(velocypack::Slice const& slice)
-    : _graphName(
-          VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "")),
+Graph::Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults)
+    : _graphName(Helper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
-                                                                           1)),
-      _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
-          slice, StaticStrings::ReplicationFactor, 1)),
-      _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
-                                                    "")) {
-  // If this happens we have a document without an _key Attribute.
+      _numberOfShards(Helper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
+                                                        serverDefaults.numberOfShards)),
+      _replicationFactor(
+          Helper::getNumericValue<uint64_t>(slice, StaticStrings::ReplicationFactor,
+                                            serverDefaults.replicationFactor)),
+      _writeConcern(::getWriteConcern(slice, serverDefaults)),
+      _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")),
+      _isSatellite(Helper::getStringRef(slice, StaticStrings::ReplicationFactor,
+                                        velocypack::StringRef("")) == StaticStrings::Satellite) {
+  // If this happens we have a document without a _key attribute.
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
                                    "have a _key set. Please contact support.");
   }
 
-  // If this happens we have a document without an _rev Attribute.
+  // If this happens we have a document without a _rev attribute.
   if (_rev.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Persisted graph is invalid. It does not "
                                    "have a _rev set. Please contact support.");
   }
-  
+
   TRI_ASSERT(!_graphName.empty());
   TRI_ASSERT(!_rev.empty());
 
@@ -109,15 +120,24 @@ Graph::Graph(velocypack::Slice const& slice)
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
     insertOrphanCollections(slice.get(StaticStrings::GraphOrphans));
   }
+  TRI_ASSERT((slice.hasKey(StaticStrings::ReplicationFactor) &&
+              slice.get(StaticStrings::ReplicationFactor).isString() &&
+              slice.get(StaticStrings::ReplicationFactor).isEqualString(StaticStrings::Satellite)) ==
+             _isSatellite);
+  if (_isSatellite) {
+    setReplicationFactor(0);
+  }
 }
 
 // From user input
-Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& options)
-    : _graphName(graphName),
+Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
+             VPackSlice const& info, VPackSlice const& options)
+    : _graphName(std::move(graphName)),
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(1),
-      _replicationFactor(1),
+      _replicationFactor(vocbase.replicationFactor()),
+      _writeConcern(1),
       _rev("") {
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -132,10 +152,28 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
   }
   if (options.isObject()) {
     _numberOfShards =
-        VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
-    _replicationFactor =
-        VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+        Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
+    if (Helper::getStringRef(options.get(StaticStrings::ReplicationFactor),
+                             velocypack::StringRef("")) == StaticStrings::Satellite &&
+        arangodb::ServerState::instance()->isRunningInCluster()) {
+      _isSatellite = true;
+      setReplicationFactor(0);
+    } else {
+      _replicationFactor =
+          Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor,
+                                            _replicationFactor);
+      if (_replicationFactor < 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       StaticStrings::ReplicationFactor +
+                                           " must be greater than zero");
+      }
+      _writeConcern = ::getWriteConcern(options, ServerDefaults{vocbase.server()});
+    }
   }
+}
+
+auto Graph::clone() const -> std::unique_ptr<Graph> {
+  return std::make_unique<std::decay_t<decltype(*this)>>(*this);
 }
 
 void Graph::parseEdgeDefinitions(VPackSlice edgeDefs) {
@@ -160,8 +198,7 @@ void Graph::insertOrphanCollections(VPackSlice const arr) {
         "'orphanCollections' are not an array in the graph definition");
   }
   for (auto const& c : VPackArrayIterator(arr)) {
-    TRI_ASSERT(c.isString());
-    validateOrphanCollection(c);
+    THROW_ARANGO_EXCEPTION_IF_FAIL(validateOrphanCollection(c));
     addOrphanCollection(c.copyString());
   }
 }
@@ -189,6 +226,8 @@ std::map<std::string, EdgeDefinition>& Graph::edgeDefinitions() {
 uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
+
+uint64_t Graph::writeConcern() const { return _writeConcern; }
 
 std::string const Graph::id() const {
   return std::string(StaticStrings::GraphCollection + "/" + _graphName);
@@ -230,8 +269,9 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
   }
 }
 
-Result Graph::removeOrphanCollection(std::string&& name) {
+Result Graph::removeOrphanCollection(std::string const& name) {
   TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
+  // cppcheck-suppress redundantIfRemove
   if (_orphanColls.find(name) != _orphanColls.end()) {
     _orphanColls.erase(name);
     _vertexColls.erase(name);
@@ -256,6 +296,10 @@ void Graph::setNumberOfShards(uint64_t numberOfShards) {
 
 void Graph::setReplicationFactor(uint64_t replicationFactor) {
   _replicationFactor = replicationFactor;
+}
+
+void Graph::setWriteConcern(uint64_t writeConcern) {
+  _writeConcern = writeConcern;
 }
 
 void Graph::setRev(std::string&& rev) { _rev = std::move(rev); }
@@ -287,9 +331,18 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   builder.add(StaticStrings::KeyString, VPackValue(_graphName));
 
   // Cluster Information
-  builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
-  builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-  builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
+  if (arangodb::ServerState::instance()->isRunningInCluster()) {
+    builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
+    if (isSatellite()) {
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+    } else {
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+      builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));  // deprecated
+      builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+    }
+    builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
+    builder.add(StaticStrings::GraphIsSatellite, VPackValue(isSatellite()));
+  }
 
   // EdgeDefinitions
   builder.add(VPackValue(StaticStrings::GraphEdgeDefinitions));
@@ -337,7 +390,7 @@ Result EdgeDefinition::validateEdgeDefinition(VPackSlice const& edgeDefinition) 
                     "Edge definition '" + key + "' is not an array!");
     }
 
-    for (auto const& it : VPackArrayIterator(edgeDefinition.get(key))) {
+    for (VPackSlice it : VPackArrayIterator(edgeDefinition.get(key))) {
       if (!it.isString()) {
         return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                       std::string("Edge definition '") + key +
@@ -378,10 +431,10 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
   std::set<std::string> toSet;
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
-  for (auto const& it : VPackArrayIterator(from)) {
+  for (VPackSlice it : VPackArrayIterator(from)) {
     fromSet.emplace(it.copyString());
   }
-  for (auto const& it : VPackArrayIterator(to)) {
+  for (VPackSlice it : VPackArrayIterator(to)) {
     toSet.emplace(it.copyString());
   }
 
@@ -496,7 +549,9 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
     // Graph doesn't contain this edge definition, no need to do anything.
     return false;
   }
-  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.get();
+  // This fails if we do not copy.
+  // Why don't we just work with pointers, when we use optionals without values?
+  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.value();
 
   _edgeColls.erase(edgeDefinitionName);
   _edgeDefs.erase(edgeDefinitionName);
@@ -521,7 +576,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& ed
   }
 
   _edgeColls.emplace(collection);
-  _edgeDefs.emplace(collection, edgeDefinition);
+  _edgeDefs.try_emplace(collection, edgeDefinition);
   TRI_ASSERT(hasEdgeCollection(collection));
   for (auto const& it : edgeDefinition.getFrom()) {
     addVertexCollection(it);
@@ -634,6 +689,10 @@ Result Graph::validateCollection(LogicalCollection& col) const {
   return {TRI_ERROR_NO_ERROR};
 }
 
+void Graph::ensureInitial(const LogicalCollection& col) {
+  // known to be empty
+}
+
 void Graph::edgesToVpack(VPackBuilder& builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
@@ -660,19 +719,35 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
+bool Graph::isDisjoint() const {
+  return false;
+}
+
+bool Graph::isSatellite() const { return _isSatellite; }
+
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
   TRI_ASSERT(builder.isOpenObject());
 
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
+
+  if (!isSatellite()) {
+    builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern()));  // deprecated
+    builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
+    TRI_ASSERT(replicationFactor() > 0);
+  } else {
+    TRI_ASSERT(replicationFactor() == 0);
+  }
+
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
 }
 
-boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(std::string const& collectionName) const {
+std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(
+    std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
   if (it == edgeDefinitions().end()) {
     TRI_ASSERT(!hasEdgeCollection(collectionName));
-    return boost::none;
+    return {std::nullopt};
   }
 
   TRI_ASSERT(hasEdgeCollection(collectionName));

@@ -22,10 +22,15 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
+
 #include "Task.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 
 using namespace arangodb::rest;
 

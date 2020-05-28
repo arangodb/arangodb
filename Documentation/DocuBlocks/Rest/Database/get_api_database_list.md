@@ -33,4 +33,3 @@ is returned if the request was not executed in the *_system* database.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

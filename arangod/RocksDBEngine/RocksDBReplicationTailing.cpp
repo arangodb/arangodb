@@ -23,7 +23,9 @@
 
 #include "RocksDBReplicationTailing.h"
 #include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -235,7 +237,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         resetTransientState();  // finish ongoing trx
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
-        TRI_idx_iid_t iid = RocksDBLogValue::indexId(blob);
+        IndexId iid = RocksDBLogValue::indexId(blob);
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {
           TRI_ASSERT(_vocbase->id() == dbid);
@@ -249,7 +251,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
           _builder.add("cid", VPackValue(std::to_string(cid)));
           _builder.add("cname", VPackValue(coll->name()));
           _builder.add("data", VPackValue(VPackValueType::Object));
-          _builder.add("id", VPackValue(std::to_string(iid)));
+          _builder.add("id", VPackValue(std::to_string(iid.id())));
           _builder.close();
           _builder.close();
           updateLastEmittedTick(tick);
@@ -588,10 +590,11 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
         return it->second.collection();
       }
 
-      auto collection = _vocbase->lookupCollection(cid);
-      if (collection) {
-        _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
-        return collection.get();
+      try {
+        auto it = _collectionCache.try_emplace(cid, _vocbase, cid).first;
+        return (*it).second.collection();
+      } catch (...) {
+        // collection not found
       }
     }
 
@@ -671,7 +674,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  while (iterator->Valid() && lastTick <= tickEnd && builder.buffer()->size() < chunkSize) {
+  while (iterator->Valid() && lastTick <= tickEnd && builder.bufferRef().size() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC("ed096", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();

@@ -51,4 +51,3 @@ Retrieving the revision of a collection
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

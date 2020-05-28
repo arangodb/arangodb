@@ -23,7 +23,12 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H 1
 
+#include <memory>
 #include <regex>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace v8 {
@@ -31,6 +36,12 @@ class Isolate;
 }
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 enum class FSAccessType{
   READ,
@@ -73,7 +84,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   /// accessible via the JS_Download (internal.download) function in JavaScript
   /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
   /// unix://) and port number (if applicable)
-  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint) const;
+  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate, std::string const& endpoint, std::string const& url) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code

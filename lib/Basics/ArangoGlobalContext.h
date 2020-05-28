@@ -23,6 +23,9 @@
 #ifndef ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H
 #define ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H 1
 
+#include <string>
+#include <vector>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -43,18 +46,12 @@ class ArangoGlobalContext {
   std::string const& getBinaryPath() const { return _binaryPath; }
   int exit(int ret);
   void installHup();
-  void installSegv();
-  void maskAllSignals();
-  void unmaskStandardSignals();
-  void runStartupChecks();
-  bool useEventLog() { return _useEventLog; }
 
  private:
-  std::string _binaryName;
-  std::string _binaryPath;
+  std::string const _binaryName;
+  std::string const _binaryPath;
   std::string const _runRoot;
   int _ret;
-  bool _useEventLog;
 };
 }  // namespace arangodb
 

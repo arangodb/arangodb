@@ -24,12 +24,14 @@
 #ifndef ARANGO_SHARED_COUNTER_H
 #define ARANGO_SHARED_COUNTER_H 1
 
+#include <atomic>
+#include <functional>
+
 #include "Basics/Common.h"
 #include "Basics/SharedAtomic.h"
 #include "Basics/Thread.h"
+#include "Basics/debugging.h"
 #include "Basics/fasthash.h"
-
-#include <atomic>
 
 namespace arangodb {
 namespace basics {
@@ -43,7 +45,7 @@ struct SharedCounter {
 
   SharedCounter() : SharedCounter(DefaultIdFunc) {}
 
-  SharedCounter(IdFunc f) : _id(f) {
+  explicit SharedCounter(IdFunc f) : _id(f) {
     for (_mask = 1; _mask <= stripes; _mask <<= 1) {
     }
     TRI_ASSERT(_mask > stripes);
@@ -56,7 +58,7 @@ struct SharedCounter {
     }
   }
 
-  SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
+  explicit SharedCounter(SharedCounter<stripes> const& other) { copy(other); }
 
   SharedCounter<stripes>& operator=(SharedCounter<stripes> const& other) {
     copy(other);

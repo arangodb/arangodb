@@ -24,6 +24,11 @@
 #define ARANGODB_PREGEL_FEATURE_H 1
 
 #include <cstdint>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -74,8 +79,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
     return nullptr;
   }
 
-  static void handleConductorRequest(std::string const& path, VPackSlice const& body,
-                                     VPackBuilder& outResponse);
+  static void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
+                                     VPackSlice const& body, VPackBuilder& outResponse);
   static void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                                   VPackSlice const& body, VPackBuilder& outBuilder);
 

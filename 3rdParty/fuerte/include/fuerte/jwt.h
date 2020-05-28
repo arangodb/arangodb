@@ -36,13 +36,14 @@ namespace fuerte { inline namespace v1 { namespace jwt {
 std::string generateInternalToken(std::string const& secret,
                                   std::string const& id);
 
-/// Generate JWT token as used by users arangodb
+/// Generate JWT token as used for 'users' in arangodb
 std::string generateUserToken(std::string const& secret,
-                              std::string const& username);
+                              std::string const& username,
+                              std::chrono::seconds validFor = std::chrono::seconds{0});
 
 std::string generateRawJwt(std::string const& secret,
                            arangodb::velocypack::Slice const& body);
-  
+
 //////////////////////////////////////////////////////////////////////////
 /// @brief Internals
 //////////////////////////////////////////////////////////////////////////

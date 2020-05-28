@@ -24,116 +24,123 @@
 #define ARANGOD_AQL_DISTRIBUTE_EXECUTOR_H
 
 #include "Aql/BlocksWithClients.h"
+#include "Aql/DistributeClientBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/RegisterInfos.h"
+#include "Cluster/ResultT.h"
 
 namespace arangodb {
 namespace aql {
 
+class AqlItemBlockManager;
+class DistributeClientBlock;
 class DistributeNode;
+
+class DistributeExecutorInfos : public ClientsExecutorInfos {
+ public:
+  DistributeExecutorInfos(std::vector<std::string> clientIds, Collection const* collection,
+                          RegisterId regId, RegisterId alternativeRegId,
+                          bool allowSpecifiedKeys, bool allowKeyConversionToObject,
+                          bool createKeys, bool fixupGraphInput, ScatterNode::ScatterType type);
+
+  auto registerId() const noexcept -> RegisterId;
+  auto hasAlternativeRegister() const noexcept -> bool;
+  auto alternativeRegisterId() const noexcept -> RegisterId;
+  auto allowKeyConversionToObject() const noexcept -> bool;
+  auto createKeys() const noexcept -> bool;
+  auto usesDefaultSharding() const noexcept -> bool;
+  auto allowSpecifiedKeys() const noexcept -> bool;
+  auto scatterType() const noexcept -> ScatterNode::ScatterType;
+
+  auto getResponsibleClient(arangodb::velocypack::Slice value) const
+      -> ResultT<std::string>;
+
+  auto createKey(VPackSlice input) const -> std::string;
+
+  auto needsToFixGraphInput() const -> bool;
+
+ private:
+  RegisterId _regId;
+  RegisterId _alternativeRegId;
+  bool _allowKeyConversionToObject;
+  bool _createKeys;
+  bool _usesDefaultSharding;
+  bool _allowSpecifiedKeys;
+  bool _fixupGraphInput;
+
+  /// @brief _colectionName: the name of the sharded collection
+  Collection const* _collection;
+
+  /// @brief Cache for the Logical Collection. This way it is not refetched
+  /// on every document.
+  std::shared_ptr<arangodb::LogicalCollection> _logCol;
+
+  /// @brief type of distribution that this nodes follows.
+  ScatterNode::ScatterType _type;
+};
 
 // The DistributeBlock is actually implemented by specializing
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
-class DistributeExecutor {};
-
-/**
- * @brief See ExecutionBlockImpl.h for documentation.
- */
-template <>
-class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
+class DistributeExecutor {
  public:
-  // TODO Even if it's not strictly necessary here, for consistency's sake the
-  // non-standard arguments (shardIds, collection) should probably be moved into
-  // some DistributeExecutorInfos class.
-  ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
-                     ExecutorInfos&& infos, std::vector<std::string> const& shardIds,
-                     Collection const* collection, RegisterId regId,
-                     RegisterId alternativeRegId, bool allowSpecifiedKeys,
-                     bool allowKeyConversionToObject, bool createKeys);
+  using Infos = DistributeExecutorInfos;
 
-  ~ExecutionBlockImpl() override = default;
+  using ClientBlockData = DistributeClientBlock;
 
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+  DistributeExecutor(DistributeExecutorInfos const& infos);
+  ~DistributeExecutor() = default;
 
-  /// @brief getSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
-                                                                   std::string const& shardId) override;
-
-  /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
-                                                     std::string const& shardId) override;
-
- private:
-  /// @brief getSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShardWithoutTrace(
-      size_t atMost, std::string const& shardId);
-
-  /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShardWithoutTrace(size_t atMost,
-                                                                 std::string const& shardId);
-
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
-      size_t& skipped, std::string const& shardId);
-
-  bool hasMoreForClientId(size_t clientId) const;
-
-  /// @brief getHasMoreStateForClientId: State for client <clientId>?
-  ExecutionState getHasMoreStateForClientId(size_t clientId) const;
-
-  /// @brief hasMoreForShard: any more for shard <shardId>?
-  bool hasMoreForShard(std::string const& shardId) const;
-
-  /// @brief getBlockForClient: try to get at atMost pairs into
-  /// _distBuffer.at(clientId).
-  std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
-
-  /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
-  /// attributes <shardKeys> of the register <id> to determine to which shard
-  /// the row should be sent.
-  size_t sendToClient(SharedAqlItemBlockPtr);
-
-  /// @brief create a new document key
-  std::string createKey(arangodb::velocypack::Slice) const;
-
-  ExecutorInfos const& infos() const { return _infos; }
+  /**
+   * @brief Distribute the rows of the given block into the blockMap
+   *        NOTE: Has SideEffects
+   *        If the input value does not contain an object, it is modified inplace with
+   *        a new Object containing a key value!
+   *        Hence this method is not const ;(
+   *
+   * @param block The block to be distributed
+   * @param skipped The rows that have been skipped from upstream
+   * @param blockMap Map client => Data. Will provide the required data to the correct client.
+   */
+  auto distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
+                       std::unordered_map<std::string, ClientBlockData>& blockMap) -> void;
 
  private:
-  ExecutorInfos _infos;
+  /**
+   * @brief Compute which client needs to get this row
+   *        NOTE: Has SideEffects
+   *        If the input value does not contain an object, it is modified inplace with
+   *        a new Object containing a key value!
+   *        Hence this method is not const ;(
+   *
+   * @param block The input block
+   * @param rowIndex
+   * @return std::string Identifier used by the client
+   */
+  auto getClient(SharedAqlItemBlockPtr block, size_t rowIndex) -> std::string;
 
-  Query const& _query;
+  auto getClientByIdSlice(arangodb::velocypack::Slice input) -> std::string;
 
-  /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
-  //  _buffer.at(j) row k should be sent to the client with id = i.
-  std::vector<std::deque<std::pair<size_t, size_t>>> _distBuffer;
+ private:
+  DistributeExecutorInfos const& _infos;
 
   // a reusable Builder object for building _key values
   arangodb::velocypack::Builder _keyBuilder;
 
   // a reusable Builder object for building document objects
   arangodb::velocypack::Builder _objectBuilder;
+};
 
-  /// @brief _colectionName: the name of the sharded collection
-  Collection const* _collection;
+/**
+ * @brief See ExecutionBlockImpl.h for documentation.
+ */
+template <>
+class ExecutionBlockImpl<DistributeExecutor>
+    : public BlocksWithClientsImpl<DistributeExecutor> {
+ public:
+  ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
+                     RegisterInfos registerInfos, DistributeExecutorInfos&& executorInfos);
 
-  /// @brief _index: the block in _buffer we are currently considering
-  size_t _index;
-
-  /// @brief _regId: the register to inspect
-  RegisterId _regId;
-
-  /// @brief a second register to inspect (used only for UPSERT nodes at the
-  /// moment to distinguish between search and insert)
-  RegisterId _alternativeRegId;
-
-  /// @brief whether or not the collection uses the default sharding
-  bool _usesDefaultSharding;
-
-  /// @brief allow specified keys even in non-default sharding case
-  bool _allowSpecifiedKeys;
-
-  bool _allowKeyConversionToObject;
-
-  bool _createKeys;
+  ~ExecutionBlockImpl() override = default;
 };
 
 }  // namespace aql

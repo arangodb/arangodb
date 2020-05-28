@@ -24,8 +24,8 @@
 #include "RestActionHandler.h"
 
 #include "Actions/actions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
 #include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
 
@@ -33,22 +33,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response),
+RestActionHandler::RestActionHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
       _action(TRI_LookupActionVocBase(request)),
       _data(nullptr) {}
 
 RestStatus RestActionHandler::execute() {
-  // check the request path
-  if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
-    if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      RequestStatistics::SET_IGNORE(_statistics);
-    }
-  }
-
   // need an action
   if (_action == nullptr) {
-    generateNotImplemented(_request->requestPath());
+    generateNotImplemented(_request->fullUrl());
     return RestStatus::DONE;
   }
 
@@ -76,9 +70,9 @@ RestStatus RestActionHandler::execute() {
   return RestStatus::DONE;
 }
 
-bool RestActionHandler::cancel() {
+void RestActionHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
-  return _action->cancel(&_dataLock, &_data);
+  _action->cancel(&_dataLock, &_data);
 }
 
 /// @brief executes an action

@@ -1,6 +1,0 @@
-[article Include Section Test
-[quickbook 1.5]
-]
-
-[include section-inc2.quickbook]
-[include section-inc1.quickbook]

@@ -21,100 +21,127 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstdint>
+#include <exception>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "VstRequest.h"
-#include "VstMessage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/Options.h>
 #include <velocypack/Parser.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
-#include "Logger/Logger.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Logger/LogMacros.h"
 #include "Meta/conversion.h"
-
-#include <stdexcept>
+#include "Rest/CommonDefines.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
-                       VstInputMessage&& message, uint64_t messageId)
-    : GeneralRequest(connectionInfo),
-      _messageId(messageId),
-      _message(std::move(message)),
-      _validatedPayload(false),
-      _vpackBuilder(nullptr) {
-  _protocol = "vst";
-  _contentType = ContentType::VPACK;
+                       velocypack::Buffer<uint8_t> buffer,
+                       size_t payloadOffset,
+                       uint64_t messageId)
+    : GeneralRequest(connectionInfo, messageId),
+      _payloadOffset(payloadOffset),
+      _validatedPayload(false) {
+  _contentType = ContentType::UNSET; // intentional
   _contentTypeResponse = ContentType::VPACK;
+  _payload = std::move(buffer),
   parseHeaderInformation();
 }
 
-VPackSlice VstRequest::payload(VPackOptions const* options) {
-  TRI_ASSERT(options != nullptr);
+size_t VstRequest::contentLength() const {
+  TRI_ASSERT(_payload.size() >= _payloadOffset);
+  if (_payload.size() < _payloadOffset) {
+    return 0;
+  }
+  return (_payload.size() - _payloadOffset);
+}
 
+arangodb::velocypack::StringRef VstRequest::rawPayload() const {
+  if (_payload.size() <= _payloadOffset) {
+    return arangodb::velocypack::StringRef();
+  }
+  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data() + _payloadOffset),
+                                         _payload.size() - _payloadOffset);
+}
+
+VPackSlice VstRequest::payload(bool strictValidation) {
   if (_contentType == ContentType::JSON) {
-    if (!_vpackBuilder) {
-      arangodb::velocypack::StringRef json = _message.payload();
-      if (!json.empty()) {
-        _vpackBuilder = VPackParser::fromJson(json.data(), json.length());
-      }
+    if (!_vpackBuilder && _payload.size() > _payloadOffset) {
+      _vpackBuilder = VPackParser::fromJson(_payload.data() + _payloadOffset,
+                                            _payload.size() - _payloadOffset, 
+                                            validationOptions(strictValidation));
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
-  } else if (_contentType == ContentType::VPACK) {
-    arangodb::velocypack::StringRef vpack = _message.payload();
-    if (!vpack.empty()) {
+  } else if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::VPACK)) {
+    if (_payload.size() > _payloadOffset) {
+      uint8_t const* ptr = _payload.data() + _payloadOffset;
       if (!_validatedPayload) {
-        VPackOptions validationOptions = *options;  // intentional copy
-        validationOptions.validateUtf8Strings = true;
-        validationOptions.checkAttributeUniqueness = true;
-        validationOptions.disallowExternals = true;
-        validationOptions.disallowCustom = true;
-        VPackValidator validator(&validationOptions);
+        /// the header is validated in VstCommTask, the actual body is only validated on demand
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackValidator validator(options);
         // will throw on error
-        _validatedPayload = validator.validate(vpack.data(), vpack.length());
+        _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
       }
-      return VPackSlice(reinterpret_cast<uint8_t const*>(vpack.data()));
+      return VPackSlice(ptr);
     }
   }
   return VPackSlice::noneSlice();  // no body
+}
+
+void VstRequest::setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) {
+  _payload = std::move(buffer);
+  _payloadOffset = 0;
 }
 
 void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   if (!keySlice.isString() || !valSlice.isString()) {
     return;
   }
-
+  
+  std::string key = keySlice.copyString();
+  StringUtils::tolowerInPlace(key);
   std::string value = valSlice.copyString();
-  std::string key = StringUtils::tolower(keySlice.copyString());
-  std::string val = StringUtils::tolower(value);
-  static const char* mime = "application/json";
-  if (key == StaticStrings::Accept && val.length() >= 16 &&
-      memcmp(val.data(), mime, 16) == 0) {
-    _contentTypeResponse = ContentType::JSON;
+    
+  if (key == StaticStrings::Accept) {
+    StringUtils::tolowerInPlace(value);
+    _contentTypeResponse = rest::stringToContentType(value, ContentType::VPACK);
     return;  // don't insert this header!!
-  } else if (key == StaticStrings::ContentTypeHeader && val.length() >= 16 &&
-             memcmp(val.data(), mime, 16) == 0) {
-    _contentType = ContentType::JSON;
-    return;  // don't insert this header!!
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
+    StringUtils::tolowerInPlace(value);    
+    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
+    // in most tests. As soon as someone fixes all the tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+      _contentType = res;
+      return;  // don't insert this header!!
+    }
   }
 
   // must lower-case the header key
-  _headers.emplace(std::move(key), std::move(value));
+  _headers.try_emplace(std::move(key), std::move(value));
 }
 
 void VstRequest::parseHeaderInformation() {
   using namespace std;
-  auto vHeader = _message.header();
+  
+  /// the header was already validated here, the actual body was not
+  VPackSlice vHeader(_payload.data());
   if (!vHeader.isArray() || vHeader.length() != 7) {
     LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION) << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");
@@ -139,24 +166,25 @@ void VstRequest::parseHeaderInformation() {
       return;
     }
 
-    for (auto const& it : VPackObjectIterator(params, true)) {
+    for (auto it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
         vector<string> tmp;
-        for (auto const& itInner : VPackArrayIterator(it.value)) {
+        for (auto itInner : VPackArrayIterator(it.value)) {
           tmp.emplace_back(itInner.copyString());
         }
-        _arrayValues.emplace(it.key.copyString(), move(tmp));
+        _arrayValues.try_emplace(it.key.copyString(), move(tmp));
       } else {
-        _values.emplace(it.key.copyString(), it.value.copyString());
+        _values.try_emplace(it.key.copyString(), it.value.copyString());
       }
     }
 
-    for (auto const& it : VPackObjectIterator(meta, true)) {
+    for (auto it : VPackObjectIterator(meta, true)) {
       setHeader(it.key, it.value);
     }
 
     // fullUrl should not be necessary for Vst
-    _fullUrl = _requestPath + "?";
+    _fullUrl = _requestPath;
+    _fullUrl.push_back('?'); // intentional
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
                       basics::StringUtils::urlEncode(param.second) + "&");
@@ -170,7 +198,7 @@ void VstRequest::parseHeaderInformation() {
         _fullUrl.push_back('&');
       }
     }
-    _fullUrl.pop_back();  // remove last &
+    _fullUrl.pop_back();  // remove last & or ?
 
   } catch (std::exception const& e) {
     throw std::runtime_error(

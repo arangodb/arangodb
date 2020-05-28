@@ -45,7 +45,7 @@ function explainSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn);
       c = db._create(cn);
     },
@@ -54,7 +54,7 @@ function explainSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn);
     },
 
@@ -69,8 +69,7 @@ function explainSuite () {
       try {
         actual = AQL_EXPLAIN(query);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
       }
     },

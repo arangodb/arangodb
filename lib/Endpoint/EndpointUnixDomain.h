@@ -24,13 +24,14 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H
 #define ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H 1
 
+#include "Basics/operating-system.h"
+#include "Basics/socket-utils.h"
 #include "Endpoint/Endpoint.h"
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 
-#include <arpa/inet.h>
-#include <sys/file.h>
-#include <sys/un.h>
+#include <sys/socket.h>
+#include <string>
 
 namespace arangodb {
 class EndpointUnixDomain final : public Endpoint {
@@ -57,7 +58,8 @@ class EndpointUnixDomain final : public Endpoint {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief disconnect the endpoint
   //////////////////////////////////////////////////////////////////////////////
-
+  
+  // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override;
 
   //////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,6 @@
 
 @startDocuBlock JSF_get_admin_status
-@brief returns status information of the server. 
+@brief returns status information of the server.
 
 @RESTHEADER{GET /_admin/status, Return status information, RestStatusHandler}
 
@@ -27,15 +27,15 @@ The call returns an object with the following attributes:
 
 - *serverInfo.writeOpsEnabled*: boolean, true if writes are enabled.
 
-- *serverInfo.maintenance*: boolean, true if maintenace mode is enabled.
+- *serverInfo.maintenance*: boolean, true if maintenance mode is enabled.
 
-- *agency.endpoints*: a list of possible agency endpoints.
+- *agency.endpoints*: a list of possible Agency endpoints.
 
-An agent, coordinator or primary will also have
+An Agent, Coordinator or primary will also have
 
 - *serverInfo.persistedId*: the persisted ide, e. g. *"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a"*.
 
-A coordinator or primary will also have
+A Coordinator or primary will also have
 
 - *serverInfo.state*: *SERVING*
 
@@ -43,21 +43,21 @@ A coordinator or primary will also have
 
 - *serverInfo.serverId*: the server ide, e. g. *"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a"*.
 
-A coordinator will also have
+A Coordinator will also have
 
 - *coordinator.foxxmaster*: the server id of the foxx master.
 
 - *coordinator.isFoxxmaster*: boolean, true if the server is the foxx master.
 
-An agent will also have
+An Agent will also have
 
-- *agent.id*: server id of this agent.
+- *agent.id*: server id of this Agent.
 
 - *agent.leaderId*: server id of the leader.
 
 - *agent.leading*: boolean, true if leading.
 
-- *agent.endpoint*: the endpoint of this agent.
+- *agent.endpoint*: the endpoint of this Agent.
 
 - *agent.term*: current term number.
 
@@ -67,4 +67,3 @@ An agent will also have
 Status information was returned successfully.
 
 @endDocuBlock
-

@@ -53,7 +53,7 @@ const testPaths = {
 function runArangodRecovery (params) {
   let useEncryption = false;
 
-  if (params && params.options.storageEngine === 'rocksdb' && global.ARANGODB_CLIENT_VERSION) {
+  if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
       useEncryption = true;
@@ -83,7 +83,6 @@ function runArangodRecovery (params) {
     }
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
-      'wal.reserve-logfiles': 1,
       'rocksdb.wal-file-timeout-initial': 10,
       'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
@@ -92,7 +91,18 @@ function runArangodRecovery (params) {
     });
 
     if (useEncryption) {
-      args['rocksdb.encryption-keyfile'] = tu.pathForTesting('server/recovery/encryption-keyfile');
+      const key = '01234567890123456789012345678901';
+      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
+      }
+      pu.cleanupDBDirectoriesAppend(keyDir);
+    
+      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
+      fs.write(keyfile, key);
+
+      args['rocksdb.encryption-keyfile'] = keyfile;
+      process.env["rocksdb-encryption-keyfile"] = keyfile;
     }
 
     params.args = args;
@@ -110,7 +120,6 @@ function runArangodRecovery (params) {
       Object.assign(params.args,
                     {
                       'log.foreground-tty': 'true',
-                      'wal.ignore-logfile-errors': 'true',
                       'database.ignore-datafile-errors': 'false', // intentionally false!
                       'javascript.script-parameter': 'recovery'
                     }
@@ -127,7 +136,6 @@ function runArangodRecovery (params) {
     params.options,
     'recovery',
     params.instanceInfo.rootDir,
-    params.setup,
     !params.setup && params.options.coreCheck);
 }
 
@@ -153,7 +161,7 @@ function recovery (options) {
 
   let count = 0;
   let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'crashtmp');
+  let tempDir = fs.join(fs.getTempPath(), 'recovery');
   fs.makeDirectoryRecursive(tempDir);
   process.env.TMPDIR = tempDir;
   pu.cleanupDBDirectoriesAppend(tempDir);
@@ -197,7 +205,8 @@ function recovery (options) {
         params.args['temp.path'],
         {
           status: false
-        }
+        },
+        test
       );
       if (!results[test].status) {
         print("Not cleaning up " + params.testDir);

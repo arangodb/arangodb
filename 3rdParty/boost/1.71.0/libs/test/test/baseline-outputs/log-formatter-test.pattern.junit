@@ -1,0 +1,154 @@
+* 3-format  *******************************************************************
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="0" skipped="0" errors="0" failures="0" id="0" name="1_test_cases_inside" time="0.1234">
+<properties>
+<property name="platform" value="BOOST_SOME_PLATFORM" />
+<property name="compiler" value="BOOST_SOME_COMPILER" />
+<property name="stl" value="BOOST_SOME_STDLIB" />
+<property name="boost" value="BOOST_1.XX.Y_SOME_VERSION" />
+</properties>
+<testcase assertions="0" name="almost_good_foo" time="0.1234">
+<system-out><![CDATA[WARNING:
+- file   : log-formatter-test.cpp
+- line   : 46
+- message: condition 2>3 is not satisfied [2 <= 3]
+
+MESSAGE:
+- file   : boost.test framework
+- line   : 244
+- message: Test case 1 test cases inside/almost_good_foo did not check any assertions
+
+]]></system-out>
+</testcase>
+</testsuite>
+* 3-format  *******************************************************************
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="1" skipped="0" errors="0" failures="1" id="0" name="Timeout" time="0.1234">
+<properties>
+<property name="platform" value="BOOST_SOME_PLATFORM" />
+<property name="compiler" value="BOOST_SOME_COMPILER" />
+<property name="stl" value="BOOST_SOME_STDLIB" />
+<property name="boost" value="BOOST_1.XX.Y_SOME_VERSION" />
+</properties>
+<testcase assertions="0" name="good_foo" time="0.1234">
+<system-out><![CDATA[MESSAGE:
+- file   : boost.test framework
+- line   : 244
+- message: Test case Timeout/good_foo did not check any assertions
+
+]]></system-out>
+</testcase>
+<testcase assertions="1" name="timeout_foo" time="0.1234">
+<error message="unexpected exception" type="execution timeout"><![CDATA[
+UNCAUGHT EXCEPTION:
+- file: unknown location
+- line: 0
+
+
+EXCEPTION STACK TRACE: --------------
+fake  timeout
+-------------------------------------]]></error><system-err><![CDATA[Failures detected in:
+- test case: Timeout/timeout_foo
+- file: log-formatter-test.cpp
+- line: 231
+]]></system-err>
+</testcase>
+</testsuite>
+* 3-format  *******************************************************************
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="4" skipped="0" errors="1" failures="2" id="0" name="1_junit_failure_is_not_error" time="0.1234">
+<testcase assertions="4" name="bad_foo" time="0.1234">
+<failure message="failure" type="assertion error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 50
+- message: 
+
+]]></failure><failure message="failure" type="assertion error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 57
+- message: with some message
+- context:
+  - 'Context value=something'
+  - 'Context value2=something different'
+
+
+]]></failure><failure message="failure" type="assertion error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 59
+- message: non sense
+
+]]></failure><system-out><![CDATA[MESSAGE:
+- file   : log-formatter-test.cpp
+- line   : 52
+- message: this is a message
+
+]]></system-out>
+<system-err><![CDATA[Failures detected in:
+- test case: 1 junit failure is not error/bad_foo
+- file: log-formatter-test.cpp
+- line: 238
+]]></system-err>
+</testcase>
+<testcase assertions="1" name="very_bad_foo" time="0.1234">
+<failure message="failure" type="fatal error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 64
+- message: very_bad_foo is fatal
+- context:
+  - 'some context'
+
+
+]]></failure><system-err><![CDATA[Failures detected in:
+- test case: 1 junit failure is not error/very_bad_foo
+- file: log-formatter-test.cpp
+- line: 239
+]]></system-err>
+</testcase>
+<testcase assertions="0" name="good_foo" time="0.1234">
+<system-out><![CDATA[MESSAGE:
+- file   : boost.test framework
+- line   : 244
+- message: Test case 1 junit failure is not error/good_foo did not check any assertions
+
+]]></system-out>
+</testcase>
+<testcase assertions="4" name="bad_foo2" time="0.1234">
+<failure message="failure" type="assertion error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 50
+- message: 
+
+]]></failure><failure message="failure" type="assertion error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 57
+- message: with some message
+- context:
+  - 'Context value=something'
+  - 'Context value2=something different'
+
+
+]]></failure><failure message="failure" type="assertion error"><![CDATA[
+ASSERTION FAILURE:
+- file   : log-formatter-test.cpp
+- line   : 59
+- message: non sense
+
+]]></failure><system-out><![CDATA[MESSAGE:
+- file   : log-formatter-test.cpp
+- line   : 52
+- message: this is a message
+
+]]></system-out>
+<system-err><![CDATA[Failures detected in:
+- test case: 1 junit failure is not error/bad_foo2
+- file: log-formatter-test.cpp
+- line: 241
+]]></system-err>
+</testcase>
+</testsuite>

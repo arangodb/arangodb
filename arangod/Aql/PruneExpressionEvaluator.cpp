@@ -30,19 +30,20 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 PruneExpressionEvaluator::PruneExpressionEvaluator(
-    transaction::Methods* trx, Query* query,
-    std::vector<Variable const*> const&& vars, std::vector<RegisterId> const&& regs,
+    transaction::Methods& trx,
+    QueryContext& query,
+    AqlFunctionsInternalCache& cache,
+    std::vector<Variable const*> vars, std::vector<RegisterId> regs,
     size_t vertexVarIdx, size_t edgeVarIdx, size_t pathVarIdx, Expression* expr)
-    : _trx(trx),
-      _pruneExpression(expr),
-      _ctx(query, std::move(vars), std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx) {}
+    : _pruneExpression(expr),
+      _ctx(trx, query, cache, std::move(vars),
+           std::move(regs), vertexVarIdx, edgeVarIdx, pathVarIdx) {}
 
 PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 
 bool PruneExpressionEvaluator::evaluate() {
   bool mustDestroy = false;
-  aql::AqlValue res = _pruneExpression->execute(_trx, &_ctx, mustDestroy);
+  aql::AqlValue res = _pruneExpression->execute(&_ctx, mustDestroy);
   arangodb::aql::AqlValueGuard guard(res, mustDestroy);
-  TRI_ASSERT(res.isBoolean());
   return res.toBoolean();
 }

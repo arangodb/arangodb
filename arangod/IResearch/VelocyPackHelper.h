@@ -25,9 +25,10 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "utils/string.hpp"  // for irs::string_ref
 
@@ -98,6 +99,26 @@ arangodb::velocypack::Builder& addStringRef( // add a value
 );
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps bytes ref with VPackValuePair
+////////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary // args
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps string ref with VPackValuePair
+////////////////////////////////////////////////////////////////////////////////
+inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String // args
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a string_ref value to the 'builder' (for JSON objects)
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::velocypack::Builder& addStringRef( // add a value
@@ -137,6 +158,23 @@ inline irs::string_ref getStringRef(VPackSlice const& slice) {
                 "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
 
   return irs::string_ref(str, size);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extracts string_ref from VPackSlice, note that provided 'slice'
+///        must be a string
+/// @return extracted string_ref
+//////////////////////////////////////////////////////////////////////////////
+inline irs::bytes_ref getBytesRef(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isString());
+
+  arangodb::velocypack::ValueLength size;
+  auto const* str = slice.getString(size);
+
+  static_assert(sizeof(arangodb::velocypack::ValueLength) == sizeof(size_t),
+                "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
+
+  return irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(str), size);
 }
 
 //////////////////////////////////////////////////////////////////////////////

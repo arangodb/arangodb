@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_ANALYZER_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {
@@ -35,9 +36,10 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
  public:
   // @note RestHandlerFactory::createHandler(...) passes raw pointers for
   //       request/response to RestHandlerCreator::createNoData(...)
-  RestAnalyzerHandler( // constructor
-    arangodb::GeneralRequest* request, // request
-    arangodb::GeneralResponse* response // response
+  RestAnalyzerHandler(  // constructor
+      application_features::ApplicationServer& server,
+      arangodb::GeneralRequest* request,   // request
+      arangodb::GeneralResponse* response  // response
   );
 
   virtual arangodb::RestStatus execute() override;
@@ -49,18 +51,16 @@ class RestAnalyzerHandler: public RestVocbaseBaseHandler {
   virtual char const* name() const override { return "RestAnalyzerHandler"; }
 
  private:
-  void createAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    TRI_vocbase_t const* sysVocbase // system vocbase
-  );
+  void createAnalyzer(IResearchAnalyzerFeature& analyzers);
   void getAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name (normalized)
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName 
   );
   void getAnalyzers(IResearchAnalyzerFeature& analyzers);
   void removeAnalyzer(
-    IResearchAnalyzerFeature& analyzers, // analyzer feature
-    std::string const& name // analyzer name (normalized)
+    IResearchAnalyzerFeature& analyzers, 
+    std::string const& requestedName, 
+    bool force
   );
 };
 

@@ -25,6 +25,7 @@
 #define OPENSSL_THREAD_DEFINES
 #include <openssl/opensslconf.h>
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Thread.h"
 #include "Logger/Logger.h"
@@ -47,7 +48,7 @@ const asio_ns::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 SslFeature::SslFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void SslFeature::prepare() {}

@@ -25,12 +25,15 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Cluster/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/Identifiers/ServerId.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 
 typedef uint64_t RocksDBReplicationId;
 
@@ -55,7 +58,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, std::string const& clientId);
+  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId, ServerId clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -79,9 +82,8 @@ class RocksDBReplicationManager {
   /// may be used concurrently on used contexts
   /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  int extendLifetime(RocksDBReplicationId, 
-                     std::string& clientId,
-                     double ttl = replutils::BatchInfo::DefaultTimeout);
+  ResultT<std::tuple<SyncerId, ServerId, std::string>> extendLifetime(
+      RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -94,6 +96,12 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   void drop(TRI_vocbase_t*);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop contexts by collection (at least mark them as deleted)
+  //////////////////////////////////////////////////////////////////////////////
+  //
+  void drop(LogicalCollection*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop all contexts (at least mark them as deleted)

@@ -26,32 +26,30 @@
 #ifndef ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 
-#include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
-template <bool>
+class NoStats;
+class RegisterInfos;
+class OutputAqlItemRow;
+template <BlockPassthrough>
 class SingleRowFetcher;
+struct AqlCall;
+class AqlItemBlockInputRange;
 
-class CountCollectExecutorInfos : public ExecutorInfos {
+class CountCollectExecutorInfos {
  public:
-  CountCollectExecutorInfos(RegisterId collectRegister, RegisterId nrInputRegisters,
-                            RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep);
+  explicit CountCollectExecutorInfos(RegisterId collectRegister);
 
   CountCollectExecutorInfos() = delete;
   CountCollectExecutorInfos(CountCollectExecutorInfos&&) = default;
@@ -59,7 +57,7 @@ class CountCollectExecutorInfos : public ExecutorInfos {
   ~CountCollectExecutorInfos() = default;
 
  public:
-  RegisterId getOutputRegisterId() const { return _collectRegister; }
+  RegisterId getOutputRegisterId() const;
 
  private:
   RegisterId _collectRegister;
@@ -72,9 +70,9 @@ class CountCollectExecutorInfos : public ExecutorInfos {
 class CountCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CountCollectExecutorInfos;
@@ -83,70 +81,33 @@ class CountCollectExecutor {
   CountCollectExecutor() = delete;
   CountCollectExecutor(CountCollectExecutor&&) = default;
   CountCollectExecutor(CountCollectExecutor const&) = delete;
-  CountCollectExecutor(Fetcher& fetcher, Infos&);
+  CountCollectExecutor(Fetcher&, Infos&);
   ~CountCollectExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  inline std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output) {
-    TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    NoStats stats{};
-    InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-    if (_state == ExecutionState::DONE) {
-      return {_state, stats};
-    }
-
-    while (true) {
-      std::tie(_state, input) = _fetcher.fetchRow();
-
-      if (_state == ExecutionState::WAITING) {
-        return {_state, stats};
-      }
-
-      if (!input) {
-        TRI_ASSERT(_state == ExecutionState::DONE);
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
-
-      TRI_ASSERT(input.isInitialized());
-      incrCount();
-
-      // Abort if upstream is done
-      if (_state == ExecutionState::DONE) {
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
-    }
-  }
-
-  void incrCount() noexcept { _count++; };
-  uint64_t getCount() noexcept { return _count; };
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
-    if (_state == ExecutionState::DONE) {
-      return {ExecutionState::DONE, 0};
-    }
-    return {ExecutionState::HASMORE, 1};
-  }
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  ExecutionState _state;
-  uint64_t _count;
 };
 
 }  // namespace aql

@@ -18,14 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Finding.h"
+
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 
-using namespace arangodb;
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 Finding::Finding() : _value(nullptr), _result(TRI_ERROR_NO_ERROR) {}
 
@@ -107,3 +109,5 @@ CachedValue* Finding::copy() const {
 }
 
 Result const& Finding::result() const { return _result; }
+
+}  // namespace arangodb::cache

@@ -25,7 +25,9 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VIEW_SORT_H 1
 
 #include "Basics/AttributeNameParser.h"
-#include "velocypack/Slice.h"
+#include "Basics/debugging.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 

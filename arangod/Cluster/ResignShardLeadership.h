@@ -40,6 +40,8 @@ class ResignShardLeadership : public ActionBase {
   virtual ~ResignShardLeadership();
 
   virtual bool first() override final;
+
+  static std::string const LeaderNotYetKnownString;
 };
 
 }  // namespace maintenance

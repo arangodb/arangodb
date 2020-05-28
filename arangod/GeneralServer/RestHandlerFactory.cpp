@@ -23,7 +23,9 @@
 
 #include "RestHandlerFactory.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestBaseHandler.h"
 
@@ -39,7 +41,8 @@ static std::string const ROOT_PATH = "/";
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> req,
+RestHandler* RestHandlerFactory::createHandler(application_features::ApplicationServer& server,
+                                               std::unique_ptr<GeneralRequest> req,
                                                std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
 
@@ -49,7 +52,7 @@ RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> r
     // direct match!
     LOG_TOPIC("f397b", TRACE, arangodb::Logger::FIXME)
         << "found direct handler for path '" << path << "'";
-    return it->second.first(req.release(), res.release(), it->second.second);
+    return it->second.first(server, req.release(), res.release(), it->second.second);
   }
 
   // no direct match, check prefix matches
@@ -114,7 +117,7 @@ RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> r
 
   LOG_TOPIC("e3fca", TRACE, arangodb::Logger::FIXME)
       << "found handler for path '" << it->first << "'";
-  return it->second.first(req.release(), res.release(), it->second.second);
+  return it->second.first(server, req.release(), res.release(), it->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,7 +125,7 @@ RestHandler* RestHandlerFactory::createHandler(std::unique_ptr<GeneralRequest> r
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func, void* data) {
-  if (!_constructors.emplace(path, std::make_pair(func, data)).second) {
+  if (!_constructors.try_emplace(path, func, data).second) {
     // there should only be one handler for each path
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,

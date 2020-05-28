@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "filter.hpp"
@@ -37,7 +36,7 @@ struct empty_query final
   virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader&,
       const irs::order::prepared&,
-      const irs::attribute_view&) const override {
+      const irs::attribute_provider*) const override {
     return irs::doc_iterator::empty();
   }
 }; // empty_query
@@ -50,8 +49,8 @@ NS_ROOT
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type) NOEXCEPT
-  : boost_(irs::no_boost()), type_(&type) {
+filter::filter(const type_info& type) noexcept
+  : boost_(irs::no_boost()), type_(type.id()) {
 }
 
 filter::prepared::ptr filter::prepared::empty() {
@@ -65,18 +64,15 @@ filter::prepared::ptr filter::prepared::empty() {
 // --SECTION--                                                             empty
 // -----------------------------------------------------------------------------
 
-DEFINE_FILTER_TYPE(irs::empty)
 DEFINE_FACTORY_DEFAULT(irs::empty)
 
-empty::empty(): filter(empty::type()) {
-}
+empty::empty() : filter(irs::type<empty>::get()) { }
 
 filter::prepared::ptr empty::prepare(
     const index_reader&,
     const order::prepared&,
     boost_t,
-    const attribute_view&
-) const {
+    const attribute_provider*) const {
   // aliasing ctor
   return filter::prepared::ptr(
     filter::prepared::ptr(), &empty_query::instance()
@@ -84,7 +80,3 @@ filter::prepared::ptr empty::prepare(
 }
 
 NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

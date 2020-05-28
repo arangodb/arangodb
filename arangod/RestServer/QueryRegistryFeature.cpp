@@ -25,7 +25,12 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -42,19 +47,20 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackSlowQueries(true),
       _trackBindVars(true),
       _failOnWarning(false),
+      _queryCacheIncludeSystem(false),
       _smartJoins(true),
+      _parallelizeTraversals(true),
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
-      _slowQueryThreshold(10.0),
-      _slowStreamingQueryThreshold(10.0),
-      _queryCacheMode("off"),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
-      _queryCacheIncludeSystem(false),
-      _queryRegistryTTL(0) {
+      _slowQueryThreshold(10.0),
+      _slowStreamingQueryThreshold(10.0),
+      _queryRegistryTTL(0.0),
+      _queryCacheMode("off") {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;
@@ -128,13 +134,19 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "seconds); if <= 0, value will default to 30 for "
                      "single-server instances or 600 for cluster instances",
                      new DoubleParameter(&_queryRegistryTTL),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
   options->addOption("--query.smart-joins",
                      "enable smart joins query optimization",
                      new BooleanParameter(&_smartJoins),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30405).setIntroducedIn(30500);
+  
+  options->addOption("--query.parallelize-traversals",
+                     "enable traversal parallelization",
+                     new BooleanParameter(&_parallelizeTraversals),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     .setIntroducedIn(30701);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

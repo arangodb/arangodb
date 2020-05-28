@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StringHeap.h"
+
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 

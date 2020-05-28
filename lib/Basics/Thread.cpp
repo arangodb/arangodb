@@ -22,22 +22,29 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Thread.h"
-
 #include <errno.h>
 #include <signal.h>
+#include <chrono>
+#include <thread>
+
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+
+#include "Thread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <chrono>
-#include <thread>
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_PROCESS_H
 #include <process.h>
@@ -51,19 +58,15 @@ using namespace arangodb::basics;
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
-#if !defined(ARANGODB_HAVE_GETTID) && !defined(_WIN32)
-
+#ifndef _WIN32
 namespace {
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
-
 #endif
 
 /// @brief static started with access to the private variables
 void Thread::startThread(void* arg) {
-#if defined(ARANGODB_HAVE_GETTID)
-  LOCAL_THREAD_NUMBER = (uint64_t)gettid();
-#elif defined(_WIN32)
+#ifdef _WIN32
   LOCAL_THREAD_NUMBER = (uint64_t)GetCurrentThreadId();
 #else
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
@@ -148,14 +151,16 @@ std::string Thread::stringify(ThreadState state) {
 }
 
 /// @brief constructs a thread
-Thread::Thread(std::string const& name, bool deleteOnExit, std::uint32_t terminationTimeout)
-    : _deleteOnExit(deleteOnExit),
+Thread::Thread(application_features::ApplicationServer& server, std::string const& name,
+               bool deleteOnExit, std::uint32_t terminationTimeout)
+    : _server(server),
       _threadStructInitialized(false),
       _refs(0),
       _name(name),
       _thread(),
       _threadNumber(0),
       _terminationTimeout(terminationTimeout),
+      _deleteOnExit(deleteOnExit),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED) {
   TRI_InitThread(&_thread);
@@ -201,7 +206,7 @@ void Thread::shutdown() {
   LOG_TOPIC("93614", TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   beginShutdown();
-  if (_threadStructInitialized) {
+  if (_threadStructInitialized.exchange(false, std::memory_order_acquire)) {
     if (TRI_IsSelfThread(&_thread)) {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
@@ -245,12 +250,10 @@ bool Thread::isStopping() const {
 
 /// @brief starts the thread
 bool Thread::start(ConditionVariable* finishedCondition) {
-  if (!isSystem() && !ApplicationServer::isPrepared()) {
+  if (!isSystem() && !_server.isPrepared()) {
     LOG_TOPIC("6ba8a", FATAL, arangodb::Logger::FIXME)
-        << "trying to start a thread '" << _name << "' before prepare has finished, current state: "
-        << (ApplicationServer::server == nullptr
-                ? -1
-                : (int)ApplicationServer::server->state());
+        << "trying to start a thread '" << _name
+        << "' before prepare has finished, current state: " << (int)_server.state();
     FATAL_ERROR_ABORT();
   }
 
@@ -289,7 +292,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
     LOG_TOPIC("f5915", ERR, Logger::THREADS)
         << "could not start thread '" << _name << "': " << TRI_last_error();
   } else {
-    _threadStructInitialized = true;
+    _threadStructInitialized.store(true, std::memory_order_release);
   }
 
   releaseRef();
@@ -302,6 +305,7 @@ void Thread::markAsStopped() {
   _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
+    // cppcheck-suppress redundantPointerOp
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
   }

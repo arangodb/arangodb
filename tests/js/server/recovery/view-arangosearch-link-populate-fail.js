@@ -52,7 +52,7 @@ function runSetup () {
       }
 
       c.save({ name: 'crashme' }, true);
-      internal.debugSegfault('crashing server');
+      internal.debugTerminate('crashing server');
     },
     waitForSync: true
   };
@@ -82,7 +82,7 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-      var result = AQL_EXECUTE("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").json;
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
       assertEqual(result[0], 0);
     }
 

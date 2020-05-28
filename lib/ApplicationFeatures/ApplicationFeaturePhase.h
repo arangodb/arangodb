@@ -23,12 +23,17 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_PHASE_H
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_PHASE_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+#include <string>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 namespace application_features {
+class ApplicationServer;
 
 class ApplicationFeaturePhase : public ApplicationFeature {
   friend class ApplicationServer;

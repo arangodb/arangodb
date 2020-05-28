@@ -43,7 +43,7 @@ function runSetup () {
 
   c.save({ _key: 'crashme' }, true);
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +66,7 @@ function recoverySuite () {
       var v1 = db._view('UnitTestsRecovery1');
       assertEqual(v1.name(), 'UnitTestsRecovery1');
       assertEqual(v1.type(), 'arangosearch');
-      assertEqual(v1.properties().consolidationIntervalMsec, 60000);
+      assertEqual(v1.properties().consolidationIntervalMsec, 10000);
     }
 
   };

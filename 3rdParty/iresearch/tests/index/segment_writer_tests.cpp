@@ -28,6 +28,7 @@
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "utils/lz4compression.hpp"
 
 NS_LOCAL
 
@@ -45,18 +46,22 @@ class segment_writer_tests: public test_base {
   }
 };
 
+
+struct token_stream_mock final : public irs::token_stream {
+  std::map<irs::type_info::type_id, irs::attribute*> attrs;
+  size_t token_count;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    const auto it = attrs.find(type);
+    return it == attrs.end() ? nullptr : it->second;
+  }
+  virtual bool next() override { return --token_count; }
+};
+
 NS_END
 
 #ifndef IRESEARCH_DEBUG
 
 TEST_F(segment_writer_tests, invalid_actions) {
-  struct token_stream_t: public irs::token_stream {
-    irs::attribute_view attrs;
-    size_t token_count;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs; }
-    virtual bool next() override { return --token_count; }
-  };
-
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
@@ -74,8 +79,12 @@ TEST_F(segment_writer_tests, invalid_actions) {
   stream.reset(true);
   field_t field(stream);
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, nullptr);
+  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   // store + store sorted
@@ -121,20 +130,24 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), {}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer_sorted = irs::segment_writer::make(dir, &less);
+  auto writer_sorted = irs::segment_writer::make(dir, column_info, &less);
   ASSERT_EQ(0, writer_sorted->memory_active());
-  auto writer_unsorted = irs::segment_writer::make(dir, nullptr);
+  auto writer_unsorted = irs::segment_writer::make(dir, column_info, nullptr);
   ASSERT_EQ(0, writer_unsorted->memory_active());
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer_sorted->reset(segment);
   ASSERT_EQ(0, writer_sorted->memory_active());
   writer_unsorted->reset(segment);
@@ -181,13 +194,17 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
     }
   } field;
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options(irs::compression::options::Hint::SPEED), true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, nullptr);
+  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -222,18 +239,22 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true);
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, &less);
+  auto writer = irs::segment_writer::make(dir, column_info, &less);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -268,18 +289,22 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, &less);
+  auto writer = irs::segment_writer::make(dir, column_info, &less);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -313,13 +338,17 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
     }
   } field;
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, nullptr);
+  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
   segment.name = "foo";
-  segment.codec = irs::formats::get("1_1");
+  segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
   ASSERT_EQ(0, writer->memory_active());
 
@@ -340,13 +369,6 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
 }
 
 TEST_F(segment_writer_tests, memory_index_field) {
-  struct token_stream_t: public irs::token_stream {
-    irs::attribute_view attrs;
-    size_t token_count;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs; }
-    virtual bool next() override { return --token_count; }
-  };
-
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
@@ -360,8 +382,12 @@ TEST_F(segment_writer_tests, memory_index_field) {
   stream.reset(true);
   field_t field(stream);
 
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
+  };
+
   irs::memory_directory dir;
-  auto writer = irs::segment_writer::make(dir, nullptr);
+  auto writer = irs::segment_writer::make(dir, column_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
@@ -381,13 +407,6 @@ TEST_F(segment_writer_tests, memory_index_field) {
 }
 
 TEST_F(segment_writer_tests, index_field) {
-  struct token_stream_t: public irs::token_stream {
-    irs::attribute_view attrs;
-    size_t token_count;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs; }
-    virtual bool next() override { return --token_count; }
-  };
-
   struct field_t {
     irs::token_stream& token_stream;
     field_t(irs::token_stream& stream): token_stream(stream) {}
@@ -399,14 +418,18 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (increment)
   {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+      return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
+    };
+
     irs::memory_directory dir;
-    auto writer = irs::segment_writer::make(dir, nullptr);
+    auto writer = irs::segment_writer::make(dir, column_info, nullptr);
     irs::segment_writer::update_context ctx;
-    token_stream_t stream;
+    token_stream_mock stream;
     field_t field(stream);
     irs::term_attribute term;
 
-    stream.attrs.emplace<irs::term_attribute>(term);
+    stream.attrs[irs::type<irs::term_attribute>::id()] = &term;
     stream.token_count = 10;
 
     writer->begin(ctx);
@@ -418,14 +441,18 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (term_attribute)
   {
+    irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+      return irs::column_info( irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
+    };
+
     irs::memory_directory dir;
-    auto writer = irs::segment_writer::make(dir, nullptr);
+    auto writer = irs::segment_writer::make(dir, column_info, nullptr);
     irs::segment_writer::update_context ctx;
-    token_stream_t stream;
+    token_stream_mock stream;
     field_t field(stream);
     irs::increment inc;
 
-    stream.attrs.emplace<irs::increment>(inc);
+    stream.attrs[irs::type<irs::increment>::id()] = &inc;
     stream.token_count = 10;
 
     writer->begin(ctx);
@@ -435,7 +462,3 @@ TEST_F(segment_writer_tests, index_field) {
     writer->commit();
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

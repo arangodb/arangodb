@@ -36,48 +36,24 @@ namespace aql {
 
 /// @brief hasher for a vector of AQL values
 struct AqlValueGroupHash {
-  AqlValueGroupHash(transaction::Methods* trx, size_t num)
-      : _trx(trx), _num(num) {}
+  AqlValueGroupHash(size_t num);
 
-  size_t operator()(std::vector<AqlValue> const& value) const {
-    uint64_t hash = 0x12345678;
+  size_t operator()(std::vector<AqlValue> const& value) const;
+  size_t operator()(AqlValue const& value) const;
 
-    TRI_ASSERT(value.size() == _num);
-
-    for (auto const& it : value) {
-      // we must use the slow hash function here, because a value may have
-      // different representations in case its an array/object/number
-      // (calls normalizedHash() internally)
-      hash = it.hash(_trx, hash);
-    }
-
-    return static_cast<size_t>(hash);
-  }
-
-  transaction::Methods* _trx;
   size_t const _num;
 };
 
 /// @brief comparator for a vector of AQL values
 struct AqlValueGroupEqual {
-  explicit AqlValueGroupEqual(transaction::Methods* trx) : _trx(trx) {}
+  explicit AqlValueGroupEqual(velocypack::Options const*);
 
-  bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const {
-    size_t const n = lhs.size();
+  bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
+  bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
 
-    for (size_t i = 0; i < n; ++i) {
-      int res = AqlValue::Compare(_trx, lhs[i], rhs[i], false);
-
-      if (res != 0) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  transaction::Methods* _trx;
+  velocypack::Options const* _vpackOptions;
 };
+
 
 }  // namespace aql
 }  // namespace arangodb

@@ -25,7 +25,7 @@
 #include "store/store_utils.hpp"
 #include "utils/bytes_utils.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 namespace tests {
 namespace detail {
@@ -86,7 +86,8 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   assert(blocks);
 
   // compress data to stream
-  iresearch::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
 
   // write first n compressed blocks
   {
@@ -99,7 +100,7 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
 
   // decompress data from stream
   std::vector<uint32_t> read(src.size());
-  iresearch::bytes_ref_input in(out);
+  irs::bytes_ref_input in(buf);
 
   // read first n compressed blocks
   {
@@ -113,21 +114,22 @@ void packed_read_write_core(const std::vector<uint32_t> &src) {
   ASSERT_EQ(src, read);
 }
 
-using iresearch::data_input;
-using iresearch::data_output;
+using irs::data_input;
+using irs::data_output;
 
 template<typename T>
 void read_write_core( 
     const std::vector<T>& src, 
     const std::function<T(data_input&)>& reader,
     const std::function<void(data_output&,T)>& writer) {
-  iresearch::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   std::for_each(
     src.begin(), src.end(), 
     [&out,&writer](const T& v){ writer(out, v); }
   );
 
-  iresearch::bytes_input in( out);
+  irs::bytes_input in(buf);
   std::for_each(
     src.begin(), src.end(), 
     [&in,&reader](const T& v){ ASSERT_EQ(v, reader(in)); }
@@ -139,11 +141,12 @@ template<typename T>
 void read_write_core_nan(
     const std::function<T(data_input&)>& reader,
     const std::function<void(data_output&,T)>& writer) {
-  iresearch::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   writer(out, std::numeric_limits<T>::quiet_NaN());
   writer(out, std::numeric_limits<T>::signaling_NaN());
 
-  iresearch::bytes_input in(out);
+  irs::bytes_input in(buf);
   ASSERT_TRUE(std::isnan(reader(in)));
   ASSERT_TRUE(std::isnan(reader(in)));
 }
@@ -153,21 +156,23 @@ void read_write_core_container(
     const Cont& src,
     const std::function<Cont(data_input&)>& reader,
     const std::function<data_output&(data_output&,const Cont&)>& writer) {
-  iresearch::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   writer(out, src);
 
-  iresearch::bytes_input in(out);
+  irs::bytes_input in(buf);
   const Cont read = reader( in);
   ASSERT_EQ(src, read);
 }
 
 void read_write_block(const std::vector<uint32_t>& source, std::vector<uint32_t>& enc_dec_buf) {
   // write block
-  iresearch::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   irs::encode::bitpack::write_block(out, &source[0], source.size(), &enc_dec_buf[0]);
 
   // read block
-  iresearch::bytes_input in(out);
+  irs::bytes_input in(buf);
   std::vector<uint32_t> read(source.size());
   irs::encode::bitpack::read_block(in, source.size(), &enc_dec_buf[0], read.data());
 
@@ -271,14 +276,14 @@ TEST(store_utils_tests, zvfloat_read_write) {
       -21532764.631984f,
       -9847.23427f
     },
-    iresearch::read_zvfloat,
-    iresearch::write_zvfloat
+    irs::read_zvfloat,
+    irs::write_zvfloat
   );
 
   /* NaN case */
   tests::detail::read_write_core_nan<float_t>(
-    iresearch::read_zvfloat,
-    iresearch::write_zvfloat
+    irs::read_zvfloat,
+    irs::write_zvfloat
   );
 }
 
@@ -300,14 +305,14 @@ TEST(store_utils_tests, zvdouble_read_write) {
       -19274316.123,
       -98743098097.34352532
     },
-    iresearch::read_zvdouble,
-    iresearch::write_zvdouble
+    irs::read_zvdouble,
+    irs::write_zvdouble
   );
 
   /* NaN case */
   tests::detail::read_write_core_nan<double_t>(
-    iresearch::read_zvdouble,
-    iresearch::write_zvdouble
+    irs::read_zvdouble,
+    irs::write_zvdouble
   );
 }
 
@@ -322,8 +327,8 @@ TEST( store_utils_tests, size_read_write) {
       size_t(12371792192121),
       size_t(9719496156)
   },
-  iresearch::read_size,
-  iresearch::write_size);
+  irs::read_size,
+  irs::write_size);
 }
 
 TEST(store_utils_tests, zvint_read_write) {
@@ -337,8 +342,8 @@ TEST(store_utils_tests, zvint_read_write) {
     -911728376,
     -10725017
   },
-  iresearch::read_zvint,
-  iresearch::write_zvint);
+  irs::read_zvint,
+  irs::write_zvint);
 }
 
 TEST(store_utils_tests, zvlong_read_write) {
@@ -352,8 +357,8 @@ TEST(store_utils_tests, zvlong_read_write) {
     -9184236868362391274LL,
     -91724962191921979LL
   },
-  iresearch::read_zvlong,
-  iresearch::write_zvlong);
+  irs::read_zvlong,
+  irs::write_zvlong);
 }
 
 TEST(store_utils_tests, std_string_read_write) {
@@ -366,21 +371,21 @@ TEST(store_utils_tests, std_string_read_write) {
     std::string("lazy p1230142hlds"),
     std::string("dob  sdofjasoufdsa")
   },
-  iresearch::read_string<std::string>,
-  iresearch::write_string<std::string>);
+  irs::read_string<std::string>,
+  irs::write_string<std::string>);
 }
 
 TEST(store_utils_tests, bytes_read_write) {
   tests::detail::read_write_core<bstring>(
   {
     bstring(),
-    bstring(iresearch::ref_cast<byte_type>(iresearch::string_ref("qalsdflsajfd"))),
-    bstring(iresearch::ref_cast<byte_type>(iresearch::string_ref("jfdldsflaflj"))),
-    bstring(iresearch::ref_cast<byte_type>(iresearch::string_ref("102174174010"))),
-    bstring(iresearch::ref_cast<byte_type>(iresearch::string_ref("0182ljdskfaof")))
+    bstring(irs::ref_cast<byte_type>(irs::string_ref("qalsdflsajfd"))),
+    bstring(irs::ref_cast<byte_type>(irs::string_ref("jfdldsflaflj"))),
+    bstring(irs::ref_cast<byte_type>(irs::string_ref("102174174010"))),
+    bstring(irs::ref_cast<byte_type>(irs::string_ref("0182ljdskfaof")))
   },
-  iresearch::read_string<bstring>,
-  iresearch::write_string<bstring>);
+  irs::read_string<bstring>,
+  irs::write_string<bstring>);
 }
 
 TEST( store_utils_tests, string_vector_read_write) {
@@ -392,10 +397,11 @@ TEST( store_utils_tests, string_vector_read_write) {
     "lazy", "dog", "mustard"
   };
 
-  iresearch::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   write_strings(out, src);
 
-  iresearch::bytes_input in(out);
+  irs::bytes_input in(buf);
   const container_t readed = read_strings<container_t>(in);
 
   ASSERT_EQ(src, readed);
@@ -674,18 +680,19 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     std::vector<uint64_t> buf; // temporary buffer for bit packing
     buf.resize(values.size());
 
-    irs::bytes_output out;
+    irs::bstring out_buf;
+    irs::bytes_output out(out_buf);
     irs::encode::avg::write_block(
       out, stats.first, stats.second, avg_encoded.data(), avg_encoded.size(), buf.data()
     );
 
     ASSERT_EQ(
       irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint64_t>::vsize(step) + irs::bytes_io<uint32_t>::vsize(irs::encode::bitpack::ALL_EQUAL) + irs::bytes_io<uint64_t>::vsize(0), // base + avg + bits + single value
-      out.size()
+      out_buf.size()
     );
 
     {
-      irs::bytes_input in(out);
+      irs::bytes_input in(out_buf);
       const uint64_t base = in.read_vlong();
       const uint64_t avg= in.read_vlong();
       const uint64_t bits = in.read_vint();
@@ -695,20 +702,20 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
     }
 
     {
-      irs::bytes_input in(out);
+      irs::bytes_input in(out_buf);
       ASSERT_TRUE(irs::encode::avg::check_block_rl64(in, step));
     }
 
     {
       uint64_t base, avg;
-      irs::bytes_input in(out);
+      irs::bytes_input in(out_buf);
       ASSERT_TRUE(irs::encode::avg::read_block_rl64(in, base, avg));
       ASSERT_EQ(step, base);
       ASSERT_EQ(step, avg);
     }
 
     {
-      irs::bytes_input in(out);
+      irs::bytes_input in(out_buf);
 
       const uint64_t base = in.read_vlong();
       const uint64_t avg = in.read_vlong();

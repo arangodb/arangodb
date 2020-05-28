@@ -26,9 +26,15 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H
 #define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/iterator.h>
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
+
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -36,14 +42,9 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <rocksdb/comparator.h>
-#include <rocksdb/iterator.h>
-#include <velocypack/Buffer.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
@@ -58,14 +59,14 @@ class Methods;
 }
 
 class RocksDBVPackIndex : public RocksDBIndex {
-  friend class RocksDBVPackIndexIterator;
+  template<bool reverse> friend class RocksDBVPackIndexIterator;
 
  public:
   static uint64_t HashForKey(const rocksdb::Slice& key);
 
   RocksDBVPackIndex() = delete;
 
-  RocksDBVPackIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                     arangodb::velocypack::Slice const& info);
 
   ~RocksDBVPackIndex();
@@ -78,7 +79,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
   void recalculateEstimates() override;
 
-  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(velocypack::Builder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   bool canBeDropped() const override { return true; }
 
@@ -118,8 +120,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                LocalDocumentId const& documentId, velocypack::Slice const& doc,
+                OperationOptions& options) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
@@ -138,16 +140,19 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void fillPaths(std::vector<std::vector<std::string>>& paths, std::vector<int>& expanding);
 
   /// @brief helper function to insert a document into any index type
-  int fillElement(velocypack::Builder& leased, LocalDocumentId const& documentId,
-                  VPackSlice const& doc, SmallVector<RocksDBKey>& elements,
-                  SmallVector<uint64_t>& hashes);
+  int fillElement(velocypack::Builder& leased,
+                  LocalDocumentId const& documentId, VPackSlice const& doc,
+                  ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                  ::arangodb::containers::SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(velocypack::Builder& leased, LocalDocumentId const& documentId,
-                     VPackSlice const& document, SmallVector<RocksDBKey>& elements,
-                     SmallVector<uint64_t>& hashes, SmallVector<VPackSlice>& sliceStack);
+  void addIndexValue(velocypack::Builder& leased,
+                     LocalDocumentId const& documentId, VPackSlice const& document,
+                     ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                     ::arangodb::containers::SmallVector<uint64_t>& hashes,
+                     ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
@@ -156,8 +161,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @param hashes list of VPackSlice hashes for the estimator.
   void buildIndexValues(velocypack::Builder& leased, LocalDocumentId const& documentId,
                         VPackSlice const document, size_t level,
-                        SmallVector<RocksDBKey>& elements, SmallVector<uint64_t>& hashes,
-                        SmallVector<VPackSlice>& sliceStack);
+                        ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                        ::arangodb::containers::SmallVector<uint64_t>& hashes,
+                        ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
 
  private:
   /// @brief the attribute paths

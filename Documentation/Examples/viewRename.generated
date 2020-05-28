@@ -1,7 +1,0 @@
-arangosh&gt; v = db._createView(<span class="hljs-string">"example"</span>, <span class="hljs-string">"arangosearch"</span>);
-[ArangoView <span class="hljs-number">132558</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
-arangosh&gt; v.name();
-example
-arangosh&gt; v.rename(<span class="hljs-string">"exampleRenamed"</span>);
-arangosh&gt; v.name();
-exampleRenamed

@@ -24,6 +24,9 @@
 #ifndef ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H
 #define ARANGOD_HTTP_SERVER_ASYNC_JOB_MANAGER_H 1
 
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"

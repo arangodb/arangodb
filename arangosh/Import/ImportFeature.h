@@ -47,7 +47,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   void start() override;
 
  private:
-  int tryCreateDatabase(ClientFeature*, std::string const& name);
+  int tryCreateDatabase(ClientFeature&, std::string const& name);
 
   std::string _filename;
   bool _useBackslash;
@@ -72,6 +72,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
   int* _result;
+  bool _skipValidation;
   bool _latencyStats;
 };
 

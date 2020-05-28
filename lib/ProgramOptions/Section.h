@@ -44,9 +44,6 @@ struct Section {
         obsolete(obsolete),
         enterpriseOnly(false) {}
 
-  // adds a program option to the section
-  void addOption(Option const& option);
-
   // get display name for the section
   std::string displayName() const { return alias.empty() ? name : alias; }
 

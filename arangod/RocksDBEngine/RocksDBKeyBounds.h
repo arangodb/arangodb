@@ -62,7 +62,14 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents belonging to a specified collection
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds CollectionDocuments(uint64_t collectionObjectId);
+  static RocksDBKeyBounds CollectionDocuments(uint64_t objectId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all documents belonging to a specified collection within
+  /// a certain range
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds CollectionDocumentRange(uint64_t objectId,
+                                                  std::size_t min, std::size_t max);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries- belonging to a specified primary

@@ -27,6 +27,9 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace rest {
 class RestHandler;
 }
@@ -35,15 +38,19 @@ template <typename H>
 class RestHandlerCreator : public H {
  public:
   template <typename D>
-  static rest::RestHandler* createData(GeneralRequest* request,
+  static rest::RestHandler* createData(application_features::ApplicationServer& server,
+                                       GeneralRequest* request,
                                        GeneralResponse* response, void* data) {
-    return new H(request, response, (D)data);
+    return new H(server, request, response, (D)data);
   }
 
-  static rest::RestHandler* createNoData(GeneralRequest* request,
+  static rest::RestHandler* createNoData(application_features::ApplicationServer& server,
+                                         GeneralRequest* request,
                                          GeneralResponse* response, void*) {
-    return new H(request, response);
+    return new H(server, request, response);
   }
+
+  // TODO consolidate methods using variadic templates
 };
 }  // namespace arangodb
 

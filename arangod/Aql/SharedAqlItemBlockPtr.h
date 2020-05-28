@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_SHAREDAQLITEMBLOCKPTR_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace aql {
@@ -33,10 +34,10 @@ class SharedAqlItemBlockPtr {
   inline explicit SharedAqlItemBlockPtr(AqlItemBlock* aqlItemBlock) noexcept;
 
   // allow implicit cast from nullptr:
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions) cppcheck-suppress noExplicitConstructor
+  constexpr inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
-  inline SharedAqlItemBlockPtr() noexcept;
+  constexpr inline SharedAqlItemBlockPtr() noexcept;
 
   inline ~SharedAqlItemBlockPtr() noexcept;
 
@@ -90,15 +91,13 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlIt
   incrRefCount();
 }
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
+constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
     : _aqlItemBlock(nullptr) {}
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
+constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
     : _aqlItemBlock(nullptr) {}
 
-SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept {
-  decrRefCount();
-}
+SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept { decrRefCount(); }
 
 SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr const& other) noexcept
     : _aqlItemBlock(other._aqlItemBlock) {
@@ -113,10 +112,9 @@ SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noex
 }
 
 SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) noexcept {
-  TRI_ASSERT(this != &other);
+  other.incrRefCount();
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
-  incrRefCount();
   return *this;
 }
 
@@ -199,11 +197,9 @@ void SharedAqlItemBlockPtr::swap(SharedAqlItemBlockPtr& other) noexcept {
 }
 
 void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
-  if (_aqlItemBlock != nullptr) {
-    _aqlItemBlock->decrRefCount();
-    if (_aqlItemBlock->getRefCount() == 0) {
-      returnBlock();
-    }
+  if (_aqlItemBlock != nullptr &&
+      _aqlItemBlock->decrRefCount() == 0) {
+    returnBlock();
   }
 }
 

@@ -25,11 +25,13 @@
 #ifndef ARANGODB_BASICS_DEBUGGING_H
 #define ARANGODB_BASICS_DEBUGGING_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
+#include <stdlib.h>
 #include <ostream>
+#include <string>
+#include <type_traits>
+#include <utility>
+
+#include "Basics/system-compiler.h"
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -47,9 +49,9 @@
 
 /// @brief cause a segmentation violation
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_SegfaultDebugging(char const* value);
+void TRI_TerminateDebugging(char const* value);
 #else
-inline void TRI_SegfaultDebugging(char const*) {}
+inline void TRI_TerminateDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point
@@ -100,7 +102,6 @@ void TRI_LogBacktrace();
 void TRI_FlushDebugging();
 void TRI_FlushDebugging(char const* file, int line, char const* message);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +110,8 @@ namespace container_traits {
 
 using tc = char[2];
 
-template<typename T> struct is_container {
+template <typename T>
+struct is_container {
   static tc& test(...);
 
   template <typename U>
@@ -117,30 +119,43 @@ template<typename T> struct is_container {
   static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
-template < typename T > struct is_associative {
-  static tc& test(...) ;
-  
-  template < typename U >
-  static char test(U&&, typename U::key_type* = 0) ;
-  static constexpr bool value = sizeof( test( std::declval<T>() ) ) == 1 ;
+template <class T>
+inline constexpr bool is_container_v = is_container<T>::value;
+
+template <typename T>
+struct is_associative {
+  static tc& test(...);
+
+  template <typename U>
+  static char test(U&&, typename U::key_type* = 0);
+
+  static constexpr bool value = sizeof(test(std::declval<T>())) == 1;
 };
 
-}
+}  // namespace container_traits
 
-template < typename T > struct is_container :
-  std::conditional<(container_traits::is_container<T>::value || std::is_array<T>::value)
-                   && !std::is_same<char *, typename std::decay<T>::type>::value
-                   && !std::is_same<char const*, typename std::decay<T>::type>::value
-                   && !std::is_same<unsigned char *, typename std::decay<T>::type>::value
-                   && !std::is_same<unsigned char const*, typename std::decay<T>::type>::value
-                   && !std::is_same<T, std::string>::value
-                   && !std::is_same<T, const std::string>::value, std::true_type, std::false_type >::type {};
+template <class T>
+struct remove_cvref {
+  typedef std::remove_cv_t<std::remove_reference_t<T>> type;
+};
+template <class T>
+using remove_cvref_t = typename remove_cvref<T>::type;
 
-template < typename T > struct is_associative :
-  std::conditional< container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
-                    std::true_type, std::false_type >::type {};
+template <typename T>
+struct is_container
+    : std::conditional<(container_traits::is_container<T>::value || std::is_array<T>::value) &&
+                           !std::is_same_v<char*, typename std::decay<T>::type> &&
+                           !std::is_same_v<char const*, typename std::decay<T>::type> &&
+                           !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
+                           !std::is_same_v<unsigned char const*, typename std::decay<T>::type> &&
+                           !std::is_same_v<T, std::string> && !std::is_same_v<T, std::string_view> &&
+                           !std::is_same_v<T, const std::string>,
+                       std::true_type, std::false_type>::type {};
 
-
+template <typename T>
+struct is_associative
+    : std::conditional<container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
+                       std::true_type, std::false_type>::type {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief no std::enable_if_t in c++11
@@ -148,8 +163,8 @@ template < typename T > struct is_associative :
 
 #if __cplusplus <= 201103L
 namespace std {
-template< bool B, class T = void >
-using enable_if_t = typename std::enable_if<B,T>::type;
+template <bool B, class T = void>
+using enable_if_t = typename std::enable_if<B, T>::type;
 }
 #endif
 
@@ -157,9 +172,9 @@ using enable_if_t = typename std::enable_if<B,T>::type;
 /// @brief forward declaration for pair output below
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename T>
-std::enable_if_t<is_container<T>::value, std::ostream&>
-operator<< (std::ostream& o, T const& t);
+template <typename T>
+std::enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
+                                                                   T const& t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump pair contents to an ostream
@@ -175,20 +190,19 @@ std::ostream& operator<<(std::ostream& stream, std::pair<T1, T2> const& obj) {
 /// @brief dump vector contents to an ostream
 ////////////////////////////////////////////////////////////////////////////////
 
-template<bool b>
+template <bool b>
 struct conpar {
   static char const open;
   static char const close;
 };
 
-template< bool B, class T = void >
-using enable_if_t = typename std::enable_if<B,T>::type;
+template <bool B, class T = void>
+using enable_if_t = typename std::enable_if<B, T>::type;
 
-template<typename T>
-enable_if_t<is_container<T>::value, std::ostream&>
-operator<< (std::ostream& o, T const& t) {
+template <typename T>
+enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T const& t) {
   o << conpar<is_associative<T>::value>::open;
-  bool first = true;  
+  bool first = true;
   for (auto const& i : t) {
     if (first) {
       o << " ";
@@ -196,10 +210,37 @@ operator<< (std::ostream& o, T const& t) {
     } else {
       o << ", ";
     }
-    o << i ;
+    o << i;
   }
   o << " " << conpar<is_associative<T>::value>::close;
-  return o;  
+  return o;
 }
+
+/// @brief assert
+#ifndef TRI_ASSERT
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#define TRI_ASSERT(expr)                             \
+  do {                                               \
+    if (!(ADB_LIKELY(expr))) {                       \
+      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
+      TRI_PrintBacktrace();                          \
+      std::abort();                                  \
+    }                                                \
+  } while (0)
+
+#else
+
+#define TRI_ASSERT(expr) \
+  while (0) {            \
+    (void)(expr);        \
+  }                      \
+  do {                   \
+  } while (0)
+
+#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+#endif  // #ifndef TRI_ASSERT
 
 #endif

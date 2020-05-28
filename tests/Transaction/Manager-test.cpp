@@ -24,6 +24,7 @@
 
 #include "Aql/Query.h"
 
+#include "Rest/GeneralResponse.h"
 #include "Transaction/Manager.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
@@ -39,6 +40,7 @@
 #include "gtest/gtest.h"
 
 #include "ManagerSetup.h"
+#include "../IResearch/common.h"
 
 using namespace arangodb;
 
@@ -50,16 +52,14 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   options->close();
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-                             bindVars, options, arangodb::aql::PART_MAIN);
-  query.setTransactionContext(std::move(ctx));
+  arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
+                             bindVars, options);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
   arangodb::aql::QueryResult result;
   while (true) {
-    auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
+    auto state = query.execute(result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      query.sharedState()->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -80,7 +80,7 @@ class TransactionManagerTest : public ::testing::Test {
   TRI_voc_tid_t tid;
 
   TransactionManagerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase"),
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
         tid(TRI_NewTickServer()) {}
 
@@ -103,22 +103,22 @@ TEST_F(TransactionManagerTest, parsing_errors) {
 }
 
 TEST_F(TransactionManagerTest, collection_not_found) {
-  arangodb::ExecContextScope execContextScope(arangodb::ExecContext::superuser());
+  arangodb::ExecContextSuperuserScope exeScope;
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
-  EXPECT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
   res = mgr->createManagedTrx(vocbase, tid, json->slice());
-  EXPECT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"exclusive\": [\"33\"]}}");
   res = mgr->createManagedTrx(vocbase, tid, json->slice());
-  EXPECT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 TEST_F(TransactionManagerTest, transaction_id_reuse) {
@@ -128,7 +128,7 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
@@ -138,7 +138,7 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
   res = mgr->createManagedTrx(vocbase, tid, json->slice());
-  EXPECT_TRUE(res.errorNumber() == TRI_ERROR_TRANSACTION_INTERNAL);
+  EXPECT_EQ(res.errorNumber(), TRI_ERROR_TRANSACTION_INTERNAL);
 
   res = mgr->abortManagedTrx(tid);
   ASSERT_TRUE(res.ok());
@@ -151,7 +151,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
@@ -161,10 +161,10 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"_key\": \"1\"}");
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
     auto opRes = trx.insert(coll->name(), doc->slice(), opts);
@@ -172,28 +172,28 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
 
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   {  // lease again
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::READ);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     OperationOptions opts;
     auto opRes = trx.document(coll->name(), doc->slice(), opts);
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
   // perform same operation
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
   // cannot commit aborted transaction
   ASSERT_TRUE(mgr->commitManagedTrx(tid).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
 
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
@@ -203,7 +203,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
@@ -212,10 +212,10 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
 
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
 
@@ -224,14 +224,14 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
   // perform same operation
   ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
   // cannot commit aborted transaction
   ASSERT_TRUE(mgr->abortManagedTrx(tid).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
 
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::COMMITTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
@@ -241,7 +241,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
@@ -250,27 +250,27 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
 
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
 
     OperationOptions opts;
     auto opRes = trx.insert(coll->name(), doc->slice(), opts);
     ASSERT_TRUE(opRes.ok());
-    ASSERT_TRUE(mgr->commitManagedTrx(tid).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
+    ASSERT_EQ(TRI_ERROR_LOCKED, mgr->commitManagedTrx(tid).errorNumber());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
   // perform same operation
   ASSERT_TRUE(mgr->commitManagedTrx(tid).ok());
   // cannot abort committed transaction
   ASSERT_TRUE(mgr->abortManagedTrx(tid).is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::COMMITTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
 }
 
 TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
@@ -280,7 +280,7 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
@@ -288,20 +288,29 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
   ASSERT_TRUE(res.ok());
 
   {
+    transaction::Options opts;
+    bool responsible;
+
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
-    ASSERT_TRUE(ctx.get() != nullptr);
-    ASSERT_TRUE(ctx->getParentTransaction() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
 
     auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
-    ASSERT_TRUE(ctx2.get() != nullptr);
-    EXPECT_TRUE(ctx->getParentTransaction() == ctx2->getParentTransaction());
+    ASSERT_NE(ctx2.get(), nullptr);
+    auto state2 = ctx2->acquireState(opts, responsible);
+    EXPECT_EQ(state1.get(), state2.get());
+    ASSERT_TRUE(!responsible);
 
     auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ);
-    ASSERT_TRUE(ctx3.get() != nullptr);
-    EXPECT_TRUE(ctx->getParentTransaction() == ctx3->getParentTransaction());
+    ASSERT_NE(ctx3.get(), nullptr);
+    auto state3 = ctx3->acquireState(opts, responsible);
+    EXPECT_EQ(state3.get(), state2.get());
+    ASSERT_TRUE(!responsible);
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, lock_conflict) {
@@ -311,20 +320,25 @@ TEST_F(TransactionManagerTest, lock_conflict) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
   {
+    transaction::Options opts;
+    bool responsible;
+
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
-    ASSERT_TRUE(ctx->getParentTransaction() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
     ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ));
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid).ok());
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
@@ -334,20 +348,25 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
   {
+    transaction::Options opts;
+    bool responsible;
+    
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
-    ASSERT_TRUE(ctx->getParentTransaction() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
+    auto state1 = ctx->acquireState(opts, responsible);
+    ASSERT_NE(state1.get(), nullptr);
+    ASSERT_TRUE(!responsible);
   }
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->garbageCollect(/*abortAll*/ true));
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, aql_standalone_transaction) {
@@ -357,7 +376,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   {
     auto ctx = transaction::StandaloneContext::Create(vocbase);
@@ -377,7 +396,7 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   ASSERT_TRUE(qres.ok());
   VPackSlice data = qres.data->slice();
   ASSERT_TRUE(data.isArray());
-  ASSERT_TRUE(data.length() == 1);
+  ASSERT_EQ(data.length(), 1);
   EXPECT_TRUE(data.at(0).isObject());
   EXPECT_TRUE(data.at(0).hasKey("abc"));
 }
@@ -389,7 +408,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
@@ -398,10 +417,10 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
 
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
-    ASSERT_TRUE(ctx.get() != nullptr);
+    ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
-    ASSERT_TRUE(trx.state()->isEmbeddedTransaction());
+    ASSERT_TRUE(!trx.isMainTransaction());
 
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
     OperationOptions opts;
@@ -409,15 +428,15 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::RUNNING));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   //
-  mgr->abortManagedTrx([](TransactionState const& state) -> bool {
+  mgr->abortManagedTrx([](TransactionState const& state, std::string const& /*user*/) -> bool {
     TransactionCollection* tcoll = state.collection(42, AccessMode::Type::NONE);
     return tcoll != nullptr;
   });
 
-  ASSERT_TRUE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, permission_denied_readonly) {
@@ -427,13 +446,13 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO) {}
+                                arangodb::auth::Level::RO, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
 
@@ -447,7 +466,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
   res = mgr->createManagedTrx(vocbase, tid, json->slice());
-  ASSERT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY);
+  ASSERT_EQ(res.errorNumber(), TRI_ERROR_ARANGO_READ_ONLY);
 }
 
 TEST_F(TransactionManagerTest, permission_denied_forbidden) {
@@ -457,18 +476,18 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  ASSERT_TRUE(coll != nullptr);
+  ASSERT_NE(coll, nullptr);
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE) {}
+                                arangodb::auth::Level::NONE, false) {}
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
-  ASSERT_TRUE(res.errorNumber() == TRI_ERROR_FORBIDDEN);
+  ASSERT_EQ(res.errorNumber(), TRI_ERROR_FORBIDDEN);
 }

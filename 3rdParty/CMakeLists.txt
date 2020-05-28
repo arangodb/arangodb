@@ -8,6 +8,18 @@ include(ExternalProject)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
+# Disable IPO for 3rdParty libs. This is because they currently all use old
+# cmake versions, missing policy CMP0069.
+# Hopefully this can be removed later - just try it out and look for warnings in
+# cmake's output. Also, you can use the compile_commands.json optionally emitted
+# by cmake (see CMAKE_EXPORT_COMPILE_COMMANDS) and jq to get a list of files we
+# do not compile with IPO (assuming gcc or clang) with this command:
+#   < compile_commands.json jq '.[] | select(.command | test("-flto") | not) | .file' -r
+if (${IPO_ENABLED})
+    message ("Disabling IPO for 3rdParty libraries")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+endif ()
+
 ################################################################################
 ## ZLIB
 ################################################################################
@@ -21,7 +33,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 set(SNAPPY_VERSION "1.1.7")
 set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 set(SNAPPY_LIB "snappy")
 set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
@@ -34,7 +48,9 @@ if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
+  set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
+  set(SYS_LIBS ${SYS_LIBS} jemalloc PARENT_SCOPE)
+  set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
 endif ()
 
 ################################################################################
@@ -45,78 +61,18 @@ option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
 set(V8_VERSION
-  "7.1.302.28"
+  "7.9.317"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
   )
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-if (USE_PRECOMPILED_V8)
-
-  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
-  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})
-
-  set(V8_PROC_ARCH "x64")
-  set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
-
-  set(V8_TARGET_DIR "${V8_DIR}/${V8_TARGET_ARCH}/obj.target")
-  set(V8_BIN_DIR "${V8_TARGET_DIR}/src/")
-  set(ICU_BIN_DIR "${V8_TARGET_DIR}/third_party/icu")
-
-  set(ICU_VERSION
-    "54.1"
-    CACHE INTERNAL
-    "ICU: Version"
-    FORCE
-  )
-
-  set(ICU_INCLUDE_DIR
-    ${V8_SRC_DIR}/third_party/icu/source/common;${V8_SRC_DIR}/third_party/icu/source/i18n;${V8_SRC_DIR}/third_party/icu/source/io
-    CACHE INTERNAL
-    "ICU: include path"
-    FORCE
-  )
-
-  add_library(libicui18n-static IMPORTED STATIC)
-  set_target_properties(libicui18n-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicui18n.a"
-  )
-
-  add_library(libicuuc-static IMPORTED STATIC)
-  set_target_properties(libicuuc-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicuuc.a"
-  )
-
-  set(ICU_LIBS
-    libicui18n-static libicuuc-static
-    CACHE INTERNAL
-    "ICU: Libraries"
-    FORCE
-  )
-
-  set(V8_INCLUDE_DIR
-    ${V8_SRC_DIR};${V8_SRC_DIR}/include
-    CACHE INTERNAL
-    "${PROJECT_NAME}: include path"
-    FORCE
-  )
-
-  set(V8_LIBS
-    "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-    FORCE
-  )
-else ()
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
-  set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
-  set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
-  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
-endif ()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
+set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
+set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
+set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 
 ################################################################################
 ## Google S2
@@ -152,37 +108,7 @@ set_target_properties(boost-static PROPERTIES
 # explicitly set since suppressing Boost search
 set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 
-# IResearch on MacOS requires a complete build of ICU for encoding conversion
-if(APPLE)
-  set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
-  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu")
-elseif(MSVC)
-  add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
-  add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icu-static STATIC IMPORTED GLOBAL)
-  set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${ICU_ROOT}/Debug/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${ICU_ROOT}/Release/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${ICU_ROOT}/Release/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${ICU_ROOT}/Release/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${ICU_ROOT}/Debug/lib/icuuc.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${ICU_ROOT}/Release/lib/icuuc.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${ICU_ROOT}/Release/lib/icuuc.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${ICU_ROOT}/Release/lib/icuuc.lib")
-  set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
-else()
-  add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
-  add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icu-static STATIC IMPORTED GLOBAL)
-  set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${ICU_LIBRARY_DIR}/libicuuc.a")
-  set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
-endif()
+set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
 
 if(NOT PERL_FOUND)
   set(PERL_FOUND TRUE) # suppress error for Perl not-found
@@ -193,7 +119,10 @@ if(NOT PERL_FOUND)
   endif()
 endif()
 
+set(USE_IPO ${IPO_ENABLED})
+set(ICU_STATIC_LIBS ${ICU_LIBS})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
+set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
@@ -219,36 +148,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
-if(APPLE)
-  # cmake does not build ICU without this (cmake does not inherit dependencies)
-  add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
-endif()
-
-################################################################################
-## cURL
-################################################################################
-add_definitions(-DCURL_STATICLIB=1)
-
-set(ENABLE_MANUAL OFF CACHE type BOOL)
-set(BUILD_CURL_EXE OFF CACHE type BOOL)
-set(BUILD_SHARED_LIBS OFF CACHE type BOOL)
-set(BUILD_TESTING OFF CACHE type BOOL)
-set(CURL_STATICLIB ON CACHE type BOOL)
-set(HTTP_ONLY ON CACHE type BOOL)
-set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
-set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
-# mop: super important...if this is off curl will not handle request timeouts < 1000ms
-set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-set(CURL_VERSION "7.63.0")
-set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
-add_subdirectory(${CURL_SRC_DIR})
-
-set(CURL_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/curl/curl-${CURL_VERSION}")
-set(CURL_BIN_DIR "${CURL_BIN_DIR}" PARENT_SCOPE)
-set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
-
-set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
-
 ################################################################################
 ## ROCKSDB
 ################################################################################
@@ -256,6 +155,12 @@ set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+
+################################################################################
+## NGHTTP2
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 
 ################################################################################
 ## LINK_DIRECTORIES
@@ -295,9 +200,11 @@ endif()
 add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/HttpConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H2Connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
@@ -309,8 +216,29 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
   )
 
+target_link_libraries(fuerte nghttp2)
+
+include(CheckTypeSize)
+check_type_size("ssize_t" SIZEOF_SSIZE_T)
+if(SIZEOF_SSIZE_T STREQUAL "")
+  # ssize_t is a signed type in POSIX storing at least -1.
+  # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
+  target_compile_definitions(fuerte PRIVATE ssize_t=int)
+endif()
+
 target_include_directories(fuerte SYSTEM PRIVATE
   "${Boost_INCLUDE_DIRS}/"
   "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
 
+set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
+
+if(NOT TARGET velocypack)
+add_library(velocypack INTERFACE)
+target_include_directories(velocypack INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include")
+endif()
+
+set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"    FORCE)
+set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)
+add_subdirectory(taocpp-json EXCLUDE_FROM_ALL)
+add_subdirectory(json-schema-validation EXCLUDE_FROM_ALL)

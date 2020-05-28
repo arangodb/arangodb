@@ -72,28 +72,38 @@ function agencyTestSuite () {
   var agencyServers = instanceInfo.arangods.map(arangod => {
     return arangod.url;
   });
+
   var agencyLeader = agencyServers[0];
   var request = require("@arangodb/request");
 
-  function findAgencyCompactionIntervals() {
+  function agencyConfig() {
     for (let count = 0; count < 60; ++count) {
       let res = request({url: agencyLeader + "/_api/agency/config",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
         res.bodyParsed = JSON.parse(res.body);
-        return {
-          compactionStepSize: res.bodyParsed.configuration["compaction step size"],
-          compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
-        };
+        if (res.bodyParsed.leaderId !== "") {
+          return res.bodyParsed;
+        }
+        require('console').topic("agency=warn", "No leadership ...");
+      } else {
+        require('console').topic("agency=warn", "Got status " + res.statusCode +
+                                 " from agency.");
       }
-      require('console').topic("agency=warn", "Got status " + res.statusCode +
-        " from agency.");
       require("internal").wait(1.0);   // give the server another second
     }
     require('console').topic("agency=error",
-      "Giving up, agency did not boot successfully.");
+                             "Giving up, agency did not boot successfully.");
     assertEqual("apple", "orange");
     // all is lost because agency did not get up and running in time
+  }
+
+  function findAgencyCompactionIntervals() {
+    var c = agencyConfig();
+    return {
+      compactionStepSize: c.configuration["compaction step size"],
+      compactionKeepSize: c.configuration["compaction keep size"]
+    };
   }
 
   var compactionConfig = findAgencyCompactionIntervals();
@@ -112,7 +122,7 @@ function agencyTestSuite () {
         url: url + "/_api/agency/state",
         timeout: 240
       };
-      
+
       ret.push({compactions: JSON.parse(request(compaction).body),
                 state: JSON.parse(request(state).body), url: url});
     });
@@ -133,7 +143,12 @@ function agencyTestSuite () {
       }
     });
 
+    var startTime = new Date();
     while (true) {
+
+      if (new Date() - startTime > 600000) {
+        assertTrue(false, "Hit global timeout of 10 minutes in accessAgency.");
+      }
 
       if (!inquire) {
         res = request({url: agencyLeader + "/_api/agency/" + api,
@@ -142,6 +157,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
+        require('console').topic("agency=debug", 'Sent out agency request, statusCode:', res.statusCode);
       } else { // inquire. Remove successful commits. For later retries
         res = request({url: agencyLeader + "/_api/agency/inquire",
                        method: "POST", followRedirect: false,
@@ -149,6 +165,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout
                       });
+        require('console').topic("agency=info", 'Sent out agency inquiry, statusCode:', res.statusCode);
       }
 
       if (res.statusCode === 307) {
@@ -163,8 +180,9 @@ function agencyTestSuite () {
         }
         require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
         continue;
-      } else if (res.statusCode === 503) {
-        require('console').topic("agency=info", 'Waiting for leader ... ');
+      } else if (res.statusCode === 503 || res.statusCode === 500) {
+        // 503 covers service not available and 500 covers timeout
+        require('console').topic("agency=info", 'Got status code', res.statusCode, ', waiting for leader ... ');
         if (clientIds.length > 0 && api === 'write') {
           inquire = true;
         }
@@ -178,15 +196,23 @@ function agencyTestSuite () {
       var done = 0;
       res.bodyParsed = JSON.parse(res.body);
       res.bodyParsed.results.forEach(function (index) {
+        var noZeroYet = true;
         if (index > 0) {
           done++;
+          assertTrue(noZeroYet);
+        } else {
+          noZeroYet = false;
         }
       });
+      require('console').topic("agency=info", 'Inquiry analysis: done=', done, ' body:', res.body);
       if (done === clientIds.length) {
+        require('console').topic("agency=info", 'Inquiry analysis, accepting result as good!');
         break;
       } else {
         list = list.slice(done);
+        clientIds = clientIds.slice(done);
         inquire = false;
+        require('console').topic("agency=info", 'Inquiry analysis: have accepted', done, 'transactions as done, continuing with this list:', JSON.stringify(list));
       }
     }
     try {
@@ -214,14 +240,14 @@ function agencyTestSuite () {
     assertEqual(res.statusCode, code);
     return res.bodyParsed;
   }
-  
+
   function doCountTransactions(count, start) {
     let i, res;
     let counter = 0;
     let trxs = [];
     for (i = start; i < start + count; ++i) {
       let key = "/key"+i;
-      let trx = [{},{},"clientid" + counter++];
+      let trx = [{},{},"clientid" + start + counter++];
       trx[0][key] = "value" + i;
       trxs.push(trx);
       if (trxs.length >= 200 || i === start + count - 1) {
@@ -257,14 +283,14 @@ function agencyTestSuite () {
             agents[i].state.log[agents[i].state.log.length-1].index) {
           ready = false;
           break;
-        } 
+        }
       }
       if (!ready) {
         continue;
       }
       agents.forEach( function (agent) {
 
-        var results = agent.compactions.result;         // All compactions 
+        var results = agent.compactions.result;         // All compactions
         var llog = agent.state.log[agent.state.log.length-1];   // Last log entry
         llogi = llog.index;                         // Last log index
         var lcomp = results[results.length-1];          // Last compaction entry
@@ -301,11 +327,11 @@ function agencyTestSuite () {
                 }
               }
             });
-            
+
             // Sum of relevant log entries > last compaction index and last
             // compaction's foobar value must match foobar's value in agency
             assertEqual(lcomp.readDB[0].foobar + n, foobar);
-            
+
           }
           // this agent is fine remove it from agents to be check this time
           // around list
@@ -320,11 +346,11 @@ function agencyTestSuite () {
       }
 
     }
-    
+
     return llogi;
-    
+
   }
-      
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,6 +379,146 @@ function agencyTestSuite () {
 /// @brief Test transact interface
 ////////////////////////////////////////////////////////////////////////////////
 
+    testPoll : function () {
+      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      var ret, result, log, ci, job, wr;
+
+      ret = request({url: agencyLeader + "/_api/agency/poll",
+                         method: "GET", followRedirect: true});
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("readDB"));
+      assertEqual(result.readDB, {});
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      ci = result.commitIndex;
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, 0);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=0",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("readDB"));
+      assertEqual(result.readDB, {});
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      assertEqual(result.commitIndex, ci);
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, 0);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, 1);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, 1);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertEqual(log.length, 1);
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, ci);
+
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertEqual(log.length, 1);
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, ci);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
+                     method: "GET", headers: {"X-arango-async": "store"}});
+
+      assertEqual(ret.statusCode, 202);
+      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
+      job = ret.headers["x-arango-async-id"];
+
+      wr = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      let tries = 0;
+      while (++tries <60) {
+        // jobs are processed asynchronously, so we need to poll here
+        // until the job has been processed
+        ret = request({url: agencyLeader + "/_api/job/" + job,
+                       method: "GET", followRedirect: true});
+        if (ret.statusCode !== 204) {
+          break;
+        }
+        wait(0.5);
+      }
+      assertEqual(ret.statusCode, 200);
+      ret = request({url: agencyLeader + "/_api/job/" + job, method: "PUT"});
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      result = ret.bodyParsed.result;
+
+      assertTrue(result.hasOwnProperty("log"));
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, ci+1);
+      assertEqual(result.commitIndex, ci+1);
+
+      // Multiple writes
+      ci = result.commitIndex;
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
+                     method: "GET", followRedirect: true, headers: {"X-arango-async": "store"}});
+      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
+      job = ret.headers["x-arango-async-id"];
+      wr = accessAgency("write",[[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      ret = request({url: agencyLeader + "/_api/job/" + job,
+                     method: "PUT", followRedirect: true, body: {}});
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      result = ret.bodyParsed.result;
+      assertEqual(result.firstIndex, ci+1);
+      assertEqual(result.commitIndex, ci+3);
+      ci = result.commitIndex;
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test transact interface
+////////////////////////////////////////////////////////////////////////////////
+
     testTransact : function () {
 
       var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
@@ -377,7 +543,7 @@ function agencyTestSuite () {
       assertEqual(res, [++cur,++cur,{x:17}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
     },
-    
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to write a single top level key
@@ -419,18 +585,18 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{a:{op:"delete"}}]]);
       // fail precond oldEmpty
-      res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"oldEmpty":false}}]]);
       assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {"results":[0]}); 
+      assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{"a":14},{"a":{"oldEmpty":true}}]]); // precond oldEmpty
       writeAndCheck([[{"a":14},{"a":{"old":14}}]]);        // precond old
       // fail precond old
-      res = accessAgency("write",[[{"a":14},{"a":{"old":13}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"old":13}}]]);
       assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {"results":[0]}); 
+      assertEqual(res.bodyParsed, {"results":[0]});
       writeAndCheck([[{"a":14},{"a":{"isArray":false}}]]); // precond isArray
       // fail precond isArray
-      res = accessAgency("write",[[{"a":14},{"a":{"isArray":true}}]]); 
+      res = accessAgency("write",[[{"a":14},{"a":{"isArray":true}}]]);
       assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]});
       // check object precondition
@@ -523,7 +689,7 @@ function agencyTestSuite () {
         [[localObj, {"qux":localObj.qux,"baz":{"old":localObj.baz},"foo":localObj.foo}]]);
 
       for (var j in localKeys) {
-        permuted = {};      
+        permuted = {};
         shuffle(localKeys);
         for (var k in localKeys) {
           permuted[localKeys[k]] = localObj.baz[localKeys[k]];
@@ -561,9 +727,32 @@ function agencyTestSuite () {
         writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
         res = accessAgency("write",
                            [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
-        assertEqual(res.statusCode, 412);        
+        assertEqual(res.statusCode, 412);
       }
-      
+
+      res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":""}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,"Pi"]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["Pi",false]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,false,false]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["pi",3.1415926535]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"instersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 412);
+
     },
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -594,7 +783,7 @@ function agencyTestSuite () {
       res = accessAgency("inquire",[id[0]]);
       assertEqual(res.bodyParsed.results, wres.bodyParsed.results);
       cur++;
-      
+
       wres = accessAgency("write",[[query[1], pre[1], id[2]]]);
       assertEqual(wres.statusCode,412);
       res = accessAgency("inquire",[id[2]]);
@@ -621,7 +810,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
-      
+
       wres = accessAgency("write",[[query[0], pre[0], id[5]],
                                    [query[2], pre[2], id[5]],
                                    [query[1], pre[1], id[5]]]);
@@ -631,7 +820,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[1]);
       assertEqual(res.statusCode,200);
-      
+
       wres = accessAgency("write",[[query[2], pre[2], id[6]],
                                    [query[0], pre[0], id[6]],
                                    [query[1], pre[1], id[6]]]);
@@ -641,7 +830,7 @@ function agencyTestSuite () {
       assertEqual(res.bodyParsed, {"results":[cur],"inquired":true});
       assertEqual(res.bodyParsed.results[0], wres.bodyParsed.results[2]);
       assertEqual(res.statusCode,200);
-      
+
       wres = accessAgency("write",[[query[2], pre[2], id[7]],
                                   [query[0], pre[0], id[8]],
                                   [query[1], pre[1], id[9]]]);
@@ -665,10 +854,10 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/!!@#$%^&*)/address"]]),[{"!!@#$%^&*)":{"address": "818ButlerStreet,Berwind,Colorado,2490"}}]);
     },
 
-    
+
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test arrays 
+/// @brief test arrays
 ////////////////////////////////////////////////////////////////////////////////
 
     testArrays : function () {
@@ -691,7 +880,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]]);
       assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[[]]]]],[],[],[],[[]]]}]);
       writeAndCheck([[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]]);
-      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);      
+      assertEqual(readAndCheck([["/2"]]),[{"2":[[[[[["Hello World"],"Hello World"],1],2.0],"C"],[1],[2],[3],[[1,2],3],4]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,10 +989,20 @@ function agencyTestSuite () {
                   [{a:{euler:[2.71828182845904523536]}}]);
       writeAndCheck([[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:2.71828182845904523536}}]);          
+                  [{a:{euler:2.71828182845904523536}}]);
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[2.71828182845904523536]}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"push", "new":"world"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"push", "new":"hello"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -814,7 +1013,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"delete"}}]]);
       assertEqual(readAndCheck([["/a/euler"]]), [{a:{}}]);
     },
-     
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "prepend" operator
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,7 +1029,7 @@ function agencyTestSuite () {
       writeAndCheck(
         [[{"/a/euler":{"op":"set","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
-                  [{a:{euler:2.71828182845904523536}}]);          
+                  [{a:{euler:2.71828182845904523536}}]);
       writeAndCheck(
         [[{"/a/euler":{"op":"prepend","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck(
@@ -838,6 +1037,16 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"prepend","new":1.25}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[1.25,2.71828182845904523536]}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"world"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["world","hello"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"hello"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -852,7 +1061,16 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/b/c":{"op":"shift"}}]]); // on existing array
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
-      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
+      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["world"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -865,10 +1083,19 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/e":{"op":"pop"}}]]); // on empty array
       assertEqual(readAndCheck([["/a/f"]]), [{a:{f:[]}}]);
       writeAndCheck([[{"/a/b/c":{"op":"pop"}}]]); // on existing array
-      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);        
+      assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);
       writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
       writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
-      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);        
+      assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -876,9 +1103,9 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOpErase : function () {
-      
+
       writeAndCheck([[{"/version":{"op":"delete"}}]]);
-      
+
       writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"erase","val":3}}]]);
@@ -902,7 +1129,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"erase","val":6}}],
                      [{"a":{"op":"erase","val":8}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
-      
+
       writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); // none before
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"erase","pos":3}}]]);
@@ -923,7 +1150,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a"]]), [{a:[4,9]}]);
       writeAndCheck([[{"a":{"op":"erase","pos":1}}],
                      [{"a":{"op":"erase","pos":0}}]]);
-      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);      
+      assertEqual(readAndCheck([["/a"]]), [{a:[]}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -932,7 +1159,7 @@ function agencyTestSuite () {
 
     testOpReplace : function () {
       writeAndCheck([[{"/version":{"op":"delete"}}]]); // clear
-      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]); 
+      writeAndCheck([[{"/a":[0,1,2,3,4,5,6,7,8,9]}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,3,4,5,6,7,8,9]}]);
       writeAndCheck([[{"a":{"op":"replace","val":3,"new":"three"}}]]);
       assertEqual(readAndCheck([["/a"]]), [{a:[0,1,2,"three",4,5,6,7,8,9]}]);
@@ -971,6 +1198,14 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:1}]);
       writeAndCheck([[{"/version":{"op":"increment"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
+      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:13}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:1}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -983,6 +1218,14 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:-1}]);
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
+      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:11}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:-1}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1057,6 +1300,129 @@ function agencyTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Test observe / unobserve
+////////////////////////////////////////////////////////////////////////////////
+
+    testObserve : function () {
+      var res, before, after, clean;
+      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
+
+      // In the beginning
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      clean = JSON.parse(res.body);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      var c = agencyConfig().term;
+
+      // No duplicate entries in
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      before = JSON.parse(res.body);
+      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      after = JSON.parse(res.body);
+      if (!_.isEqual(before, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(before, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      // Normalization
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      before = JSON.parse(res.body);
+      writeAndCheck([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]]);
+      writeAndCheck([[{"a":{"op":"observe", "url":"https://google.com"}}]]);
+      writeAndCheck([[{"a/":{"op":"observe", "url":"https://google.com"}}]]);
+      writeAndCheck([[{"/a/":{"op":"observe", "url":"https://google.com"}}]]);
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      after = JSON.parse(res.body);
+      if (!_.isEqual(before, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(before, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      // Unobserve
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      before = JSON.parse(res.body);
+      writeAndCheck([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]]);
+      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
+      assertEqual(200, res.statusCode);
+      after = JSON.parse(res.body);
+      assertEqual(clean, after);
+      if (!_.isEqual(clean, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(clean, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test delete / replace / erase should not create new stuff in agency
+////////////////////////////////////////////////////////////////////////////////
+
+    testNotCreate : function () {
+      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}], res;
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"replace", "val":1, "new":2}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"erase", "val":1}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Test that order should not matter
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1115,23 +1481,23 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/"]]),
                   [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
     },
-    
+
     testKeysBeginningWithSameString: function() {
       var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/bumms", "/bummsfallera"]]), [{bumms:"fallera", bummsfallera: "lalalala"}]);
     },
-    
+
     testHiddenAgencyWrite: function() {
       var res = accessAgency("write",[[{".agency": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
-    }, 
-    
+    },
+
     testHiddenAgencyWriteSlash: function() {
       var res = accessAgency("write",[[{"/.agency": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
     },
-    
+
     testHiddenAgencyWriteDeep: function() {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
@@ -1139,8 +1505,8 @@ function agencyTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
-////////////////////////////////////////////////////////////////////////////////    
-    
+////////////////////////////////////////////////////////////////////////////////
+
     testLogCompaction: function() {
       // Find current log index and erase all data:
       let cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
@@ -1157,9 +1523,9 @@ function agencyTestSuite () {
         "keys, from log entry", cur + count, "on.");
       doCountTransactions(count2, count);
 
-      // All tests so far have not really written many log entries in 
+      // All tests so far have not really written many log entries in
       // comparison to the compaction interval (with the default settings),
-      let count3 = 2 * compactionConfig.compactionStepSize + 100 
+      let count3 = 2 * compactionConfig.compactionStepSize + 100
         - (cur + count + count2);
       require("console").topic("agency=info", "Provoking second log compaction for now with",
         count3, "keys, from log entry", cur + count + count2, "on.");
@@ -1264,11 +1630,11 @@ function agencyTestSuite () {
       writeAndCheck(transaction);
       lim -= transaction.length;
       assertTrue(evalComp()>0);
-      
+
       writeAndCheck(transaction);
       lim -= transaction.length;
       assertTrue(evalComp()>0);
-      
+
       while(lim > compactionConfig.compactionStepSize) {
         writeAndCheck(transaction);
         lim -= transaction.length;
@@ -1277,14 +1643,14 @@ function agencyTestSuite () {
 
       writeAndCheck(transaction);
       assertTrue(evalComp()>0);
-      
-      writeAndCheck(transaction);
-      assertTrue(evalComp()>0);
 
       writeAndCheck(transaction);
       assertTrue(evalComp()>0);
 
-    }    
+      writeAndCheck(transaction);
+      assertTrue(evalComp()>0);
+
+    }
     */
   };
 }
@@ -1297,4 +1663,3 @@ function agencyTestSuite () {
 jsunity.run(agencyTestSuite);
 
 return jsunity.done();
-

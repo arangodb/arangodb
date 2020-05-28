@@ -26,17 +26,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-
 #include "fakeit.hpp"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/Node.h"
-
 #include "Random/RandomGenerator.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -79,11 +79,11 @@ VPackBuilder createMoveShardJob() {
 }
 
 void checkFailed(JOB_STATUS status, query_t const& q) {
-  ASSERT_TRUE(std::string(q->slice().typeName()) == "array");
-  ASSERT_TRUE(q->slice().length() == 1);
-  ASSERT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-  ASSERT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-  ASSERT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+  ASSERT_EQ(std::string(q->slice().typeName()), "array");
+  ASSERT_EQ(q->slice().length(), 1);
+  ASSERT_EQ(std::string(q->slice()[0].typeName()), "array");
+  ASSERT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+  ASSERT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
   auto writes = q->slice()[0][0];
   if (status == JOB_STATUS::PENDING) {
@@ -156,7 +156,8 @@ VPackBuilder createJob(std::string const& server) {
   return builder;
 }
 
-class CleanOutServerTest : public ::testing::Test {
+class CleanOutServerTest : public ::testing::Test,
+                           public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   write_ret_t fakeWriteResult;
@@ -191,7 +192,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_fail_if_server_does_not_exist)
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -229,7 +230,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_wait_if_server_is_blocked) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -265,7 +266,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_wait_if_server_is_not_healthy)
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -305,7 +306,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_fail_if_server_is_already_clea
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -349,7 +350,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_fail_if_the_server_is_failed) 
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -389,7 +390,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_fail_if_replication_factor_is_
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -431,7 +432,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_fail_if_replicatation_factor_i
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -474,7 +475,7 @@ TEST_F(CleanOutServerTest, cleanout_server_should_fail_if_replicatation_factor_i
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -517,7 +518,7 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -537,11 +538,11 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 2);  // we have preconditions
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 2);  // we have preconditions
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
@@ -558,10 +559,10 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
     EXPECT_TRUE(
         std::string(writes.get("/arango/Supervision/DBServers/" + SERVER).typeName()) ==
         "string");
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + SERVER).copyString() == JOBID);
+    EXPECT_EQ(writes.get("/arango/Supervision/DBServers/" + SERVER).copyString(), JOBID);
     EXPECT_TRUE(writes.get("/arango/Target/ToBeCleanedServers").get("op").copyString() ==
                 "push");
-    EXPECT_TRUE(writes.get("/arango/Target/ToBeCleanedServers").get("new").copyString() == SERVER);
+    EXPECT_EQ(writes.get("/arango/Target/ToBeCleanedServers").get("new").copyString(), SERVER);
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-0").get("toServer").copyString() ==
                 "free");
 
@@ -593,7 +594,7 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_abort_after_timeout) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -630,11 +631,11 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_abort_after_timeout) {
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     if (qCount++ == 0) {
       // first the moveShard job should be aborted
-      EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-      EXPECT_TRUE(q->slice().length() == 1);
-      EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-      EXPECT_TRUE(q->slice()[0].length() == 2);  // precondition that still in ToDo
-      EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+      EXPECT_EQ(std::string(q->slice().typeName()), "array");
+      EXPECT_EQ(q->slice().length(), 1);
+      EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+      EXPECT_EQ(q->slice()[0].length(), 2);  // precondition that still in ToDo
+      EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
       auto writes = q->slice()[0][0];
       EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1-0").typeName()) ==
@@ -669,7 +670,7 @@ TEST_F(CleanOutServerTest, when_there_are_still_subjobs_it_should_wait) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -704,7 +705,7 @@ TEST_F(CleanOutServerTest, once_all_subjobs_were_successful_the_job_should_be_fi
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -726,11 +727,11 @@ TEST_F(CleanOutServerTest, once_all_subjobs_were_successful_the_job_should_be_fi
   };
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(
@@ -762,7 +763,7 @@ TEST_F(CleanOutServerTest, failed_subjob_should_also_fail_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -801,7 +802,7 @@ TEST_F(CleanOutServerTest, when_the_cleanout_server_job_aborts_abort_all_subjobs
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -826,11 +827,11 @@ TEST_F(CleanOutServerTest, when_the_cleanout_server_job_aborts_abort_all_subjobs
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     if (qCount++ == 0) {
       // first the moveShard job should be aborted
-      EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-      EXPECT_TRUE(q->slice().length() == 1);
-      EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-      EXPECT_TRUE(q->slice()[0].length() == 2);  // precondition that still in ToDo
-      EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+      EXPECT_EQ(std::string(q->slice().typeName()), "array");
+      EXPECT_EQ(q->slice().length(), 1);
+      EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+      EXPECT_EQ(q->slice()[0].length(), 2);  // precondition that still in ToDo
+      EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
       auto writes = q->slice()[0][0];
       EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1-0").typeName()) ==

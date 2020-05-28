@@ -103,6 +103,25 @@ function optimizerCountTestSuite () {
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCountTotalLimit : function () {
+      var query = "FOR i IN " + c.name() + " LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(100, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
     testCountTotalFiltered : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test4' COLLECT WITH COUNT INTO count RETURN count";
 
@@ -118,6 +137,74 @@ function optimizerCountTestSuite () {
       }
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCountTotalFilteredIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(100, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+    
+    testCountTotalFilteredSkippedIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(75, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+    testCountTotalFilteredPostFilteredIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1000, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+    
+    testCountTotalFilteredPostFilteredSkippedIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(100, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test count
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,13 +468,43 @@ function optimizerCountTestSuite () {
       }
     },
 
-    testCollectAggregateUndefined: function () {
-      var randomDocumentID = db["UnitTestsCollection"].any()._id;
-      var query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key for i in [] collect aggregate count = count(i) return {count, start}';
-      var bindParams = {};
-      var options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+    // This test is not necessary for hashed collect, as hashed collect will not
+    // be used without group variables.
+    testCollectSortedUndefined: function () {
+      const randomDocumentID = db["UnitTestsCollection"].any()._id;
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
+      const bindParams = {};
+      const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
 
-      var results = db._query(query, bindParams, options).toArray();
+      const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
+      assertEqual(
+        [ "SingletonNode", "CalculationNode", "CalculationNode",
+          "EnumerateListNode", "CollectNode", "CalculationNode", "ReturnNode" ],
+        planNodes.map(n => n.type));
+      assertEqual("sorted", planNodes[4].collectOptions.method);
+
+      const results = db._query(query, bindParams, options).toArray();
+      // expectation is that we exactly get one result
+      // count will be 0, start will be undefined
+      assertEqual(1, results.length);
+      assertEqual(0, results[0].count);
+      assertEqual(undefined, results[0].start);
+    },
+
+    testCollectCountUndefined: function () {
+      const randomDocumentID = db["UnitTestsCollection"].any()._id;
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT WITH COUNT INTO count RETURN {count, start}';
+      const bindParams = {};
+      const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+
+      const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
+      assertEqual(
+        [ "SingletonNode", "CalculationNode", "CalculationNode",
+          "EnumerateListNode", "CollectNode", "CalculationNode", "ReturnNode" ],
+        planNodes.map(n => n.type));
+      assertEqual("count", planNodes[4].collectOptions.method);
+
+      const results = db._query(query, bindParams, options).toArray();
       // expectation is that we exactly get one result
       // count will be 0, start will be undefined
       assertEqual(1, results.length);

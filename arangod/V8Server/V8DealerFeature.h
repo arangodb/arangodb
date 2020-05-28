@@ -23,6 +23,8 @@
 #ifndef APPLICATION_FEATURES_V8_DEALER_FEATURE_H
 #define APPLICATION_FEATURES_V8_DEALER_FEATURE_H 1
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/ConditionVariable.h"
@@ -49,6 +51,13 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     size_t dirty;
     size_t free;
     size_t max;
+  };
+  struct MemoryStatistics {
+    size_t id;
+    double tMax;
+    size_t countOfTimes;
+    size_t heapMax;
+    size_t heapMin;
   };
 
   explicit V8DealerFeature(application_features::ApplicationServer& server);
@@ -106,6 +115,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
 
   Statistics getCurrentContextNumbers();
+  std::vector<MemoryStatistics> getCurrentMemoryNumbers();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;

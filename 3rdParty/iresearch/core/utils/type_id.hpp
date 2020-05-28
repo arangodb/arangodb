@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,10 +15,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TYPE_ID_H
@@ -27,50 +26,115 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-#include <functional>
-
 NS_ROOT
 
-struct IRESEARCH_API type_id {
-  type_id() : hash(compute_hash(this)) { }
+////////////////////////////////////////////////////////////////////////////////
+/// @class type_info
+/// @brief holds meta information obout a type, e.g. name and identifier
+////////////////////////////////////////////////////////////////////////////////
+class type_info {
+ public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unique type identifier
+  /// @note can be used to get an instance of underlying type
+  //////////////////////////////////////////////////////////////////////////////
+  using type_id = type_info(*)() noexcept;
 
-  bool operator==(const type_id& rhs) const NOEXCEPT {
-    return this == &rhs;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief default constructor produces invalid type identifier
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr type_info() noexcept
+    : type_info(nullptr, string_ref::NIL) {
   }
 
-  bool operator!=(const type_id& rhs) const NOEXCEPT {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if type_info is valid, false - otherwise
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr explicit operator bool() const noexcept {
+    return nullptr != id_;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if current object is equal to a denoted by 'rhs'
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr bool operator==(const type_info& rhs) const noexcept {
+    return id_ == rhs.id_;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if current object is not equal to a denoted by 'rhs'
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr bool operator!=(const type_info& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  /* boost::hash_combile support */
-  friend size_t hash_value(const type_id& type) { return type.hash; }
-    
-  operator const type_id*() const { return this; }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if current object is less than to a denoted by 'rhs'
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr bool operator<(const type_info& rhs) const noexcept {
+    return id_ < rhs.id_;
+  }
 
-  size_t hash;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return type name
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr const string_ref& name() const noexcept { return name_; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return type identifier
+  //////////////////////////////////////////////////////////////////////////////
+  constexpr type_id id() const noexcept { return id_; }
 
  private:
-  static size_t compute_hash(const type_id* ptr) {
-    return irs::hash_utils::hash(
-      irs::string_ref(reinterpret_cast<const char*>(ptr), sizeof(ptr))
-    );
+  template<typename T>
+  friend struct type;
+
+  constexpr type_info(type_id id, const string_ref& name) noexcept
+    : id_(id), name_(name) {
   }
-}; // type_id
 
-#define DECLARE_TYPE_ID( type_id_name ) static const type_id_name& type()
-#define DEFINE_TYPE_ID(class_name, type_id_name) const type_id_name& class_name::type() 
+  type_id id_;
+  string_ref name_;
+}; // type_info
 
-NS_END // root 
+////////////////////////////////////////////////////////////////////////////////
+/// @class type
+/// @tparam T type for which one needs access meta information
+/// @brief convenient helper for accessing meta information
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct type {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns an instance of "type_info" object holding meta information of
+  ///          type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr type_info get() noexcept {
+    return type_info{id(), name()};
+  }
 
-NS_BEGIN( std )
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns type name of a type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr string_ref name() noexcept {
+    return T::type_name();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns type identifier of a type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr type_info::type_id id() noexcept {
+    return &get;
+  }
+}; // type
+
+NS_END
+
+NS_BEGIN(std)
 
 template<>
-struct hash<iresearch::type_id> {
-  typedef iresearch::type_id argument_type;
-  typedef size_t result_type;
-
-  result_type operator()( const argument_type& key ) const {
-    return key.hash;
+struct hash<::iresearch::type_info> {
+  size_t operator()(const ::iresearch::type_info& key) const {
+    return std::hash<decltype(key.id())>()(key.id());
   }
 };
 

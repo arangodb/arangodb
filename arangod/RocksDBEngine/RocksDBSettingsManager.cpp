@@ -43,6 +43,7 @@
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -144,6 +145,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto guard =
       scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
 
+  // need superuser scope to ensure we can sync all collections and keep seq
+  // numbers in sync; background index creation will call this function as user,
+  // and can lead to seq numbers getting out of sync
+  ExecContextSuperuserScope superuser;
+
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
@@ -162,6 +168,8 @@ Result RocksDBSettingsManager::sync(bool force) {
 
   bool didWork = false;
   auto mappings = engine->collectionMappings();
+  std::string scratch;
+  scratch.reserve(10485760);  // reserve 10MB of scratch space to work with
   for (auto const& pair : mappings) {
     TRI_voc_tick_t dbid = pair.first;
     TRI_voc_cid_t cid = pair.second;
@@ -172,19 +180,24 @@ Result RocksDBSettingsManager::sync(bool force) {
     TRI_ASSERT(!vocbase->isDangling());
     TRI_DEFER(vocbase->release());
 
-    // intentionally do not `useCollection`, tends to break CI tests
-    TRI_vocbase_col_status_e status;
-    std::shared_ptr<LogicalCollection> coll = vocbase->useCollection(cid, status);
+    std::shared_ptr<LogicalCollection> coll;
+    try {
+      coll = vocbase->useCollection(cid, /*checkPermissions*/ false);
+    } catch (...) {
+      // will fail if collection does not exist
+    }
     if (!coll) {
       continue;
     }
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
-    
-    LOG_TOPIC("afb17", TRACE, Logger::ENGINES) << "syncing metadata for collection '" << coll->name() << "'";    
+
+    LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
+        << "syncing metadata for collection '" << coll->name() << "'";
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
-    Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
+    Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
+                                             appliedSeq, scratch);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
@@ -204,7 +217,13 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
-  TRI_ASSERT(_lastSync.load() <= minSeqNr);
+  auto const lastSync = _lastSync.load();
+  if (minSeqNr < lastSync) {
+    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+    return Result(); // do not move backwards in time
+  }
+  TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written

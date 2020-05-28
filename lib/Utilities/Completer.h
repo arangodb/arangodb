@@ -36,7 +36,7 @@ class Completer {
  public:
   Completer() {}
 
-  virtual ~Completer() {}
+  virtual ~Completer() = default;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

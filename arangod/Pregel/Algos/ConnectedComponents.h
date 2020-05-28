@@ -36,8 +36,8 @@ namespace algos {
 /// doesn't necessarily leads to a correct result on unidirected graphs
 struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
  public:
-  explicit ConnectedComponents(VPackSlice userParams)
-      : SimpleAlgorithm("ConnectedComponents", userParams) {}
+  explicit ConnectedComponents(application_features::ApplicationServer& server, VPackSlice userParams)
+      : SimpleAlgorithm(server, "ConnectedComponents", userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }

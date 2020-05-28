@@ -171,7 +171,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       callback(false, this.activeUser);
       return;
     }
-    $.ajax('whoAmI?_=' + Date.now())
+    var url = 'whoAmI?_=' + Date.now();
+    if (frontendConfig.react) {
+      url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
+    }
+    $.ajax(url)
       .success(
         function (data) {
           self.activeUser = data.user;

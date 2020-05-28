@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_FIXED_SIZE_ALLOCATOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 
@@ -114,7 +115,7 @@ class FixedSizeAllocator {
 #endif
   }
 
-  ~FixedSizeAllocator() {}
+  ~FixedSizeAllocator() = default;
 
   void* allocate() {
     if (_freelist != nullptr) {

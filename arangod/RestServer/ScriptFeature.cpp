@@ -22,7 +22,11 @@
 
 #include "ScriptFeature.h"
 
+#include "Basics/application-exit.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
@@ -42,33 +46,32 @@ namespace arangodb {
 ScriptFeature::ScriptFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Script"), _result(result) {
   setOptional(true);
-  startsAfter("AgencyPhase");
+  startsAfter<AgencyFeaturePhase>();
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script-parameter", "script parameter",
                      new VectorParameter<StringParameter>(&_scriptParameters));
 }
 
 void ScriptFeature::start() {
-  auto server = ApplicationServer::getFeature<ServerFeature>("Server");
-  auto operationMode = server->operationMode();
+  auto& serverFeature = server().getFeature<ServerFeature>();
+  auto operationMode = serverFeature.operationMode();
 
   if (operationMode != OperationMode::MODE_SCRIPT) {
     return;
   }
 
   LOG_TOPIC("7b0e6", TRACE, Logger::STARTUP) << "server about to run scripts";
-  *_result = runScript(server->scripts());
+  *_result = runScript(serverFeature.scripts());
 }
 
 int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   bool ok = false;
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-  auto database = sysDbFeature->use();
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
 
   JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
   V8ContextGuard guard(database.get(), securityContext);
@@ -79,11 +82,12 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
     auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
     localContext->Enter();
+    auto context = localContext;
     {
       v8::Context::Scope contextScope(localContext);
       for (auto const& script : scripts) {
         LOG_TOPIC("e703c", TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str());
 
         if (!r) {
           LOG_TOPIC("9d38a", FATAL, arangodb::Logger::FIXME)
@@ -93,24 +97,23 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       }
 
       v8::TryCatch tryCatch(isolate);
-      ;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 
       // parameter array
       v8::Handle<v8::Array> params = v8::Array::New(isolate);
 
-      params->Set(0, TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1]));
+      params->Set(context, 0, TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1])).FromMaybe(false);
 
       for (size_t i = 0; i < _scriptParameters.size(); ++i) {
-        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(isolate, _scriptParameters[i]));
+        params->Set(context, (uint32_t)(i + 1), TRI_V8_STD_STRING(isolate, _scriptParameters[i])).FromMaybe(false);
       }
 
       // call main
       v8::Handle<v8::String> mainFuncName =
           TRI_V8_ASCII_STRING(isolate, "main");
       v8::Handle<v8::Function> main =
-          v8::Handle<v8::Function>::Cast(localContext->Global()->Get(mainFuncName));
+        v8::Handle<v8::Function>::Cast(localContext->Global()->Get(context, mainFuncName).FromMaybe(v8::Handle<v8::Value>()));
 
       if (main.IsEmpty() || main->IsUndefined()) {
         LOG_TOPIC("e3365", FATAL, arangodb::Logger::FIXME)
@@ -120,7 +123,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
         v8::Handle<v8::Value> args[] = {params};
 
         try {
-          v8::Handle<v8::Value> result = main->Call(main, 1, args);
+          v8::Handle<v8::Value> result = main->Call(TRI_IGETC, main, 1, args).FromMaybe(v8::Local<v8::Value>());;
 
           if (tryCatch.HasCaught()) {
             if (tryCatch.CanContinue()) {

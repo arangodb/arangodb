@@ -2,7 +2,7 @@
 @startDocuBlock DeleteApiQuerySlow
 @brief clears the list of slow AQL queries
 
-@RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries, deleteQuery}
+@RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries, deleteSlowQueries}
 
 @RESTDESCRIPTION
 Clears the list of slow AQL queries
@@ -16,4 +16,3 @@ cleared successfully.
 @RESTRETURNCODE{400}
 The server will respond with *HTTP 400* in case of a malformed request.
 @endDocuBlock
-

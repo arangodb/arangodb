@@ -30,6 +30,9 @@
 'use strict';
 const db = require("@arangodb").db;
 const isEnterprise = require("internal").isEnterprise();
+const jsunity = require('jsunity');
+const _ = require('lodash');
+const {assertEqual, assertUndefined} = jsunity.jsUnity.assertions;
 
 /**
  * @brief Only if enterprise mode:
@@ -77,6 +80,42 @@ const setupSmartGraph = function () {
 
 /**
  * @brief Only if enterprise mode:
+ *        Creates an arangosearch over smart edge collection
+ */
+const setupSmartArangoSearch = function () {
+  if (!isEnterprise) {
+    return;
+  }
+
+  db._dropView("UnitTestsDumpSmartView");
+
+  let analyzers = require("@arangodb/analyzers");
+  try {
+    analyzers.remove("smartCustom");
+  } catch (err) { }
+  let analyzer = analyzers.save("smartCustom", "delimiter", { delimiter : "smart" }, [ "frequency" ]);
+
+  db._createView("UnitTestsDumpSmartView", "arangosearch", {
+      // choose non default values to check if they are corretly dumped and imported
+      cleanupIntervalStep: 456,
+      consolidationPolicy: {
+        threshold: 0.3,
+        type: "bytes_accum"
+      },
+      consolidationIntervalMsec: 0,
+      links : {
+        "UnitTestDumpSmartEdges": {
+          includeAllFields: true,
+          fields: {
+            text: { analyzers: [ "text_en", "smartCustom" ] }
+          }
+        }
+      }
+  });
+};
+
+/**
+ * @brief Only if enterprise mode:
  *        Creates a satellite collection with 100 documents
  */
 function setupSatelliteCollections() {
@@ -95,22 +134,142 @@ function setupSatelliteCollections() {
   db[satelliteCollectionName].save(vDocs);
 }
 
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a satellite graph
+ */
+function setupSatelliteGraphs() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const satelliteGraphName = "UnitTestDumpSatelliteGraph";
+  const satelliteVertexCollection1Name = "UnitTestDumpSatelliteVertexCollection1";
+  const satelliteVertexCollection2Name = "UnitTestDumpSatelliteVertexCollection2";
+  const satelliteOrphanCollectionName = "UnitTestDumpSatelliteOrphanCollection";
+  const satelliteEdgeCollection1Name = "UnitTestDumpSatelliteEdgeCollection1";
+  const satelliteEdgeCollection2Name = "UnitTestDumpSatelliteEdgeCollection2";
+
+  const satgm = require('@arangodb/satellite-graph.js');
+
+  // Add satelliteVertexCollection1Name first, so we can expect it to be
+  // distributeShardsLike leader
+  const satelliteGraph = satgm._create(satelliteGraphName, [], [satelliteVertexCollection1Name]);
+  satelliteGraph._extendEdgeDefinitions(satgm._relation(satelliteEdgeCollection1Name, satelliteVertexCollection1Name, satelliteVertexCollection2Name));
+  satelliteGraph._extendEdgeDefinitions(satgm._relation(satelliteEdgeCollection2Name, satelliteVertexCollection2Name, satelliteVertexCollection1Name));
+  satelliteGraph._addVertexCollection(satelliteOrphanCollectionName, true);
+
+  // Expect satelliteVertexCollection1Name to be the distributeShardsLike leader.
+  // This will be tested to be unchanged after restore, thus the assertion here.
+  assertUndefined(db[satelliteVertexCollection1Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteVertexCollection2Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteEdgeCollection1Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteEdgeCollection2Name].properties().distributeShardsLike);
+  assertEqual(satelliteVertexCollection1Name, db[satelliteOrphanCollectionName].properties().distributeShardsLike);
+
+  // add a circle with 100 vertices over multiple collections.
+  // vertexCol1 will contain uneven vertices, vertexCol2 even vertices.
+  // edgeCol1 will contain edges (v1, v2), i.e. from uneven to even, and
+  // edgeCol2 the other way round.
+  // It also adds 100 vertices to the orphan collection.
+  db._query(`
+    FOR i IN 1..100
+      LET vertexKey = CONCAT("v", i)
+      LET unevenVertices = (
+        FILTER i % 2 == 1
+        INSERT { _key: vertexKey }
+          INTO @@vertexCol1
+      )
+      LET evenVertices = (
+        FILTER i % 2 == 0
+        INSERT { _key: vertexKey }
+          INTO @@vertexCol2
+      )
+      LET from = CONCAT(i % 2 == 1 ? @vertexCol1 : @vertexCol2, "/v", i)
+      LET to = CONCAT((i+1) % 2 == 1 ? @vertexCol1 : @vertexCol2, "/v", i % 100 + 1)
+      LET unevenEdges = (
+        FILTER i % 2 == 1
+        INSERT { _from: from, _to: to }
+          INTO @@edgeCol1
+      )
+      LET evenEdges = (
+        FILTER i % 2 == 0
+        INSERT { _from: from, _to: to }
+          INTO @@edgeCol2
+      )
+      INSERT { _key: CONCAT("w", i) }
+        INTO @@orphanCol
+  `, {
+    '@vertexCol1': satelliteVertexCollection1Name,
+    '@vertexCol2': satelliteVertexCollection2Name,
+    'vertexCol1': satelliteVertexCollection1Name,
+    'vertexCol2': satelliteVertexCollection2Name,
+    '@edgeCol1': satelliteEdgeCollection1Name,
+    '@edgeCol2': satelliteEdgeCollection2Name,
+    '@orphanCol': satelliteOrphanCollectionName,
+  });
+  const res = db._query(`
+    FOR v, e, p IN 100 OUTBOUND "UnitTestDumpSatelliteVertexCollection1/v1" GRAPH "UnitTestDumpSatelliteGraph"
+      RETURN p.vertices[*]._key
+  `);
+  // [ [ "v1", "v2", ..., "v99", "v100", "v1" ] ]
+  const expected = [_.range(0, 100+1).map(i => "v" + (i % 100 + 1))];
+  assertEqual(expected, res.toArray());
+}
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a smart graph and changes the value of the smart
+ *        attribute to check that the graph can still be restored. 
+ *
+ *        This is a regression test for a bug in which a dumped
+ *        database containing a smart graph with edited smart attribute
+ *        value could not be restored.
+ */
+function setupSmartGraphRegressionTest() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const smartGraphName = "UnitTestRestoreSmartGraphRegressionTest";
+  const edges = "UnitTestRestoreSmartGraphRegressionEdges";
+  const vertices = "UnitTestRestoreSmartGraphRegressionVertices";
+  const gm = require("@arangodb/smart-graph");
+  if (gm._exists(smartGraphName)) {
+    gm._drop(smartGraphName, true);
+  }
+  db._drop(edges);
+  db._drop(vertices);
+
+  gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
+    [], {numberOfShards: 5, smartGraphAttribute: "cheesyness"});
+
+  let vDocs = [{cheesyness: "cheese"}];
+  let saved = db[vertices].save(vDocs).map(v => v._id);
+  let eDocs = [];
+
+  // update smartGraphAttribute. This makes _key inconsistent
+  // and on dump/restore used to throw an error. We now ignore
+  // that error
+  db._update(saved[0], { cheesyness: "bread" });  
+}
+
 (function () {
   var analyzers = require("@arangodb/analyzers");
   var i, c;
 
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
-  db._createDatabase("UnitTestsDumpSrc");
+  let createOptions = {};
 
-  try {
-    db._dropDatabase("UnitTestsDumpDst");
-  } catch (err2) {
-  }
-  db._createDatabase("UnitTestsDumpDst");
+  ["UnitTestsDumpSrc", "UnitTestsDumpDst", "UnitTestsDumpProperties1", "UnitTestsDumpProperties2"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+  });
 
+  db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, writeConcern: 1 });
+  db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, writeConcern: 2, sharding: "single" });
+  db._createDatabase("UnitTestsDumpSrc", { replicationFactor: 2, writeConcern: 2 });
+  db._createDatabase("UnitTestsDumpDst", { replicationFactor: 2, writeConcern: 2 });
 
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -183,14 +342,12 @@ function setupSatelliteCollections() {
   c.ensureUniqueSkiplist("a_su");
   c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
   c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
-
   c.ensureFulltextIndex("a_f");
-  if (db._engine().name !== "rocksdb") {
-    c.ensureGeoIndex("a_la", "a_lo");
-  }
+
+  c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
-  c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
+  c = db._create("UnitTestsDumpTruncated");
   l = [];
   for (i = 0; i < 10000; ++i) {
     l.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
@@ -223,6 +380,8 @@ function setupSatelliteCollections() {
     c.save({ _key: "text" + i, value: t });
   });
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -240,7 +399,7 @@ function setupSatelliteCollections() {
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }
@@ -250,11 +409,38 @@ function setupSatelliteCollections() {
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 
-  setupSmartGraph();
-  setupSatelliteCollections();
+  // setup a view on _analyzers collection
+  try {
+    let view = db._createView("analyzersView", "arangosearch", {
+      links: {
+        _analyzers : {
+          includeAllFields:true,
+          analyzers: [ analyzer.name ]
+        }
+      }
+    });
+  } catch (err) { }
 
-  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
+  setupSmartGraph();
+  setupSmartArangoSearch();
+  setupSatelliteCollections();
+  setupSatelliteGraphs();
+  setupSmartGraphRegressionTest();
+
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
   db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
+  
+  // insert an entry into _jobs collection
+  try {
+    db._jobs.remove("test");
+  } catch (err) {}
+  db._jobs.insert({ _key: "test", status: "completed" });
+
+  // insert an entry into _queues collection
+  try {
+    db._queues.remove("test");
+  } catch (err) {}
+  db._queues.insert({ _key: "test" });
 
   // Install Foxx
   const fs = require('fs');

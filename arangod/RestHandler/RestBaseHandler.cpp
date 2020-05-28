@@ -29,36 +29,20 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
 #include "Meta/conversion.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Transaction/Context.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestHandler(request, response) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body as VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success) {
-  try {
-    success = true;
-    return _request->toVelocyPackBuilderPtr();
-  } catch (VPackException const& e) {
-    std::string errmsg("VPackError error: ");
-    errmsg.append(e.what());
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
-  }
-  success = false;
-  return std::make_shared<VPackBuilder>();
-}
+RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body as VelocyPack
@@ -67,13 +51,15 @@ std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success
 arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
-    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return _request->payload(&optionsWithUniquenessCheck);
+    return _request->payload(true);
   } catch (VPackException const& e) {
+    // simon: do not mess with the error message format, tests break
     std::string errmsg("VPackError error: ");
     errmsg.append(e.what());
+    LOG_TOPIC("414a9", DEBUG, arangodb::Logger::REQUESTS) << errmsg;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
+  } catch (...) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, "unknown exception");
   }
   success = false;
   return VPackSlice::noneSlice();
@@ -117,7 +103,7 @@ void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
 /// convenience function akin to generateError,
 /// renders payload in 'result' field
 /// adds proper `error`, `code` fields
-void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice const& payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
   resetResponse(code);
 
   try {
@@ -126,7 +112,9 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice const& payl
     tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    tmp.add("result", payload);
+    if (!payload.isNone()) {
+      tmp.add("result", payload);
+    }
     tmp.close();
 
     VPackOptions options(VPackOptions::Defaults);
@@ -177,7 +165,7 @@ void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::forward<Payload>(payload), true, options);
+    _response->setPayload(std::forward<Payload>(payload), options);
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {

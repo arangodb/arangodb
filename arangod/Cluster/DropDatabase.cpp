@@ -26,6 +26,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Databases.h"
@@ -53,7 +56,7 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
   }
 }
 
-DropDatabase::~DropDatabase(){};
+DropDatabase::~DropDatabase() = default;
 
 bool DropDatabase::first() {
   std::string const database = _description.get(DATABASE);
@@ -64,7 +67,7 @@ bool DropDatabase::first() {
     auto vocbase = &guard.database();
 
     _result = Databases::drop(vocbase, database);
-    if (!_result.ok()) {
+    if (!_result.ok() && _result.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
       LOG_TOPIC("f46b7", ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
                                      << " failed: " << _result.errorMessage();
       return false;

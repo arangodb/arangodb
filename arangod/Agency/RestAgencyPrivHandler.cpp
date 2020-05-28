@@ -31,7 +31,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;
@@ -44,9 +43,10 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
+RestAgencyPrivHandler::RestAgencyPrivHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
                                              GeneralResponse* response, Agent* agent)
-    : RestBaseHandler(request, response), _agent(agent) {}
+    : RestBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("53e2d", WARN, Logger::AGENCY) << "Empty request to agency!";
@@ -103,7 +103,7 @@ RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
   LOG_TOPIC("558e5", DEBUG, Logger::AGENCY) << error.toJson();
   rest::ResponseCode code;
   try {
-    code = rest::ResponseCode(error.get(StaticStrings::Code).getNumber<int>());
+    code = GeneralResponse::responseCode(error.get(StaticStrings::Code).getNumber<int>());
     generateResult(code, error);
   } catch (std::exception const& e) {
     std::string errstr("Failure reporting error ");
@@ -120,6 +120,35 @@ RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
     generateResult(rest::ResponseCode::SERVER_ERROR, builder.slice());
   }
   return RestStatus::DONE;
+}
+
+namespace {
+template <class T> static bool readValue(GeneralRequest const& req, char const* name, T& val) {
+  bool found = true;
+  std::string const& val_str = req.value(name, found);
+
+  if (!found) {
+    LOG_TOPIC("f4632", DEBUG, Logger::AGENCY)
+      << "Query string " << name << " missing.";
+    return false;
+  } else {
+    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+      LOG_TOPIC("f4236", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name  << " with " << val_str << " to " << typeid(T).name() << " failed";
+      return false;
+    }
+  }
+  return true;
+}
+template<> bool readValue(GeneralRequest const& req, char const* name, std::string& val) {
+  bool found = true;
+  val = req.value(name, found);
+  if (!found) {
+    LOG_TOPIC("f4362", DEBUG, Logger::AGENCY) << "Query string " << name << " missing.";
+    return false;
+  }
+  return true;
+}
 }
 
 RestStatus RestAgencyPrivHandler::execute() {
@@ -145,10 +174,10 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportMethodNotAllowed();
         }
         int64_t senderTimeStamp = 0;
-        readValue("senderTimeStamp", senderTimeStamp);  // ignore if not given
-        if (readValue("term", term) && readValue("leaderId", id) &&
-            readValue("prevLogIndex", prevLogIndex) && readValue("prevLogTerm", prevLogTerm) &&
-            readValue("leaderCommit", leaderCommit)) {  // found all values
+        readValue(*_request, "senderTimeStamp", senderTimeStamp);  // ignore if not given
+        if (readValue(*_request, "term", term) && readValue(*_request, "leaderId", id) &&
+            readValue(*_request, "prevLogIndex", prevLogIndex) && readValue(*_request, "prevLogTerm", prevLogTerm) &&
+            readValue(*_request, "leaderCommit", leaderCommit)) {  // found all values
           auto ret = _agent->recvAppendEntriesRPC(term, id, prevLogIndex,
                                                   prevLogTerm, leaderCommit,
                                                   _request->toVelocyPackBuilderPtr());
@@ -160,10 +189,10 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
       } else if (suffixes[0] == "requestVote") {  // requestVote
         int64_t timeoutMult = 1;
-        readValue("timeoutMult", timeoutMult);
-        if (readValue("term", term) && readValue("candidateId", id) &&
-            readValue("prevLogIndex", prevLogIndex) &&
-            readValue("prevLogTerm", prevLogTerm)) {
+        readValue(*_request, "timeoutMult", timeoutMult);
+        if (readValue(*_request, "term", term) && readValue(*_request, "candidateId", id) &&
+            readValue(*_request, "prevLogIndex", prevLogIndex) &&
+            readValue(*_request, "prevLogTerm", prevLogTerm)) {
           priv_rpc_ret_t ret = _agent->requestVote(term, id, prevLogIndex, prevLogTerm,
                                                    nullptr, timeoutMult);
           result.add("term", VPackValue(ret.term));
@@ -173,7 +202,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-        if (readValue("term", term) && readValue("agencyId", id)) {
+        if (readValue(*_request, "term", term) && readValue(*_request, "agencyId", id)) {
           priv_rpc_ret_t ret =
               _agent->requestVote(term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
           result.add("term", VPackValue(ret.term));
@@ -185,13 +214,18 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-
-        query_t query = _request->toVelocyPackBuilderPtr();
+        
+        bool success = false;
+        VPackSlice const query = this->parseVPackBody(success);
+        if (!success) { // error already written
+          return RestStatus::DONE;
+        }
+        
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
           LOG_TOPIC("bcd46", DEBUG, Logger::AGENCY)
-              << "Responding to gossip request " << query->toJson() << " with "
+              << "Responding to gossip request " << query.toJson() << " with "
               << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {
             return reportError(slice);

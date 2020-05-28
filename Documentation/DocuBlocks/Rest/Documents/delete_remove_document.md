@@ -1,12 +1,15 @@
 @startDocuBlock delete_remove_document
 @brief removes a document
 
-@RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document, removeDocument}
+@RESTHEADER{DELETE /_api/document/{collection}/{key},Removes a document,removeDocument}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-Removes the document identified by *document-handle*.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the document is to be deleted.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTQUERYPARAMETERS
 
@@ -14,11 +17,11 @@ Removes the document identified by *document-handle*.
 Wait until deletion operation has been synced to disk.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 document under the attribute *old* in the result.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the removed document. This option can be used to
 save some network traffic.
 
@@ -29,10 +32,10 @@ You can conditionally remove a document based on a target revision id by
 using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
-If *silent* is not set to *true*, the body of the response contains a JSON 
-object with the information about the handle and the revision. The attribute 
-*_id* contains the known *document-handle* of the removed document, *_key* 
-contains the key which uniquely identifies a document in a given collection, 
+If *silent* is not set to *true*, the body of the response contains a JSON
+object with the information about the identifier and the revision. The attribute
+*_id* contains the known *document-id* of the removed document, *_key*
+contains the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the document revision.
 
 If the *waitForSync* parameter is not specified or set to *false*,
@@ -67,7 +70,7 @@ attributes *_id* and *_key* will be returned.
 
 @EXAMPLES
 
-Using document handle:
+Using document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocument}
     var cn = "products";
@@ -85,7 +88,7 @@ Using document handle:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document handle:
+Unknown document identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerDeleteDocumentUnknownHandle}
     var cn = "products";

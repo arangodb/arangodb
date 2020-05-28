@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global AQL_EXPLAIN */
+/*global AQL_EXPLAIN, assertTrue */
 
 "use strict";
 
@@ -32,6 +32,7 @@ const profHelper = require("@arangodb/aql-profiler-test-helper");
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
+const _ = require('lodash');
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,10 +53,6 @@ const assert = jsunity.jsUnity.assertions;
 // abort after iterating over the collection once and return the items fetched
 // so far instead of filling up the result. (see aql-profiler-noncluster*.js)
 
-// NOTE EnumerateCollectionBlock is suboptimal on mmfiles, is it returns HASMORE
-// instead of DONE when asked for exactly all documents in the collection.
-// (low impact) (see aql-profiler-noncluster*.js)
-
 // TODO IndexBlock is still suboptimal, as it can return HASMORE when there are no
 // items left. (low impact) (see aql-profiler-noncluster*.js)
 
@@ -65,6 +62,7 @@ function ahuacatlProfilerTestSuite () {
 
   // import some names from profHelper directly into our namespace:
   const defaultBatchSize = profHelper.defaultBatchSize;
+  const defaultTestRowCounts = profHelper.defaultTestRowCounts;
 
   const { CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
@@ -72,7 +70,7 @@ function ahuacatlProfilerTestSuite () {
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
     SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
-  const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+  const { CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
@@ -81,55 +79,85 @@ function ahuacatlProfilerTestSuite () {
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
 
-  // See the limit tests (e.g. testLimitBlock3) for limit() and skip().
+  // See the limit tests (e.g. testLimitBlock3) for limit() and offset().
   const additionalLimitTestRowCounts = [
     // limit() = 1000 ± 1:
     1332, 1333, 1334,
-    // skip() = 1000 ± 1:
+    // offset() = 1000 ± 1:
     3999, 4000, 4003, 4004,
     // limit() = 2000 ± 1:
     2665, 2666, 2667,
-    // skip() = 2000 ± 1:
+    // offset() = 2000 ± 1:
     7999, 8000, 8003, 8004,
   ];
 
-  {
-    // These are copies from testLimitBlock3.
-    const skip = rows => Math.floor(rows/4);
-    const limit = rows => Math.ceil(3*rows/4);
+  const offset = rows => Math.floor(rows/4);
+  const limit = rows => Math.ceil(3*rows/4);
+  const offsetBatches = rows => Math.ceil(offset(rows) / defaultBatchSize);
+  const skipOffsetBatches = rows => Math.ceil(offset(rows) === 0 ? 0 : 1);
+  const limitBatches = rows => Math.ceil(limit(rows) / defaultBatchSize);
 
+  {
     // This is more documentation than anything else:
     assert.assertEqual(999, limit(1332));
     assert.assertEqual(1000, limit(1333));
     assert.assertEqual(1001, limit(1334));
-    assert.assertEqual(999, skip(3999));
-    assert.assertEqual(1000, skip(4000));
-    assert.assertEqual(1000, skip(4003));
-    assert.assertEqual(1001, skip(4004));
+    assert.assertEqual(999, offset(3999));
+    assert.assertEqual(1000, offset(4000));
+    assert.assertEqual(1000, offset(4003));
+    assert.assertEqual(1001, offset(4004));
     assert.assertEqual(1999, limit(2665));
     assert.assertEqual(2000, limit(2666));
     assert.assertEqual(2001, limit(2667));
-    assert.assertEqual(1999, skip(7999));
-    assert.assertEqual(2000, skip(8000));
-    assert.assertEqual(2000, skip(8003));
-    assert.assertEqual(2001, skip(8004));
+    assert.assertEqual(1999, offset(7999));
+    assert.assertEqual(2000, offset(8000));
+    assert.assertEqual(2000, offset(8003));
+    assert.assertEqual(2001, offset(8004));
   }
 
+  // This is the decision made by the sort-limit optimizer rule:
+  const usesHeapSort = rows => {
+    const n = rows;
+    const m = limit(rows);
+    return rows >= 100 && 0.25 * n * Math.log2(m) + m * Math.log2(m) < n * Math.log2(n);
+  };
+  // // Filter out row counts that would use the standard sort strategy
+  // const sortLimitTestRowCounts = _.uniq(defaultTestRowCounts.concat(additionalLimitTestRowCounts).sort())
+  //   .filter(usesHeapSort);
+  const sortLimitTestRowCounts =
+    // defaults, minus those < 100:
+    [100, 999, 1000, 1001, 1500, 2000, 10500]
+      .concat([
+        // limit() - offset() = 1000 ± 1:
+      1995, 1997, 1998, 2000, 1999, 2001,
+        // limit() - offset() = 2000 ± 1:
+      3995, 3997, 3998, 4000, 3999, 4001
+    ]);
+  const limitMinusSkip = rows => limit(rows) - offset(rows);
+  const limitMinusSkipBatches = rows => Math.ceil(limitMinusSkip(rows) / defaultBatchSize);
+  for (const rows of sortLimitTestRowCounts) {
+    assert.assertTrue(usesHeapSort(rows),
+      `Test row count would not trigger sort-limit rule: ${rows}`);
+  }
+  {
+    // Documentation of the expected proportions. These are a little wonky due to the rounding,
+    // but that's fine for the purpose.
+    assert.assertEqual(999, limitMinusSkip(1995));
+    assert.assertEqual(999, limitMinusSkip(1997));
+    assert.assertEqual(1000, limitMinusSkip(1998));
+    assert.assertEqual(1000, limitMinusSkip(2000));
+    assert.assertEqual(1001, limitMinusSkip(1999));
+    assert.assertEqual(1001, limitMinusSkip(2001));
+    assert.assertEqual(1999, limitMinusSkip(3995));
+    assert.assertEqual(1999, limitMinusSkip(3997));
+    assert.assertEqual(2000, limitMinusSkip(3998));
+    assert.assertEqual(2000, limitMinusSkip(4000));
+    assert.assertEqual(2001, limitMinusSkip(3999));
+    assert.assertEqual(2001, limitMinusSkip(4001));
+  }
+
+
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test {profile: 0}
@@ -140,10 +168,12 @@ function ahuacatlProfilerTestSuite () {
       const profileDefault = db._query(query, {}).getExtra();
       const profile0 = db._query(query, {}, {profile: 0}).getExtra();
       const profileFalse = db._query(query, {}, {profile: false}).getExtra();
+      const profile0WithFullCount = db._query(query, {}, {profile: 0, fullCount: true}).getExtra();
 
       profHelper.assertIsLevel0Profile(profileDefault);
       profHelper.assertIsLevel0Profile(profile0);
       profHelper.assertIsLevel0Profile(profileFalse);
+      profHelper.assertIsLevel0Profile(profile0WithFullCount, {fullCount: true});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,9 +184,11 @@ function ahuacatlProfilerTestSuite () {
       const query = 'RETURN 1';
       const profile1 = db._query(query, {}, {profile: 1}).getExtra();
       const profileTrue = db._query(query, {}, {profile: true}).getExtra();
+      const profile1WithFullCount = db._query(query, {}, {profile: 1, fullCount: true}).getExtra();
 
       profHelper.assertIsLevel1Profile(profile1);
       profHelper.assertIsLevel1Profile(profileTrue);
+      profHelper.assertIsLevel1Profile(profile1WithFullCount, {fullCount: true});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,9 +198,12 @@ function ahuacatlProfilerTestSuite () {
     testProfile2Fields : function () {
       const query = 'RETURN 1';
       const profile2 = db._query(query, {}, {profile: 2}).getExtra();
+      const profile2WithFullCount = db._query(query, {}, {profile: 2, fullCount: true}).getExtra();
 
       profHelper.assertIsLevel2Profile(profile2);
       profHelper.assertStatsNodesMatchPlanNodes(profile2);
+      profHelper.assertIsLevel2Profile(profile2WithFullCount, {fullCount: true});
+      profHelper.assertStatsNodesMatchPlanNodes(profile2WithFullCount);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,10 +264,10 @@ function ahuacatlProfilerTestSuite () {
 
     testCountCollectBlock : function () {
       const query = 'FOR i IN 1..@rows COLLECT WITH COUNT INTO c RETURN c';
-      const genNodeList = (rows, batches) => [
+      const genNodeList = (rows) => [
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
-        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : EnumerateListBlock, calls : 1, items : rows },
         { type : CountCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];
@@ -295,9 +330,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows, batches) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: CalculationBlock, calls: 1, items: 1},
         {type: EnumerateListBlock, calls: batches, items: rows},
-        {type: FilterBlock, calls: batches, items: rows},
         {type: ReturnBlock, calls: batches, items: rows},
       ];
       profHelper.runDefaultChecks({query, genNodeList, options});
@@ -309,15 +342,39 @@ function ahuacatlProfilerTestSuite () {
 
     testFilterBlock2 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 != 0 RETURN i';
-      const genNodeList = (rows, batches) => {
+      const genNodeList = (rows) => {
+        // This is an array 1..rows where true means it passes the filter
+        const list = Array.from(Array(rows)).map((_, index ) => {
+          return ((index + 1) % 13 !== 0);
+        });
+
+        const recursiveFilterCallEstimator = (rowsToFetch) => {
+          if (rowsToFetch === 0 || list.length === 0) {
+            return 0;
+          }
+          if (rowsToFetch < 0) {
+            // We would have counted an overfetch!
+            assertTrue(false);
+          }
+          // We count one required call.
+          // We remove rowsToFetch elements from the beginning of the array.
+          // We count how many of those are true.
+          // We simulate an above call with rowsToFetch - the number of true counts.
+          // Redo until we have no more rows to fetch.
+          return 1 + recursiveFilterCallEstimator(rowsToFetch - list.splice(0, rowsToFetch).filter(e => e).length);
+        };
+        let batchesAboveFilter = 0;
+        while (list.length > 0) {
+          batchesAboveFilter += recursiveFilterCallEstimator(defaultBatchSize);
+        }
         const rowsAfterFilter = rows - Math.floor(rows / 13);
         const batchesAfterFilter = Math.ceil(rowsAfterFilter / defaultBatchSize);
 
         return [
           { type : SingletonBlock, calls : 1, items : 1 },
           { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batches, items : rows },
-          { type : CalculationBlock, calls : batches, items : rows },
+          { type : EnumerateListBlock, calls : batchesAboveFilter, items : rows },
+          { type : CalculationBlock, calls : batchesAboveFilter, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
@@ -331,15 +388,38 @@ function ahuacatlProfilerTestSuite () {
 
     testFilterBlock3 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 == 0 RETURN i';
-      const genNodeList = (rows, batches) => {
+      const genNodeList = (rows) => {
+        // This is an array 1..rows where true means it passes the filter
+        const list = Array.from(Array(rows)).map((_, index ) => {
+          return ((index + 1) % 13 === 0);
+        });
+        const recursiveFilterCallEstimator = (rowsToFetch) => {
+          if (rowsToFetch === 0 || list.length === 0) {
+            return 0;
+          }
+          if (rowsToFetch < 0) {
+            // We would have counted an overfetch!
+            assertTrue(false);
+          }
+          // We count one required call.
+          // We remove rowsToFetch elements from the beginning of the array.
+          // We count how many of those are true.
+          // We simulate an above call with rowsToFetch - the number of true counts.
+          // Redo until we have no more rows to fetch.
+          return 1 + recursiveFilterCallEstimator(rowsToFetch - list.splice(0, rowsToFetch).filter(e => e).length);
+        };
+        let batchesAboveFilter = 0;
+        while (list.length > 0) {
+          batchesAboveFilter += recursiveFilterCallEstimator(defaultBatchSize);
+        }
         const rowsAfterFilter = Math.floor(rows / 13);
         const batchesAfterFilter = Math.max(1, Math.ceil(rowsAfterFilter / defaultBatchSize));
 
         return [
           { type : SingletonBlock, calls : 1, items : 1 },
           { type : CalculationBlock, calls : 1, items : 1 },
-          { type : EnumerateListBlock, calls : batches, items : rows },
-          { type : CalculationBlock, calls : batches, items : rows },
+          { type : EnumerateListBlock, calls : batchesAboveFilter, items : rows },
+          { type : CalculationBlock, calls : batchesAboveFilter, items : rows },
           { type : FilterBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
           { type : ReturnBlock, calls : batchesAfterFilter, items : rowsAfterFilter },
         ];
@@ -462,22 +542,18 @@ function ahuacatlProfilerTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testLimitBlock3: function() {
-      const query = 'FOR i IN 1..@rows LIMIT @skip, @limit RETURN i';
-      const skip = rows => Math.floor(rows/4);
-      const skipBatches = rows => Math.ceil(skip(rows) / defaultBatchSize);
-      const limit = rows => Math.ceil(3*rows/4);
-      const limitBatches = rows => Math.ceil(limit(rows) / defaultBatchSize);
+      const query = 'FOR i IN 1..@rows LIMIT @offset, @limit RETURN i';
 
-      const genNodeList = (rows, batches) => [
+      const genNodeList = (rows) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows) + skipBatches(rows), items: limit(rows) + skip(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows) + offset(rows)},
         {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
         {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
       const bind = (rows) => ({
         rows,
-        skip: skip(rows),
+        offset: offset(rows),
         limit: limit(rows),
       });
       const additionalTestRowCounts = additionalLimitTestRowCounts;
@@ -491,14 +567,14 @@ function ahuacatlProfilerTestSuite () {
     testNoResultsBlock1: function() {
       const query = 'FOR i IN 1..@rows FILTER 1 == 0 RETURN i';
 
-      // As the descendant blocks of NoResultsBlock don't get a single getSome
-      // call, they don't show up in the statistics.
+      // Also if we have no results, we do send a drop-all to dependecies
+      // potentielly we have modifiaction nodes that need to be executed.
 
       const genNodeList = () => [
-        {type: SingletonBlock, calls: 0, items: 0},
-        {type: CalculationBlock, calls: 0, items: 0},
-        {type: NoResultsBlock, calls: 1, items: 0},
+        {type: SingletonBlock, calls: 1, items: 0},
+        {type: CalculationBlock, calls: 1, items: 0},
         {type: EnumerateListBlock, calls: 1, items: 0},
+        {type: NoResultsBlock, calls: 1, items: 0},
         {type: ReturnBlock, calls: 1, items: 0},
       ];
 
@@ -585,6 +661,55 @@ function ahuacatlProfilerTestSuite () {
       ];
       const bind = rows => ({rows, mod: Math.ceil(rows / 2)});
       profHelper.runDefaultChecks({query, genNodeList, bind});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SortLimitBlock
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortLimitBlock1 : function () {
+      const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : limit(rows) },
+        { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
+        { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      profHelper.runDefaultChecks({query, genNodeList, bind, testRowCounts: sortLimitTestRowCounts});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test SortLimitBlock
+/// with fullCount
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortLimitBlock2 : function () {
+      const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : rows },
+        { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
+        { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      profHelper.runDefaultChecks({query, genNodeList, bind, testRowCounts: sortLimitTestRowCounts, options: {fullCount: true}});
     },
 
     ////////////////////////////////////////////////////////////////////////////////

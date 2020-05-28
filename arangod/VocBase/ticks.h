@@ -24,7 +24,8 @@
 #ifndef ARANGOD_VOC_BASE_TICKS_H
 #define ARANGOD_VOC_BASE_TICKS_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+
 #include "VocBase/voc-types.h"
 
 /// @brief create a new tick, using a hybrid logical clock

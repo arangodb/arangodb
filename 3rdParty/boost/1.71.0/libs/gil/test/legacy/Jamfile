@@ -1,0 +1,26 @@
+# Boost.GIL (Generic Image Library) - legacy tests
+#
+# Copyright (c) 2007-2015 Andrey Semashev
+# Copyright (c) 2008 Lubomir Bourdev, Hailin Jin
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# *** IMPORTANT MAINTENANCE RULES ***
+# These are GIL's original, comprehensive, all-in-one test suites.
+#   * Keep as reference.
+#   * Do NOT extend.
+#   * Do NOT refactor.
+#   * Modify only if absolutely necessary (a bug found in the tests).
+# See the accompanying README.md
+
+import testing ;
+
+run image.cpp sample_image.cpp error_if.cpp : : gil_reference_checksums.txt ;
+run channel.cpp error_if.cpp ;
+run pixel.cpp error_if.cpp ;
+run pixel_iterator.cpp error_if.cpp ;
+
+alias perf : [ run performance.cpp ] ;
+explicit perf ;

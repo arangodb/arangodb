@@ -41,23 +41,19 @@ namespace arangodb {
 class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
-/// @brief return false to stop iteration
-typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
-
 /// @brief iterator over all documents in the collection
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
-  ~RocksDBAllIndexIterator() {}
+  ~RocksDBAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  void skipImpl(uint64_t count, uint64_t& skipped) override;
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;
@@ -72,13 +68,14 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
-  ~RocksDBAnyIndexIterator() {}
+  ~RocksDBAnyIndexIterator() = default;
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  void reset() override;
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
+  // cppcheck-suppress virtualCallInConstructor ; desired impl
+  void resetImpl() override;
 
  private:
   bool outOfRange() const;
@@ -93,14 +90,18 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   uint64_t _returned;
   bool _forward;
 };
+  
+  
+/// @brief return false to stop iteration
+typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 
 class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::ReadOptions& options,
-                         RocksDBKeyBounds const& bounds, bool reverse = false);
+                         RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
-  ~RocksDBGenericIterator() {}
+  ~RocksDBGenericIterator() = default;
 
   //* The following functions returns true if the iterator is valid within bounds on return.
   //  @param limit - number of documents the callback should be applied to
@@ -119,7 +120,6 @@ class RocksDBGenericIterator {
   bool outOfRange() const;
 
  private:
-  bool _reverse;
   RocksDBKeyBounds const _bounds;
   rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;

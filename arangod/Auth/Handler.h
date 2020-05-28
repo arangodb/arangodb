@@ -24,8 +24,9 @@
 #ifndef ARANGOD_AUTHENTICATION_HANDLER_H
 #define ARANGOD_AUTHENTICATION_HANDLER_H 1
 
-#include "Basics/Result.h"
 #include "Auth/Common.h"
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/Slice.h>
 #include <set>
@@ -65,6 +66,7 @@ class Handler {
  public:
   /// Refresh rate for users from this source in seconds
   virtual double refreshRate() const = 0;
+  virtual bool allowOfflineCacheUsage() const = 0;
   virtual auth::Source source() const = 0;
 
   /// Authenticate user and return user permissions and roles
@@ -72,7 +74,7 @@ class Handler {
                                      std::string const& password) = 0;
   /// Read user permissions assuming he was already authenticated once
   virtual HandlerResult readPermissions(std::string const& username) = 0;
-  virtual ~Handler() {}
+  virtual ~Handler() = default;
 };
 
 }  // namespace auth

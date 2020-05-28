@@ -27,10 +27,10 @@
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
-#include <cstddef> //need this for wchar_t, size_t, NULL
-#include <stdint.h> //need this for int32_t, etc
-#include <math.h> //required for float_t
-#include <string> //need to include this really early...
+#include <cstddef>
+#include <stdint.h>
+#include <math.h>
+#include <string>
 
 #if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
   // protection against broken GCC 8.0 from Ubuntu 18.04 official repository
@@ -54,24 +54,19 @@
   // MSVC doesn't honor __cplusplus macro,
   // it always equals to IRESEARCH_CXX_98
   // therefore we use _MSC_VER
-  #if _MSC_VER < 1800 // before MSVC2013
-    #error "at least C++11 is required"
-  #elif _MSC_VER >= 1800 && _MSC_VER < 1910 // MSVC2013-2015
-    // not MSVC2015 nor MSVC2017 are not c++14 compatible
-    #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif _MSC_VER >= 1910 // MSVC2017 and later
-    #define IRESEARCH_CXX IRESEARCH_CXX_14
-  #endif
-#else // GCC/Clang
-  #if __cplusplus < IRESEARCH_CXX_11
-    #error "at least C++11 is required"
-  #elif __cplusplus >= IRESEARCH_CXX_11 && __cplusplus < IRESEARCH_CXX_14
-    #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif __cplusplus >= IRESEARCH_CXX_14 && __cplusplus < IRESEARCH_CXX_17
-    #define IRESEARCH_CXX IRESEARCH_CXX_14
-  #elif __cplusplus >= IRESEARCH_CXX_17
+  #if _MSC_VER < 1910                       // before MSVC2017
+    #error "at least C++17 is required"
+  #elif _MSC_VER >= 1910 && _MSC_VER < 1920 // MSVC2017 and later
+    #define IRESEARCH_CXX IRESEARCH_CXX_17
+  #elif _MSC_VER >= 1920                    // MSVC2019 and later
     #define IRESEARCH_CXX IRESEARCH_CXX_17
   #endif
+#else // GCC/Clang
+  #if __cplusplus < IRESEARCH_CXX_17
+    #error "at least C++17 is required"
+  #endif
+
+  #define IRESEARCH_CXX IRESEARCH_CXX_17
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,16 +82,8 @@
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
   #if _MSC_VER < 1900 // before msvc2015
-    #define CONSTEXPR
-    #define NOEXCEPT throw()
-    #define ALIGNOF(v) __alignof(v)
-    #define ALIGNAS(v) __declspec(align(v))
+    #error "compiler is not supported"
   #else
-    #define CONSTEXPR constexpr
-    #define NOEXCEPT noexcept
-    #define ALIGNOF(v) alignof(v)
-    #define ALIGNAS(v) alignas(v)
-
     // MSVC2017.1 - MSVC2017.7 does not correctly support alignas()
     // FIXME TODO find a workaround or do not use alignas(...) and remove definition from CMakeLists.txt
     static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916, "_MSC_VER > 1910 && _MSC_VER < 1915");
@@ -107,34 +94,20 @@
   #define RESTRICT __restrict 
   #define IRESEARCH_IGNORE_UNUSED /* unused */
 #else
-  #if defined(__GNUC__) && __GNUC__ >= 4
+  #if (defined(__GNUC__) && (__GNUC__ >= 4))
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
-    #define CONSTEXPR constexpr
   #else
-    #define IRESEARCH_HELPER_DLL_IMPORT
-    #define IRESEARCH_HELPER_DLL_EXPORT
-    #define IRESEARCH_HELPER_DLL_LOCAL
-    #define CONSTEXPR
+    #error "compiler is not supported"
   #endif
   #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT 
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT 
 
-  #define NOEXCEPT noexcept
-  #define ALIGNOF(v) alignof(v)
-  #define ALIGNAS(v) alignas(v)
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
   #define IRESEARCH_IGNORE_UNUSED __attribute__ ((unused))
-#endif
-
-#if (defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ < 9)
-  // GCC4.8 doesn't have std::max_align_t
-  #define MAX_ALIGN_T ::max_align_t
-#else
-  #define MAX_ALIGN_T std::max_align_t
 #endif
 
 // hook for GCC 8.1/8.2 optimized code
@@ -151,6 +124,7 @@
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 // and https://dev.to/yumetodo/list-of-mscver-and-mscfullver-8nd
+// seems MSVC2019.0+ also have this problem
 #if defined(_MSC_VER) \
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
@@ -159,10 +133,11 @@
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
         || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627031)))
-  #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627034)) \
+        || (_MSC_FULL_VER >= 192027508))
+  #define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
@@ -172,46 +147,11 @@
   #define MSVC_ONLY(...)
 #endif
 
-// hook for MSVC2013-only code
-#if defined(_MSC_VER) && _MSC_VER == 1800
-  #define MSVC2013_ONLY(...) __VA_ARGS__
-#else
-  #define MSVC2013_ONLY(...)
-#endif
-
 // hook for MSVC2015-only code
 #if defined(_MSC_VER) && _MSC_VER == 1900
   #define MSVC2015_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2015_ONLY(...)
-#endif
-
-// hook for MSVC2015 optimized-only code
-#if defined(_MSC_VER) && !defined(_DEBUG) && _MSC_VER == 1900
-  #define MSVC2015_OPTIMIZED_ONLY(...) __VA_ARGS__
-#else
-  #define MSVC2015_OPTIMIZED_ONLY(...)
-#endif
-
-// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6 || 2017.7 || 2017.8 || 2017.9)
-#if defined(_MSC_VER) \
-    && (_MSC_VER == 1910 \
-        || _MSC_VER == 1911 \
-        || _MSC_VER == 1912 \
-        || _MSC_VER == 1913 \
-        || _MSC_VER == 1914 \
-        || _MSC_VER == 1915 \
-        || _MSC_VER == 1916)
-  #define MSVC2017_ONLY(...) __VA_ARGS__
-#else
-  #define MSVC2017_ONLY(...)
-#endif
-
-#if defined(_MSC_VER) \
-    && (_MSC_VER == 1920)
-#define MSVC2019_ONLY(...) __VA_ARGS__
-#else
-#define MSVC2019_ONLY(...)
 #endif
 
 // hook for GCC-only code
@@ -302,6 +242,8 @@
   #define CURRENT_FUNCTION __PRETTY_FUNCTION__
 #elif defined(_MSC_VER)
   #define CURRENT_FUNCTION __FUNCSIG__
+#else
+  #define CURRENT_FUNCTION __FUNCTION__
 #endif
 
 #ifndef __has_feature
@@ -314,7 +256,8 @@
 /// SSE compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __SSE2__
+// for MSVC on x64 architecture SSE2 is always enabled
+#if defined(__SSE2__) || (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
 #define IRESEARCH_SSE2
 #endif
 
@@ -336,6 +279,17 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// likely/unlikely branch indicator
+// macro definitions similar to the ones at
+// https://kernelnewbies.org/FAQ/LikelyUnlikely
+#if defined(__GNUC__) || defined(__GNUG__)
+#define IRS_LIKELY(v) __builtin_expect(!!(v), 1)
+#define IRS_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#else
+#define IRS_LIKELY(v) v
+#define IRS_UNLIKELY(v) v
+#endif
+
 #ifdef IRESEARCH_DEBUG
 #define IRS_ASSERT(CHECK) \
     ( (CHECK) ? void(0) : []{assert(!#CHECK);}() )
@@ -353,11 +307,13 @@
 NS_ROOT NS_END // ROOT namespace predeclaration
 namespace irs = ::iresearch;
 
-#define ASSERT( cond, mess ) assert( (cond) && (mess) )
-
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
+// CMPXCHG16B requires that the destination
+// (memory) operand be 16-byte aligned
+#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
+
 #include "types.hpp" // iresearch types
 
-#endif // IRESEACH_SHARED_H
+#endif // IRESEARCH_SHARED_H

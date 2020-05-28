@@ -29,7 +29,6 @@
 
 #include <sstream>
 
-#include <curl/curl.h>
 #include <openssl/ssl.h>
 
 #include <rocksdb/convenience.h>
@@ -45,6 +44,7 @@
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
 
@@ -106,12 +106,17 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
+#ifdef ARANGODB_USE_IPO 
+  Values["ipo"] = "true";
+#else
+  Values["ipo"] = "false";
+#endif
 #ifdef NDEBUG
   Values["ndebug"] = "true";
 #else
   Values["ndebug"] = "false";
 #endif
-#if defined(ARCHITECTURE_OPTIMIZATIONS)
+#ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();
@@ -156,7 +161,7 @@ void Version::initialize() {
   Values["build-repository"] = getBuildRepository();
 #endif
 
-  Values["curl-version"] = curl_version();
+  Values["curl-version"] = "none";
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["assertions"] = "true";
@@ -172,15 +177,21 @@ void Version::initialize() {
   Values["cplusplus"] = "unknown";
 #endif
 
-#if defined(__SANITIZE_ADDRESS__) || \
-    (defined(__has_feature) && __has_feature(address_sanitizer))
-  Values["asan"] = "true";
-#else
   Values["asan"] = "false";
-#if defined(__has_feature)
+#if defined(__SANITIZE_ADDRESS__)
+  Values["asan"] = "true";
+#elif defined(__has_feature)
 #if __has_feature(address_sanitizer)
   Values["asan"] = "true";
 #endif
+#endif
+
+  Values["tsan"] = "false";
+#if defined(__SANITIZE_THREAD__)
+  Values["tsan"] = "true";
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+  Values["tsan"] = "true";
 #endif
 #endif
 
@@ -414,22 +425,28 @@ std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
   version << "ArangoDB " << ARANGODB_VERSION_FULL << " "
-          << (sizeof(void*) == 4 ? "32" : "64") << "bit"
+          << (sizeof(void*) == 4 ? "32" : "64") << "bit";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          << " maintainer mode"
+  version << " maintainer mode";
 #endif
-#if defined(__SANITIZE_ADDRESS__) || \
-    (defined(__has_feature) && __has_feature(address_sanitizer))
-          << " with ASAN"
+
+#if defined(__SANITIZE_ADDRESS__)
+  version << " with ASAN";
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+  version << " with ASAN";
 #endif
-          << ", using "
+#endif
+
+  version << ", using ";
 #ifdef ARANGODB_HAVE_JEMALLOC
-          << "jemalloc, "
+  version << "jemalloc, ";
 #endif
+
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
-          << "build " << getBuildRepository() << ", "
+  version << "build " << getBuildRepository() << ", ";
 #endif
-          << "VPack " << getVPackVersion() << ", "
+  version << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);

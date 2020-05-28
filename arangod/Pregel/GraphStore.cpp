@@ -24,6 +24,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
+#include "Indexes/IndexIterator.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
@@ -38,7 +39,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -71,7 +71,7 @@ GraphStore<V, E>::~GraphStore() {
 }
 
 static const char* shardError =
-    "Collections need to have the same number of shards"
+    "Collections need to have the same number of shards,"
     " use distributeShardsLike";
 
 template <typename V, typename E>
@@ -129,16 +129,25 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         _runningThreads++;
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         TRI_ASSERT(scheduler);
-        scheduler->queue(RequestLane::INTERNAL_LOW,
-                         [this, vertexShard, edges] {
-                           TRI_DEFER(_runningThreads--);  // exception safe
-                           try {
-                             _loadVertices(vertexShard, edges);
-                           } catch (std::exception const& ex) {
-                             LOG_TOPIC("c87c9", WARN, Logger::PREGEL) << "caught exception while "
-                                                                      << "loading pregel graph: " << ex.what();
-                          }
-                         });
+        bool queued =
+            scheduler->queue(RequestLane::INTERNAL_LOW, [this, vertexShard, edges] {
+              TRI_DEFER(_runningThreads--);  // exception safe
+              try {
+                _loadVertices(vertexShard, edges);
+              } catch (std::exception const& ex) {
+                LOG_TOPIC("c87c9", WARN, Logger::PREGEL)
+                    << "caught exception while "
+                    << "loading pregel graph: " << ex.what();
+              }
+            });
+        if (!queued) {
+          LOG_TOPIC("38da2", WARN, Logger::PREGEL)
+              << "No thread available to queue vertex loading";
+        }
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC("3f283", WARN, Logger::PREGEL)
+            << "unhandled exception while "
+            << "loading pregel graph: " << ex.what();
       } catch (...) {
         LOG_TOPIC("3f282", WARN, Logger::PREGEL) << "unhandled exception while "
         << "loading pregel graph";
@@ -146,12 +155,17 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     }
     // we can only load one vertex collection at a time
     while (_runningThreads > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(5000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
   }
 
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, cb);
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, cb);
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                   "No thread available to queue callback, "
+                                   "canceling execution");
+  }
 }
 
 template <typename V, typename E>
@@ -253,7 +267,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
-  trxOpts.allowImplicitCollections = true;
+  trxOpts.allowImplicitCollectionsForRead = true;
   auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
   transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
   Result res = trx.begin();
@@ -263,10 +277,10 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   }
 
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
-  OperationCursor cursor(trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL));
+  auto cursor = trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL);
 
   // tell the formatter the number of docs we are about to load
-  LogicalCollection* coll = cursor.collection();
+  LogicalCollection* coll = cursor->collection();
   uint64_t numVertices = coll->numberDocuments(&trx, transaction::CountType::Normal);
   _graphFormat->willLoadVertices(numVertices);
   
@@ -284,9 +298,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-    if (slice.isExternal()) {
-      slice = slice.resolveExternal();
-    }
+    slice = slice.resolveExternal();
     
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
       vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
@@ -324,13 +336,14 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     for (ShardID const& edgeShard : edgeShards) {
       _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys);
     }
+    return true;
   };
   
   _localVertexCount += numVertices;
   bool hasMore = true;
-  while(hasMore && numVertices > 0) {
+  while (hasMore && numVertices > 0) {
     TRI_ASSERT(segmentSize > 0);
-    hasMore = cursor.nextDocument(cb, segmentSize);
+    hasMore = cursor->nextDocument(cb, segmentSize);
     if (_destroyed) {
       LOG_TOPIC("4355a", WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
@@ -361,7 +374,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
 
   traverser::EdgeCollectionInfo info(&trx, edgeShard);
   ManagedDocumentResult mmdr;
-  std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID);
+  auto cursor = info.getEdges(documentID);
   
   TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
   TypedBuffer<char>* keyBuff = edgeKeys.empty() ? nullptr : edgeKeys.back().get();
@@ -398,9 +411,9 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
     // resolve the shard of the target vertex.
     ShardID responsibleShard;
-    int res = Utils::resolveShard(_config, collectionName.toString(),
-                                  StaticStrings::KeyString,
-                                  key, responsibleShard);
+    auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    int res = Utils::resolveShard(ci, _config, collectionName.toString(),
+                                  StaticStrings::KeyString, key, responsibleShard);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("b80ba", ERR, Logger::PREGEL)
       << "Could not resolve target shard of edge";
@@ -428,8 +441,9 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
+      return true;
     };
-    while (cursor->nextWithExtra(cb, 1000)) {
+    while (cursor->nextExtra(cb, 1000)) {
       if (_destroyed) {
         LOG_TOPIC("29018", WARN, Logger::PREGEL) << "Aborted loading graph";
         break;
@@ -438,9 +452,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
     
   } else {
     auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
-      if (slice.isExternal()) {
-        slice = slice.resolveExternal();
-      }
+      slice = slice.resolveExternal();
       
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
       allocateSpace(toValue.size());
@@ -449,6 +461,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       if (res == TRI_ERROR_NO_ERROR) {
         _graphFormat->copyEdgeData(slice, edge->data());
       }
+      return true;
     };
     while (cursor->nextDocument(cb, 1000)) {
       if (_destroyed) {
@@ -563,7 +576,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
     numT << " threads";
   
   for (size_t i = 0; i < numT; i++) {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=]{
+    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [=] {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i + 1) * (numSegments / numT);
       TRI_ASSERT(endI <= numSegments);
@@ -584,6 +597,11 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
         cb();
       }
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No thread available to queue vertex "
+                                     "storage, canceling execution");
+    }
   }
 }
 

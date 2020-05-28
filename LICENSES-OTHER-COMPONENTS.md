@@ -11,10 +11,10 @@
 
 ## C/C++ Libraries
 
-### Boost 1.69
+### Boost 1.71
 
 * Name: Boost
-* Version: 1.69
+* Version: 1.71
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0
@@ -28,14 +28,6 @@
 * License: https://raw.githubusercontent.com/stormdark/CreditCardGenerator/master/LICENSE
 * License Name: MIT License
 * License Id: MIT
-
-### Curl 7.63.0
-
-* Name: Curl
-* Version: 7.63.0
-* Project Home: https://curl.haxx.se/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/curl/curl-7.63.0/COPYING
-* License Comment: free as-is license
 
 ### date 2.4
 
@@ -64,7 +56,6 @@
 * License Name: MIT License
 * License Id: MIT
 
-
 ### fpconv_dtoa
 
 * Name: fpconv
@@ -74,12 +65,21 @@
 * License Name: MIT License
 * License Id: MIT
 
+### function2
+
+* Name: function2
+* Version: v4.0.0
+* Project Home: https://github.com/Naios/function2
+* License: https://raw.githubusercontent.com/Naios/function2/master/LICENSE.txt
+* License Name: Boost Software License 1.0
+* License Id: BSL-1.0
+
 ### Google V8 7.1.302.28
 
 * Name: V8
-* Version: 7.1.302.28
+* Version: 7.9.317
 * Project Home: https://github.com/v8/v8
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.v8
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.v8
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -142,15 +142,15 @@
 ### ICU
 
 * Name: ICU
-* Version: V8 7.1.302.28 bundled
+* Version: V8 7.9.317 bundled
 * Project Home: http://site.icu-project.org/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/V8/v7.1.302.28/third_party/icu/LICENSE
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/icu/LICENSE
 * License Comment: ICU License
 
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.0
+* Version: 5.2.1
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -177,9 +177,9 @@ exception from the GPL license:
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.2
+* Version: 6.8
 * GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/rocksdb/6.2/README.md
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.8/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
@@ -218,12 +218,30 @@ exception from the GPL license:
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
 
-### HTTP Parser
+### llhttp
 
-* Name: HTTP Parser
-* Version: 2.4.0
-* Project Home: https://github.com/nodejs/http-parser
-* License: https://raw.githubusercontent.com/nodejs/http-parser/master/LICENSE-MIT
+* Name: llhttp
+* Version: 1.1.1
+* Project Home: https://github.com/nodejs/llhttp
+* License: https://raw.githubusercontent.com/nodejs/llhttp/master/LICENSE-MIT
+* License Name: MIT License
+* License Id: MIT
+
+### GeographicLib
+
+* Name: GeographicLib
+* Version: 1.49
+* Project Home: https://geographiclib.sourceforge.io/
+* License: https://geographiclib.sourceforge.io/html/LICENSE.txt
+* License Name: MIT License
+* License Id: MIT
+
+###  nghttp2 
+
+* Name:  nghttp2 
+* Version: 1.40.0
+* GitHub: https://github.com/nghttp2/nghttp2
+* License: https://github.com/nghttp2/nghttp2/blob/master/COPYING
 * License Name: MIT License
 * License Id: MIT
 
@@ -1851,6 +1869,15 @@ exception from the GPL license:
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
+#### taocpp::json
+
+* Name: json
+* Version: master
+* Project Home: https://github.com/taocpp/json
+* License: https://github.com/taocpp/json/blob/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 #### text-table
 
 * Name: text-table
@@ -2281,7 +2308,7 @@ exception from the GPL license:
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.9.0
+* Version: 3.25.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://github.com/swagger-api/swagger-ui/blob/master/README.md

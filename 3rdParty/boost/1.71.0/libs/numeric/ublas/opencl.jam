@@ -1,0 +1,111 @@
+# Copyright (c) 2018 Stefan Seefeld
+#
+# Use, modification and distribution is subject to the Boost Software
+# License Version 1.0. (See accompanying file LICENSE_1_0.txt or
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Supports the opencl library
+#
+# After 'using opencl', the following targets are available:
+#
+# /opencl//opencl -- The OpenCL library
+
+import project ;
+import ac ;
+import errors ;
+import feature ;
+import "class" : new ;
+import targets ; 
+import modules ;
+import property-set ;
+
+header = CL/cl.h ;
+names = OpenCL ;
+
+library-id = 0 ;
+
+if --debug-configuration in [ modules.peek : ARGV ]
+{
+    .debug =  true ;
+}
+
+# Initializes the opencl library.
+#
+# Options for configuring opencl::
+#
+#   <search>
+#       The directory containing the OpenCL library.
+#   <name>
+#       Overrides the default library name.
+#   <include>
+#       The directory containing the OpenCL headers.
+#
+# Examples::
+#
+#   # Find OpenCL in the default system location
+#   using opencl ;
+#   # Find opencl in /usr/local
+#   using opencl : 1.2.7
+#     : <include>/usr/local/include <search>/usr/local/lib ;
+#
+rule init ( version ? : # The opencl version (currently ignored)
+            options * : # A list of the options to use
+            requirements * ) # The requirements for the opencl target
+{
+    local caller = [ project.current ] ;
+
+    if ! $(.initialized)
+    {
+        .initialized = true ;
+
+        project.initialize $(__name__) ;
+        .project = [ project.current ] ;
+        project opencl ;
+    }
+
+    local library-path = [ feature.get-values <search> : $(options) ] ;
+    local include-path = [ feature.get-values <include> : $(options) ] ;
+    local library-name = [ feature.get-values <name> : $(options) ] ;
+
+    if ! $(library-path) && ! $(include-path) && ! $(library-name)
+    {
+        is-default = true ;
+    }
+
+    condition = [ property-set.create $(requirements) ] ;
+    condition = [ property-set.create [ $(condition).base ] ] ;
+
+    if $(.configured.$(condition))
+    {
+        if $(is-default)
+        {
+            if $(.debug)
+            {
+                ECHO "notice: [opencl] opencl is already configured" ;
+            }
+        }
+        else
+        {
+            errors.user-error "opencl is already configured" ;
+        }
+        return ;
+    }
+    else
+    {
+        if $(.debug)
+        {
+            ECHO "notice: [opencl] Using pre-installed library" ;
+            if $(condition)
+            {
+                ECHO "notice: [opencl] Condition" [ $(condition).raw ] ;
+            }
+        }
+
+        local mt = [ new ac-library opencl : $(.project) : $(condition) :
+            $(include-path) : $(library-path) : $(library-name) ] ;
+        $(mt).set-header $(header) ;
+        $(mt).set-default-names $(names) ;
+        targets.main-target-alternative $(mt) ;
+    }
+    .configured.$(condition) = true ;
+}

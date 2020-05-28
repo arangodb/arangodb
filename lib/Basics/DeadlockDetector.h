@@ -24,10 +24,15 @@
 #ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
 #define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
 
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include <unordered_set>
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 namespace arangodb {
 namespace basics {
@@ -35,7 +40,7 @@ namespace basics {
 template <typename TID, typename T>
 class DeadlockDetector {
  public:
-  explicit DeadlockDetector(bool enabled) : _enabled(enabled){};
+  explicit DeadlockDetector(bool enabled) : _enabled(enabled) {}
   ~DeadlockDetector() = default;
 
   DeadlockDetector(DeadlockDetector const&) = delete;

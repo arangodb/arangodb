@@ -18,14 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Rebalancer.h"
-#include "Basics/Common.h"
+
+#include "Basics/voc-errors.h"
 #include "Cache/Manager.h"
 
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 Rebalancer::Rebalancer(Manager* manager) : _manager(manager) {}
 
@@ -35,3 +36,5 @@ int Rebalancer::rebalance() {
   }
   return TRI_ERROR_INTERNAL;
 }
+
+}  // namespace arangodb::cache

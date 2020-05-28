@@ -21,10 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <utility>
+
 #include "EndpointList.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -18,12 +18,12 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SORTED_COLUMN_H
 #define IRESEARCH_SORTED_COLUMN_H
 
+#include "column_info.hpp"
 #include "formats/formats.hpp"
 #include "store/store_utils.hpp"
 
@@ -39,7 +39,9 @@ class sorted_column final : public irs::columnstore_writer::column_output {
  public:
   typedef std::vector<std::pair<doc_id_t, doc_id_t>> flush_buffer_t;
 
-  sorted_column() = default;
+  explicit sorted_column(const column_info& info)
+    : info_(info) {
+  }
 
   void prepare(doc_id_t key) {
     assert(index_.empty() || key >= index_.back().first);
@@ -54,11 +56,11 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   }
 
   virtual void write_byte(byte_type b) override {
-    data_buf_.write_byte(b);
+    data_buf_ += b;
   }
 
   virtual void write_bytes(const byte_type* b, size_t size) override {
-    data_buf_.write_bytes(b, size);
+    data_buf_.append(b, size);
   }
 
   virtual void reset() override {
@@ -66,20 +68,20 @@ class sorted_column final : public irs::columnstore_writer::column_output {
       return;
     }
 
-    data_buf_.reset(index_.back().second);
+    data_buf_.resize(index_.back().second);
     index_.pop_back();
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return index_.empty();
   }
 
-  size_t size() const NOEXCEPT {
+  size_t size() const noexcept {
     return index_.size();
   }
 
-  void clear() NOEXCEPT {
-    data_buf_.reset();
+  void clear() noexcept {
+    data_buf_.clear();
     index_.clear();
   }
 
@@ -97,12 +99,16 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     flush_buffer_t& buffer
   );
 
-  size_t memory_active() const NOEXCEPT {
+  size_t memory_active() const noexcept {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
   }
 
-  size_t memory_reserved() const NOEXCEPT {
+  size_t memory_reserved() const noexcept {
     return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
+  }
+
+  const column_info& info() const noexcept {
+    return info_;
   }
 
  private:
@@ -131,8 +137,9 @@ class sorted_column final : public irs::columnstore_writer::column_output {
     flush_buffer_t& buffer
   );
 
-  bytes_output data_buf_; // FIXME use memory_file or block_pool instead
+  bstring data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'
+  column_info info_;
 }; // sorted_column
 
 NS_END // ROOT

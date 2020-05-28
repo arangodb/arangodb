@@ -31,7 +31,6 @@
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -66,9 +65,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                     useTick, barrierId),
       _vocbase(&vocbase),
       _queriedTranslations(false) {
-  _state.vocbases.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(vocbase.name()),
-                          std::forward_as_tuple(vocbase));
+  _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -119,7 +116,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   auto startTime = clock.now();
 
   while (true) {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (vocbase()->server().isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
@@ -191,7 +188,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
+    r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;
@@ -279,7 +276,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
         return false;
       }
 
-      for (auto const& it : VPackArrayIterator(invSlice)) {
+      for (VPackSlice it : VPackArrayIterator(invSlice)) {
         if (!it.isObject()) {
           continue;
         }

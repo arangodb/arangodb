@@ -27,11 +27,13 @@
 
 #include "utils/locale_utils.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "Basics/VelocyPackHelper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -47,7 +49,6 @@ class IResearchViewMetaTest : public ::testing::Test {
   }
 
   ~IResearchViewMetaTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
@@ -65,9 +66,9 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
   arangodb::iresearch::IResearchViewMetaState metaState;
 
   EXPECT_TRUE(true == metaState._collections.empty());
-  EXPECT_TRUE(true == (10 == meta._cleanupIntervalStep));
+  EXPECT_TRUE(true == (2 == meta._cleanupIntervalStep));
   EXPECT_TRUE(true == (1000 == meta._commitIntervalMsec));
-  EXPECT_TRUE(true == (60 * 1000 == meta._consolidationIntervalMsec));
+  EXPECT_TRUE(true == (10 * 1000 == meta._consolidationIntervalMsec));
   EXPECT_TRUE(std::string("tier") ==
               meta._consolidationPolicy.properties().get("type").copyString());
   EXPECT_TRUE(false == !meta._consolidationPolicy.policy());
@@ -150,9 +151,9 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
     EXPECT_TRUE(true == meta.init(json->slice(), tmpString));
     EXPECT_TRUE((true == metaState.init(json->slice(), tmpString)));
     EXPECT_TRUE((true == metaState._collections.empty()));
-    EXPECT_TRUE(10 == meta._cleanupIntervalStep);
+    EXPECT_TRUE(2 == meta._cleanupIntervalStep);
     EXPECT_TRUE((1000 == meta._commitIntervalMsec));
-    EXPECT_TRUE(60 * 1000 == meta._consolidationIntervalMsec);
+    EXPECT_TRUE(10 * 1000 == meta._consolidationIntervalMsec);
     EXPECT_TRUE((std::string("tier") ==
                  meta._consolidationPolicy.properties().get("type").copyString()));
     EXPECT_TRUE((false == !meta._consolidationPolicy.policy()));
@@ -241,7 +242,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"threshold\": -0.5 } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>threshold") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.threshold") == errorField));
   }
 
   {
@@ -251,7 +252,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"threshold\": 1.5 } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>threshold") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.threshold") == errorField));
   }
 
   // consolidation policy "tier"
@@ -263,7 +264,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "} }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsMin") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsMin") == errorField));
   }
 
   {
@@ -273,7 +274,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "} }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsMax") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsMax") == errorField));
   }
 
   {
@@ -283,7 +284,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"segmentsBytesFloor\": -1  } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsBytesFloor") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsBytesFloor") == errorField));
   }
 
   {
@@ -293,7 +294,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"segmentsBytesMax\": -1  } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsBytesMax") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsBytesMax") == errorField));
   }
 
   {
@@ -302,7 +303,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "{ \"consolidationPolicy\": { \"type\": \"invalid\" } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>type") == errorField));
+    EXPECT_EQ(std::string("consolidationPolicy.type"), errorField);
   }
 
   {
@@ -336,7 +337,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ 1 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]" == errorField);
+    EXPECT_EQ("primarySort[0]", errorField);
   }
 
   {
@@ -345,7 +346,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "{ \"primarySort\": [ { \"field\":{ }, \"direction\":\"aSc\" } ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>field" == errorField);
+    EXPECT_EQ("primarySort[0].field", errorField);
   }
 
   {
@@ -354,7 +355,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "{ \"primarySort\": [ { \"field\":{ }, \"asc\":true } ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>field" == errorField);
+    EXPECT_EQ("primarySort[0].field", errorField);
   }
 
   {
@@ -364,7 +365,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"direction\":\"xxx\" }, 4 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>direction" == errorField);
+    EXPECT_EQ("primarySort[0].direction", errorField);
   }
 
   {
@@ -374,7 +375,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "4 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>asc" == errorField);
+    EXPECT_TRUE("primarySort[0].asc" == errorField);
   }
 
   {
@@ -384,7 +385,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"direction\":\"aSc\" }, 4 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[1]" == errorField);
+    EXPECT_TRUE("primarySort[1]" == errorField);
   }
 
   {
@@ -394,7 +395,54 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"field\":1, \"direction\":\"aSc\" } ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[1]=>field" == errorField);
+    EXPECT_TRUE("primarySort[1].field" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }}");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues", errorField);
+  }
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": [ { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }, { "
+      "\"fields\":1, \"compression\":\"none\" } ] }");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues[1].fields", errorField);
+  }
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": [ { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }, { "
+      "\"fields\":[\"1\"], \"compression\":\"InVaLid\" } ] }");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues[1].compression", errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": [ { \"fields\":\"nested.field\", \"compression\": \"lz4\" }, { "
+      "\"fields\":\"1\"} ] }");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues[0].fields", errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+      "{ \"storedValues\": [ { \"fields\":[\"nested.field\"], \"compression\": \"lz4\" }, { "
+      "\"field\":\"1\"} ] }");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("storedValues[1]", errorField);
   }
 
   // .............................................................................
@@ -503,15 +551,15 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
 
   auto slice = builder.slice();
 
-  EXPECT_TRUE((10U == slice.length()));
+  EXPECT_EQ(12, slice.length());
   tmpSlice = slice.get("collections");
   EXPECT_TRUE((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("cleanupIntervalStep");
-  EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 10 == tmpSlice.getNumber<size_t>()));
+  EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 2 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("commitIntervalMsec");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 1000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationIntervalMsec");
-  EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
+  EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 10000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
   EXPECT_TRUE((true == tmpSlice.isObject() && 6 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("type");
@@ -540,6 +588,12 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   tmpSlice = slice.get("primarySort");
   EXPECT_TRUE(true == tmpSlice.isArray());
   EXPECT_TRUE(0 == tmpSlice.length());
+  tmpSlice = slice.get("primarySortCompression");
+  EXPECT_TRUE(tmpSlice.isString());
+  EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
+  tmpSlice = slice.get("storedValues");
+  EXPECT_TRUE(tmpSlice.isArray());
+  EXPECT_EQ(0, tmpSlice.length());
 }
 
 TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
@@ -607,6 +661,11 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
           arangodb::basics::AttributeName(VPackStringRef("nested")),
           arangodb::basics::AttributeName(VPackStringRef("field"))},
       false);
+  meta._primarySortCompression = irs::type<irs::compression::none>::id();
+  auto storedValuesJSON = arangodb::velocypack::Parser::fromJson("[[], [\"\"], [\"\"], [\"test.t\"], {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
+  std::string error;
+  meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);
+  EXPECT_TRUE(error.empty());
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = {42, 52, 62};
   arangodb::velocypack::Builder builder;
@@ -620,7 +679,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
 
   auto slice = builder.slice();
 
-  EXPECT_TRUE((10U == slice.length()));
+  EXPECT_EQ(12, slice.length());
   tmpSlice = slice.get("collections");
   EXPECT_TRUE((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -652,6 +711,10 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   tmpSlice = slice.get("writebufferSizeMax");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() && 12 == tmpSlice.getNumber<size_t>()));
 
+  tmpSlice = slice.get("primarySortCompression");
+  EXPECT_TRUE(tmpSlice.isString());
+  EXPECT_EQ("none", tmpSlice.copyString());
+
   tmpSlice = slice.get("primarySort");
   EXPECT_TRUE(true == tmpSlice.isArray());
   EXPECT_TRUE(2 == tmpSlice.length());
@@ -671,6 +734,13 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
     EXPECT_TRUE(meta._primarySort.direction(i) == directionSlice.getBoolean());
     ++i;
   }
+
+  tmpSlice = slice.get("storedValues");
+  EXPECT_TRUE(tmpSlice.isArray());
+  EXPECT_EQ(2, tmpSlice.length());
+  auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
+    "[{\"fields\":[\"test.t\"], \"compression\":\"lz4\"}, {\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
+  EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(expectedStoredValue->slice(), tmpSlice, true));
 }
 
 TEST_F(IResearchViewMetaTest, test_readMaskAll) {
@@ -693,22 +763,28 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
     \"version\": 42, \
     \"writebufferActive\": 10, \
     \"writebufferIdle\": 11, \
-    \"writebufferSizeMax\": 12 \
+    \"writebufferSizeMax\": 12, \
+    \"primarySort\":[{\"field\":\"aaa\", \"direction\":\"asc\"}],\
+    \"primarySortCompression\":\"none\",\
+    \"storedValues\":[{\"fields\":[\"foo\"], \"compression\":\"lz4\"}]\
   }");
-  EXPECT_TRUE(true == meta.init(json->slice(), errorField,
+  EXPECT_TRUE(meta.init(json->slice(), errorField,
                                 arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
-  EXPECT_TRUE((true == metaState.init(json->slice(), errorField,
+  EXPECT_TRUE(metaState.init(json->slice(), errorField,
                                       arangodb::iresearch::IResearchViewMetaState::DEFAULT(),
-                                      &maskState)));
-  EXPECT_TRUE((true == maskState._collections));
-  EXPECT_TRUE((true == mask._commitIntervalMsec));
-  EXPECT_TRUE(true == mask._consolidationIntervalMsec);
-  EXPECT_TRUE(true == mask._cleanupIntervalStep);
-  EXPECT_TRUE((true == mask._consolidationPolicy));
-  EXPECT_TRUE((false == mask._locale));
-  EXPECT_TRUE((true == mask._writebufferActive));
-  EXPECT_TRUE((true == mask._writebufferIdle));
-  EXPECT_TRUE((true == mask._writebufferSizeMax));
+                                      &maskState));
+  EXPECT_TRUE(maskState._collections);
+  EXPECT_TRUE(mask._commitIntervalMsec);
+  EXPECT_TRUE(mask._consolidationIntervalMsec);
+  EXPECT_TRUE(mask._cleanupIntervalStep);
+  EXPECT_TRUE(mask._consolidationPolicy);
+  EXPECT_FALSE(mask._locale); // intentionally disabled
+  EXPECT_TRUE(mask._writebufferActive);
+  EXPECT_TRUE(mask._writebufferIdle);
+  EXPECT_TRUE(mask._writebufferSizeMax);
+  EXPECT_TRUE(mask._primarySort);
+  EXPECT_TRUE(mask._storedValues);
+  EXPECT_TRUE(mask._primarySortCompression);
 }
 
 TEST_F(IResearchViewMetaTest, test_readMaskNone) {
@@ -721,20 +797,23 @@ TEST_F(IResearchViewMetaTest, test_readMaskNone) {
   std::string errorField;
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
-  EXPECT_TRUE(true == meta.init(json->slice(), errorField,
+  EXPECT_TRUE(meta.init(json->slice(), errorField,
                                 arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
-  EXPECT_TRUE((true == metaState.init(json->slice(), errorField,
+  EXPECT_TRUE(metaState.init(json->slice(), errorField,
                                       arangodb::iresearch::IResearchViewMetaState::DEFAULT(),
-                                      &maskState)));
-  EXPECT_TRUE((false == maskState._collections));
-  EXPECT_TRUE((false == mask._commitIntervalMsec));
-  EXPECT_TRUE(false == mask._consolidationIntervalMsec);
-  EXPECT_TRUE(false == mask._cleanupIntervalStep);
-  EXPECT_TRUE((false == mask._consolidationPolicy));
-  EXPECT_TRUE(false == mask._locale);
-  EXPECT_TRUE((false == mask._writebufferActive));
-  EXPECT_TRUE((false == mask._writebufferIdle));
-  EXPECT_TRUE((false == mask._writebufferSizeMax));
+                                      &maskState));
+  EXPECT_FALSE(maskState._collections);
+  EXPECT_FALSE(mask._commitIntervalMsec);
+  EXPECT_FALSE(mask._consolidationIntervalMsec);
+  EXPECT_FALSE(mask._cleanupIntervalStep);
+  EXPECT_FALSE(mask._consolidationPolicy);
+  EXPECT_FALSE(mask._locale);
+  EXPECT_FALSE(mask._writebufferActive);
+  EXPECT_FALSE(mask._writebufferIdle);
+  EXPECT_FALSE(mask._writebufferSizeMax);
+  EXPECT_FALSE(mask._primarySort);
+  EXPECT_FALSE(mask._storedValues);
+  EXPECT_FALSE(mask._primarySortCompression);
 }
 
 TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
@@ -745,24 +824,26 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  EXPECT_TRUE((true == meta.json(builder, nullptr, &mask)));
-  EXPECT_TRUE((true == metaState.json(builder, nullptr, &maskState)));
+  EXPECT_TRUE(meta.json(builder, nullptr, &mask));
+  EXPECT_TRUE(metaState.json(builder, nullptr, &maskState));
   builder.close();
 
   auto slice = builder.slice();
 
-  EXPECT_TRUE((10U == slice.length()));
-  EXPECT_TRUE(true == slice.hasKey("collections"));
-  EXPECT_TRUE(true == slice.hasKey("cleanupIntervalStep"));
-  EXPECT_TRUE((true == slice.hasKey("commitIntervalMsec")));
-  EXPECT_TRUE(true == slice.hasKey("consolidationIntervalMsec"));
-  EXPECT_TRUE(true == slice.hasKey("consolidationPolicy"));
-  EXPECT_TRUE((false == slice.hasKey("locale")));
-  EXPECT_TRUE((true == slice.hasKey("version")));
-  EXPECT_TRUE((true == slice.hasKey("writebufferActive")));
-  EXPECT_TRUE((true == slice.hasKey("writebufferIdle")));
-  EXPECT_TRUE((true == slice.hasKey("writebufferSizeMax")));
-  EXPECT_TRUE((true == slice.hasKey("primarySort")));
+  EXPECT_EQ(12, slice.length());
+  EXPECT_TRUE(slice.hasKey("collections"));
+  EXPECT_TRUE(slice.hasKey("cleanupIntervalStep"));
+  EXPECT_TRUE(slice.hasKey("commitIntervalMsec"));
+  EXPECT_TRUE(slice.hasKey("consolidationIntervalMsec"));
+  EXPECT_TRUE(slice.hasKey("consolidationPolicy"));
+  EXPECT_FALSE(slice.hasKey("locale"));
+  EXPECT_TRUE(slice.hasKey("version"));
+  EXPECT_TRUE(slice.hasKey("writebufferActive"));
+  EXPECT_TRUE(slice.hasKey("writebufferIdle"));
+  EXPECT_TRUE(slice.hasKey("writebufferSizeMax"));
+  EXPECT_TRUE(slice.hasKey("primarySort"));
+  EXPECT_TRUE(slice.hasKey("storedValues"));
+  EXPECT_TRUE(slice.hasKey("primarySortCompression"));
 }
 
 TEST_F(IResearchViewMetaTest, test_writeMaskNone) {

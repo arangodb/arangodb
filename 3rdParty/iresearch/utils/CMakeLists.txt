@@ -8,6 +8,14 @@ if (MSVC)
   add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 endif()
 
+include_directories( 
+  ${PROJECT_BINARY_DIR}/core
+)
+
+include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
+  ${FROZEN_INCLUDE_DIR}
+)
+
 ################################################################################
 ### iresearch-util
 ################################################################################
@@ -26,20 +34,18 @@ add_executable(${IResearchUtil_TARGET_NAME}
   ./main.cpp
 )
 
-target_include_directories(${IResearchUtil_TARGET_NAME}
-  PRIVATE ${PROJECT_BINARY_DIR}/core
+set_ipo(${IResearchUtil_TARGET_NAME})
+
+set_target_properties(${IResearchUtil_TARGET_NAME}
+  PROPERTIES
+  OUTPUT_NAME iresearch-index-util
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
 )
 
 set_target_properties(${IResearchUtil_TARGET_NAME}
   PROPERTIES
   OUTPUT_NAME iresearch-index-util
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
-)
-
-set_target_properties(${IResearchUtil_TARGET_NAME}
-  PROPERTIES
-  OUTPUT_NAME iresearch-index-util
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
 target_link_libraries(${IResearchUtil_TARGET_NAME}
@@ -79,6 +85,8 @@ add_executable(${IResearchBencmarks_TARGET_NAME}
   ./main.cpp
 )
 
+set_ipo(${IResearchBencmarks_TARGET_NAME})
+
 add_dependencies(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-format-1_0-static
@@ -86,14 +94,10 @@ add_dependencies(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
 
-target_include_directories(${IResearchBencmarks_TARGET_NAME}
-  PRIVATE ${PROJECT_BINARY_DIR}/core
-)
-
 set_target_properties(${IResearchBencmarks_TARGET_NAME}
   PROPERTIES
   OUTPUT_NAME iresearch-benchmarks
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
 if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
@@ -117,6 +121,52 @@ target_compile_features(${IResearchBencmarks_TARGET_NAME}
 include_directories(${IResearchBencmarks_TARGET_NAME}
   ${IResearch_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIRS}
+  ${CMDLINE_INCLUDE_DIR}
+)
+
+################################################################################
+### parametric-description-dump
+################################################################################
+
+set (IResearchPDD_TARGET_NAME
+  "iresearch-pdd"
+  CACHE INTERNAL
+  ""
+)
+
+add_executable(${IResearchPDD_TARGET_NAME}
+  ./common.cpp
+  ./pdd.cpp
+  ./main.cpp
+)
+
+set_ipo(${IResearchPDD_TARGET_NAME})
+
+add_dependencies(${IResearchPDD_TARGET_NAME}
+  ${IResearch_TARGET_NAME}-static-allinone
+)
+
+set_target_properties(${IResearchPDD_TARGET_NAME}
+  PROPERTIES
+  OUTPUT_NAME iresearch-pdd
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+)
+
+if (NOT MSVC AND GCC_VERSION VERSION_LESS 4.9)
+  # GCC before 4.9 does not support std::regex
+  set(REGEX_LIBRARY ${Boost_STATIC_sharedRT_REGEX_LIBRARY_RELEASE})
+endif()
+
+target_link_libraries(${IResearchPDD_TARGET_NAME}
+  ${IResearch_TARGET_NAME}-static-allinone
+  ${PTHREAD_LIBRARY}
+  ${ATOMIC_LIBRARY}
+  ${REGEX_LIBRARY}
+)
+
+include_directories(${IResearchPDD_TARGET_NAME}
+  ${IResearch_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
   ${CMDLINE_INCLUDE_DIR}
 )

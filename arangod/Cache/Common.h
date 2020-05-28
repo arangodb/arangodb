@@ -18,15 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_COMMON_H
 #define ARANGODB_CACHE_COMMON_H
 
-#include "Basics/Common.h"
-
-#include <stdint.h>
+#include <cstdint>
+#include <cstdlib>
 
 namespace arangodb {
 namespace cache {
@@ -34,7 +33,7 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Common size for all bucket types.
 ////////////////////////////////////////////////////////////////////////////////
-constexpr size_t BUCKET_SIZE = 128;
+constexpr std::size_t BUCKET_SIZE = 128;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Enum to specify cache types.
@@ -44,7 +43,7 @@ enum CacheType { Plain, Transactional };
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Enum to allow easy statistic recording across classes.
 ////////////////////////////////////////////////////////////////////////////////
-enum class Stat : uint8_t { findHit = 1, findMiss = 2 };
+enum class Stat : std::uint8_t { findHit = 1, findMiss = 2 };
 
 };  // end namespace cache
 };  // end namespace arangodb

@@ -26,15 +26,20 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
-FlushThread::FlushThread(uint64_t flushInterval)
-    : Thread("FlushThread"), _condition(), _flushInterval(flushInterval) {}
+FlushThread::FlushThread(FlushFeature& feature, uint64_t flushInterval)
+    : Thread(feature.server(), "FlushThread"),
+      _condition(),
+      _feature(feature),
+      _flushInterval(flushInterval) {}
 
 /// @brief begin shutdown sequence
 void FlushThread::beginShutdown() {
@@ -52,11 +57,8 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
-  auto* flushFeature =
-      application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
-
-  TRI_ASSERT(flushFeature != nullptr);
   size_t count = 0;
+  TRI_voc_tick_t tick = 0;
 
   while (!isStopping()) {
     try {
@@ -67,10 +69,13 @@ void FlushThread::run() {
         continue;
       }
 
-      flushFeature->releaseUnusedTicks(count);
+      _feature.releaseUnusedTicks(count, tick);
 
-      LOG_TOPIC_IF("2b2h1", DEBUG, arangodb::Logger::FLUSH, count)
-          << count << " flush subscription(s) released";
+      LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
+          << "Flush subscription(s) released: '" << count;
+
+      LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+          << "Tick released: '" << tick << "'";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

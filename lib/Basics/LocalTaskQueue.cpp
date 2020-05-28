@@ -27,9 +27,11 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb::basics;
+namespace arangodb {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a task tied to the specified queue
@@ -43,8 +45,7 @@ LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue)
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalTask::dispatch() {
-  auto self = shared_from_this();
-  _queue->post([self, this]() {
+  _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -53,6 +54,7 @@ void LocalTask::dispatch() {
       _queue->stopTask();
       throw;
     }
+    return true;
   });
 }
 
@@ -81,16 +83,19 @@ void LocalCallbackTask::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalCallbackTask::dispatch() {
-  auto self = shared_from_this();
-  _queue->post([self, this]() { run(); });
+  _queue->post([self = shared_from_this(), this]() { 
+    run(); 
+    return true;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue(PostFn poster)
-    : _poster(poster),
+LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster)
+    : _server(server),
+      _poster(poster),
       _queue(),
       _callbackQueue(),
       _condition(),
@@ -103,7 +108,7 @@ LocalTaskQueue::LocalTaskQueue(PostFn poster)
 /// @brief destroy the queue.
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::~LocalTaskQueue() {}
+LocalTaskQueue::~LocalTaskQueue() = default;
 
 void LocalTaskQueue::startTask() {
   CONDITION_LOCKER(guard, _condition);
@@ -139,7 +144,12 @@ void LocalTaskQueue::enqueueCallback(std::shared_ptr<LocalCallbackTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-void LocalTaskQueue::post(std::function<void()> fn) { _poster(fn); }
+void LocalTaskQueue::post(std::function<bool()> fn) { 
+  bool result = _poster(fn); 
+  if (!result) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join a single task. reduces the number of waiting tasks and wakes
@@ -182,8 +192,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 &&
-          application_features::ApplicationServer::isStopping()) {
+      if (_missing > 0 && _started == 0 && _server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -211,8 +220,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 &&
-          application_features::ApplicationServer::isStopping()) {
+      if (_missing > 0 && _started == 0 && _server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -238,3 +246,6 @@ int LocalTaskQueue::status() {
   MUTEX_LOCKER(locker, _mutex);
   return _status;
 }
+
+}  // namespace basics
+}  // namespace arangodb

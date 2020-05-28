@@ -24,16 +24,17 @@
 #ifndef ARANGODB_V8_JSLOADER_H
 #define ARANGODB_V8_JSLOADER_H 1
 
-#include "Basics/Common.h"
-#include "Utilities/ScriptLoader.h"
+#include <string>
 
 #include <v8.h>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Basics/Common.h"
+#include "Utilities/ScriptLoader.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
@@ -56,7 +57,7 @@ class JSLoader : public ScriptLoader {
   //////////////////////////////////////////////////////////////////////////////
 
   JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
-                              std::string const& name, VPackBuilder* builder);
+                              std::string const& name, velocypack::Builder* builder);
 };
 }  // namespace arangodb
 

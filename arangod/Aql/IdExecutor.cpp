@@ -21,67 +21,104 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IdExecutor.h"
+
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Aql/Stats.h"
 
 #include <algorithm>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
-                                 // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToKeep,
-                                 // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
-                    nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}
+IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
+                                 std::string distributeId, bool isResponsibleForInitializeCursor)
+    : _doCount(doCount),
+      _outputRegister(outputRegister),
+      _distributeId(std::move(distributeId)),
+      _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {
+  // We can only doCount in the case where this executor is used as a Return.
+  // And we can only have a distributeId if this executor is used as Gather.
+  TRI_ASSERT(!_doCount || _distributeId.empty());
+}
+
+auto IdExecutorInfos::doCount() const noexcept -> bool { return _doCount; }
+
+auto IdExecutorInfos::getOutputRegister() const noexcept -> RegisterId {
+  return _outputRegister;
+}
+
+std::string const& IdExecutorInfos::distributeId() { return _distributeId; }
+
+bool IdExecutorInfos::isResponsibleForInitializeCursor() const {
+  return _isResponsibleForInitializeCursor;
+}
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
-    : _fetcher(fetcher){};
+    : _fetcher(fetcher), _infos(infos) {
+  if (!infos.distributeId().empty()) {
+    _fetcher.setDistributeId(infos.distributeId());
+  }
+}
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
 template <class UsedFetcher>
-std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state;
-  NoStats stats;
+auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
+                                          OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, CountStats, AqlCall> {
+  CountStats stats;
+  TRI_ASSERT(output.numRowsWritten() == 0);
+  if (inputRange.hasDataRow()) {
+    TRI_ASSERT(!output.isFull());
+    TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    auto const& [state, inputRow] = inputRange.peekDataRow();
 
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::tie(state, inputRow) = _fetcher.fetchRow();
+    output.fastForwardAllRows(inputRow, inputRange.countDataRows());
 
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!inputRow);
-    return {state, std::move(stats)};
+    std::ignore = inputRange.skipAllRemainingDataRows();
+
+    TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  TRI_ASSERT(!inputRange.hasDataRow());
+  if (_infos.doCount()) {
+    stats.addCounted(output.numRowsWritten());
   }
 
-  if (!inputRow) {
-    TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, std::move(stats)};
+  return {inputRange.upstreamState(), stats, output.getClientCall()};
+}
+
+template <class UsedFetcher>
+auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, CountStats, size_t, AqlCall> {
+  CountStats stats;
+  size_t skipped = 0;
+  if (call.getLimit() > 0) {
+    // we can only account for offset
+    skipped = inputRange.skip(call.getOffset());
+  } else {
+    skipped = inputRange.skipAll();
   }
-
-  TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-  /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
-  output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
-  TRI_ASSERT(output.produced());
-
-  TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  return {state, std::move(stats)};
+  call.didSkip(skipped);
+  // TODO: Do we need to do counting here?
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;
 // ID can always pass through
-template class ::arangodb::aql::IdExecutor<SingleRowFetcher<true>>;
+template class ::arangodb::aql::IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>;

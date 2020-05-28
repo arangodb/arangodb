@@ -23,14 +23,25 @@
 
 #include "AgencyFeature.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/EndpointFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "RestServer/ScriptFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -56,79 +67,98 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
+      _supervisionOkThreshold(5.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  startsAfter("FoxxPhase");
+  startsAfter<FoxxFeaturePhase>();
 }
 
-AgencyFeature::~AgencyFeature() {}
+AgencyFeature::~AgencyFeature() = default;
 
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "Configure the agency");
 
   options->addOption("--agency.activate", "Activate agency",
-                     new BooleanParameter(&_activated));
+                     new BooleanParameter(&_activated),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
-  options->addOption("--agency.size", "number of agents", new UInt64Parameter(&_size));
+  options->addOption("--agency.size", "number of agents", 
+                     new UInt64Parameter(&_size),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.pool-size", "number of agent pool",
-                     new UInt64Parameter(&_poolSize));
+                     new UInt64Parameter(&_poolSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.election-timeout-min",
-      "minimum timeout before an agent calls for new election [s]",
-      new DoubleParameter(&_minElectionTimeout));
+      "minimum timeout before an agent calls for new election (in seconds)",
+      new DoubleParameter(&_minElectionTimeout),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.election-timeout-max",
-      "maximum timeout before an agent calls for new election [s]",
-      new DoubleParameter(&_maxElectionTimeout));
+      "maximum timeout before an agent calls for new election (in seconds)",
+      new DoubleParameter(&_maxElectionTimeout),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.endpoint", "agency endpoints",
-                     new VectorParameter<StringParameter>(&_agencyEndpoints));
+                     new VectorParameter<StringParameter>(&_agencyEndpoints),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.my-address",
                      "which address to advertise to the outside",
-                     new StringParameter(&_agencyMyAddress));
+                     new StringParameter(&_agencyMyAddress),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.supervision",
                      "perform arangodb cluster supervision",
-                     new BooleanParameter(&_supervision));
+                     new BooleanParameter(&_supervision),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.supervision-frequency",
-                     "arangodb cluster supervision frequency [s]",
-                     new DoubleParameter(&_supervisionFrequency));
+                     "arangodb cluster supervision frequency (in seconds)",
+                     new DoubleParameter(&_supervisionFrequency),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.supervision-grace-period",
-      "supervision time, after which a server is considered to have failed [s]",
-      new DoubleParameter(&_supervisionGracePeriod));
+      "supervision time, after which a server is considered to have failed (in seconds)",
+      new DoubleParameter(&_supervisionGracePeriod),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
+
+  options->addOption(
+      "--agency.supervision-ok-threshold",
+      "supervision time, after which a server is considered to be bad [s]",
+      new DoubleParameter(&_supervisionOkThreshold),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
                      new UInt64Parameter(&_compactionStepSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
-                     new UInt64Parameter(&_compactionKeepSize));
+                     new UInt64Parameter(&_compactionKeepSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.wait-for-sync",
                      "wait for hard disk syncs on every persistence call "
                      "(required in production)",
                      new BooleanParameter(&_waitForSync),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.max-append-size",
                      "maximum size of appendEntries document (# log entries)",
                      new UInt64Parameter(&_maxAppendSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.disaster-recovery-id",
                      "allows for specification of the id for this agent; "
                      "dangerous option for disaster recover only!",
                      new StringParameter(&_recoveryId),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -229,28 +259,27 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // turn off the following features, as they are not needed in an agency:
-  // - MMFilesPersistentIndex: not needed by agency even if MMFiles is
-  //   the selected storage engine
-  // - ArangoSearch: not needed by agency even if MMFiles is the selected
-  //   storage engine
+  // - ArangoSearch: not needed by agency 
   // - IResearchAnalyzer: analyzers are not needed by agency
-  // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  std::vector<std::string> disabledFeatures({
-    "MMFilesPersistentIndex", "ArangoSearch", "IResearchAnalyzer",
-    "Statistics", "Action", "Script", "FoxxQueues", "Frontend"});
+  std::vector<std::type_index> disabledFeatures(
+      {std::type_index(typeid(iresearch::IResearchFeature)),
+       std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
+       std::type_index(typeid(ActionFeature)),
+       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
+       std::type_index(typeid(FrontendFeature))});
 
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
-    // specifiying --console requires JavaScript, so we can only turn it off
+    // specifying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
-    disabledFeatures.emplace_back("V8Platform");
-    disabledFeatures.emplace_back("V8Dealer");
+    disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
+    disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
   }
 
-  application_features::ApplicationServer::disableFeatures(disabledFeatures);
+  server().disableFeatures(disabledFeatures);
 }
 
 void AgencyFeature::prepare() {
@@ -258,11 +287,11 @@ void AgencyFeature::prepare() {
 
   // Available after validateOptions of ClusterFeature
   // Find the agency prefix:
-  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (!feature->agencyPrefix().empty()) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  if (!feature.agencyPrefix().empty()) {
     arangodb::consensus::Supervision::setAgencyPrefix(std::string("/") +
-                                                      feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
+                                                      feature.agencyPrefix());
+    arangodb::consensus::Job::agencyPrefix = feature.agencyPrefix();
   }
 
   std::string endpoint;
@@ -271,9 +300,8 @@ void AgencyFeature::prepare() {
     std::string port = "8529";
 
     // Available after prepare of EndpointFeature
-    EndpointFeature* endpointFeature =
-        ApplicationServer::getFeature<EndpointFeature>("Endpoint");
-    auto endpoints = endpointFeature->httpEndpoints();
+    HttpEndpointProvider& endpointFeature = server().getFeature<HttpEndpointProvider>();
+    auto endpoints = endpointFeature.httpEndpoints();
 
     if (!endpoints.empty()) {
       std::string const& tmp = endpoints.front();
@@ -294,11 +322,13 @@ void AgencyFeature::prepare() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(new consensus::Agent(consensus::config_t(
-      _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
-      endpoint, _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
-      _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
-      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
+  _agent.reset(new consensus::Agent(
+      server(), consensus::config_t(_recoveryId, _size, _poolSize, _minElectionTimeout,
+                                    _maxElectionTimeout, endpoint, _agencyEndpoints,
+                                    _supervision, _supervisionTouched, _waitForSync,
+                                    _supervisionFrequency, _compactionStepSize,
+                                    _compactionKeepSize, _supervisionGracePeriod,
+                                    _supervisionOkThreshold,_cmdLineTimings, _maxAppendSize)));
 
   AGENT = _agent.get();
 }
@@ -326,7 +356,7 @@ void AgencyFeature::stop() {
   if (_agent->inception() != nullptr) {  // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("bf6a6", WARN, Logger::AGENCY)
@@ -338,7 +368,7 @@ void AgencyFeature::stop() {
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("5d3a5", WARN, Logger::AGENCY) << "waiting for agent thread to finish";

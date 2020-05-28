@@ -249,7 +249,7 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: i % 10, b: i % 5 });
       }
-      // this will use an index with the RocksDB engine, but not with MMFiles
+      // this will use an index with the RocksDB engine
       const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
@@ -268,7 +268,7 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1, 2, 3, 4, 5 ] });
       }
-      // this will use an index with the RocksDB engine, but not with MMFiles
+      // this will use an index with the RocksDB engine
       const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
@@ -278,7 +278,7 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1 ] });
       }
-      // this will use an index with the RocksDB engine, but not with MMFiles
+      // this will use an index with the RocksDB engine
       const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
@@ -288,7 +288,7 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
       }
-      // this will use an index with the RocksDB engine, but not with MMFiles
+      // this will use an index with the RocksDB engine
       const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
@@ -316,7 +316,7 @@ function arrayIndexSuite () {
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
       }
-      // this will use an index with the RocksDB engine, but not with MMFiles
+      // this will use an index with the RocksDB engine
       const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
@@ -562,19 +562,6 @@ function arrayIndexNonArraySuite () {
   const checkElementsInIndex = function (count) {
     var allIndexes = col.getIndexes(true);
     assertEqual(allIndexes.length, 2, "We have more than one index!");
-    var idx = allIndexes[1];
-    if (! isCluster && db._engine().name === "mmfiles") {
-      switch (idx.type) {
-        case "hash":
-          assertEqual(idx.figures.totalUsed, count);
-          break;
-        case "skiplist":
-          assertEqual(idx.figures.nrUsed, count);
-          break;
-        default:
-          assertTrue(false, "Unexpected index type");
-      }
-    }
   };
 
   return {

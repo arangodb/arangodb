@@ -34,6 +34,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortExecutor.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -44,24 +46,23 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
-namespace {
-}  // namespace
+namespace {}  // namespace
 
 // -----------------------------------------
 // - SECTION SINGLEROWFETCHER              -
 // -----------------------------------------
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     AqlItemBlockManager& manager,
     std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer, bool returnsWaiting)
     : SingleRowFetcherHelper(manager, 1, returnsWaiting,
                              vPackBufferToAqlItemBlock(manager, vPackBuffer)) {}
 
-template <bool passBlocksThrough>
-SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aql::AqlItemBlockManager& manager,
-                       size_t const blockSize, bool const returnsWaiting,
-                       ::arangodb::aql::SharedAqlItemBlockPtr input)
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
+    ::arangodb::aql::AqlItemBlockManager& manager, size_t const blockSize,
+    bool const returnsWaiting, ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
       _returnsWaiting(returnsWaiting),
       _nrItems(input == nullptr ? 0 : input->size()),
@@ -72,82 +73,77 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aq
   TRI_ASSERT(_blockSize > 0);
 }
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
 
-template <bool passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
-  TRI_ASSERT(_nrCalled <= _nrItems);
+  TRI_ASSERT(_nrReturned <= _nrItems);
   if (wait()) {
     // if once DONE is returned, always return DONE
-    if (_returnedDone) {
+    if (_returnedDoneOnFetchRow) {
       return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
     return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   _nrCalled++;
-  if (_nrCalled > _nrItems) {
-    _returnedDone = true;
+  if (_nrReturned >= _nrItems) {
+    _returnedDoneOnFetchRow = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curRowIndex};
+  auto res = SingleRowFetcher<passBlocksThrough>::fetchRow();
+  if (res.second.isInitialized()) {
+    _nrReturned++;
+  }
   nextRow();
-  ExecutionState state;
-  if (_nrCalled < _nrItems) {
-    state = ExecutionState::HASMORE;
-  } else {
-    _returnedDone = true;
-    state = ExecutionState::DONE;
+  if (res.first == ExecutionState::DONE) {
+    _returnedDoneOnFetchRow = true;
   }
-  return {state, _lastReturnedRow};
+  return res;
 }
 
-template <bool passBlocksThrough>
-std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
-  ExecutionState state = ExecutionState::HASMORE;
-
-  while (atMost > _skipped) {
-    InputAqlItemRow row{CreateInvalidInputRowHint{}};
-    std::tie(state, row) = fetchRow();
-    if (state == ExecutionState::WAITING) {
-      return {state, 0};
-    }
-    if (row.isInitialized()) {
-      ++_skipped;
-    }
-    if (state == ExecutionState::DONE) {
-      size_t skipped = _skipped;
-      _skipped = 0;
-      return {state, skipped};
-    }
-  }
-
-  size_t skipped = _skipped;
-  _skipped = 0;
-  return {state, skipped};
-}
-
-template <bool passBlocksThrough>
-std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
-SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const atMost) {
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+// NOLINTNEXTLINE google-default-arguments
+std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchShadowRow(size_t) {
+  // If this assertion fails, the Executor has fetched more rows after DONE.
+  TRI_ASSERT(_nrReturned <= _nrItems);
   if (wait()) {
-    return {ExecutionState::WAITING, nullptr};
+    // if once DONE is returned, always return DONE
+    if (_returnedDoneOnFetchShadowRow) {
+      return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+    }
+    return {ExecutionState::WAITING, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
   }
+  _nrCalled++;
+  // Allow for a shadow row
+  if (_nrReturned >= _nrItems) {
+    _returnedDoneOnFetchShadowRow = true;
+    return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
+  }
+  auto res = SingleRowFetcher<passBlocksThrough>::fetchShadowRow();
+  if (res.second.isInitialized()) {
+    _nrReturned++;
+  }
+  nextRow();
+  if (res.first == ExecutionState::DONE) {
+    _returnedDoneOnFetchShadowRow = true;
+  }
+  return res;
+}
 
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
+SingleRowFetcherHelper<passBlocksThrough>::fetchBlock(size_t const atMost) {
   size_t const remainingRows = _blockSize - _curIndexInBlock;
-  size_t const from = _curRowIndex;
-  size_t const to = _curRowIndex + remainingRows;
+  size_t const to = _curRowIndex + (std::min)(atMost, remainingRows);
 
-  bool const isLastBlock = _curRowIndex + _blockSize >= _nrItems;
-  bool const askingForMore = _curRowIndex + atMost > _nrItems;
-
-  bool const done = isLastBlock && askingForMore;
+  bool const done = to >= _nrItems;
 
   ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
-
-  return {state, _itemBlock->slice(from, to)};
+  SingleRowFetcherHelper<passBlocksThrough>::_upstreamState = state;
+  return {state, _itemBlock->slice(_curRowIndex, to)};
 }
 
 // -----------------------------------------
@@ -163,7 +159,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
       _nrRegs(0),
       _nrCalled(0),
       _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
+      _itemBlockManager(&_resourceMonitor, SerializationFormat::SHADOWROWS),
       _matrix(nullptr) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -231,7 +227,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
     if (nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       TRI_ASSERT(oneRow.isArray());
-      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
+      arangodb::aql::RegisterCount nrRegs =
+          static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
@@ -245,9 +242,9 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
 
 ConstFetcherHelper::~ConstFetcherHelper() = default;
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow() {
-  return ConstFetcher::fetchRow();
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcherHelper::fetchRow(size_t atMost) {
+  return ConstFetcher::fetchRow(atMost);
 };
 
-template class ::arangodb::tests::aql::SingleRowFetcherHelper<false>;
-template class ::arangodb::tests::aql::SingleRowFetcherHelper<true>;
+template class ::arangodb::tests::aql::SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable>;
+template class ::arangodb::tests::aql::SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable>;

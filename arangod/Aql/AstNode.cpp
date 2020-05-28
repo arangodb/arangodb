@@ -31,6 +31,7 @@
 #include "Aql/types.h"
 #include "Basics/FloatingPoint.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -48,6 +49,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 std::unordered_map<int, std::string const> const AstNode::Operators{
@@ -259,15 +261,17 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
   TRI_ASSERT(lhs != nullptr);
   TRI_ASSERT(rhs != nullptr);
 
+  bool isValid = true;
   if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    lhs = Ast::resolveConstAttributeAccess(lhs);
+    lhs = Ast::resolveConstAttributeAccess(lhs, isValid);
   }
+  VPackValueType const lType = isValid ? getNodeCompareType(lhs) : VPackValueType::Null;
+  
+  isValid = true;
   if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    rhs = Ast::resolveConstAttributeAccess(rhs);
+    rhs = Ast::resolveConstAttributeAccess(rhs, isValid);
   }
-
-  auto lType = getNodeCompareType(lhs);
-  auto rType = getNodeCompareType(rhs);
+  VPackValueType const rType = isValid ? getNodeCompareType(rhs) : VPackValueType::Null;
 
   if (lType != rType) {
     if (lType == VPackValueType::Int && rType == VPackValueType::Double) {
@@ -373,10 +377,20 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
       // afford the inefficiency to convert the node to VPack
       // for comparison (this saves us from writing our own compare function
       // for array AstNodes)
-      auto l = lhs->toVelocyPackValue();
-      auto r = rhs->toVelocyPackValue();
+      VPackBuilder builder;
+      // add the first Slice to the Builder
+      lhs->toVelocyPackValue(builder);
 
-      return basics::VelocyPackHelper::compare(l->slice(), r->slice(), compareUtf8);
+      // note the length of the first Slice
+      VPackValueLength split = builder.size();
+
+      // add the second Slice to the same Builder
+      rhs->toVelocyPackValue(builder);
+
+      return basics::VelocyPackHelper::compare(
+          builder.slice() /*lhs*/, 
+          VPackSlice(builder.start() + split) /*rhs*/, 
+          compareUtf8);
     }
 
     default: {
@@ -388,7 +402,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
 
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), computedValue(nullptr) {
+    : type(type), flags(0), _computedValue(nullptr) {
   // properly zero-initialize all members
   value.value._int = 0;
   value.length = 0;
@@ -401,15 +415,13 @@ AstNode::AstNode(AstNodeValue const& value)
       flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE,
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
       value(value),
-      computedValue(nullptr) {}
+      _computedValue(nullptr) {}
 
 /// @brief create the node from VPack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
-
-  auto query = ast->query();
+  TRI_ASSERT(_computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
@@ -421,11 +433,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       value.type = VALUE_TYPE_STRING;
       VPackSlice v = slice.get("name");
       if (v.isNone()) {
-        setStringValue(query->registerString("", 0), 0);
+        setStringValue(ast->resources().registerString("", 0), 0);
       } else {
         VPackValueLength l;
         char const* p = v.getString(l);
-        setStringValue(query->registerString(p, l), l);
+        setStringValue(ast->resources().registerString(p, l), l);
       }
       break;
     }
@@ -450,10 +462,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
           VPackSlice v = slice.get("value");
           VPackValueLength l;
           char const* p = v.getString(l);
-          setStringValue(query->registerString(p, l), l);
+          setStringValue(ast->resources().registerString(p, l), l);
           break;
         }
-        default: {}
+        default: {
+        }
       }
       break;
     }
@@ -479,7 +492,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
       VPackSlice v = slice.get("name");
       VPackValueLength l;
       char const* p = v.getString(l);
-      setStringValue(query->registerString(p, l), l);
+      setStringValue(ast->resources().registerString(p, l), l);
       break;
     }
     case NODE_TYPE_EXPANSION: {
@@ -587,11 +600,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     members.reserve(subNodes.length());
 
     try {
-      for (auto const& it : VPackArrayIterator(subNodes)) {
-        int type = it.get("typeID").getNumericValue<int>();
-        if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
+      for (VPackSlice it : VPackArrayIterator(subNodes)) {
+        int t = it.get("typeID").getNumericValue<int>();
+        if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
           // special handling for nop as it is a singleton
-          addMember(Ast::getNodeNop());
+          addMember(ast->createNodeNop());
         } else {
           addMember(new AstNode(ast, it));
         }
@@ -607,7 +620,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     }
   }
 
-  ast->query()->addNode(this);
+  ast->resources().addNode(this);
 }
 
 /// @brief create the node
@@ -616,7 +629,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
                  arangodb::velocypack::Slice const& slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedValue == nullptr);
+  TRI_ASSERT(_computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -649,7 +662,8 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
           setStringValue(registerString(str), str.size());
           break;
         }
-        default: {}
+        default: {
+        }
       }
       break;
     }
@@ -697,7 +711,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
     case NODE_TYPE_WITH:
-    case NODE_TYPE_FOR_VIEW: {
+    case NODE_TYPE_FOR_VIEW: { 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Unsupported node type");
     }
@@ -745,7 +759,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
   VPackSlice subNodes = slice.get("subNodes");
 
   if (subNodes.isArray()) {
-    for (auto const& it : VPackArrayIterator(subNodes)) {
+    for (VPackSlice it : VPackArrayIterator(subNodes)) {
       addMember(new AstNode(registerNode, registerString, it));
     }
   }
@@ -755,9 +769,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-  }
+  freeComputedValue();
 }
 
 /// @brief return the string value of a node, as an std::string
@@ -858,7 +870,9 @@ std::ostream& AstNode::toStream(std::ostream& os, int level) const {
   os << "- " << getTypeString();
 
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    os << ": " << toVelocyPackValue().get()->toJson();
+    VPackBuilder b;
+    toVelocyPackValue(b);
+    os << ": " << b.toJson();
   } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     os << ": " << getString();
   } else if (type == NODE_TYPE_REFERENCE) {
@@ -880,20 +894,36 @@ void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
-VPackSlice AstNode::computeValue() const {
+VPackSlice AstNode::computeValue(VPackBuilder* builder) const {
   TRI_ASSERT(isConstant());
 
-  if (computedValue == nullptr) {
-    VPackBuilder builder;
-    toVelocyPackValue(builder);
+  if (_computedValue == nullptr) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
 
-    computedValue = new uint8_t[builder.size()];
-    memcpy(computedValue, builder.data(), builder.size());
+    if (builder == nullptr) {
+      VPackBuilder b;
+      computeValue(b);
+    } else {
+      builder->clear();
+      computeValue(*builder);
+    }
   }
 
-  TRI_ASSERT(computedValue != nullptr);
+  TRI_ASSERT(_computedValue != nullptr);
 
-  return VPackSlice(computedValue);
+  return VPackSlice(_computedValue);
+}
+
+/// @brief internal function for actually computing the constant value
+/// and storing it
+void AstNode::computeValue(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isEmpty());
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  toVelocyPackValue(builder);
+
+  TRI_ASSERT(_computedValue == nullptr);
+  _computedValue = new uint8_t[builder.size()];
+  memcpy(_computedValue, builder.data(), builder.size());
 }
 
 /// @brief sort the members of an (array) node
@@ -936,7 +966,9 @@ std::string const& AstNode::getValueTypeString() const {
 
 /// @brief stringify the AstNode
 std::string AstNode::toString(AstNode const* node) {
-  return node->toVelocyPack(false)->toJson();
+  VPackBuilder builder;
+  node->toVelocyPack(builder, false);
+  return builder.toJson();
 }
 
 /// @brief checks whether we know a type of this kind; throws exception if not.
@@ -965,16 +997,6 @@ AstNodeType AstNode::getNodeTypeFromVPack(arangodb::velocypack::Slice const& sli
   int type = slice.get("typeID").getNumericValue<int>();
   validateType(type);
   return static_cast<AstNodeType>(type);
-}
-
-/// @brief return a VelocyPack representation of the node value
-std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
-  auto builder = std::make_shared<VPackBuilder>();
-  if (builder == nullptr) {
-    return nullptr;
-  }
-  toVelocyPackValue(*builder);
-  return builder;
 }
 
 /// @brief build a VelocyPack representation of the node value
@@ -1041,34 +1063,24 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // TODO Could this be done more efficiently in the builder in place?
-    auto tmp = getMember(0)->toVelocyPackValue();
-    if (tmp != nullptr) {
-      VPackSlice slice = tmp->slice();
-      if (slice.isObject()) {
-        slice = slice.get(getString());
-        if (!slice.isNone()) {
-          builder.add(slice);
-          return;
-        }
+    VPackBuilder tmp;
+    getMember(0)->toVelocyPackValue(tmp);
+
+    VPackSlice slice = tmp.slice();
+    if (slice.isObject()) {
+      slice = slice.get(getString());
+      if (!slice.isNone()) {
+        builder.add(slice);
+        return;
       }
-      builder.add(VPackValue(VPackValueType::Null));
     }
+    builder.add(VPackValue(VPackValueType::Null));
   }
 
   // Do not add anything.
 }
 
-/// @brief return a VelocyPack representation of the node
-std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
-  auto builder = std::make_shared<VPackBuilder>();
-  if (builder == nullptr) {
-    return nullptr;
-  }
-  toVelocyPack(*builder, verbose);
-  return builder;
-}
-
-/// @brief Create a VelocyPack representation of the node
+/// @brief create a VelocyPack representation of the node
 void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   VPackObjectBuilder guard(&builder);
 
@@ -1174,7 +1186,7 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
 /// boolean value node
 AstNode const* AstNode::castToBool(Ast* ast) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return Ast::resolveConstAttributeAccess(this)->castToBool(ast);
+    return ast->resolveConstAttributeAccess(this)->castToBool(ast);
   }
 
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT);
@@ -1193,7 +1205,8 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
         return ast->createNodeValueBool(value.value._double != 0.0);
       case VALUE_TYPE_STRING:
         return ast->createNodeValueBool(value.length > 0);
-      default: {}
+      default: {
+      }
     }
     // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
@@ -1210,7 +1223,7 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
 /// numeric value node
 AstNode const* AstNode::castToNumber(Ast* ast) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return Ast::resolveConstAttributeAccess(this)->castToNumber(ast);
+    return ast->resolveConstAttributeAccess(this)->castToNumber(ast);
   }
 
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT);
@@ -1268,7 +1281,8 @@ int64_t AstNode::getIntValue() const {
         return value.value._int;
       case VALUE_TYPE_DOUBLE:
         return static_cast<int64_t>(value.value._double);
-      default: {}
+      default: {
+      }
     }
   }
 
@@ -1285,7 +1299,8 @@ double AstNode::getDoubleValue() const {
         return static_cast<double>(value.value._int);
       case VALUE_TYPE_DOUBLE:
         return value.value._double;
-      default: {}
+      default: {
+      }
     }
   }
 
@@ -1295,8 +1310,10 @@ double AstNode::getDoubleValue() const {
 /// @brief whether or not the node value is trueish
 bool AstNode::isTrue() const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
-    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
-    return resolved->isTrue();
+    bool isValid;
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this, isValid);
+    // TO_BOOL(null) => false, so isTrue(false) => false
+    return isValid ? resolved->isTrue() : false;
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -1337,8 +1354,10 @@ bool AstNode::isTrue() const {
 /// @brief whether or not the node value is falsey
 bool AstNode::isFalse() const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
-    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
-    return resolved->isFalse();
+    bool isValid;
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this, isValid);
+    // TO_BOOL(null) => false, so isFalse(false) => true
+    return isValid ? resolved->isFalse() : true;
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -1427,7 +1446,7 @@ bool AstNode::isAttributeAccessForVariable(
 
       // check if the expansion uses a projection. if yes, we cannot use an
       // index for it
-      if (node->getMember(4) != Ast::getNodeNop()) {
+      if (node->getMember(4) != nullptr && node->getMember(4)->type != NODE_TYPE_NOP) {
         // [* RETURN projection]
         result.second.clear();
         return false;
@@ -1578,12 +1597,33 @@ bool AstNode::willUseV8() const {
     // check if the called function is one of them
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
-
+    
     if (func->implementation == nullptr) {
-      // a function without a V8 implementation
+      // a function without a C++ implementation
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
+    
+    if (func->name == "CALL" || func->name == "APPLY") {
+      // CALL and APPLY can call arbitrary other functions...
+      if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
+        auto s = getMemberUnchecked(0)->getStringRef();
+        if (s.find(':') != std::string::npos) {
+          // a user-defined function.
+          // this will use V8
+          setFlag(DETERMINED_V8, VALUE_V8);
+          return true;
+        }
+        // fallthrough intentional
+      } else {
+        // we are unsure about what function will be called by 
+        // CALL and APPLY. We cannot rule out user-defined functions,
+        // so we assume the worst case here
+        setFlag(DETERMINED_V8, VALUE_V8);
+        return true;
+      }
+    }
+
   }
 
   size_t const n = numMembers();
@@ -2092,19 +2132,19 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
     buffer->appendChar(',');
 
     auto filterNode = getMember(2);
-    if (filterNode != nullptr && filterNode != Ast::getNodeNop()) {
+    if (filterNode != nullptr && filterNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" FILTER "));
       filterNode->getMember(0)->stringify(buffer, verbose, failIfLong);
     }
     auto limitNode = getMember(3);
-    if (limitNode != nullptr && limitNode != Ast::getNodeNop()) {
+    if (limitNode != nullptr && limitNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" LIMIT "));
       limitNode->getMember(0)->stringify(buffer, verbose, failIfLong);
       buffer->appendChar(',');
       limitNode->getMember(1)->stringify(buffer, verbose, failIfLong);
     }
     auto returnNode = getMember(4);
-    if (returnNode != nullptr && returnNode != Ast::getNodeNop()) {
+    if (returnNode != nullptr && returnNode->type != NODE_TYPE_NOP) {
       buffer->appendText(TRI_CHAR_LENGTH_PAIR(" RETURN "));
       returnNode->stringify(buffer, verbose, failIfLong);
     }
@@ -2180,9 +2220,14 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
   if (type == NODE_TYPE_OPERATOR_TERNARY) {
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar('?');
-    getMember(1)->stringify(buffer, verbose, failIfLong);
-    buffer->appendChar(':');
-    getMember(2)->stringify(buffer, verbose, failIfLong);
+    if (numMembers() == 3) {
+      getMember(1)->stringify(buffer, verbose, failIfLong);
+      buffer->appendChar(':');
+      getMember(2)->stringify(buffer, verbose, failIfLong);
+    } else {
+      buffer->appendChar(':');
+      getMember(1)->stringify(buffer, verbose, failIfLong);
+    }
     return;
   }
 
@@ -2576,35 +2621,6 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-void AstNode::stealComputedValue() {
-  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  if (computedValue != nullptr) {
-    delete[] computedValue;
-    computedValue = nullptr;
-  }
-}
-
-/// @brief Removes all members from the current node that are also
-///        members of the other node (ignoring ording)
-///        Can only be applied if this and other are of type
-///        n-ary-and
-void AstNode::removeMembersInOtherAndNode(AstNode const* other) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_AND);
-  for (size_t i = 0; i < other->numMembers(); ++i) {
-    auto theirs = other->getMemberUnchecked(i);
-    for (size_t j = 0; j < numMembers(); ++j) {
-      auto ours = getMemberUnchecked(j);
-      // NOTE: Pointer comparison on purpose.
-      // We do not want to reduce equivalent but identical nodes
-      if (ours == theirs) {
-        removeMemberUnchecked(j);
-        break;
-      }
-    }
-  }
-}
-
 void AstNode::markFinalized(AstNode* subtreeRoot) {
   if ((nullptr == subtreeRoot) || subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
@@ -2615,6 +2631,303 @@ void AstNode::markFinalized(AstNode* subtreeRoot) {
   for (size_t i = 0; i < n; ++i) {
     markFinalized(subtreeRoot->getMemberUnchecked(i));
   }
+}
+
+template <typename... Args>
+std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags(AstNodeFlagType flag,
+                                                               Args... args) {
+  return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) +
+         makeFlags(args...);
+}
+
+std::underlying_type<AstNodeFlagType>::type AstNode::makeFlags() {
+  return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
+}
+
+bool AstNode::hasFlag(AstNodeFlagType flag) const {
+  return ((flags & static_cast<decltype(flags)>(flag)) != 0);
+}
+
+void AstNode::clearFlags() { 
+  // clear all flags but this one
+  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST; 
+}
+
+void AstNode::setFlag(AstNodeFlagType flag) const { flags |= flag; }
+
+void AstNode::setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const {
+  flags |= (typeFlag | valueFlag);
+}
+
+void AstNode::removeFlag(AstNodeFlagType flag) const { flags &= ~flag; }
+
+bool AstNode::isSorted() const {
+  return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
+}
+
+bool AstNode::isNullValue() const {
+  return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_NULL);
+}
+
+bool AstNode::isIntValue() const {
+  return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_INT);
+}
+
+bool AstNode::isDoubleValue() const {
+  return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_DOUBLE);
+}
+
+bool AstNode::isNumericValue() const {
+  return (type == NODE_TYPE_VALUE &&
+          (value.type == VALUE_TYPE_INT || value.type == VALUE_TYPE_DOUBLE));
+}
+
+bool AstNode::isBoolValue() const {
+  return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_BOOL);
+}
+
+bool AstNode::isStringValue() const {
+  return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING);
+}
+
+bool AstNode::isArray() const { return (type == NODE_TYPE_ARRAY); }
+
+bool AstNode::isObject() const { return (type == NODE_TYPE_OBJECT); }
+
+AstNode const* AstNode::getAttributeAccessForVariable(bool allowIndexedAccess) const {
+  if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION &&
+      !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
+    return nullptr;
+  }
+
+  auto node = this;
+
+  while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+         (allowIndexedAccess && node->type == NODE_TYPE_INDEXED_ACCESS) ||
+         node->type == NODE_TYPE_EXPANSION) {
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS || node->type == NODE_TYPE_INDEXED_ACCESS) {
+      node = node->getMember(0);
+    } else {
+      // expansion, i.e. [*]
+      TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
+      TRI_ASSERT(node->numMembers() >= 2);
+
+      if (node->getMember(1)->type != NODE_TYPE_REFERENCE) {
+        if (node->getMember(1)->getAttributeAccessForVariable(allowIndexedAccess) == nullptr) {
+          return nullptr;
+        }
+      }
+
+      TRI_ASSERT(node->getMember(0)->type == NODE_TYPE_ITERATOR);
+
+      node = node->getMember(0)->getMember(1);
+    }
+  }
+
+  if (node->type == NODE_TYPE_REFERENCE) {
+    return node;
+  }
+
+  return nullptr;
+}
+
+bool AstNode::isAttributeAccessForVariable() const {
+  return (getAttributeAccessForVariable(false) != nullptr);
+}
+
+bool AstNode::isAttributeAccessForVariable(Variable const* variable,
+                                           bool allowIndexedAccess) const {
+  auto node = getAttributeAccessForVariable(allowIndexedAccess);
+
+  if (node == nullptr) {
+    return false;
+  }
+
+  return (static_cast<Variable const*>(node->getData()) == variable);
+}
+
+size_t AstNode::numMembers() const noexcept { return members.size(); }
+
+void AstNode::reserve(size_t n) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  members.reserve(n);
+}
+
+void AstNode::addMember(AstNode* node) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  if (node == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  try {
+    members.emplace_back(node);
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
+
+void AstNode::addMember(AstNode const* node) {
+  addMember(const_cast<AstNode*>(node));
+}
+
+void AstNode::changeMember(size_t i, AstNode* node) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  if (i >= members.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
+  }
+  members[i] = node;
+}
+
+void AstNode::removeMemberUnchecked(size_t i) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  members.erase(members.begin() + i);
+}
+
+void AstNode::removeMemberUncheckedUnordered(size_t i) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  std::swap(members[i], members.back());
+  members.pop_back();
+}
+
+AstNode* AstNode::getMember(size_t i) const {
+  if (i >= members.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
+  }
+  return getMemberUnchecked(i);
+}
+
+AstNode* AstNode::getMemberUnchecked(size_t i) const noexcept {
+  return members[i];
+}
+
+void AstNode::sortMembers(std::function<bool(AstNode const*, AstNode const*)> const& func) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  std::sort(members.begin(), members.end(), func);
+}
+
+void AstNode::reduceMembers(size_t i) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  if (i > members.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
+  }
+  members.erase(members.begin() + i, members.end());
+}
+
+void AstNode::clearMembers() {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  members.clear();
+}
+
+void AstNode::setExcludesNull(bool v) {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
+             type == NODE_TYPE_OPERATOR_BINARY_EQ);
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  value.value._bool = v;
+}
+
+bool AstNode::getExcludesNull() const noexcept {
+  TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
+             type == NODE_TYPE_OPERATOR_BINARY_EQ);
+  return value.value._bool;
+}
+
+void AstNode::setValueType(AstNodeValueType t) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  value.type = t;
+}
+
+bool AstNode::isValueType(AstNodeValueType expectedType) const noexcept {
+  return value.type == expectedType;
+}
+
+bool AstNode::getBoolValue() const noexcept { return value.value._bool; }
+
+void AstNode::setBoolValue(bool v) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
+  freeComputedValue();
+  value.value._bool = v;
+}
+
+int64_t AstNode::getIntValue(bool) const noexcept { return value.value._int; }
+
+void AstNode::setIntValue(int64_t v) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  freeComputedValue();
+  value.value._int = v;
+}
+
+void AstNode::setDoubleValue(double v) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
+  freeComputedValue();
+  value.value._double = v;
+}
+
+char const* AstNode::getStringValue() const { return value.value._string; }
+size_t AstNode::getStringLength() const {
+  return static_cast<size_t>(value.length);
+}
+
+void AstNode::setStringValue(char const* v, size_t length) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
+  freeComputedValue();
+  // note: v may contain the NUL byte and is not necessarily
+  // null-terminated itself (if from VPack)
+  value.type = VALUE_TYPE_STRING;
+  value.value._string = v;
+  value.length = static_cast<uint32_t>(length);
+}
+
+bool AstNode::stringEqualsCaseInsensitive(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
+  return (other.size() == getStringLength() &&
+          strncasecmp(other.c_str(), getStringValue(), getStringLength()) == 0);
+}
+
+bool AstNode::stringEquals(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
+  return (other.size() == getStringLength() &&
+          memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
+}
+
+void* AstNode::getData() const { return value.value._data; }
+
+void AstNode::setData(void* v) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+
+  freeComputedValue();
+  value.value._data = v;
+}
+
+void AstNode::setData(void const* v) {
+  setData(const_cast<void*>(v));
+}
+
+void AstNode::freeComputedValue() {
+  if (_computedValue != nullptr && !hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST)) {
+    delete[] _computedValue;
+    _computedValue = nullptr;
+  }
+}
+
+void AstNode::setComputedValue(uint8_t* data) {
+  TRI_ASSERT(isConstant());
+  TRI_ASSERT(hasFlag(AstNodeFlagType::FLAG_INTERNAL_CONST));
+  _computedValue = data;
 }
 
 /// @brief append the AstNode to an output stream
@@ -2629,4 +2942,42 @@ std::ostream& operator<<(std::ostream& stream, arangodb::aql::AstNode const* nod
 std::ostream& operator<<(std::ostream& stream, arangodb::aql::AstNode const& node) {
   stream << arangodb::aql::AstNode::toString(&node);
   return stream;
+}
+
+AstNodeValue::Value::Value(int64_t value) : _int(value) {}
+
+AstNodeValue::Value::Value(double value) : _double(value) {}
+
+AstNodeValue::Value::Value(bool value) : _bool(value) {}
+
+AstNodeValue::Value::Value(char const* value) : _string(value) {}
+
+AstNodeValue::AstNodeValue()
+    : value(int64_t(0)), length(0), type(VALUE_TYPE_NULL) {}
+
+AstNodeValue::AstNodeValue(int64_t value)
+    : value(value), length(0), type(VALUE_TYPE_INT) {}
+
+AstNodeValue::AstNodeValue(double value)
+    : value(value), length(0), type(VALUE_TYPE_DOUBLE) {}
+
+AstNodeValue::AstNodeValue(bool value)
+    : value(value), length(0), type(VALUE_TYPE_BOOL) {}
+
+AstNodeValue::AstNodeValue(char const* value, uint32_t length)
+    : value(value), length(length), type(VALUE_TYPE_STRING) {}
+
+template <bool useUtf8>
+bool AstNodeValueLess<useUtf8>::operator()(AstNode const* lhs, AstNode const* rhs) const {
+  return CompareAstNodes(lhs, rhs, useUtf8) < 0;
+}
+template struct ::arangodb::aql::AstNodeValueLess<true>;
+template struct ::arangodb::aql::AstNodeValueLess<false>;
+
+size_t AstNodeValueHash::operator()(AstNode const* value) const noexcept {
+  return static_cast<size_t>(value->hashValue(0x12345678));
+}
+
+bool AstNodeValueEqual::operator()(AstNode const* lhs, AstNode const* rhs) const {
+  return CompareAstNodes(lhs, rhs, false) == 0;
 }

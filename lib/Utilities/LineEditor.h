@@ -24,6 +24,8 @@
 #ifndef ARANGODB_UTILITIES_LINE_EDITOR_H
 #define ARANGODB_UTILITIES_LINE_EDITOR_H 1
 
+#include <functional>
+
 #include "Basics/Common.h"
 #include "Utilities/ShellBase.h"
 

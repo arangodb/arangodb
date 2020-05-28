@@ -1,0 +1,72 @@
+# Boost Endian Library test Jamfile
+
+# Copyright Beman Dawes 2006, 2013
+# Copyright 2018, 2019 Peter Dimov
+
+# Distributed under the Boost Software License, Version 1.0.
+# See http://www.boost.org/LICENSE_1_0.txt
+
+# See library home page at http://www.boost.org/libs/endian
+
+import testing ;
+
+project
+  : default-build
+
+    <warnings>all
+
+  : requirements
+
+    <toolset>msvc:<warnings-as-errors>on
+
+    <toolset>gcc:<cxxflags>-Wno-long-long
+    <toolset>gcc-4.4.7:<cxxflags>-Wno-strict-aliasing
+    <toolset>gcc-4.4.7:<cxxflags>-Wno-sign-compare
+    <toolset>gcc:<warnings-as-errors>on
+
+    <toolset>clang:<cxxflags>-Wno-long-long
+    <toolset>clang:<warnings-as-errors>on
+  ;
+
+run buffer_test.cpp ;
+run buffer_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : buffer_test_ni ;
+
+run endian_test.cpp ;
+run endian_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_test_ni ;
+
+run endian_operations_test.cpp ;
+run endian_operations_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_operations_test_ni ;
+
+run endian_in_union_test.cpp ;
+
+run conversion_test.cpp ;
+run conversion_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : conversion_test_ni ;
+
+run intrinsic_test.cpp ;
+
+run quick.cpp ;
+
+local allow-warnings =
+    "-<toolset>msvc:<warnings-as-errors>on"
+    "-<toolset>gcc:<warnings-as-errors>on"
+    "-<toolset>clang:<warnings-as-errors>on" ;
+
+compile spirit_conflict_test.cpp
+  : $(allow-warnings) ;
+
+run endian_reverse_test.cpp ;
+run endian_reverse_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_reverse_test_ni ;
+
+run endian_load_test.cpp ;
+run endian_load_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_load_test_ni ;
+
+run endian_store_test.cpp ;
+run endian_store_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_store_test_ni ;
+
+run endian_ld_st_roundtrip_test.cpp ;
+run endian_ld_st_roundtrip_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_ld_st_roundtrip_test_ni ;
+
+run endian_arithmetic_test.cpp ;
+run endian_arithmetic_test.cpp : : : <define>BOOST_ENDIAN_NO_INTRINSICS : endian_arithmetic_test_ni ;
+
+run deprecated_test.cpp ;

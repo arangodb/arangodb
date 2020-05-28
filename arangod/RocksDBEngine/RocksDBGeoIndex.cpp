@@ -84,7 +84,7 @@ class RDBNearIterator final : public IndexIterator {
     return !_near.isDone();
   }
 
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override {
+  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
@@ -100,11 +100,12 @@ class RDBNearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;
-                    return;
+                    return false;
                   }
                 }
                 cb(gdoc.token, doc);  // return document
                 result = true;
+                return true;
               })) {
             return false;  // ignore document
           }
@@ -113,7 +114,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           geo::FilterType const ft = _near.filterType();
@@ -129,7 +130,9 @@ class RDBNearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;
+                    return false;
                   }
+                  return true;
                 })) {
               return false;
             }
@@ -144,7 +147,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  void reset() override {
+  void resetImpl() override {
     _near.reset();
     estimateDensity();
   }
@@ -166,7 +169,7 @@ class RDBNearIterator final : public IndexIterator {
       RocksDBKeyBounds bds =
           RocksDBKeyBounds::GeoIndex(_index->objectId(), it.range_min.id(),
                                      it.range_max.id());
-
+      
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
@@ -197,9 +200,8 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        LocalDocumentId documentId =
-            RocksDBKey::indexDocumentId(RocksDBEntryType::GeoIndexValue, _iter->key());
-        _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
+        _near.reportFound(RocksDBKey::indexDocumentId(_iter->key()),
+                          RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
     
@@ -233,13 +235,13 @@ class RDBNearIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 
-RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid.isSet());
   _unique = false;
   _sparse = true;
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
@@ -253,10 +255,6 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
   RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
-  // geo indexes are always non-unique
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  // geo indexes are always sparse.
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
   builder.close();
 }
 
@@ -281,7 +279,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
     // Short circuit. If id is correct the index is identical.
     arangodb::velocypack::StringRef idRef(value);
-    return idRef == std::to_string(_iid);
+    return idRef == std::to_string(_iid.id());
   }
 
   if (_unique != basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IndexUnique,
@@ -373,7 +371,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
                                velocypack::Slice const& doc,
-                               arangodb::Index::OperationMode mode) {
+                               arangodb::OperationOptions& options) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
@@ -400,7 +398,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(!_unique);
 
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     TRI_ASSERT(key->containsLocalDocumentId(documentId));
  
     rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
@@ -443,7 +441,7 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));

@@ -57,7 +57,7 @@ function ahuacatlSkiplistOverlappingTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
       
@@ -68,14 +68,13 @@ function ahuacatlSkiplistOverlappingTestSuite () {
       collection.ensureIndex({type: 'skiplist', name: 'skip_a_b', fields: ['a', 'b']});
       collection.ensureIndex({type: 'skiplist', name: 'skip_b_a', fields: ['b', 'a']});
       
-      const isMMFiles = db._engine().name === "mmfiles";
-      defaultEqualityIndex = isMMFiles ? 'skip_a' : 'hash_a';
-      alternateEqualityIndex = isMMFiles ? 'hash_a' : 'skip_a';
-      defaultSortingIndex = isMMFiles ? 'skip_a' : 'hash_a';
+      defaultEqualityIndex = 'hash_a';
+      alternateEqualityIndex = 'skip_a';
+      defaultSortingIndex = 'hash_a';
       alternateSortingIndex = 'skip_a_b';
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(cn);
     },
 

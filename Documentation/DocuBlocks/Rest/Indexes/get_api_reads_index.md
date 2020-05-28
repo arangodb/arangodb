@@ -2,12 +2,12 @@
 @startDocuBlock get_api_reads_index
 @brief returns an index
 
-@RESTHEADER{GET /_api/index/{index-handle},Read index, getIndexes:handle}
+@RESTHEADER{GET /_api/index/{index-id},Read index, getIndexes:handle}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{index-handle,string,required}
-The index-handle.
+@RESTURLPARAM{index-id,string,required}
+The index identifier.
 
 @RESTDESCRIPTION
 The result is an object describing the index. It has at least the following
@@ -18,7 +18,7 @@ attributes:
 - *type*: the index type
 
 All other attributes are type-dependent. For example, some indexes provide
-*unique* or *sparse* flags, whereas others don't. Some indexes also provide 
+*unique* or *sparse* flags, whereas others don't. Some indexes also provide
 a selectivity estimate in the *selectivityEstimate* attribute of the result.
 
 @RESTRETURNCODES
@@ -46,4 +46,3 @@ is returned.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

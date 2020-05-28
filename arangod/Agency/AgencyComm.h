@@ -25,21 +25,23 @@
 #ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_AGENCY_COMM_H 1
 
-#include "Basics/Common.h"
-
-#include <list>
 #include <deque>
+#include <list>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
+#include <utility>
 
 #include "Basics/Mutex.h"
-#include "Rest/HttpRequest.h"
+#include "Basics/Result.h"
+#include "GeneralServer/GeneralDefinitions.h"
+#include "Rest/CommonDefines.h"
+#include "RestServer/Metrics.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
@@ -55,7 +57,7 @@ class Slice;
 // -----------------------------------------------------------------------------
 
 struct AgencyConnectionOptions {
-  AgencyConnectionOptions(double ct, double rt, double lt, size_t cr)
+  AgencyConnectionOptions(double ct, double rt, double lt, size_t cr) noexcept
       : _connectTimeout(ct), _requestTimeout(rt), _lockTimeout(lt), _connectRetries(cr) {}
   double _connectTimeout;
   double _requestTimeout;
@@ -172,17 +174,47 @@ class AgencyOperationType {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 AgencyCommHelper
+// -----------------------------------------------------------------------------
+
+class AgencyCommHelper {
+ public:
+  static AgencyConnectionOptions CONNECTION_OPTIONS;
+  static std::string PREFIX;
+
+ public:
+  static void initialize(std::string const& prefix);
+  static void shutdown();
+
+  static std::string path();
+  static std::string path(std::string const&);
+  static std::string path(std::string const&, std::string const&);
+  static std::vector<std::string> slicePath(std::string const&);
+
+  static std::string generateStamp();
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
 
 class AgencyPrecondition {
  public:
-  enum class Type { NONE, EMPTY, VALUE };
+  enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY};
 
  public:
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
-  AgencyPrecondition(std::string const& key, Type, VPackSlice const&);
+  AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  template <typename T>
+  AgencyPrecondition(std::string const& key, Type t, T const& v)
+      : key(AgencyCommHelper::path(key)),
+        type(t),
+        empty(false),
+        builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  };
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -192,7 +224,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  VPackSlice const value;
+  velocypack::Slice value;
+  std::shared_ptr<VPackBuilder> builder;
 };
 
 // -----------------------------------------------------------------------------
@@ -206,10 +239,21 @@ class AgencyOperation {
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  VPackSlice const value);
+                  velocypack::Slice const value);
+
+  template <typename T>
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
+      : _key(AgencyCommHelper::path(key)),
+        _opType(),
+        _holder(std::make_shared<VPackBuilder>()) {
+    _holder->add(VPackValue(value));
+    _value = _holder->slice();
+    _opType.type = AgencyOperationType::Type::VALUE;
+    _opType.value = opType;
+  }
 
   AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  VPackSlice const newValue, VPackSlice const oldValue);
+                  velocypack::Slice const newValue, velocypack::Slice const oldValue);
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -218,13 +262,14 @@ class AgencyOperation {
 
  public:
   uint64_t _ttl = 0;
-  VPackSlice _oldValue;
+  velocypack::Slice _oldValue;
 
  private:
   std::string const _key;
   AgencyOperationType _opType;
-  VPackSlice _value;
-  VPackSlice _value2;
+  velocypack::Slice _value;
+  velocypack::Slice _value2;
+  std::shared_ptr<VPackBuilder> _holder;
 };
 
 // -----------------------------------------------------------------------------
@@ -238,6 +283,12 @@ class AgencyCommResult {
                    std::string const& transactionId = std::string());
 
   ~AgencyCommResult() = default;
+
+  AgencyCommResult(AgencyCommResult const& other) = delete;
+  AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
+
+  AgencyCommResult(AgencyCommResult&& other) noexcept;
+  AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
   void set(int code, std::string const& message);
@@ -263,10 +314,21 @@ class AgencyCommResult {
 
   void clear();
 
-  VPackSlice slice() const;
+  velocypack::Slice slice() const;
   void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
     _vpack = vpack;
   }
+
+  Result asResult() {
+    if (successful()) {
+      return Result{};
+    }
+    return Result{errorCode(), errorMessage()};
+  }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  VPackBuilder toVelocyPack() const;
 
  public:
   std::string _location;
@@ -358,7 +420,6 @@ class AgencyTransaction {
 
 struct AgencyWriteTransaction : public AgencyTransaction {
  public:
-
   static std::string randomClientId();
 
   explicit AgencyWriteTransaction(AgencyOperation const& operation)
@@ -378,8 +439,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          AgencyPrecondition const& precondition)
       : clientId(randomClientId()) {
-    std::copy(opers.begin(), opers.end(),
-              std::back_inserter(operations));
+    std::copy(opers.begin(), opers.end(), std::back_inserter(operations));
     preconditions.push_back(precondition);
   }
 
@@ -387,20 +447,17 @@ struct AgencyWriteTransaction : public AgencyTransaction {
                          std::vector<AgencyPrecondition> const& precs)
       : clientId(randomClientId()) {
     operations.push_back(operation);
-    std::copy(precs.begin(), precs.end(),
-              std::back_inserter(preconditions));
+    std::copy(precs.begin(), precs.end(), std::back_inserter(preconditions));
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs)
       : clientId(randomClientId()) {
-    std::copy(opers.begin(), opers.end(),
-              std::back_inserter(operations));
-    std::copy(precs.begin(), precs.end(),
-              std::back_inserter(preconditions));
+    std::copy(opers.begin(), opers.end(), std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(), std::back_inserter(preconditions));
   }
 
-  AgencyWriteTransaction() : clientId(randomClientId()) {};
+  AgencyWriteTransaction() : clientId(randomClientId()) {}
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
@@ -441,17 +498,14 @@ struct AgencyTransientTransaction : public AgencyTransaction {
 
   AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
                              AgencyPrecondition const& precondition) {
-    std::copy(opers.begin(), opers.end(),
-              std::back_inserter(operations));
+    std::copy(opers.begin(), opers.end(), std::back_inserter(operations));
     preconditions.push_back(precondition);
   }
 
   AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
                              std::vector<AgencyPrecondition> const& precs) {
-    std::copy(opers.begin(), opers.end(),
-              std::back_inserter(operations));
-    std::copy(precs.begin(), precs.end(),
-              std::back_inserter(preconditions));
+    std::copy(opers.begin(), opers.end(), std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(), std::back_inserter(preconditions));
   }
 
   AgencyTransientTransaction() = default;
@@ -504,109 +558,6 @@ struct AgencyReadTransaction : public AgencyTransaction {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 AgencyCommManager
-// -----------------------------------------------------------------------------
-
-class AgencyCommManager {
- public:
-  static std::unique_ptr<AgencyCommManager> MANAGER;
-  static AgencyConnectionOptions CONNECTION_OPTIONS;
-
- public:
-  static void initialize(std::string const& prefix);
-  static void shutdown();
-
-  static bool isEnabled() { return MANAGER != nullptr; }
-
-  static std::string path();
-  static std::string path(std::string const&);
-  static std::string path(std::string const&, std::string const&);
-  static std::vector<std::string> slicePath(std::string const&);
-
-  static std::string generateStamp();
-
- public:
-  explicit AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
-
- public:
-  bool start();
-  void stop();
-
-  // Get a connection to the current endpoint, which will be filled in to
-  // `endpoint`, if that is empty. Otherwise, a connection to the non-empty
-  // endpoint `endpoint` is returned, regardless of what is the current
-  // endpoint.
-  std::unique_ptr<httpclient::GeneralClientConnection> acquire(std::string& endpoint);
-
-  // Returns a connection to the manager. `endpoint` must be the string
-  // description under which it was `acquire`d. Call this if you are done
-  // using the connection and no error occurred.
-  void release(std::unique_ptr<httpclient::GeneralClientConnection>,
-               std::string const& endpoint);
-
-  // Returns a connection to the manager. `endpoint` must be the string
-  // description under which it was `acquire`d. Call this if you are done
-  // using the connection and an error occurred. The connection object will
-  // be destroyed and the current endpoint will be rotated.
-  void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
-              std::string const& endpoint);
-
-  // If a request receives a redirect HTTP 307, one should call the following
-  // method to make the new location the current one. The method returns the
-  // new endpoint specification. If anything goes wrong (for example, some
-  // other thread has in the meantime changed the active endpoint), an empty
-  // string is returned, which means that one has to acquire a new endpoint.
-  std::string redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
-                       std::string const& endpoint, std::string const& location,
-                       std::string& url);
-
-  void addEndpoint(std::string const&);
-  /// removes old endpoints, adds new ones
-  void updateEndpoints(std::vector<std::string> const& endpoints);
-  std::string endpointsString() const;
-  std::vector<std::string> endpoints() const;
-  std::shared_ptr<VPackBuilder> summery() const;
-
- private:
-  // caller must hold _lock
-  void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
-                        std::string const& endpoint);
-
-  // caller must hold lock
-  void releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
-                         std::string const& endpoint);
-
-  // caller must hold _lock
-  std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
-
-  // caller must hold _lock
-  void switchCurrentEndpoint();
-
- private:
-  std::string const _prefix;
-
-  // protects all the members
-  mutable Mutex _lock;
-
-  // The following structure contains a list of string descriptions of the
-  // known agency endpoints. The front one is the one currently used for
-  // communication. If there is a redirect, we add the redirected one to
-  // the list (if not already there) and move it to the front. If we fail
-  // with the communication with the front one, we move it to the back and
-  // try the next.
-  std::deque<std::string> _endpoints;
-
-  // In the following map we cache GeneralClientConnections to the above
-  // endpoints. One can acquire one of them for use, in which case it is
-  // removed from the corresponding vector. If one calls `release` on it,
-  // it is sent back to the ununsed vector. If an error occurs one
-  // should call `failed` such that the manager can switch to a new
-  // current endpoint. In case a redirect is received, one has to inform
-  // the manager by calling `redirect`.
-  std::unordered_map<std::string, std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>> _unusedConnections;
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
 
@@ -622,7 +573,9 @@ class AgencyComm {
 #endif
 
  public:
-  AgencyCommResult sendServerState(double ttl);
+  explicit AgencyComm(application_features::ApplicationServer&);
+
+  AgencyCommResult sendServerState();
 
   std::string version();
 
@@ -640,7 +593,7 @@ class AgencyComm {
   AgencyCommResult setValue(std::string const&, arangodb::velocypack::Slice const&, double);
 
   AgencyCommResult setTransient(std::string const&,
-                                arangodb::velocypack::Slice const&, double);
+                                arangodb::velocypack::Slice const&, uint64_t);
 
   bool exists(std::string const&);
 
@@ -677,23 +630,32 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
+  application_features::ApplicationServer& server();
+
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, VPackSlice);
+                                    std::string const&, velocypack::Slice);
+
+  static void buildInitialAnalyzersSlice(VPackBuilder& builder);
 
  private:
   bool lock(std::string const&, double, double, arangodb::velocypack::Slice const&);
 
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
 
-  AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
-                        double, std::string const&, std::string const&);
-
   bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
+
+ private:
+  application_features::ApplicationServer& _server;
+  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif

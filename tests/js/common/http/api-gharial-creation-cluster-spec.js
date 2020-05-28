@@ -102,26 +102,30 @@ describe('General graph creation', function () {
 
     describe('during graph construction', function () {
 
-      describe('replication factor', function () {
+      describe('replication factor and minimal replication factor', function () {
 
         it('should be stored in the internal document', function () {
           let gdoc = db._collection('_graphs').document(gn);
           expect(gdoc.replicationFactor).to.equal(1);
+          expect(gdoc.minReplicationFactor).to.equal(1);
         });
 
         it('should be 1 for vertex collection', function () {
           let props = db._collection(vn).properties();
           expect(props.replicationFactor).to.equal(1);
+          expect(props.minReplicationFactor).to.equal(1);
         });
 
         it('should be 1 for edge collection', function () {
           let props = db._collection(en).properties();
           expect(props.replicationFactor).to.equal(1);
+          expect(props.minReplicationFactor).to.equal(1);
         });
 
         it('should be 1 for orphan collection', function () {
           let props = db._collection(on).properties();
           expect(props.replicationFactor).to.equal(1);
+          expect(props.minReplicationFactor).to.equal(1);
         });
 
       });
@@ -267,11 +271,13 @@ describe('General graph creation', function () {
 
   describe('with startup options', function () {
     const replicationFactor = 2;
+    const minReplicationFactor = 2;
     const numberOfShards = 3;
 
     before(function() {
       const options = {
         replicationFactor,
+        minReplicationFactor,
         numberOfShards
       };
       let rel = graph._relation(en, vn, vn);
@@ -312,21 +318,25 @@ describe('General graph creation', function () {
         it('should be stored in the internal document', function () {
           let gdoc = db._collection('_graphs').document(gn);
           expect(gdoc.replicationFactor).to.equal(replicationFactor);
+          expect(gdoc.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
         it(`should be ${replicationFactor} for vertex collection`, function () {
           let props = db._collection(vn).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
         it(`should be ${replicationFactor} for edge collection`, function () {
           let props = db._collection(en).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
         it(`should be ${replicationFactor} for orphan collection`, function () {
           let props = db._collection(on).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
       });
@@ -394,16 +404,19 @@ describe('General graph creation', function () {
         it(`should be ${replicationFactor} for vertex collection`, function () {
           let props = db._collection(vn2).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
         it(`should be ${replicationFactor} for edge collection`, function () {
           let props = db._collection(en2).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
         it(`should be ${replicationFactor} for orphan collection`, function () {
           let props = db._collection(on2).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
       });
@@ -454,6 +467,7 @@ describe('General graph creation', function () {
         it(`should be ${replicationFactor} for vertex collection`, function () {
           let props = db._collection(vn3).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
+          expect(props.minReplicationFactor).to.equal(minReplicationFactor);
         });
 
       });

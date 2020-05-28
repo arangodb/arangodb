@@ -128,7 +128,7 @@ describe('Update collection properties', function() {
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
-            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+            expect(e.errorNum).to.equal(errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code);
         }
 
         try {
@@ -248,11 +248,11 @@ describe('Replication factor constraints', function() {
          "_jobs", "_modules", "_queues", "_routing",
          "_statistics" , "_statistics15" , "_statisticsRaw" ,"_users"
         ].forEach(name => {
-          if(name === "_graphs"){
+          if(name === "_users"){
             expect(db[name].properties()['replicationFactor']).to.equal(2);
           } else if(db[name]){
             expect(db[name].properties()['replicationFactor']).to.equal(2);
-            expect(db[name].properties()['distributeShardsLike']).to.equal("_graphs");
+            expect(db[name].properties()['distributeShardsLike']).to.equal("_users");
           }
 
         });
@@ -260,7 +260,7 @@ describe('Replication factor constraints', function() {
 
     it('distributeShardsLike should ignore additional parameters', function() {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
-        db._create(cn2, {distributeShardsLike: cn1, replicationFactor: 5, numberOfShards: 99}, {waitForSyncReplication: true});
+        db._create(cn2, {distributeShardsLike: cn1, replicationFactor: 5, numberOfShards: 99, enforceReplicationFactor: false}, {waitForSyncReplication: true});
         expect(db[cn1].properties()['replicationFactor']).to.equal(db[cn2].properties()['replicationFactor']);
         expect(db[cn1].properties()['numberOfShards']).to.equal(db[cn2].properties()['numberOfShards']);
         expect(db[cn2].properties()['distributeShardsLike']).to.equal(cn1);

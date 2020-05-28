@@ -49,6 +49,14 @@ class CollectionNameResolver {
       : _vocbase(vocbase),
         _serverRole(ServerState::instance()->getRole()) {}
 
+  // copy an existing resolver
+  CollectionNameResolver(CollectionNameResolver const& other);
+
+  // every other copy/move operation is disallowed
+  CollectionNameResolver& operator=(CollectionNameResolver const& other) = delete;
+  CollectionNameResolver(CollectionNameResolver&& other) = delete;
+  CollectionNameResolver& operator=(CollectionNameResolver&& other) = delete;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
   //////////////////////////////////////////////////////////////////////////////
@@ -157,38 +165,22 @@ class CollectionNameResolver {
                         TRI_voc_cid_t id) const;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection struct for a collection name
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(std::string const& name) const;
+  std::string lookupName(TRI_voc_cid_t cid) const;
+
+  /// @brief vocbase base pointer
+  TRI_vocbase_t& _vocbase;
+
+  /// @brief role of server in cluster
+  ServerState::RoleEnum const _serverRole;
+
+  /// @brief lock protecting caches
+  mutable basics::ReadWriteLock _lock;
+
+  /// @brief collection id => collection name map
+  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 
   mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
   mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
-
-  std::string lookupName(TRI_voc_cid_t cid) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief vocbase base pointer
-  //////////////////////////////////////////////////////////////////////////////
-  TRI_vocbase_t& _vocbase;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief role of server in cluster
-  //////////////////////////////////////////////////////////////////////////////
-  ServerState::RoleEnum _serverRole;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collection id => collection struct map
-  //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalCollection>> _resolvedNames;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collection id => collection name map
-  //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
-
-  mutable basics::ReadWriteLock _nameLock;
-  mutable basics::ReadWriteLock _idLock;
 };
 
 }  // namespace arangodb

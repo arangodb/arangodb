@@ -26,8 +26,9 @@
 #define ARANGO_ROCKSDB_ROCKSDB_KEY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
@@ -156,6 +157,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructKeyGeneratorValue(uint64_t objectId);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for revision tree for a collection
+  //////////////////////////////////////////////////////////////////////////////
+  void constructRevisionTreeValue(uint64_t objectId);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the type from a key
@@ -219,9 +225,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the LocalDocumentId from an index key
   ///
-  /// May be called only on Index keys. Other types will throw.
+  /// May be called only on Index keys, but not from the edge index
   //////////////////////////////////////////////////////////////////////////////
-  static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
+  static LocalDocumentId indexDocumentId(rocksdb::Slice const);
+  static LocalDocumentId edgeDocumentId(rocksdb::Slice const);
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key

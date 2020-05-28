@@ -24,13 +24,16 @@
 #ifndef ARANGOD_PREGEL_INDEX_HELPERS_H
 #define ARANGOD_PREGEL_INDEX_HELPERS_H 1
 
+#include <memory>
+
 #include "Aql/Graphs.h"
 
 namespace arangodb {
+class IndexIterator;
+
 namespace transaction{
-  class Methods;
+class Methods;
 }
-struct OperationCursor;
   
 namespace traverser {
 
@@ -69,7 +72,7 @@ class EdgeCollectionInfo {
   /// @brief Get edges for the given direction and start vertex.
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&);
+  std::unique_ptr<arangodb::IndexIterator> getEdges(std::string const&);
 
   transaction::Methods* trx() const { return _trx; }
 

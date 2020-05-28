@@ -26,6 +26,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -56,10 +57,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  public:
   RocksDBFulltextIndex() = delete;
 
-  RocksDBFulltextIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  RocksDBFulltextIndex(IndexId iid, LogicalCollection& collection,
                        arangodb::velocypack::Slice const& info);
 
-  ~RocksDBFulltextIndex() {}
+  ~RocksDBFulltextIndex() = default;
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_FULLTEXT_INDEX; }
 
@@ -67,11 +68,12 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return true; }
+  bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPack(velocypack::Builder&,
+                    std::underlying_type<Index::Serialize>::type) const override;
 
   bool matchesDefinition(VPackSlice const&) const override;
 
@@ -93,8 +95,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  protected:
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                LocalDocumentId const& documentId, velocypack::Slice const& doc,
+                OperationOptions& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,

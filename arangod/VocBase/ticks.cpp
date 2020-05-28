@@ -21,9 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <atomic>
+
+#include "ticks.h"
+
 #include "Basics/HybridLogicalClock.h"
 #include "Cluster/ServerState.h"
-#include "ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -24,6 +24,8 @@
 #ifndef ARANGOD_RESTSERVER__SYSTEM_DATABASE_FEATURE_H
 #define ARANGOD_RESTSERVER__SYSTEM_DATABASE_FEATURE_H 1
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 struct TRI_vocbase_t;  // forward declaration
@@ -41,8 +43,8 @@ class SystemDatabaseFeature final : public application_features::ApplicationFeat
   };
   typedef std::unique_ptr<TRI_vocbase_t, VocbaseReleaser> ptr;
 
-  SystemDatabaseFeature(application_features::ApplicationServer& server,
-                        TRI_vocbase_t* vocbase = nullptr);
+  explicit SystemDatabaseFeature(application_features::ApplicationServer& server,
+                                 TRI_vocbase_t* vocbase = nullptr);
 
   static std::string const& name() noexcept;
   void start() override;

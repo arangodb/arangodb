@@ -37,12 +37,20 @@
 namespace arangodb {
 namespace velocypack {
 
-class ArrayIterator {
+class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
  public:
+  using iterator_category = std::forward_iterator_tag;
+
+  struct Empty {};
+
   ArrayIterator() = delete;
 
+  // optimization for an empty array
+  explicit ArrayIterator(Empty) noexcept
+      : _slice(Slice::emptyArraySlice()), _size(0), _position(0), _current(nullptr), _first(nullptr) {}
+
   explicit ArrayIterator(Slice slice)
-      : _slice(slice), _size(0), _position(0), _current(nullptr) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
     
     uint8_t const head = slice.head();     
 
@@ -59,14 +67,9 @@ class ArrayIterator {
       } else {
         _current = slice.begin() + slice.findDataOffset(head);
       }
+      _first = _current;
     }
   }
-
-  ArrayIterator(ArrayIterator const& other) noexcept = default;
-  ArrayIterator(ArrayIterator&& other) noexcept = default;
-
-  ArrayIterator& operator=(ArrayIterator const& other) = delete;
-  ArrayIterator& operator=(ArrayIterator&& other) = default;
 
   // prefix ++
   ArrayIterator& operator++() {
@@ -86,8 +89,11 @@ class ArrayIterator {
     return result;
   }
 
+  bool operator==(ArrayIterator const& other) const noexcept {
+    return _position == other._position;
+  }
   bool operator!=(ArrayIterator const& other) const noexcept {
-    return _position != other._position;
+    return !operator==(other);
   }
 
   Slice operator*() const {
@@ -150,16 +156,7 @@ class ArrayIterator {
     
   inline void reset() {
     _position = 0;
-    _current = nullptr;
-    if (_size > 0) {
-      auto h = _slice.head();
-      VELOCYPACK_ASSERT(h != 0x01); // no empty array allowed here
-      if (h == 0x13) {
-        _current = _slice.start() + _slice.getStartOffsetFromCompact();
-      } else {
-        _current = _slice.begin() + _slice.findDataOffset(h);
-      }
-    }
+    _current = _first;
   }
 
  private:
@@ -167,15 +164,19 @@ class ArrayIterator {
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
+  uint8_t const* _first;
 };
 
-class ObjectIterator {
+struct ObjectIteratorPair {
+  ObjectIteratorPair(Slice key, Slice value) noexcept
+      : key(key), value(value) {}
+  Slice const key;
+  Slice const value;
+};
+
+class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIteratorPair> {
  public:
-  struct ObjectPair {
-    ObjectPair(Slice key, Slice value) noexcept : key(key), value(value) {}
-    Slice const key;
-    Slice const value;
-  };
+  using ObjectPair = ObjectIteratorPair;
 
   ObjectIterator() = delete;
 
@@ -183,7 +184,7 @@ class ObjectIterator {
   // simply jumps from key/value pair to key/value pair without using the
   // index. The default `false` is to use the index if it is there.
   explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
-      : _slice(slice), _size(0), _position(0), _current(nullptr) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
     
     uint8_t const head = slice.head();     
 
@@ -200,14 +201,9 @@ class ObjectIterator {
       } else if (useSequentialIteration) {
         _current = slice.begin() + slice.findDataOffset(head);
       }
+      _first = _current;
     }
   }
-
-  ObjectIterator(ObjectIterator const& other) noexcept = default;
-  ObjectIterator(ObjectIterator&& other) noexcept = default;
-
-  ObjectIterator& operator=(ObjectIterator const& other) = delete;
-  ObjectIterator& operator=(ObjectIterator&& other) = default;
 
   // prefix ++
   ObjectIterator& operator++() {
@@ -230,8 +226,12 @@ class ObjectIterator {
     return result;
   }
 
+  bool operator==(ObjectIterator const& other) const {
+    return _position == other._position;
+  }
+
   bool operator!=(ObjectIterator const& other) const {
-    return _position != other._position;
+    return !operator==(other);
   }
 
   ObjectPair operator*() const {
@@ -290,12 +290,18 @@ class ObjectIterator {
   inline bool isFirst() const noexcept { return (_position == 0); }
 
   inline bool isLast() const noexcept { return (_position + 1 >= _size); }
+  
+  inline void reset() {
+    _position = 0;
+    _current = _first;
+  }
 
  private:
   Slice _slice;
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
+  uint8_t const* _first;
 };
 
 }  // namespace arangodb::velocypack

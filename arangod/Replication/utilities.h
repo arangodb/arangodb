@@ -31,6 +31,7 @@
 #include <unordered_map>
 
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -46,6 +47,7 @@ class SimpleHttpResult;
 
 class Endpoint;
 class ReplicationApplierConfiguration;
+struct SyncerId;
 class Syncer;
 
 namespace replutils {
@@ -64,6 +66,9 @@ struct Connection {
 
   /// @brief identifier for local server
   std::string const& localServerId() const;
+
+  /// @brief short informative string about the client
+  std::string const& clientInfo() const;
 
   /// @brief Thread-safe aborted status
   void setAborted(bool value);
@@ -87,6 +92,7 @@ struct Connection {
  private:
   std::string const _endpointString;
   std::string const _localServerId;
+  std::string const _clientInfo;
 
   /// lock to protect client connection
   mutable std::mutex _mutex;
@@ -147,21 +153,21 @@ struct BatchInfo {
   /// @brief send a "start batch" command
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
-  Result start(Connection& connection, ProgressInfo& progress,
-               std::string const& patchCount = "");
+  Result start(Connection const& connection, ProgressInfo& progress,
+               SyncerId syncerId, std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection& connection, ProgressInfo& progress);
+  Result extend(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress);
+  Result finish(Connection const& connection, ProgressInfo& progress, SyncerId syncerId);
 };
 
 struct MasterInfo {
   std::string endpoint;
   std::string engine;  // storage engine (optional)
-  TRI_server_id_t serverId{0};
+  ServerId serverId{0};
   int majorVersion{0};
   int minorVersion{0};
   TRI_voc_tick_t lastLogTick{0};

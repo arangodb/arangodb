@@ -23,6 +23,8 @@
 #include "ActionFeature.h"
 
 #include "Actions/actions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8Server/V8DealerFeature.h"
@@ -38,7 +40,7 @@ ActionFeature* ActionFeature::ACTION = nullptr;
 ActionFeature::ActionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Action"), _allowUseDatabase(false) {
   setOptional(true);
-  startsAfter("ClusterPhase");
+  startsAfter<ClusterFeaturePhase>();
 }
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -49,18 +51,16 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "allow change of database in REST actions, only needed for "
       "unittests",
       new BooleanParameter(&_allowUseDatabase),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void ActionFeature::start() {
   ACTION = this;
 
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  dealer->defineContextUpdate([](v8::Isolate* isolate, v8::Handle<v8::Context> /*context*/,
-                                 size_t) { TRI_InitV8Actions(isolate); },
-                              nullptr);
+  V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
+  dealer.defineContextUpdate([](v8::Isolate* isolate, v8::Handle<v8::Context> /*context*/,
+                                size_t) { TRI_InitV8Actions(isolate); },
+                             nullptr);
 }
 
 void ActionFeature::unprepare() {

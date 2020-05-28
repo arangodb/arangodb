@@ -22,20 +22,25 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBReplicationContext.h"
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/system-functions.h"
 #include "Logger/Logger.h"
-#include "Replication/common-defines.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication/Syncer.h"
+#include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBReplicationContext.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Utils/DatabaseGuard.h"
@@ -66,18 +71,17 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl, std::string const& clientId)
-    : _clientId{clientId},
-      _id{TRI_NewTickServer()},
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId, ServerId clientId)
+    : _id{TRI_NewTickServer()},
+      _syncerId{syncerId},
+      // buggy clients may not send the serverId
+      _clientId{clientId.isSet() ? clientId : ServerId(_id)},
       _snapshotTick{0},
       _snapshot{nullptr},
       _ttl{ttl > 0.0 ? ttl : replutils::BatchInfo::DefaultTimeout},
       _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
       _users{1} {
-  if (_clientId.empty() || _clientId == "none") {
-    _clientId = std::to_string(_id);
-  }
   TRI_ASSERT(_ttl > 0.0);
 }
 
@@ -91,6 +95,10 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
 }
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
+
+rocksdb::Snapshot const* RocksDBReplicationContext::snapshot() {
+  return _snapshot;
+}
 
 uint64_t RocksDBReplicationContext::snapshotTick() {
   MUTEX_LOCKER(locker, _contextLock);
@@ -123,6 +131,20 @@ void RocksDBReplicationContext::removeVocbase(TRI_vocbase_t& vocbase) {
   }
 }
 
+/// invalidate all iterators with that collection
+bool RocksDBReplicationContext::removeCollection(LogicalCollection& collection) {
+  MUTEX_LOCKER(locker, _contextLock);
+
+  for (auto const& it : _iterators) {
+    if (it.second->logical != nullptr &&
+        it.second->logical->id() == collection.id()) {
+      _isDeleted = true;  // setDeleted also gets the lock
+      return true;
+    }
+  }
+  return false;
+}
+
 /// remove matching iterator
 void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid) {
   MUTEX_LOCKER(locker, _contextLock);
@@ -149,6 +171,9 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   }
   TRI_voc_cid_t cid = logical->id();
 
+  LOG_TOPIC("71235", TRACE, Logger::REPLICATION)
+      << "binding replication context " << id() << " to collection '" << cname << "'";
+
   MUTEX_LOCKER(writeLocker, _contextLock);
 
   auto it = _iterators.find(cid);
@@ -158,7 +183,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
 
   uint64_t numberDocuments;
   bool isNumberDocsExclusive = false;
-  auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
@@ -170,15 +195,15 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     } else {
       lockGuard.cancel();
     }
-    numberDocuments = rcoll->numberDocuments();
+    numberDocuments = rcoll->meta().numberDocuments();
     lazyCreateSnapshot();
   } else {  // fetch non-exclusive
-    numberDocuments = rcoll->numberDocuments();
+    numberDocuments = rcoll->meta().numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
-  auto result = _iterators.emplace(cid, std::move(iter));
+  auto result = _iterators.try_emplace(cid, std::move(iter));
   TRI_ASSERT(result.second);
 
   CollectionIterator* cIter = result.first->second.get();
@@ -223,7 +248,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   TRI_ASSERT(_snapshot != nullptr);
   // FIXME is it technically correct to include newly created collections ?
-  // simon: I think no, but this has been the behaviour since 3.2
+  // simon: I think no, but this has been the behavior since 3.2
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory
@@ -232,7 +257,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
-  vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
 }
@@ -359,7 +384,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
 
@@ -367,7 +392,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   while (cIter->hasMore()) {
     // needs to be a strings because rocksdb::Slice gets invalidated
     std::string lowKey, highKey;
-    uint64_t hash = 0x012345678;
+    uint64_t hashval = 0x012345678;
 
     uint64_t k = chunkSize;
     while (k-- > 0 && cIter->hasMore()) {
@@ -405,10 +430,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       // restricted to strings
       tmpHashBuilder.clear();
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      hash ^= tmpHashBuilder.slice().hashString();
+      hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
       tmpHashBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
-      hash ^= tmpHashBuilder.slice().hashString();
+      hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
     };
@@ -421,7 +446,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
     b.add(VPackValue(VPackValueType::Object));
     b.add("low", VPackValue(lowKey));
     b.add("high", VPackValue(highKey));
-    b.add("hash", VPackValue(std::to_string(hash)));
+    b.add("hash", VPackValue(std::to_string(hashval)));
     b.close();
   }
   b.close();
@@ -436,8 +461,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
           << "inconsistent collection count detected, "
           << "an offet of " << adjustment << " will be applied";
-      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
-      rcoll->adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
+      auto seq = rocksutils::latestSequenceNumber();
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
     }
   }
 
@@ -515,7 +541,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   b.reserve(8192);
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
   b.openArray(true);
@@ -628,16 +654,16 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
-  auto buffer = b.buffer();
+  auto& buffer = b.bufferRef();
   bool hasMore = true;
   b.openArray(true);
   size_t oldPos = from;
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return rv.reset(TRI_ERROR_BAD_PARAMETER);
     }
@@ -688,7 +714,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         hasMore = cIter->hasMore();
       }
 
-      if (buffer->byteSize() > maxChunkSize) {
+      if (buffer.byteSize() > maxChunkSize) {
         // result is big enough so that we abort prematurely
         full = true;
       }
@@ -741,7 +767,7 @@ void RocksDBReplicationContext::use(double ttl) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(replicationClientId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, ttl);
   }
 }
 
@@ -758,7 +784,7 @@ void RocksDBReplicationContext::release() {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 }
 
@@ -804,23 +830,29 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
   
-  _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
+  _cTypeHandler = transaction::Context::createCustomTypeHandler(vocbase, _resolver);
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);
 
   if (!vocbase.use()) {  // false if vobase was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  TRI_vocbase_col_status_e ignore;
-  int res = vocbase.useCollection(logical.get(), ignore);
-  if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  try {
+    vocbase.useCollection(logical->id(), true);
+  } catch (...) {
+    vocbase.release();
+    throw;
   }
+
+  LOG_TOPIC("71236", TRACE, Logger::REPLICATION)
+      << "replication created iterator for collection '" << coll->name() << "'";
 }
 
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
   TRI_ASSERT(!vocbase.isDangling());
   vocbase.releaseCollection(logical.get());
+  LOG_TOPIC("71237", TRACE, Logger::REPLICATION)
+      << "replication released iterator for collection '" << logical->name() << "'";
   logical.reset();
   vocbase.release();
 }
@@ -831,12 +863,12 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
     _sortedIterator = sorted;
 
     if (sorted) {
-      auto index = logical->getPhysical()->lookupIndex(0);  // RocksDBCollection->primaryIndex() is private
+      auto index = logical->getPhysical()->lookupIndex(IndexId::primary());  // RocksDBCollection->primaryIndex() is private
       TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
     } else {
-      auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
+      auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
       bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
     }
     _upperLimit = bounds.end();
@@ -901,7 +933,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
 
     if (nullptr != logical) {
       auto result =
-          _iterators.emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
+          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
                                                                        _snapshot));
 
       if (result.second) {
@@ -927,7 +959,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
+    cIter->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -937,8 +969,8 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
-      it->vocbase.replicationClients().track(replicationClientId(), _snapshotTick, _ttl);
       MUTEX_LOCKER(locker, _contextLock);
+      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client
       it->release();

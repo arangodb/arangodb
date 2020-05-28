@@ -25,8 +25,8 @@
 
 #include <velocypack/Buffer.h>
 #include <chrono>
-#include <utility>
 #include <set>
+#include <utility>
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
@@ -37,7 +37,11 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+struct ServerDefaults;
+
 namespace graph {
 
 class EdgeDefinition {
@@ -92,8 +96,8 @@ class Graph {
    *
    * @return A graph object corresponding to this document
    */
-  static std::unique_ptr<Graph> fromPersistence(velocypack::Slice document,
-                                                TRI_vocbase_t& vocbase);
+  static std::unique_ptr<Graph> fromPersistence(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice document);
 
   /**
    * @brief Create graph from user input.
@@ -106,12 +110,13 @@ class Graph {
    *
    * @return A graph object corresponding to the user input
    */
-  static std::unique_ptr<Graph> fromUserInput(std::string&& name,
+  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
                                               velocypack::Slice collectionInformation,
                                               velocypack::Slice options);
 
   // Wrapper for Move constructor
-  static std::unique_ptr<Graph> fromUserInput(std::string const& name,
+  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase,
+                                              std::string const& name,
                                               velocypack::Slice collectionInformation,
                                               velocypack::Slice options);
 
@@ -119,9 +124,9 @@ class Graph {
   /**
    * @brief Create graph from persistence.
    *
-   * @param info The stored document
+   * @param slice The stored document
    */
-  explicit Graph(velocypack::Slice const& info);
+  explicit Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults);
 
   /**
    * @brief Create graph from user input.
@@ -130,13 +135,18 @@ class Graph {
    * @param info Collection information, including relations and orphans
    * @param options The options to be used for collections
    */
-  Graph(std::string&& graphName, velocypack::Slice const& info,
-        velocypack::Slice const& options);
+  Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
+        velocypack::Slice const& info, velocypack::Slice const& options);
+
+  /**
+   * @brief virtual copy constructor
+   */
+  virtual auto clone() const -> std::unique_ptr<Graph>;
 
  public:
   virtual ~Graph() = default;
 
-  static Result validateOrphanCollection(const velocypack::Slice& orphanDefinition);
+  [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
 
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
@@ -159,15 +169,18 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
-
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
-  boost::optional<EdgeDefinition const&> getEdgeDefinition(std::string const& collectionName) const;
+  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(
+      std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+  virtual bool isDisjoint() const;
+  virtual bool isSatellite() const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
+  uint64_t writeConcern() const;
   std::string const id() const;
   std::string const& rev() const;
 
@@ -203,6 +216,7 @@ class Graph {
    * @return TRUE if we are safe to use it.
    */
   virtual Result validateCollection(LogicalCollection& col) const;
+  virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
   void verticesToVpack(VPackBuilder& builder) const;
@@ -231,7 +245,7 @@ class Graph {
   void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition);
 
   /// @brief Removes an orphan vertex collection from the graphs definition
-  Result removeOrphanCollection(std::string&&);
+  Result removeOrphanCollection(std::string const&);
 
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
@@ -252,7 +266,10 @@ class Graph {
   void setNumberOfShards(uint64_t numberOfShards);
 
   /// @brief Set replicationFactor to the graph definition
-  void setReplicationFactor(uint64_t setReplicationFactor);
+  void setReplicationFactor(uint64_t replicationFactor);
+
+  /// @brief Set writeConcern to the graph definition
+  void setWriteConcern(uint64_t writeConcern);
 
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
@@ -285,8 +302,14 @@ class Graph {
   /// @brief replication factor of this graph
   uint64_t _replicationFactor;
 
+  /// @brief write concern for this graph
+  uint64_t _writeConcern;
+
   /// @brief revision of this graph
   std::string _rev;
+
+  /// @brief whether this graph is a satellite graph
+  bool _isSatellite = false;
 };
 
 // helper functions

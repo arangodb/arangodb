@@ -24,13 +24,12 @@
 #define ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H 1
 
 #include <regex>
-#include <map>
 #include <set>
-
-#include "ProgramOptions/ProgramOptions.h"
+#include <string>
 
 namespace arangodb {
 namespace options {
+class ProgramOptions;
 
 class IniFileParser {
  public:

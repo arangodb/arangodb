@@ -40,6 +40,9 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   bool isReady() const { return _isReady; }
 
  private:
+  void waitForHealthEntry();
+ 
+ private:
   bool _isReady;
   bool _bark;
 };

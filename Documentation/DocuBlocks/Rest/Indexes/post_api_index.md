@@ -12,9 +12,6 @@ The collection name.
 @RESTALLBODYPARAM{index-details,json,required}
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
-
 Creates a new index in the collection *collection*. Expects
 an object containing the index details.
 
@@ -28,8 +25,8 @@ of the index details. Depending on the index type, a single attribute or
 multiple attributes can be indexed. In the latter case, an array of
 strings is expected.
 
-Indexing the system attribute *_id* is not supported for user-defined indexes. 
-Manually creating an index using *_id* as an index attribute will fail with 
+Indexing the system attribute *_id* is not supported for user-defined indexes.
+Manually creating an index using *_id* as an index attribute will fail with
 an error.
 
 Optionally, an index name may be specified as a string in the *name* attribute.
@@ -54,10 +51,10 @@ cluster.
 Hash, skiplist and persistent indexes can optionally be created in a sparse
 variant. A sparse index will be created if the *sparse* attribute in
 the index details is set to *true*. Sparse indexes do not index documents
-for which any of the index attributes is either not set or is *null*. 
+for which any of the index attributes is either not set or is *null*.
 
 The optional attribute **deduplicate** is supported by array indexes of
-type *hash* or *skiplist*. It controls whether inserting duplicate index values 
+type *hash* or *skiplist*. It controls whether inserting duplicate index values
 from the same document into a unique array index will lead to a unique constraint
 error or not. The default value is *true*, so only a single instance of each
 non-unique index value will be inserted into the index per document. Trying to

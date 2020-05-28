@@ -24,8 +24,11 @@
 #ifndef ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H
 #define ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H 1
 
-#include "Basics/Common.h"
 #include <deque>
+#include <unordered_map>
+
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace graph {
@@ -239,7 +242,7 @@ class ShortestPathPriorityQueue {
 
     // Responsibility handed over to v
     // Note: _heap[0] is nullptr now.
-    // If we crash now this is save.
+    // If we crash now this is safe.
     // The code below is not allowed to use _heap[0]
     // anymore
     v = std::make_unique<Value>(_heap[0].release());

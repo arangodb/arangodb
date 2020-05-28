@@ -24,6 +24,7 @@
 #include "ShortStringStorage.h"
 #include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
 
 #include <cstring>

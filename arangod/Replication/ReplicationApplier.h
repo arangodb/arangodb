@@ -46,7 +46,7 @@ class ReplicationApplier {
   ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                      std::string&& databaseName);
 
-  virtual ~ReplicationApplier() {}
+  virtual ~ReplicationApplier() = default;
 
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;

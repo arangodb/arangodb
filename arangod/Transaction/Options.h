@@ -24,6 +24,8 @@
 #ifndef ARANGOD_TRANSACTION_OPTIONS_H
 #define ARANGOD_TRANSACTION_OPTIONS_H 1
 
+#include <cstdint>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -36,6 +38,9 @@ namespace transaction {
 
 struct Options {
   Options();
+
+  /// @brief returns default options used in tailing sync replication
+  static Options replicationDefaults();
 
   /// @brief adjust the global default values for transactions
   static void setLimits(uint64_t maxTransactionSize, uint64_t intermediateCommitSize,
@@ -57,11 +62,12 @@ struct Options {
   uint64_t maxTransactionSize;
   uint64_t intermediateCommitSize;
   uint64_t intermediateCommitCount;
-  bool allowImplicitCollections;
-  bool waitForSync;
+  bool allowImplicitCollectionsForRead;
+  bool allowImplicitCollectionsForWrite; // replication only!
 #ifdef USE_ENTERPRISE
   bool skipInaccessibleCollections;
 #endif
+  bool waitForSync;
 };
 
 }  // namespace transaction

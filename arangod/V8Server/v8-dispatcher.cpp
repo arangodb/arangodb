@@ -27,10 +27,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
@@ -75,7 +78,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              Javascript functions
+// --SECTION--                                              JavaScript functions
 // -----------------------------------------------------------------------------
 
 static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -85,9 +88,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  TRI_GET_GLOBALS();
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (v8g->_server.isStopping()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
@@ -95,14 +99,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
 
-  TRI_GET_GLOBALS();
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "registerTask() needs db RW permissions");
-    }
+  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "registerTask() needs db RW permissions");
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -140,9 +139,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  if(isSystem && !v8g->_securityContext.isInternal()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only Internal Context may create System Tasks");
-
+  if (isSystem && !v8g->_securityContext.isInternal()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only internal context may create system tasks");
   }
 
   // offset in seconds into period or from now on if no period
@@ -178,13 +176,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // only the superroot is allowed to run tasks as an arbitrary user
-  TRI_ASSERT(exec == ExecContext::CURRENT);
-  if (exec != nullptr) {
-    if (runAsUser.empty()) {  // execute task as the same user
-      runAsUser = exec->user();
-    } else if (exec->user() != runAsUser) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (runAsUser.empty()) {  // execute task as the same user
+    runAsUser = ExecContext::current().user();
+  } else if (ExecContext::current().user() != runAsUser) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   // extract the command
@@ -275,12 +270,9 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "registerTask() needs db RW permissions");
-    }
+  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "registerTask() needs db RW permissions");
   }
 
   int res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
@@ -337,19 +329,15 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
   }
 
-  std::string runAsUser;
-  ExecContext const* exec = ExecContext::CURRENT;
-
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "createQueue() needs db RW permissions");
-    }
-
-    runAsUser = exec->user();
-    TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
+  auto const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "createQueue() needs db RW permissions");
   }
 
+  std::string const runAsUser = exec.user();
+  TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
+  
   std::string key = TRI_ObjectToString(isolate, args[0]);
   uint64_t maxWorkers =
       std::min(TRI_ObjectToUInt64(isolate, args[1], false), (uint64_t)64);
@@ -363,9 +351,9 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc.close();
 
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
-  ExecContextScope exscope(ExecContext::superuser());
+  ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -373,11 +361,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  OperationResult result = trx.insert("_queues", doc.slice(), opts);
-
-  if (result.fail() && result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    result = trx.replace("_queues", doc.slice(), opts);
-  }
+  opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  OperationResult result = trx.insert(StaticStrings::QueuesCollection, doc.slice(), opts);
 
   res = trx.finish(result.result);
 
@@ -408,17 +393,15 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder doc;
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
 
-  ExecContext const* exec = ExecContext::CURRENT;
-
-  if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
+  if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
-  ExecContextScope exscope(ExecContext::superuser());
+  ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 
@@ -427,7 +410,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  OperationResult result = trx.remove("_queues", doc.slice(), opts);
+  OperationResult result = trx.remove(StaticStrings::QueuesCollection, doc.slice(), opts);
 
   res = trx.finish(result.result);
 

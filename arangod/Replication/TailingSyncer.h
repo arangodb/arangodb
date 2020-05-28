@@ -176,7 +176,8 @@ class TailingSyncer : public Syncer {
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
 
   arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
-                                                    TRI_voc_tick_t readTick);
+                                                    TRI_voc_tick_t readTick,
+                                                    char const* type);
 
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
@@ -218,10 +219,6 @@ class TailingSyncer : public Syncer {
 
   /// @brief whether or not master & slave can work in parallel
   bool _workInParallel;
-
-  /// @brief max parallel open transactions
-  /// this will be set to false for RocksDB, and to true for MMFiles
-  bool _supportsMultipleOpenTransactions;
 
   /// @brief which transactions were open and need to be treated specially
   std::unordered_map<TRI_voc_tid_t, std::unique_ptr<ReplicationTransaction>> _ongoingTransactions;

@@ -23,19 +23,22 @@
 
 #include "EndpointSrv.h"
 
+#include <algorithm>
+#include <vector>
+
 #ifndef _WIN32
 
 #define BIND_4_COMPAT 1  // LINUX
 #define BIND_8_COMPAT 1  // MACOSX
 
-#include <arpa/inet.h>
 #include <arpa/nameser.h>
 #include <netinet/in.h>
 #include <resolv.h>
 
 #include "Basics/StringUtils.h"
-#include "Endpoint/EndpointIp.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -186,7 +189,7 @@ EndpointSrv::EndpointSrv(std::string const& specification)
     : Endpoint(DomainType::SRV, EndpointType::CLIENT, TransportType::HTTP,
                EncryptionType::NONE, specification, 0) {}
 
-EndpointSrv::~EndpointSrv() {}
+EndpointSrv::~EndpointSrv() = default;
 
 bool EndpointSrv::isConnected() const {
   if (_endpoint != nullptr) {

@@ -26,9 +26,14 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+bool GeneralResponse::isValidResponseCode(uint64_t code) {
+  return ((code >= 100) && (code < 600));
+}
 
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
@@ -151,13 +156,18 @@ std::string GeneralResponse::responseString(ResponseCode code) {
           return StringUtils::itoa((int)code) + " Client error";
         case 5:
           return StringUtils::itoa((int)code) + " Server error";
+        case 0:
+          if (static_cast<int>(code) != 0) {
+            return StringUtils::itoa(500) + " Internal Server error";
+          }
+          break;
         default:
           break;
       }
     }
   }
 
-  return StringUtils::itoa((int)code) + " Unknown";
+  return StringUtils::itoa(500) + " Internal Server error - Unknown";
 }
 
 rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
@@ -353,6 +363,18 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS:
     case TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST:
     case TRI_ERROR_ARANGO_NO_JOURNAL:
+    case TRI_ERROR_NO_SMART_COLLECTION:
+    case TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_CANNOT_DROP_SMART_COLLECTION:
+    case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH:
+    case TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_VALIDATION_FAILED:
+    case TRI_ERROR_VALIDATION_BAD_PARAMETER:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -372,6 +394,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING:
     case TRI_ERROR_QUERY_NOT_FOUND:
     case TRI_ERROR_USER_NOT_FOUND:
+    case TRI_ERROR_TRANSACTION_NOT_FOUND:
     case TRI_ERROR_TASK_NOT_FOUND:
     case TRI_ERROR_GRAPH_NOT_FOUND:
     case TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST:
@@ -420,6 +443,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
     case TRI_ERROR_ONLY_ENTERPRISE:
+    case TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR:
+    case TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER:
       return ResponseCode::NOT_IMPLEMENTED;
 
     default:
@@ -427,10 +452,10 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode),
+GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
+    : _messageId(mid),
+      _responseCode(responseCode),
       _contentType(ContentType::UNSET),
-      _connectionType(ConnectionType::C_NONE),
-      _generateBody(false),
-      _allowCompression(false),
-      _contentTypeRequested(ContentType::UNSET) {}
+      _contentTypeRequested(ContentType::UNSET),
+      _generateBody(true),
+      _allowCompression(false) {}

@@ -28,8 +28,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8LineEditor.h"
@@ -50,18 +53,15 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer* applicationServer, TRI_vocbase_t* vocbase)
-    : Thread("Console"),
-      _applicationServer(applicationServer),
-      _vocbase(vocbase),
-      _userAborted(false) {}
+ConsoleThread::ConsoleThread(ApplicationServer& applicationServer, TRI_vocbase_t* vocbase)
+    : Thread(applicationServer, "Console"), _vocbase(vocbase), _userAborted(false) {}
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
 
 static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
-  std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   if (!v8Enabled) {
@@ -81,12 +81,12 @@ void ConsoleThread::run() {
       LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
     }
   } catch (...) {
-    _applicationServer->beginShutdown();
+    _server.beginShutdown();
     throw;
   }
 
   // exit context
-  _applicationServer->beginShutdown();
+  _server.beginShutdown();
 }
 
 void ConsoleThread::inner(V8ContextGuard const& guard) {
@@ -201,7 +201,6 @@ start_color_print('arangodb', true);
 
       {
         v8::TryCatch tryCatch(isolate);
-        ;
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);

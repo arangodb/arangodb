@@ -23,13 +23,28 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_V8PLATFORM_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_V8PLATFORM_FEATURE_H 1
 
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include <v8-platform.h>
+#include <v8.h>
+
+#include "Basics/operating-system.h"
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
 
-#include <libplatform/libplatform.h>
-#include <v8.h>
-
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class V8PlatformFeature final : public application_features::ApplicationFeature {
  private:

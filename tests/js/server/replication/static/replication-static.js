@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/* global ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the replication
@@ -29,18 +29,22 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const {assertEqual, assertFalse, assertInstanceOf, assertNotEqual,
+  assertNotNull, assertNull, assertTrue, fail } = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
+const _ = require('lodash');
 
 const replication = require('@arangodb/replication');
 const compareTicks = require('@arangodb/replication-common').compareTicks;
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const console = require('console');
 const internal = require('internal');
+const arango = internal.arango;
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
-const mmfilesEngine = (db._engine().name === 'mmfiles');
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
@@ -51,11 +55,11 @@ const replicatorUser = 'replicator-user';
 const replicatorPassword = 'replicator-password';
 
 const connectToMaster = function () {
-  arango.reconnect(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
+  reconnectRetry(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
 };
 
 const connectToSlave = function () {
-  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
+  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
 };
 
 const collectionChecksum = function (name) {
@@ -1208,7 +1212,6 @@ function BaseTestConfig () {
       compare(
         function (state) {
           var c = db._create(cn, {
-            isVolatile: mmfilesEngine,
             waitForSync: false,
             doCompact: false,
             journalSize: 1048576,
@@ -1232,11 +1235,6 @@ function BaseTestConfig () {
 
           var properties = db._collection(cn2).properties();
           assertEqual(cn2, db._collection(cn2).name());
-          if (mmfilesEngine) {
-            assertTrue(properties.isVolatile);
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-          }
           assertFalse(properties.waitForSync);
           assertFalse(properties.deleted);
           assertFalse(properties.keyOptions.allowUserKeys);
@@ -1287,10 +1285,6 @@ function BaseTestConfig () {
 
           var properties = c.properties();
           assertFalse(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-          }
 
           properties = c.properties({
             waitForSync: true,
@@ -1298,11 +1292,6 @@ function BaseTestConfig () {
             journalSize: 2097152
           });
           assertTrue(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
 
           state.cid = c._id;
           state.properties = c.properties();
@@ -1311,12 +1300,6 @@ function BaseTestConfig () {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertTrue(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-            assertEqual(properties.indexBuckets, properties.indexBuckets);
-          }
         }
       );
     },
@@ -1336,10 +1319,6 @@ function BaseTestConfig () {
 
           var properties = c.properties();
           assertTrue(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-          }
 
           properties = c.properties({
             waitForSync: false,
@@ -1347,11 +1326,6 @@ function BaseTestConfig () {
             journalSize: 1048576
           });
           assertFalse(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
 
           state.cid = c._id;
           state.properties = c.properties();
@@ -1360,45 +1334,8 @@ function BaseTestConfig () {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-            assertEqual(properties.indexBuckets, properties.indexBuckets);
-          }
         }
       );
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test change collection
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testChangeCollectionIndexBuckets: function () {
-      if (mmfilesEngine) {
-        compare(
-          function (state) {
-            var c = db._create(cn, {
-              indexBuckets: 4
-            });
-
-            var properties = c.properties();
-            assertEqual(4, properties.indexBuckets);
-
-            properties = c.properties({
-              indexBuckets: 8
-            });
-            assertEqual(8, properties.indexBuckets);
-
-            state.cid = c._id;
-            state.properties = c.properties();
-          },
-          function (state) {
-            var properties = db._collection(cn).properties();
-            assertEqual(8, properties.indexBuckets);
-          }
-        );
-      }
     },
 
     // /////////////////////////////////////////////////////////////////////////////
@@ -1409,7 +1346,6 @@ function BaseTestConfig () {
       compare(
         function (state) {
           var c = db._create(cn, {
-            isVolatile: mmfilesEngine,
             waitForSync: false,
             doCompact: false,
             journalSize: 1048576
@@ -1423,12 +1359,6 @@ function BaseTestConfig () {
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
           assertFalse(properties.deleted);
-          if (mmfilesEngine) {
-            assertTrue(properties.isVolatile);
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
           assertTrue(properties.keyOptions.allowUserKeys);
           assertEqual('traditional', properties.keyOptions.type);
         }
@@ -1462,11 +1392,6 @@ function BaseTestConfig () {
           assertFalse(properties.isVolatile);
           assertTrue(properties.waitForSync);
           assertFalse(properties.deleted);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
           assertFalse(properties.keyOptions.allowUserKeys);
           assertEqual('autoincrement', properties.keyOptions.type);
         }
@@ -1515,54 +1440,6 @@ function BaseTestConfig () {
           assertEqual('padded', properties.keyOptions.type);
         }
       );
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test create collection
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testCreateCollectionIndexBuckets1: function () {
-      if (mmfilesEngine) {
-        compare(
-          function (state) {
-            var c = db._create(cn, {
-              indexBuckets: 16
-            });
-
-            state.cid = c._id;
-            state.properties = c.properties();
-          },
-          function (state) {
-            var properties = db._collection(cn).properties();
-            assertEqual(cn, db._collection(cn).name());
-            assertEqual(16, properties.indexBuckets);
-          }
-        );
-      }
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test create collection
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testCreateCollectionIndexBuckets2: function () {
-      if (mmfilesEngine) {
-        compare(
-          function (state) {
-            var c = db._create(cn, {
-              indexBuckets: 8
-            });
-
-            state.cid = c._id;
-            state.properties = c.properties();
-          },
-          function (state) {
-            var properties = db._collection(cn).properties();
-            assertEqual(cn, db._collection(cn).name());
-            assertEqual(8, properties.indexBuckets);
-          }
-        );
-      }
     },
 
     // /////////////////////////////////////////////////////////////////////////////
@@ -2097,7 +1974,89 @@ function BaseTestConfig () {
           assertTrue(props.links.hasOwnProperty(cn));
         }
       );
-    }
+    },
+
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief Check that different syncer IDs and their WAL ticks are tracked
+    //         separately
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testWalRetain: function () {
+      connectToMaster();
+
+      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
+      const http = {
+        GET: (route) => arango.GET(dbPrefix + route),
+        POST: (route, body) => arango.POST(dbPrefix + route, body),
+        DELETE: (route) => arango.DELETE(dbPrefix + route),
+      };
+
+      // The previous tests will have leftover entries in the
+      // ReplicationClientsProgressTracker. So first, we look these up to not
+      // choose a duplicate id, and be able to ignore them later.
+
+      const existingClientSyncerIds = (() => {
+        const {state:{running}, clients} = http.GET(`/_api/replication/logger-state`);
+        assertTrue(running);
+        assertInstanceOf(Array, clients);
+
+        return new Set(clients.map(client => client.syncerId));
+      })();
+      const maxExistingSyncerId = Math.max(0, ...existingClientSyncerIds);
+
+      const [syncer0, syncer1, syncer2] = _.range(maxExistingSyncerId + 1, maxExistingSyncerId + 4);
+
+      // Get a snapshot
+      const {lastTick: snapshotTick, id: replicationContextId}
+        = http.POST(`/_api/replication/batch?syncerId=${syncer0}`, {ttl: 120});
+
+      const callWailTail = (tick, syncerId) => {
+        const result = http.GET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
+        assertFalse(result.error, `Expected call to succeed, but got ${JSON.stringify(result)}`);
+        assertEqual(204, result.code, `Unexpected response ${JSON.stringify(result)}`);
+      };
+
+      callWailTail(snapshotTick, syncer1);
+      callWailTail(snapshotTick, syncer2);
+
+      // Now that the WAL should be held, release the snapshot.
+      http.DELETE(`/_api/replication/batch/${replicationContextId}`);
+
+      const getClients = () => {
+        // e.g.
+        // { "state": {"running": true, "lastLogTick": "71", "lastUncommittedLogTick": "71", "totalEvents": 71, "time": "2019-07-02T14:33:32Z"},
+        //   "server": {"version": "3.5.0-devel", "serverId": "172021658338700", "engine": "rocksdb"},
+        //   "clients": [
+        //     {"syncerId": "102", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"},
+        //     {"syncerId": "101", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"}
+        //   ]}
+        let {state:{running}, clients} = http.GET(`/_api/replication/logger-state`);
+        assertTrue(running);
+        assertInstanceOf(Array, clients);
+        // remove clients that existed at the start of the test
+        clients = clients.filter(client => !existingClientSyncerIds.has(client.syncerId));
+        // sort ascending by syncerId
+        clients.sort((a, b) => a.syncerId - b.syncerId);
+
+        return clients;
+      };
+
+      let clients = getClients();
+      assertEqual([syncer0, syncer1, syncer2], clients.map(client => client.syncerId));
+      assertEqual(snapshotTick, clients[0].lastServedTick);
+      assertEqual(snapshotTick, clients[1].lastServedTick);
+      assertEqual(snapshotTick, clients[2].lastServedTick);
+
+      // Update ticks
+      callWailTail(parseInt(snapshotTick) + 1, syncer1);
+      callWailTail(parseInt(snapshotTick) + 2, syncer2);
+
+      clients = getClients();
+      assertEqual([syncer0, syncer1, syncer2], clients.map(client => client.syncerId));
+      assertEqual(snapshotTick, clients[0].lastServedTick);
+      assertEqual((parseInt(snapshotTick) + 1).toString(), clients[1].lastServedTick);
+      assertEqual((parseInt(snapshotTick) + 2).toString(), clients[2].lastServedTick);
+    },
   };
 }
 
@@ -2137,6 +2096,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, { isSystem: true });
+      db._dropView("UnitTestsSyncView");
 
       connectToSlave();
       replication.applier.stop();
@@ -2144,6 +2104,7 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, { isSystem: true });
+      db._dropView("UnitTestsSyncView");
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');

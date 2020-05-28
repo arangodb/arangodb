@@ -1567,44 +1567,6 @@ class Graph {
   }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph__removeVertexCollection
-// //////////////////////////////////////////////////////////////////////////////
-
-  _removeVertexCollection (vertexCollectionName, dropCollection) {
-    var err;
-    if (db._collection(vertexCollectionName) === null) {
-      err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
-      throw err;
-    }
-
-    var index = this.__orphanCollections.indexOf(vertexCollectionName);
-    if (index === -1) {
-      err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code;
-      err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message;
-      throw err;
-    }
-
-    if (dropCollection) {
-      checkRWPermission(vertexCollectionName);
-    }
-
-    this.__orphanCollections.splice(index, 1);
-    delete this[vertexCollectionName];
-    db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
-
-    if (dropCollection === true) {
-      var graphs = exports._listObjects();
-      if (checkIfMayBeDropped(vertexCollectionName, null, graphs)) {
-        db._drop(vertexCollectionName);
-      }
-    }
-    updateBindCollections(this);
-  }
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_general_graph_connectingEdges
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1718,8 +1680,6 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
 exports._graph = function (graphName) {
   let gdb = getGraphCollection();
   let g;
-  let collections;
-  let orphanCollections;
 
   try {
     g = gdb.document(graphName);
@@ -1736,6 +1696,12 @@ exports._graph = function (graphName) {
     let err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
     err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Only)';
+    throw err;
+  }
+  if (g.isSatellite) {
+    let err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
+    err.errorMessage = 'The graph you requested is a SatelliteGraph (Enterprise Only)';
     throw err;
   }
 
@@ -1873,8 +1839,8 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
     'orphanCollections': orphanCollections,
     'edgeDefinitions': edgeDefinitions,
     '_key': graphName,
-    'numberOfShards': options.numberOfShards || 1,
-    'replicationFactor': options.replicationFactor || 1,
+    'numberOfShards': options.numberOfShards || undefined,
+    'replicationFactor': options.replicationFactor || undefined,
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;

@@ -1,7 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> runningQueries = queries.current().filter(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">query</span>) </span>{
-........&gt;   <span class="hljs-keyword">return</span> query.query === theQuery;
-........&gt; });
-arangosh&gt; queries.kill(runningQueries[<span class="hljs-number">0</span>].id);
-{ 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
-}

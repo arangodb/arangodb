@@ -23,7 +23,11 @@
 
 #include "EndpointFeature.h"
 
+#include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
@@ -36,12 +40,12 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 EndpointFeature::EndpointFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
+    : HttpEndpointProvider(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("AQLPhase");
+  startsAfter<application_features::AqlFeaturePhase>();
 
-  startsAfter("Server");
+  startsAfter<ServerFeature>();
 
   // if our default value is too high, we'll use half of the max value provided
   // by the system
@@ -66,11 +70,11 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--tcp.reuse-address", "try to reuse TCP port(s)",
                      new BooleanParameter(&_reuseAddress),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--tcp.backlog-size", "listen backlog size",
                      new UInt64Parameter(&_backlogSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

@@ -54,7 +54,7 @@ struct splitmix64 {
      computations) or xorshift1024* (for massively parallel computations)
      generator. */
 
-  splitmix64(uint64_t seed) : _x(seed) {}
+  explicit splitmix64(uint64_t seed) : _x(seed) {}
 
   uint64_t next() {
     uint64_t z = (_x += UINT64_C(0x9E3779B97F4A7C15));

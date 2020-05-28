@@ -24,15 +24,19 @@
 #define ARANGOD_VOC_BASE_API_COLLECTIONS_H 1
 
 #include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 #include <functional>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 
@@ -48,34 +52,30 @@ struct Collections {
     Context(Context const&) = delete;
     Context& operator=(Context const&) = delete;
 
-    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll);
-    Context(TRI_vocbase_t& vocbase, LogicalCollection& coll, transaction::Methods* trx);
+    explicit Context(std::shared_ptr<LogicalCollection> coll);
+    Context(std::shared_ptr<LogicalCollection> coll, transaction::Methods* trx);
 
     ~Context();
 
     transaction::Methods* trx(AccessMode::Type const& type, bool embeddable,
                               bool forceLoadCollection);
-    TRI_vocbase_t& vocbase() const;
-    LogicalCollection* coll() const;
+    //TRI_vocbase_t& vocbase() const;
+    std::shared_ptr<LogicalCollection> coll() const;
 
    private:
-    TRI_vocbase_t& _vocbase;
-    LogicalCollection& _coll;
+    std::shared_ptr<LogicalCollection> _coll;
     transaction::Methods* _trx;
     bool const _responsibleForTrx;
   };
 
-  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
-  typedef std::function<void(std::vector<std::shared_ptr<LogicalCollection>> const&)> MultiFuncCallback;
-  typedef std::function<void(velocypack::Slice const&)> DocCallback;
-
-  static void enumerate(TRI_vocbase_t* vocbase, FuncCallback const&);
+  static void enumerate(TRI_vocbase_t* vocbase,
+                        std::function<void(std::shared_ptr<LogicalCollection> const&)> const&);
 
   /// @brief lookup a collection in vocbase or clusterinfo.
-  static arangodb::Result lookup(    // find collection
+  static Result lookup(    // find collection
       TRI_vocbase_t const& vocbase,  // vocbase to search
       std::string const& name,       // collection name
-      FuncCallback callback          // invoke on found collection
+      std::shared_ptr<LogicalCollection>& ret
   );
 
   /// Create collection, ownership of collection in callback is
@@ -87,22 +87,29 @@ struct Collections {
       arangodb::velocypack::Slice const& properties,  // collection properties
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
-      FuncCallback callback  // invoke on collection creation
-  );
+      bool isNewDatabase,
+      std::shared_ptr<LogicalCollection>& ret);  // invoke on collection creation
 
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
   static Result create(TRI_vocbase_t&, std::vector<CollectionCreationInfo> const& infos,
                        bool createWaitsForSyncReplication,
-                       bool enforceReplicationFactor, MultiFuncCallback const&);
-  static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name);
+                       bool enforceReplicationFactor, bool isNewDatabase,
+                       std::shared_ptr<LogicalCollection> const& colPtr,
+                       std::vector<std::shared_ptr<LogicalCollection>>& ret);
+
+  static Result createSystem(
+      TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase,
+                             std::shared_ptr<LogicalCollection>& ret);
+  static void createSystemCollectionProperties(std::string const& collectionName,
+                                               VPackBuilder& builder, TRI_vocbase_t const&);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice const& props, bool partialUpdate);
+                                 velocypack::Slice const& props);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);
@@ -113,16 +120,28 @@ struct Collections {
       double timeout                      // single-server drop timeout
   );
 
-  static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection const& coll);
+  static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
+                                        LogicalCollection const& coll);
 
-  static Result revisionId(Context& ctxt, TRI_voc_rid_t& rid);
+  static futures::Future<Result> upgrade(TRI_vocbase_t& vocbase,
+                                         LogicalCollection const& coll);
 
+  static futures::Future<OperationResult> revisionId(Context& ctxt);
+
+  typedef std::function<void(velocypack::Slice const&)> DocCallback;
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
                               DocCallback const& cb);
+  
+  static arangodb::Result checksum(LogicalCollection& collection,
+                                   bool withRevisions, bool withData,
+                                   uint64_t& checksum, TRI_voc_rid_t& revId);
+
+  /// @brief filters properties for collection creation
+  static arangodb::velocypack::Builder filterInput(arangodb::velocypack::Slice slice);
 };
 #ifdef USE_ENTERPRISE
-Result ULColCoordinatorEnterprise(std::string const& databaseName,
+Result ULColCoordinatorEnterprise(ClusterFeature& feature, std::string const& databaseName,
                                   std::string const& collectionCID,
                                   TRI_vocbase_col_status_e status);
 

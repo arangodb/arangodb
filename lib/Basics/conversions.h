@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_CONVERSIONS_H
 #define ARANGODB_BASICS_CONVERSIONS_H 1
 
+#include <string>
+
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////

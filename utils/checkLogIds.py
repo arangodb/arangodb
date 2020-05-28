@@ -121,6 +121,10 @@ def do_operation(fullpath, project_path, target_file_handle, id_database, levels
                         else:
                             id_database[uid]=location_string
 
+                    elif param == "logId":
+                        # additional macro
+                        pass 
+
                     else:
                         print("BROKEN PARAMS IN: " + project_path + ":" + str(cnt))
                         print(operation)
@@ -204,4 +208,4 @@ if __name__ == "__main__":
             ,[".", "lib/Logger/LogMacros.h",
               "arangod/StorageEngine/TransactionState.h"]    #dirs and files to exclude (does not purge the dir)
             , dict()                                         #database
-            ));
+            ))

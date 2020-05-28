@@ -11,7 +11,6 @@
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
-%x NOT
 
 %top{
 #include <stdint.h>
@@ -23,15 +22,20 @@
 
 %{
 #include "Basics/Common.h"
-#include "Basics/conversions.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/conversions.h"
+#include "Basics/operating-system.h"
+
+#if _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
 
 namespace arangodb {
 namespace aql {
-class Query;
+class QueryContext;
 class Parser;
 }
 }
@@ -39,6 +43,7 @@ class Parser;
 #include "Aql/AstNode.h"
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
+#include "Aql/QueryContext.h"
 
 #include <algorithm>
 
@@ -115,7 +120,7 @@ class Parser;
 }
 
 (?i:NOT) {
-  BEGIN(NOT);
+  return T_NOT;
 }
 
 (?i:AND) {
@@ -336,7 +341,7 @@ class Parser;
 
 ($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) {
   /* unquoted string */
-  yylval->strval.value = yyextra->query()->registerString(yytext, yyleng);
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
   return T_STRING;
 }
@@ -351,7 +356,7 @@ class Parser;
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -362,6 +367,11 @@ class Parser;
 
 <BACKTICK>\n {
   /* newline character inside backtick */
+}
+
+<BACKTICK><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 
 <BACKTICK>. {
@@ -379,7 +389,7 @@ class Parser;
   /* end of forwardtick-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 2, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 2, outLength);
   yylval->strval.length = outLength;
   return T_STRING;
 }
@@ -390,6 +400,11 @@ class Parser;
 
 <FORWARDTICK>\n {
   /* newline character inside forwardtick */
+}
+
+<FORWARDTICK><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated identifier", yylloc->first_line, yylloc->first_column);
 }
 
 <FORWARDTICK>. {
@@ -409,7 +424,7 @@ class Parser;
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
@@ -420,6 +435,11 @@ class Parser;
 
 <DOUBLE_QUOTE>\n {
   /* newline character inside quote */
+}
+
+<DOUBLE_QUOTE><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 
 <DOUBLE_QUOTE>. {
@@ -435,7 +455,7 @@ class Parser;
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
   size_t outLength;
-  yylval->strval.value = yyextra->query()->registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
+  yylval->strval.value = yyextra->ast()->resources().registerEscapedString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryStringStart()) - 1, outLength);
   yylval->strval.length = outLength;
   return T_QUOTED_STRING;
 }
@@ -446,6 +466,11 @@ class Parser;
 
 <SINGLE_QUOTE>\n {
   /* newline character inside quote */
+}
+
+<SINGLE_QUOTE><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated string literal", yylloc->first_line, yylloc->first_column);
 }
 
 <SINGLE_QUOTE>. {
@@ -510,7 +535,7 @@ class Parser;
 @(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name or a view name parameter */
-  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
 }
@@ -522,7 +547,7 @@ class Parser;
 @@(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name or a view name parameter */
-  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_DATA_SOURCE_PARAMETER;
 }
@@ -573,41 +598,15 @@ class Parser;
   // eat the lone star
 }
 
+<COMMENT_MULTI><<EOF>> {
+  auto parser = yyextra;
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected unterminated multi-line comment", yylloc->first_line, yylloc->first_column);
+}
+
 <COMMENT_MULTI>\n {
   /* line numbers are counted elsewhere already */
   yycolumn = 0;
 }
-
- /* ---------------------------------------------------------------------------
-  * special transformation for NOT IN to T_NIN
-  * --------------------------------------------------------------------------- */
-
-<NOT>(?i:IN) {
-  /* T_NOT + T_IN => T_NIN */
-  BEGIN(INITIAL);
-  return T_NIN;
-}
-
-<NOT>[\r\t\n ] {
-  /* ignore whitespace */
-}
-
-<NOT>. {
-  /* found something different to T_IN */
-  /* now push the character back into the input stream and return a T_NOT token */
-  BEGIN(INITIAL);
-  yyless(0);
-  /* must decrement offset by one character as we're pushing the char back onto the stack */
-  yyextra->decreaseOffset(1);
-  return T_NOT;
-}
-
-<NOT><<EOF>> {
-  /* make sure that we still return a T_NOT when we reach the end of the input */
-  BEGIN(INITIAL);
-  return T_NOT;
-}
-
 
 . {
   /* anything else is returned as it is */

@@ -25,6 +25,10 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_H
 #define ARANGODB_ENDPOINT_ENDPOINT_IP_H 1
 
+#include <cstdint>
+#include <string>
+
+#include "Basics/socket-utils.h"
 #include "Endpoint/Endpoint.h"
 
 struct addrinfo;
@@ -48,6 +52,7 @@ class EndpointIp : public Endpoint {
 
  public:
   TRI_socket_t connect(double, double) override final;
+  // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override final;
   bool initIncoming(TRI_socket_t) override final;
 

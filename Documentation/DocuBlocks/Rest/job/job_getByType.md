@@ -2,7 +2,7 @@
 @startDocuBlock job_getByType
 @brief Returns the ids of job results with a specific status
 
-@RESTHEADER{GET /_api/job/{type}, Returns list of async jobs, getJob}
+@RESTHEADER{GET /_api/job/{type}#by-type, Returns list of async jobs, getJob}
 
 @RESTURLPARAMETERS
 
@@ -100,4 +100,3 @@ Querying the status of a pending job:
   logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

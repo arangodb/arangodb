@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_COMPOSITE_READER_H
@@ -47,30 +46,30 @@ class composite_reader : public index_reader {
       readers_t&& readers,
       uint64_t docs_count,
       uint64_t docs_max
-  ) NOEXCEPT
+  ) noexcept
     : readers_(std::move(readers)),
       docs_count_(docs_count),
       docs_max_(docs_max) {
   }
 
   // returns corresponding sub-reader
-  virtual const reader_type& operator[](size_t i) const NOEXCEPT override {
+  virtual const reader_type& operator[](size_t i) const noexcept override {
     assert(i < readers_.size());
     return *(readers_[i]);
   }
 
   // maximum number of documents
-  virtual uint64_t docs_count() const NOEXCEPT override {
+  virtual uint64_t docs_count() const noexcept override {
     return docs_max_;
   }
 
   // number of live documents
-  virtual uint64_t live_docs_count() const NOEXCEPT override {
+  virtual uint64_t live_docs_count() const noexcept override {
     return docs_count_;
   }
 
   // returns total number of opened writers
-  virtual size_t size() const NOEXCEPT override {
+  virtual size_t size() const noexcept override {
     return readers_.size();
   }
 

@@ -1,7 +1,0 @@
-@Q:
-RETURN LENGTH( {<span class="hljs-attr">a</span>:<span class="hljs-number">1</span>, <span class="hljs-attr">b</span>:<span class="hljs-number">2</span>, <span class="hljs-attr">c</span>:<span class="hljs-number">3</span>, <span class="hljs-attr">d</span>:<span class="hljs-number">4</span>, <span class="hljs-attr">e</span>:{<span class="hljs-attr">f</span>:<span class="hljs-number">5</span>,<span class="hljs-attr">g</span>:<span class="hljs-number">6</span>}} )
-
-@R
-[
-  <span class="hljs-number">5</span>
-]

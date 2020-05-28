@@ -20,8 +20,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+
 #include "GreetingsFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 
 namespace arangodb {
@@ -29,7 +36,7 @@ namespace arangodb {
 GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter<LoggerFeature>();
 }
 
 void GreetingsFeature::prepare() {
@@ -40,16 +47,17 @@ void GreetingsFeature::prepare() {
   // so warn users about this
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // maintainer mode
-  bool warn = true;
+  constexpr bool warn = true;
 #else
   // catch-tests on (enables TEST_VIRTUAL)
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool warn = true;
+  constexpr bool warn = true;
 #else
   // neither maintainer mode nor catch tests
-  bool warn = false;
+  constexpr bool warn = false;
 #endif
 #endif
+  // cppcheck-suppress knownConditionTrueFalse
   if (warn) {
     LOG_TOPIC("0458b", WARN, arangodb::Logger::FIXME)
       << "This is a maintainer version intended for debugging. DO NOT USE IN PRODUCTION!";

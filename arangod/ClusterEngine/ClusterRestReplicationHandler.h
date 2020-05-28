@@ -31,15 +31,14 @@ namespace arangodb {
 /// @brief replication request handler
 class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
-  ClusterRestReplicationHandler(GeneralRequest*, GeneralResponse*);
-  ~ClusterRestReplicationHandler() {}
+  ClusterRestReplicationHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
+  ~ClusterRestReplicationHandler() = default;
 
  public:
   char const* name() const override final {
     return "ClusterRestReplicationHandler";
   }
-
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
   /// @brief handle a follow command for the replication log

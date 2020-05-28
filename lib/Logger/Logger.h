@@ -59,16 +59,24 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include "Basics/CleanupFunctions.h"
+#include <stddef.h>
+#include <atomic>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
-#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,13 +87,23 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(LogLevel level, size_t topicId, std::string&& message, size_t offset)
-      : _level(level), _topicId(topicId), _message(std::move(message)), _offset(offset) {}
+  LogMessage(char const* function, char const* file, int line,
+             LogLevel level, size_t topicId, std::string&& message, size_t offset)
+      : _function(function),
+        _file(file),
+        _line(line),
+        _level(level),
+        _topicId(topicId),
+        _message(std::move(message)),
+        _offset(offset) {}
 
-  LogLevel _level;
-  size_t _topicId;
+  char const* _function;
+  char const* _file;
+  int const _line;
+  LogLevel const _level;
+  size_t const _topicId;
   std::string const _message;
-  size_t _offset;
+  size_t const _offset;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,13 +147,15 @@ class Logger {
   static LogTopic AQL;
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
+  static LogTopic BACKUP;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
+  static LogTopic CLUSTERCOMM;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
-  static LogTopic CLUSTERCOMM;
   static LogTopic COMPACTOR;
   static LogTopic CONFIG;
+  static LogTopic CRASH;
   static LogTopic DATAFILES;
   static LogTopic DEVEL;
   static LogTopic DUMP;
@@ -164,6 +184,7 @@ class Logger {
   static LogTopic THREADS;
   static LogTopic TRANSACTIONS;
   static LogTopic TTL;
+  static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
 
@@ -258,14 +279,15 @@ class Logger {
   }
 
  public:
-  static void initialize(bool);
+  static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void flush();
+  static void shutdownLogThread();
+  static void flush() noexcept;
 
  private:
   static Mutex _initializeMutex;
 
-  // these varaibles might be changed asynchronously
+  // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
 
@@ -289,7 +311,5 @@ class Logger {
   static std::unique_ptr<LogThread> _loggingThread;
 };
 }  // namespace arangodb
-
-#include "Logger/LoggerStream.h"
 
 #endif

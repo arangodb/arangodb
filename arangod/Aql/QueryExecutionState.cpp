@@ -23,6 +23,10 @@
 
 #include "QueryExecutionState.h"
 
+#include <string>
+
+#include "Basics/debugging.h"
+
 using namespace arangodb::aql;
 
 /// @brief names of query phases / states
@@ -36,6 +40,7 @@ static std::string const StateNames[] = {
     "executing",            // EXECUTION
     "finalizing",           // FINALIZATION
     "finished",             // FINISHED
+    "killed",               // KILLED
 
     "invalid"  // INVALID
 };

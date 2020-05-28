@@ -1,5 +1,0 @@
-arangosh&gt; c.toArray();
-[ 
-  <span class="hljs-number">2</span>, 
-  <span class="hljs-number">4</span> 
-]

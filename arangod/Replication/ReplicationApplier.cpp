@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplier.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -32,7 +34,9 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/TailingSyncer.h"
 #include "Replication/common-defines.h"
@@ -44,12 +48,15 @@ using namespace arangodb;
 /// @brief common replication applier
 struct ApplierThread : public Thread {
  public:
-  ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
-      : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {
+  ApplierThread(application_features::ApplicationServer& server,
+                ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
+      : Thread(server, "ReplicationApplier"),
+        _applier(applier),
+        _syncer(std::move(syncer)) {
     TRI_ASSERT(_syncer);
   }
 
-  ~ApplierThread() {} // shutdown is called by derived implementations!
+  ~ApplierThread() = default; // shutdown is called by derived implementations!
 
   void run() override {
     TRI_ASSERT(_syncer != nullptr);
@@ -100,8 +107,9 @@ struct ApplierThread : public Thread {
 
 /// @brief sync thread class
 struct FullApplierThread final : public ApplierThread {
-  FullApplierThread(ReplicationApplier* applier, std::shared_ptr<InitialSyncer>&& syncer)
-      : ApplierThread(applier, std::move(syncer)) {}
+  FullApplierThread(application_features::ApplicationServer& server,
+                    ReplicationApplier* applier, std::shared_ptr<InitialSyncer>&& syncer)
+      : ApplierThread(server, applier, std::move(syncer)) {}
 
   ~FullApplierThread() { shutdown(); }
 
@@ -136,8 +144,9 @@ struct FullApplierThread final : public ApplierThread {
 
 /// @brief applier thread class. run only the tailing code
 struct TailingApplierThread final : public ApplierThread {
-  TailingApplierThread(ReplicationApplier* applier, std::shared_ptr<TailingSyncer>&& syncer)
-      : ApplierThread(applier, std::move(syncer)) {}
+  TailingApplierThread(application_features::ApplicationServer& server,
+                       ReplicationApplier* applier, std::shared_ptr<TailingSyncer>&& syncer)
+      : ApplierThread(server, applier, std::move(syncer)) {}
 
   ~TailingApplierThread() { shutdown(); }
 
@@ -259,7 +268,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   while (_state.isShuttingDown()) {
     // another instance is still around
     writeLocker.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     writeLocker.lock();
   }
 
@@ -304,7 +313,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
     writeLocker.unlock();
   }
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (_configuration._server.isStopping()) {
     // dont build a new applier if we shutting down
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -324,7 +333,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   }
 
   while (!_thread->hasStarted()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 
   TRI_ASSERT(!_state.isActive() && !_state.isShuttingDown());
@@ -340,7 +349,7 @@ void ReplicationApplier::startReplication() {
   doStart(
       [&]() {
         std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
-        _thread.reset(new FullApplierThread(this, std::move(syncer)));
+        _thread.reset(new FullApplierThread(_configuration._server, this, std::move(syncer)));
       },
       ReplicationApplierState::ActivityPhase::INITIAL);
 }
@@ -358,7 +367,8 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
             buildTailingSyncer(initialTick, useTick, barrierId);
-        _thread.reset(new TailingApplierThread(this, std::move(syncer)));
+        _thread.reset(new TailingApplierThread(_configuration._server, this,
+                                               std::move(syncer)));
       },
       ReplicationApplierState::ActivityPhase::TAILING);
 
@@ -543,7 +553,8 @@ bool ReplicationApplier::loadStateNoLock() {
   if (!serverId.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
   }
-  _state._serverId = arangodb::basics::StringUtils::uint64(serverId.copyString());
+  _state._serverId =
+      ServerId(arangodb::basics::StringUtils::uint64(serverId.copyString()));
 
   // read the ticks
   readTick(slice, "lastAppliedContinuousTick", _state._lastAppliedContinuousTick, false);
@@ -614,7 +625,7 @@ Result ReplicationApplier::persistStateResult(bool doSync) {
 void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
   TRI_ASSERT(!result.isClosed());
 
-  ReplicationApplierConfiguration configuration;
+  ReplicationApplierConfiguration configuration(_configuration._server);
   ReplicationApplierState state;
 
   {
@@ -631,7 +642,7 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
   // add server info
   result.add("server", VPackValue(VPackValueType::Object));
   result.add("version", VPackValue(ARANGODB_VERSION));
-  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   result.close();  // server
 
   if (!configuration._endpoint.empty()) {
@@ -735,7 +746,6 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
             << "replication applier is not stopping";
         TRI_ASSERT(false);
         start = std::chrono::steady_clock::now();
-        ;
       }
       writeLocker.lock();
     }

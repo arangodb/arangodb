@@ -40,7 +40,7 @@ function runSetup () {
 
   c.save({ _key: 'crashme', thefoxx: 'is quick and jumped over the lazy dog' }, true); // wait for sync
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

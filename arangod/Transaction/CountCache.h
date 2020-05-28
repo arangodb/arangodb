@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include <atomic>
+#include <limits>
 
 namespace arangodb {
 namespace transaction {
@@ -51,23 +52,23 @@ enum class CountType {
 /// the cache values have a 15 second ttl by default. this is currently
 /// hard-coded
 struct CountCache {
-  static constexpr int64_t NotPopulated = -1;
+  static constexpr uint64_t NotPopulated = std::numeric_limits<uint64_t>::max();
   static constexpr double Ttl = 15.0;  // seconds
 
   CountCache();
 
   /// @brief get current value from cache, regardless if expired or not
-  int64_t get() const;
+  uint64_t get() const;
 
   /// @brief get current value from cache
   /// if expired, returns NotPopulated
-  int64_t get(double ttl) const;
+  uint64_t get(double ttl) const;
 
   /// @brief stores value in the cache and sets the ttl to 15 seconds
   /// in the future
-  void store(int64_t value);
+  void store(uint64_t value);
 
-  std::atomic<int64_t> count;
+  std::atomic<uint64_t> count;
   std::atomic<double> timestamp;
 };
 

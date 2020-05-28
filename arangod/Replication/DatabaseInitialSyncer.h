@@ -26,6 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "Containers/MerkleTree.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/utilities.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -39,9 +40,6 @@ class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
 class DatabaseInitialSyncer final : public InitialSyncer {
-  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                                                  arangodb::LogicalCollection* col,
-                                                  std::string const& keysId);
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                                                   arangodb::LogicalCollection* col,
                                                   std::string const& keysId);
@@ -135,8 +133,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief insert the batch id and barrier ID.
   ///        For use in globalinitialsyncer
   // TODO worker safety
-  void useAsChildSyncer(replutils::MasterInfo const& info, uint64_t barrierId,
+  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId, uint64_t barrierId,
                         double barrierUpdateTime, uint64_t batchId, double batchUpdateTime) {
+    _state.syncerId = syncerId;
     _state.isChildSyncer = true;
     _state.master = info;
     _state.barrier.id = barrierId;
@@ -191,10 +190,23 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result fetchCollectionDump(arangodb::LogicalCollection*,
                              std::string const& leaderColl, TRI_voc_tick_t);
 
-  /// @brief incrementally fetch data from a collection
+  /// @brief incrementally fetch data from a collection using keys as the
+  /// primary document identifier
   // TODO worker safety
   Result fetchCollectionSync(arangodb::LogicalCollection*,
                              std::string const& leaderColl, TRI_voc_tick_t);
+
+  /// @brief incrementally fetch data from a collection using keys as the
+  /// primary document identifier
+  // TODO worker safety
+  Result fetchCollectionSyncByKeys(arangodb::LogicalCollection*,
+                                   std::string const& leaderColl, TRI_voc_tick_t);
+
+  /// @brief incrementally fetch data from a collection using revisions as the
+  /// primary document identifier, not supported by all engines/collections
+  // TODO worker safety
+  Result fetchCollectionSyncByRevisions(arangodb::LogicalCollection*,
+                                        std::string const& leaderColl, TRI_voc_tick_t);
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
@@ -217,6 +229,18 @@ class DatabaseInitialSyncer final : public InitialSyncer {
 
   /// @brief create non-existing views locally
   Result handleViewCreation(VPackSlice const& views);
+
+  /// @brief send a "start batch" command
+  /// @param patchCount (optional)
+  ///        Try to patch count of this collection (must be a collection name).
+  ///        Only effective with the incremental sync.
+  Result batchStart(std::string const& patchCount = "");
+
+  /// @brief send an "extend batch" command
+  Result batchExtend();
+
+  /// @brief send a "finish batch" command
+  Result batchFinish();
 
   Configuration _config;
 };

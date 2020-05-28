@@ -37,9 +37,15 @@ class AgentInterface {
     bool _discardStartup;
     bool _privileged;
     WriteMode(bool d = false, bool p = false)
-        : _discardStartup(d), _privileged(p){};
+        : _discardStartup(d), _privileged(p) {}
     bool privileged() const { return _privileged; }
     bool discardStartup() const { return _discardStartup; }
+    bool operator==(WriteMode const& other) const {
+      return other._discardStartup == _discardStartup && other._privileged == _privileged;
+    }
+    bool operator!=(WriteMode const& other) const {
+      return other._discardStartup != _discardStartup || other._privileged != _privileged;
+    }
   };
 
   /// @brief Attempt write
@@ -58,7 +64,7 @@ class AgentInterface {
   virtual bool isCommitted(index_t last_entry) = 0;
 
   // Suffice warnings
-  virtual ~AgentInterface() {}
+  virtual ~AgentInterface() = default;
 };
 }  // namespace consensus
 }  // namespace arangodb

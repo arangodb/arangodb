@@ -1,1 +1,0 @@
-arangosh&gt; examples.dropGraph(<span class="hljs-string">"routeplanner"</span>);

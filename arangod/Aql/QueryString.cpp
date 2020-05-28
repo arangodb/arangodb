@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryString.h"
+
+#include "Basics/debugging.h"
 #include "Basics/fasthash.h"
 
 using namespace arangodb::aql;

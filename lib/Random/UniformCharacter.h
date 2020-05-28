@@ -24,6 +24,9 @@
 #ifndef ARANGODB_RANDOM_UNIFORM_CHARACTER_H
 #define ARANGODB_RANDOM_UNIFORM_CHARACTER_H 1
 
+#include <cstdlib>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

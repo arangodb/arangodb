@@ -26,6 +26,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
@@ -47,9 +48,7 @@ namespace {
 /// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  auto* execCtx = arangodb::ExecContext::CURRENT;
-
-  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
+  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +82,8 @@ v8::Handle<v8::Object> WrapView( // wrap view
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL(VocbaseViewTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance();
+  auto context = TRI_IGETC;
+  v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -115,7 +115,7 @@ v8::Handle<v8::Object> WrapView( // wrap view
     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()), // value
     v8::ReadOnly // attributes
   ).FromMaybe(false); // Ignore result...
-  result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
+  result->Set(context, _DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name())).FromMaybe(false);
 
   return scope.Escape<v8::Object>(result);
 }
@@ -187,8 +187,18 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
                                                            header.slice(), false, true);
 
   try {
+
+    // First refresh our analyzers cache to see all latest changes in analyzers
+    TRI_GET_GLOBALS();
+    auto res = v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                           .loadAvailableAnalyzers(vocbase.name());
+
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
     LogicalView::ptr view;
-    auto res = LogicalView::create(view, vocbase, builder.slice());
+    res = LogicalView::create(view, vocbase, builder.slice());
 
     if (!res.ok()) {
       // events::CreateView(vocbase.name(), name, res.errorNumber());
@@ -222,8 +232,8 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
 static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
@@ -251,7 +261,7 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
       if (TRI_HasProperty(context, isolate, optionsObject, IsSystemKey)) {
         allowDropSystem = TRI_ObjectToBoolean(
             isolate,
-            optionsObject->Get(TRI_IGETC, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
+            optionsObject->Get(context, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       allowDropSystem = TRI_ObjectToBoolean(isolate, args[1]);
@@ -297,8 +307,8 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 /// @brief drops a view
 static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
   auto* view = UnwrapView(isolate, args.Holder());
 
@@ -392,8 +402,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                 LogicalDataSource::Serialize::Detailed));
+    auto const res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);  // skip view
@@ -416,6 +425,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -438,12 +448,6 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     return true;
   });
-  std::sort(views.begin(), views.end(),
-            [](std::shared_ptr<LogicalView> const& lhs,
-               std::shared_ptr<LogicalView> const& rhs) -> bool {
-              return StringUtils::tolower(lhs->name()) <
-                     StringUtils::tolower(rhs->name());
-            });
 
   bool error = false;
   // already create an array of the correct size
@@ -466,9 +470,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       viewBuilder.openObject();
 
-      if (!view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                             LogicalDataSource::Serialize::Detailed))
-               .ok()) {
+      if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties).ok()) {
         continue;  // skip view
       }
     } catch (...) {
@@ -482,7 +484,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       break;
     }
 
-    result->Set(entry++, c);
+    result->Set(context, entry++, c).FromMaybe(false);
   }
 
   if (error) {
@@ -575,9 +577,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
 
       builderCurrent.openObject();
 
-      auto resCurrent =
-          viewPtr->properties(builderCurrent, LogicalDataSource::makeFlags(
-                                                  LogicalDataSource::Serialize::Detailed));
+      auto resCurrent = viewPtr->properties(builderCurrent, LogicalDataSource::Serialization::Properties);
 
       if (!resCurrent.ok()) {
         TRI_V8_THROW_EXCEPTION(resCurrent);
@@ -590,7 +590,16 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto res = view->properties(builder.slice(), partialUpdate);
+    auto& vocbase = GetContextVocBase(isolate);
+    TRI_GET_GLOBALS();
+    auto res = v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                           .loadAvailableAnalyzers(vocbase.name());
+
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
+    res = view->properties(builder.slice(), partialUpdate);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
@@ -616,8 +625,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
 
   builder.openObject();
 
-  auto res = view->properties(builder, LogicalDataSource::makeFlags(
-                                           LogicalDataSource::Serialize::Detailed));
+  auto const res = view->properties(builder, LogicalDataSource::Serialization::Properties);
 
   builder.close();
 
@@ -675,8 +683,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                 LogicalDataSource::Serialize::Detailed));
+    auto const res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);  // skip view
@@ -720,16 +727,18 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 void TRI_InitV8Views( // init views
-    TRI_v8_global_t& v8g, // V8 globals
-    v8::Isolate* isolate, // V8 isolate
-                     v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+                     TRI_v8_global_t& v8g, // V8 globals 
+                     v8::Isolate* isolate) {
+  auto db = v8::Local<v8::ObjectTemplate>::New(isolate, v8g.VocbaseTempl);
+
+  //  v8::Handle<v8::ObjectTemplate> VocbaseTempl = v8g.VocbaseTempl;
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_createView"), JS_CreateViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_dropView"), JS_DropViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_view"), JS_ViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_views"), JS_ViewsVocbase);
 
   v8::Handle<v8::ObjectTemplate> rt;
@@ -751,7 +760,7 @@ void TRI_InitV8Views( // init views
   v8g.VocbaseViewTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoView"),
-                               ft->GetFunction());
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }
 
 // -----------------------------------------------------------------------------

@@ -24,9 +24,12 @@
 #ifndef ARANGODB_LOGGER_LOG_TOPIC_H
 #define ARANGODB_LOGGER_LOG_TOPIC_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <atomic>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 
 namespace arangodb {

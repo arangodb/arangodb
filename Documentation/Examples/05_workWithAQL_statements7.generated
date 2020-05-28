@@ -1,3 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">while</span> (c.hasNext()) { <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb"</span>).print(c.next()); }
-<span class="hljs-number">2</span>
-<span class="hljs-number">4</span>

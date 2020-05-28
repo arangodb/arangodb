@@ -33,6 +33,7 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 
 var replication = require('@arangodb/replication');
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 var deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 let compareTicks = replication.compareTicks;
 var console = require('console');
@@ -44,12 +45,12 @@ var cn = 'UnitTestsReplication';
 var cn2 = 'UnitTestsReplication2';
 
 var connectToMaster = function () {
-  arango.reconnect(masterEndpoint, db._name(), 'root', '');
+  reconnectRetry(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
 var connectToSlave = function () {
-  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
+  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
@@ -234,15 +235,9 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          if (db._engine().name === 'rocksdb') {
-            //  rocksdb keeps wal longer
-            let cc = db._collection(cn).count();
-            assertEqual(cc, 31, 'rocksdb must keep wal, documents not there');
-          } else {
-            //  data loss on slave!
-            let cc = db._collection(cn).count();
-            assertTrue(cc < 25, 'Expected less than ' + cc);
-          }
+          //  rocksdb keeps wal longer
+          let cc = db._collection(cn).count();
+          assertEqual(cc, 31, 'rocksdb must keep wal, documents not there');
         }, {
           requireFromPresent: false,
           keepBarrier: false
@@ -330,16 +325,9 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          if (db._engine().name === 'rocksdb') {
-            //  rocksdb keeps wal longer
-            assertTrue(replication.applier.state().state.running, 'Applier should be running');
-            assertEqual(db._collection(cn).count(), 30, 'rocksdb must keep wal');
-          } else {
-            //  slave should have failed
-            assertFalse(replication.applier.state().state.running);
-            //  data loss on slave!
-            assertTrue(db._collection(cn).count() < 25);
-          }
+          //  rocksdb keeps wal longer
+          assertTrue(replication.applier.state().state.running, 'Applier should be running');
+          assertEqual(db._collection(cn).count(), 30, 'rocksdb must keep wal');
         },
         {
           requireFromPresent: true,

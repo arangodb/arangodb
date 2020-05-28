@@ -31,7 +31,7 @@ class Heap {
  public:
   using Value = T;
 
-  static FST_CONSTEXPR const int kNoKey = -1;
+  static constexpr int kNoKey = -1;
 
   // Initializes with a specific comparator.
   explicit Heap(Compare comp = Compare()) : comp_(comp), size_(0) {}
@@ -93,6 +93,8 @@ class Heap {
     pos_.reserve(size);
     key_.reserve(size);
   }
+
+  const Compare &GetCompare() const { return comp_; }
 
  private:
   // The following private routines are used in a supportive role
@@ -159,7 +161,7 @@ class Heap {
 };
 
 template <class T, class Compare>
-FST_CONSTEXPR const int Heap<T, Compare>::kNoKey;
+constexpr int Heap<T, Compare>::kNoKey;
 
 }  // namespace fst
 

@@ -22,18 +22,23 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBRestReplicationHandler.h"
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Replication/ReplicationClients.h"
+#include "Replication/Syncer.h"
 #include "Replication/utilities.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
-#include "RocksDBRestReplicationHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
@@ -41,6 +46,7 @@
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -50,9 +56,10 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
-RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response),
+RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response),
       _manager(globalRocksEngine()->replicationManager()) {}
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
@@ -68,19 +75,20 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
-    if (!parseSuccess || !body.isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+    if (!parseSuccess || !body.isObject()) { // error already created
       return;
     }
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    std::string const& clientId = _request->value("serverId");
+    arangodb::ServerId const clientId{
+        StringUtils::uint64(_request->value("serverId"))};
+    SyncerId const syncerId = SyncerId::fromRequest(*_request);
+    std::string const clientInfo = _request->value("clientInfo");
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
-    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, clientId);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -99,36 +107,40 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
     b.close();
 
+    _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
+                                        ctx->snapshotTick(), ttl);
+
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
 
   if (type == rest::RequestType::PUT && len >= 2) {
     // extend an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
-    auto input = _request->toVelocyPackBuilderPtr();
-
-    if (input == nullptr || !input->slice().isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+    bool parseSuccess = true;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess || !body.isObject()) { // error already created
       return;
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    std::string clientId;
-    int res = _manager->extendLifetime(id, clientId, ttl);
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(GeneralResponse::responseCode(res), res);
+    auto res = _manager->extendLifetime(id, ttl);
+    if (res.fail()) {
+      generateError(std::move(res).result());
       return;
     }
+
+    SyncerId const syncerId = std::get<SyncerId>(res.get());
+    arangodb::ServerId const clientId = std::get<arangodb::ServerId>(res.get());
+    std::string const& clientInfo = std::get<std::string>(res.get());
 
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.replicationClients().extend(clientId, ttl);
+    _vocbase.replicationClients().extend(syncerId, clientId, clientInfo, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -136,7 +148,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     bool found = _manager->remove(id);
     if (found) {
@@ -201,12 +213,15 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // add client
-  std::string const& clientId = _request->value("serverId");
+  arangodb::ServerId const clientId{
+      StringUtils::uint64(_request->value("serverId"))};
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const clientInfo = _request->value("clientInfo");
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
+  auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -308,7 +323,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
   double ttl = _request->parsedValue("ttl", replutils::BatchInfo::DefaultTimeout);
-  _vocbase.replicationClients().track(clientId, tickStart == 0 ? 0 : tickStart - 1, ttl);
+  _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
+                                      tickStart == 0 ? 0 : tickStart - 1, ttl);
 }
 
 /// @brief run the command that determines which transactions were open at
@@ -359,7 +375,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     builder.add(VPackValue("databases"));
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
-    grantTemporaryRights();
+    ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -661,10 +677,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
@@ -673,9 +688,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   size_t reserve = std::max<size_t>(chunkSize, 8192);
 
   RocksDBReplicationContext::DumpResult res(TRI_ERROR_NO_ERROR);
-  if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
+  if (_request->contentTypeResponse() == ContentType::VPACK) {
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve);  // avoid reallocs
+    
+    auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
+    
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
     // generate the result
@@ -686,7 +704,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     } else {
       resetResponse(rest::ResponseCode::OK);
       _response->setContentType(rest::ContentType::VPACK);
-      _response->setPayload(std::move(buffer), true, VPackOptions::Options::Defaults,
+      _response->setPayload(std::move(buffer), *trxCtx->getVPackOptions(),
                             /*resolveExternals*/ false);
     }
 
@@ -698,12 +716,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            StringUtils::itoa(buffer.empty() ? 0 : res.includedTick));
 
   } else {
-    auto response = dynamic_cast<HttpResponse*>(_response.get());
     StringBuffer dump(reserve, false);
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
 
     // do the work!
     res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize());
@@ -727,17 +740,28 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       resetResponse(rest::ResponseCode::OK);
     }
 
-    response->setContentType(rest::ContentType::DUMP);
+    _response->setContentType(rest::ContentType::DUMP);
     // set headers
     _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                            (res.hasMore ? "true" : "false"));
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa((dump.length() == 0) ? 0 : res.includedTick));
+    
+    if (_request->transportType() == Endpoint::TransportType::HTTP) {
+      auto response = dynamic_cast<HttpResponse*>(_response.get());
+      if (response == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid response type");
+      }
 
-    // transfer ownership of the buffer contents
-    response->body().set(dump.stringBuffer());
+      // transfer ownership of the buffer contents
+      response->body().set(dump.stringBuffer());
 
-    // avoid double freeing
-    TRI_StealStringBuffer(dump.stringBuffer());
+      // avoid double freeing
+      TRI_StealStringBuffer(dump.stringBuffer());
+    } else {
+      _response->addRawPayload(VPackStringRef(dump.data(), dump.length()));
+      _response->setGenerateBody(true);
+    }
   }
 }

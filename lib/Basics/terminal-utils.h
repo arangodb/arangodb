@@ -24,7 +24,7 @@
 #ifndef ARANGODB_BASICS_TERMINAL__UTILS_H
 #define ARANGODB_BASICS_TERMINAL__UTILS_H 1
 
-#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_TERMIOS_H
 #include <termios.h>
@@ -45,7 +45,7 @@ struct TRI_TerminalSize {
 /// @brief returns the terminal size
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_TerminalSize TRI_DefaultTerminalSize(void);
+TRI_TerminalSize TRI_DefaultTerminalSize();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)

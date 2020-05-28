@@ -21,10 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "conversions.h"
-#include "Basics/tri-strings.h"
-#include <cstring>
+#include <errno.h>
 #include <time.h>
+#include <cmath>
+#include <cstring>
+
+#include "conversions.h"
+
+#include "Basics/error.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 
 static char const* const HEX = "0123456789ABCDEF";
 
@@ -54,7 +62,7 @@ double TRI_DoubleString(char const* str) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
-  while (isspace(*endptr)) {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
@@ -92,7 +100,7 @@ int32_t TRI_Int32String(char const* str) {
   result = strtol(str, &endptr, 10);
 #endif
 
-  while (isspace(*endptr)) {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
@@ -150,7 +158,7 @@ uint32_t TRI_UInt32String(char const* str) {
   result = (uint32_t)strtoul(str, &endptr, 10);
 #endif
 
-  while (isspace(*endptr)) {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
@@ -198,7 +206,7 @@ size_t TRI_StringInt8InPlace(int8_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +231,7 @@ size_t TRI_StringUInt8InPlace(uint8_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +272,7 @@ size_t TRI_StringInt16InPlace(int16_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +303,7 @@ size_t TRI_StringUInt16InPlace(uint16_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -351,7 +359,7 @@ size_t TRI_StringInt32InPlace(int32_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -397,7 +405,7 @@ size_t TRI_StringUInt32InPlace(uint32_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -490,7 +498,7 @@ size_t TRI_StringInt64InPlace(int64_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,7 +579,7 @@ size_t TRI_StringUInt64InPlace(uint64_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -611,7 +619,7 @@ size_t TRI_StringUInt32HexInPlace(uint32_t attr, char* buffer) {
   *p++ = HEX[attr % 0x10];
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

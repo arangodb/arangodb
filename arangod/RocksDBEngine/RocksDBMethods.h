@@ -70,7 +70,7 @@ class RocksDBSavePoint {
 class RocksDBMethods {
  public:
   explicit RocksDBMethods(RocksDBTransactionState* state) : _state(state) {}
-  virtual ~RocksDBMethods() {}
+  virtual ~RocksDBMethods() = default;
 
   /// @brief read options for use with iterators
   rocksdb::ReadOptions iteratorReadOptions();

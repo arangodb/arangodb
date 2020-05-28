@@ -43,6 +43,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void stop() override final;
   void beginShutdown() override final;
@@ -55,7 +56,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   }
 
   std::vector<std::string> const& scripts() const { return _scripts; }
-  uint32_t const& vstMaxSize() const { return _vstMaxSize; }
 
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
@@ -66,11 +66,11 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
   bool _console = false;
   bool _restServer = true;
+  bool _validateUtf8Strings = true;
+  bool _isStopping = false;
   std::vector<std::string> _scripts;
-  uint32_t _vstMaxSize;
   int* _result;
   OperationMode _operationMode;
-  bool _isStopping = false;
 #if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;

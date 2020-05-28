@@ -26,6 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -54,7 +55,7 @@ class SortNode : public ExecutionNode {
   static std::string const& sorterTypeName(SorterType);
 
  public:
-  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
+  SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
@@ -66,6 +67,8 @@ class SortNode : public ExecutionNode {
   /// @brief if non-zero, limits the number of elements that the node will return
   void setLimit(size_t limit) { _limit = limit; }
 
+  size_t limit() const noexcept { return _limit; }
+
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 
@@ -73,7 +76,8 @@ class SortNode : public ExecutionNode {
   inline bool isStable() const { return _stable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -91,7 +95,7 @@ class SortNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }

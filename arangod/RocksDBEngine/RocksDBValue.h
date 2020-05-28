@@ -26,8 +26,9 @@
 #define ARANGO_ROCKSDB_ROCKSDB_VALUE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 #include <rocksdb/slice.h>
 #include <s2/s2point.h>
@@ -128,7 +129,8 @@ class RocksDBValue {
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
-    TRI_ASSERT(_type == other._type);
+    TRI_ASSERT(_type == other._type || _type == RocksDBEntryType::Placeholder);
+    _type = other._type;
     _buffer = std::move(other._buffer);
     return *this;
   }
@@ -149,7 +151,7 @@ class RocksDBValue {
   static uint64_t keyValue(char const* data, size_t size);
 
  private:
-  RocksDBEntryType const _type;
+  RocksDBEntryType _type;
   std::string _buffer;
 };
 

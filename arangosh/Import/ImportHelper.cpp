@@ -28,14 +28,15 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Import/SenderThread.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/HttpRequest.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ManagedDirectory.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -52,6 +53,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
+using namespace std::literals::string_literals;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
@@ -136,6 +138,9 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 namespace arangodb {
 namespace import {
 
+ImportStatistics::ImportStatistics(application_features::ApplicationServer& server)
+    : _histogram(server) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
@@ -153,10 +158,11 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
-    : _httpClient(client->createHttpClient(endpoint, params)),
+    : _clientFeature(client),
+      _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
@@ -172,7 +178,9 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _progress(false),
       _firstChunk(true),
       _ignoreMissing(false),
+      _skipValidation(false),
       _numberLines(0),
+      _stats(client.server()),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -185,17 +193,18 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _columnNames(),
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
-    auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
-      CONDITION_LOCKER(guard, _threadsCondition);
-      guard.signal();
-    }));
+    auto http = client.createHttpClient(endpoint, params);
+    _senderThreads.emplace_back(
+        new SenderThread(client.server(), std::move(http), &_stats, [this]() {
+          CONDITION_LOCKER(guard, _threadsCondition);
+          guard.signal();
+        }));
     _senderThreads.back()->start();
   }
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread.reset(new AutoTuneThread(client.server(), *this));
     _autoTuneThread->start();
   }  // if
 
@@ -224,8 +233,11 @@ ImportHelper::~ImportHelper() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ImportHelper::importDelimited(std::string const& collectionName,
-                                   std::string const& fileName,
+                                   std::string const& pathName,
                                    DelimitedImportType typeImport) {
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -241,26 +253,26 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
+  // read and convert
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(TRI_Basename(pathName.c_str()), 0);
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   size_t separatorLength;
@@ -268,9 +280,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
                                            &separatorLength, true);
 
   if (separator == nullptr) {
-    if (fd != STDIN_FILENO) {
-      TRI_CLOSE(fd);
-    }
     _errorMessages.push_back("out of memory");
     return false;
   }
@@ -296,14 +305,11 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   char buffer[32768];
 
   while (!_hasError) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    ssize_t n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
-      if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
-      }
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     } else if (n == 0) {
@@ -315,8 +321,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       break;
     }
 
-    totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
   }
@@ -328,19 +333,18 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_DestroyCsvParser(&parser);
   TRI_Free(separator);
 
-  if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
-  }
-
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   _outputBuffer.clear();
   return !_hasError;
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& fileName, bool assumeLinewise) {
+                              std::string const& pathName, bool assumeLinewise) {
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -355,19 +359,19 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(TRI_Basename(fileName.c_str()), 0);
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
@@ -382,30 +386,25 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   static int const BUFFER_SIZE = 32768;
+  _rowOffset = 0;
+  _rowsRead = 0;
 
   while (!_hasError) {
     // reserve enough room to read more data
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
-      if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
-      }
       return false;
     }
 
     // read directly into string buffer
-    ssize_t n = TRI_READ(fd, _outputBuffer.end(), BUFFER_SIZE - 1);
+    ssize_t n = fd->read(_outputBuffer.end(), BUFFER_SIZE - 1);
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
-      if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
-      }
       return false;
     } else if (n == 0) {
       // we're done
@@ -430,14 +429,10 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
-        if (fd != STDIN_FILENO) {
-          TRI_CLOSE(fd);
-        }
         _errorMessages.push_back(
             "import file is too big. please increase the value of --batch-size "
             "(currently " +
@@ -447,26 +442,30 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
       // send all data before last '\n'
       char const* first = _outputBuffer.c_str();
-      char* pos = (char*)memrchr(first, '\n', _outputBuffer.length());
+      char const * pos = static_cast<char const*>(memrchr(first, '\n', _outputBuffer.length()));
 
       if (pos != nullptr) {
         size_t len = pos - first + 1;
+        char const * cursor = first;
+        do {
+          ++cursor;
+          cursor = static_cast<char const*>(memchr(cursor, '\n', pos - cursor));
+          ++_rowsRead;
+        } while (nullptr != cursor);
         sendJsonBuffer(first, len, isObject);
         _outputBuffer.erase_front(len);
+        _rowOffset = _rowsRead;
       }
     }
   }
 
   if (_outputBuffer.length() > 0) {
+    ++_rowsRead;
     sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
   }
 
-  if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
-  }
-
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
@@ -856,6 +855,9 @@ void ImportHelper::sendCsvBuffer() {
   if (!_toCollectionPrefix.empty()) {
     url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
   }
+  if (_skipValidation) {
+    url += "&"s + StaticStrings::SkipDocumentValidation + "=true";
+  }
   if (_firstChunk && _overwrite) {
     // url += "&overwrite=true";
     truncateCollection();
@@ -865,7 +867,7 @@ void ImportHelper::sendCsvBuffer() {
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
     uint64_t tmp_length = _outputBuffer.length();
-    t->sendData(url, &_outputBuffer);
+    t->sendData(url, &_outputBuffer, _rowOffset + 1, _rowsRead);
     addPeriodByteCount(tmp_length + url.length());
   }
 
@@ -897,13 +899,17 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     // url += "&overwrite=true";
     truncateCollection();
   }
+  if (_skipValidation) {
+    url += "&"s + StaticStrings::SkipDocumentValidation + "=true";
+  }
+
   _firstChunk = false;
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
     _tempBuffer.reset();
     _tempBuffer.appendText(str, len);
-    t->sendData(url, &_tempBuffer);
+    t->sendData(url, &_tempBuffer, _rowOffset +1, _rowsRead);
     addPeriodByteCount(len + url.length());
   }
 }
@@ -948,7 +954,7 @@ void ImportHelper::waitForSenders() {
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 }  // namespace import

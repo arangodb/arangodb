@@ -16,13 +16,14 @@ function help() {
   echo "  -x/--xterm              XTerm command       (default: xterm)"
   echo "  -o/--xterm-options      XTerm options       (default: --geometry=80x43)"
   echo "  -b/--offset-ports       Offset ports        (default: 0, i.e. A:4001, C:8530, D:8629)"
-  echo "  -r/--rocksdb-engine     Use RocksDB engine  (default: true)"
   echo "  -q/--source-dir         ArangoDB source dir (default: .)"
   echo "  -B/--bin-dir            ArangoDB binary dir (default: ./build)"
   echo "  -O/--ongoing-ports      Ongoing ports       (default: false)"
   echo "  --rr                    Run arangod with rr (true|false       default: false)"
   echo "  --cluster-init          Use cluster-init dir (default: false)"
-  echo "  --auto-upgrade          Use for upgrade      (default: false)"
+  echo "  --auto-upgrade          Use for upgrade     (default: false)"
+  echo "  -e/--encryption-secret  Encryption at rest secret (string default: )"
+  echo "  -E/--enable-hotbackup   Disable hot backup  (default default: true)"
   echo ""
   echo "EXAMPLES:"
   echo "  $0"
@@ -51,6 +52,8 @@ JWT_SECRET=""
 PORT_OFFSET=0
 SRC_DIR="."
 USE_RR="false"
+ENCRYPTION_SECRET=""
+ENABLE_HOTBACKUP="true"
 
 parse_args(){
 while [[ -n "$1" ]]; do
@@ -65,10 +68,6 @@ while [[ -n "$1" ]]; do
       ;;
     -d|--ndbservers)
       NRDBSERVERS=${2}
-      shift
-      ;;
-    -r|--rocksdb-engine)
-      USE_ROCKSDB=${2}
       shift
       ;;
     -t|--transport)
@@ -93,6 +92,14 @@ while [[ -n "$1" ]]; do
       ;;
     -j|--jwt-secret)
       JWT_SECRET=${2}
+      shift
+      ;;
+    -e|--encryption-secret)
+      ENCRYPTION_SECRET=${2}
+      shift
+      ;;
+    -E|--enable-hotbackup)
+      ENABLE_HOTBACKUP=${2}
       shift
       ;;
     -q|--src-dir)

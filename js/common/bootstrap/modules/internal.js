@@ -258,19 +258,9 @@ global.DEFINE_MODULE('internal', (function () {
     exports.download = global.SYS_DOWNLOAD;
     delete global.SYS_DOWNLOAD;
   }
-
   if (global.SYS_CLUSTER_DOWNLOAD) {
     exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
     delete global.SYS_CLUSTER_DOWNLOAD;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief whether or not Statistics are enabled
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_ENABLED_STATISTICS) {
-    exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
-    delete global.SYS_ENABLED_STATISTICS;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -436,15 +426,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief processStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_PROCESS_STATISTICS) {
-    exports.processStatistics = global.SYS_PROCESS_STATISTICS;
-    delete global.SYS_PROCESS_STATISTICS;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief getPid
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -508,15 +489,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief serverStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_SERVER_STATISTICS) {
-    exports.serverStatistics = global.SYS_SERVER_STATISTICS;
-    delete global.SYS_SERVER_STATISTICS;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief sleep
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -541,14 +513,6 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_WAIT) {
     exports.wait = global.SYS_WAIT;
     delete global.SYS_WAIT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief wait for index selectivity estimate sync
-  // //////////////////////////////////////////////////////////////////////////////
-  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
-    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
-    delete global.WAIT_FOR_ESTIMATOR_SYNC;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -587,6 +551,14 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_PROCESS_JSON_FILE;
   }
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief statisticsExternal
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS_EXTERNAL) {
+    exports.statisticsExternal = global.SYS_PROCESS_STATISTICS_EXTERNAL;
+    delete global.SYS_PROCESS_STATISTICS_EXTERNAL;
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief executeExternal
   // //////////////////////////////////////////////////////////////////////////////
@@ -783,7 +755,18 @@ global.DEFINE_MODULE('internal', (function () {
       } else if (!isNaN(argv[i + 1])) {
         ret[option] = parseInt(argv[i + 1]);
       } else {
-        ret[option] = argv[i + 1];
+        if (ret.hasOwnProperty(option)) {
+          if (Array.isArray(ret[option])) {
+            ret[option].push(argv[i + 1]);
+          } else {
+            ret[option] = [
+              ret[option],
+              argv[i + 1]
+            ];
+          }
+        } else {
+          ret[option] = argv[i + 1];
+        }
       }
     }
 
@@ -1680,6 +1663,29 @@ global.DEFINE_MODULE('internal', (function () {
   };
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in arangod or arangosh
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isArangod = function() {
+    return (typeof ArangoClusterComm === "object");
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in a cluster setup or not
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isCluster = function() {
+    if(exports.isArangod()) {
+      return require("@arangodb/cluster").isCluster();
+    } else {
+      // ask remote it is a coordinator
+      const response = exports.arango.GET('/_admin/server/role');
+      if(response.error === true) {
+        throw new exports.ArangoError(response);
+      }
+      return (response.role === "COORDINATOR");
+    }
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief env
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -1724,6 +1730,15 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_OPTIONS;
   }
   
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief options
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
+    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
+    delete global.ENCRYPTION_KEY_RELOAD;
+  }
+
   let testsBasePaths = {};
   exports.pathForTesting = function(path, prefix = 'js') {
     let fs = require('fs');

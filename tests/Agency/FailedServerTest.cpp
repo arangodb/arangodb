@@ -29,17 +29,19 @@
 
 #include "fakeit.hpp"
 
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <iostream>
+
+#include "Mocks/LogLevels.h"
+
 #include "Agency/AddFollower.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
-#include "lib/Basics/StringUtils.h"
-
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
+#include "Basics/StringUtils.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -101,7 +103,9 @@ inline std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-class FailedServerTest : public ::testing::Test {
+class FailedServerTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
  protected:
   std::string const jobId = "1";
   std::shared_ptr<Builder> transBuilder;
@@ -127,22 +131,22 @@ TEST_F(FailedServerTest, creating_a_job_should_create_a_job_in_todo) {
   std::string jobId = "1";
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     auto expectedJobKey = PREFIX + toDoPrefix + jobId;
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 2);
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
-    EXPECT_TRUE(q->slice()[0][0].length() == 2);
-    EXPECT_TRUE(typeName(q->slice()[0][0].get(expectedJobKey)) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 2);
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+    EXPECT_EQ(q->slice()[0][0].length(), 2);
+    EXPECT_EQ(typeName(q->slice()[0][0].get(expectedJobKey)), "object");
 
     auto job = q->slice()[0][0].get(expectedJobKey);
-    EXPECT_TRUE(typeName(job.get("creator")) == "string");
-    EXPECT_TRUE(typeName(job.get("type")) == "string");
-    EXPECT_TRUE(job.get("type").copyString() == "failedServer");
-    EXPECT_TRUE(typeName(job.get("server")) == "string");
-    EXPECT_TRUE(job.get("server").copyString() == SHARD_LEADER);
-    EXPECT_TRUE(typeName(job.get("jobId")) == "string");
-    EXPECT_TRUE(typeName(job.get("timeCreated")) == "string");
+    EXPECT_EQ(typeName(job.get("creator")), "string");
+    EXPECT_EQ(typeName(job.get("type")), "string");
+    EXPECT_EQ(job.get("type").copyString(), "failedServer");
+    EXPECT_EQ(typeName(job.get("server")), "string");
+    EXPECT_EQ(job.get("server").copyString(), SHARD_LEADER);
+    EXPECT_EQ(typeName(job.get("jobId")), "string");
+    EXPECT_EQ(typeName(job.get("timeCreated")), "string");
 
     return fakeWriteResult;
   });
@@ -163,7 +167,7 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -186,17 +190,17 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
     // we always simply override! no preconditions...
-    EXPECT_TRUE(q->slice()[0].length() == 2);
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
-    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+    EXPECT_EQ(q->slice()[0].length(), 2);
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+    EXPECT_EQ(typeName(q->slice()[0][1]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == SHARD_LEADER);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("server").copyString(), SHARD_LEADER);
 
     auto precond = q->slice()[0][1];
     EXPECT_TRUE(typeName(precond.get(
@@ -227,7 +231,7 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -250,17 +254,17 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
     // we always simply override! no preconditions...
-    EXPECT_TRUE(q->slice()[0].length() == 2);
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
-    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+    EXPECT_EQ(q->slice()[0].length(), 2);
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+    EXPECT_EQ(typeName(q->slice()[0][1]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == SHARD_LEADER);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+    EXPECT_EQ(writes.get("/arango/Target/ToDo/1").get("server").copyString(), SHARD_LEADER);
 
     auto precond = q->slice()[0][1];
     EXPECT_TRUE(typeName(precond.get(
@@ -289,7 +293,7 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -315,20 +319,20 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
     // we always simply override! no preconditions...
-    EXPECT_TRUE(q->slice()[0].length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(q->slice()[0].length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Pending/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
     return fakeWriteResult;
   });
 
@@ -349,7 +353,7 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -379,20 +383,20 @@ TEST_F(FailedServerTest, the_state_is_still_bad_and_faileservers_is_still_in_sna
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
     // we always simply override! no preconditions...
-    EXPECT_TRUE(q->slice()[0].length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(q->slice()[0].length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Pending/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "object");
     return fakeWriteResult;
   });
 

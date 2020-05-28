@@ -22,20 +22,36 @@
 
 #include "DaemonFeature.h"
 
-#include <chrono>
-#include <thread>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <chrono>
+#include <stdexcept>
+#include <thread>
 
-#include "Basics/process-utils.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileResult.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
+#include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "Basics/threads.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
@@ -58,7 +74,7 @@ namespace arangodb {
 DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
 #ifndef _WIN32
   _workingDirectory = "/var/tmp";
@@ -68,15 +84,15 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--daemon", "background the server, running it as daemon",
                      new BooleanParameter(&_daemon),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 
   options->addOption("--pid-file", "pid-file in daemon mode",
                      new StringParameter(&_pidFile),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 
   options->addOption("--working-directory", "working directory in daemon mode",
                      new StringParameter(&_workingDirectory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -90,9 +106,8 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  LoggerFeature* logger =
-      ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->setBackgrounded(true);
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  logger.setBackgrounded(true);
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
@@ -390,7 +405,7 @@ int DaemonFeature::waitForChildProcess(int pid) {
     }
 
     // sleep a while and retry
-    std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   // enough time has elapsed... we now abort our loop

@@ -130,38 +130,18 @@ class LogicalDataSource {
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
 
-  enum class Serialize : uint8_t {
-    // Include the basics for any given data source. Setting additonal flags
-    // will only add additional information.
-    Basics = 0,
-    // Make output more detailed, e.g. for collections this will resolve CIDs
-    // for 'distributeShardsLike', for views this will add view-specific
-    // properties
-    Detailed = 1,
-    // This definition is meant to be persisted; will typically include
-    // otherwise hidden internal properties
-    ForPersistence = 2,
-    // This will include any information about in-progress operations, such as
-    // an index definition for an index being built in the background, which
-    // would otherwise not be exposed yet
-    IncludeInProgress = 4
+  enum class Serialization {
+    // object properties will be shown in a list
+    List = 0,
+    // object properties will be shown
+    Properties,
+    // object will be saved in storage engine
+    Persistence,
+    // object will be saved in storage engine
+    PersistenceWithInProgress,
+    // object will be replicated or dumped/restored
+    Inventory
   };
-
-  /// @brief helper for building flags
-  template <typename... Args>
-  static inline constexpr std::underlying_type<Serialize>::type makeFlags(Serialize flag,
-                                                                          Args... args) {
-    return static_cast<std::underlying_type<Serialize>::type>(flag) + makeFlags(args...);
-  }
-
-  static inline constexpr std::underlying_type<Serialize>::type makeFlags() {
-    return static_cast<std::underlying_type<Serialize>::type>(Serialize::Basics);
-  }
-
-  static inline constexpr bool hasFlag(std::underlying_type<Serialize>::type flags,
-                                       Serialize aflag) {
-    return (flags & static_cast<std::underlying_type<Serialize>::type>(aflag)) != 0;
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append a jSON definition of the data-source to the 'builder'
@@ -169,13 +149,10 @@ class LogicalDataSource {
   /// @param detailed make output more detailed, e.g.
   ///        for collections this will resolve CIDs for 'distributeShardsLike'
   ///        for views this will add view-specific properties
-  /// @param forPersistence this definition is meant to be persisted
-  /// @param inProgress this definition should include indices that are still
-  ///                   in the process of being created
+  /// @param Serialization defines which properties to serialize
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(velocypack::Builder& builder,
-                    std::underlying_type<Serialize>::type flags) const;
+  Result properties(velocypack::Builder& builder, Serialization context) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
@@ -193,9 +170,8 @@ class LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append implementation-specific values to the data-source definition
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPack(velocypack::Builder&,
-                                  std::underlying_type<Serialize>::type) const {
-    return Result();  // NOOP by default
+  virtual Result appendVelocyPack(velocypack::Builder&, Serialization context) const {
+    return {}; // NOOP by default
   }
 
   void deleted(bool deleted) noexcept { _deleted = deleted; }

@@ -26,87 +26,97 @@
 #ifndef ARANGOD_AQL_INDEX_EXECUTOR_H
 #define ARANGOD_AQL_INDEX_EXECUTOR_H
 
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/IndexNode.h"
-#include "Aql/OutputAqlItemRow.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
-#include "Aql/types.h"
-#include "DocumentProducingHelper.h"
-#include "Indexes/IndexIterator.h"
-#include "Utils/OperationCursor.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
 
 namespace arangodb {
+class IndexIterator;
+
 namespace aql {
 
+class ExecutionEngine;
+class RegisterInfos;
+class Expression;
 class InputAqlItemRow;
-class ExecutorInfos;
+class QueryContext;
 
-template <bool pass>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
-class IndexExecutorInfos : public ExecutorInfos {
+struct AstNode;
+struct Collection;
+struct NonConstExpression;
+
+class IndexExecutorInfos {
  public:
-  IndexExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
-      Collection const* collection, Variable const* outVariable, bool produceResult,
-      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-      std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
-      std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
-      std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
-      bool hasV8Expression, AstNode const* condition,
-      std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-      IndexIteratorOptions options);
+  IndexExecutorInfos(RegisterId outputRegister, QueryContext& query,
+                     Collection const* collection, Variable const* outVariable,
+                     bool produceResult, Expression* filter,
+                     std::vector<std::string> const& projections,
+                     std::vector<size_t> const& coveringIndexAttributePositions,
+                     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
+                     std::vector<Variable const*>&& expInVars,
+                     std::vector<RegisterId>&& expInRegs, bool hasV8Expression,
+                     bool count, AstNode const* condition,
+                     std::vector<transaction::Methods::IndexHandle> indexes,
+                     Ast* ast, IndexIteratorOptions options,
+                     IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
+                     IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
   IndexExecutorInfos(IndexExecutorInfos const&) = delete;
   ~IndexExecutorInfos() = default;
 
-  ExecutionEngine* getEngine() const { return _engine; }
-  Collection const* getCollection() const { return _collection; }
-  Variable const* getOutVariable() const { return _outVariable; }
-  std::vector<std::string> const& getProjections() const {
-    return _projections;
-  }
-  transaction::Methods* getTrxPtr() const { return _trxPtr; }
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const {
-    return _coveringIndexAttributePositions;
-  }
-  bool getProduceResult() const { return _produceResult; }
-  bool getUseRawDocumentPointers() const { return _useRawDocumentPointers; }
-  std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
-    return _indexes;
-  }
-  AstNode const* getCondition() { return _condition; }
-  bool getV8Expression() const { return _hasV8Expression; }
-  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
-  std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() {
-    return _nonConstExpression;
-  }
-  bool hasMultipleExpansions() const { return _hasMultipleExpansions; }
+  Collection const* getCollection() const;
+  Variable const* getOutVariable() const;
+  std::vector<std::string> const& getProjections() const noexcept;
+  aql::QueryContext& query() noexcept;
+  Expression* getFilter() const noexcept;
+  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  bool getProduceResult() const noexcept;
+  std::vector<transaction::Methods::IndexHandle> const& getIndexes() const noexcept;
+  AstNode const* getCondition() const noexcept;
+  bool getV8Expression() const noexcept;
+  RegisterId getOutputRegisterId() const noexcept;
+  std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() const noexcept;
+  bool hasMultipleExpansions() const noexcept;
+  bool getCount() const noexcept;
 
   /// @brief whether or not all indexes are accessed in reverse order
-  IndexIteratorOptions getOptions() const { return _options; }
-  bool isAscending() const { return _options.ascending; }
+  IndexIteratorOptions getOptions() const;
+  bool isAscending() const noexcept;
 
-  Ast* getAst() const { return _ast; }
+  Ast* getAst() const noexcept;
 
-  std::vector<Variable const*> const& getExpInVars() const {
-    return _expInVars;
-  }
-  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
+  std::vector<Variable const*> const& getExpInVars() const noexcept;
+  std::vector<RegisterId> const& getExpInRegs() const noexcept;
 
   // setter
-  void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; }
+  void setHasMultipleExpansions(bool flag);
 
-  bool hasNonConstParts() const { return !_nonConstExpression.empty(); }
+  bool hasNonConstParts() const;
+
+  bool isLateMaterialized() const noexcept {
+    return !_outNonMaterializedIndRegs.second.empty();
+  }
+
+  IndexNode::IndexValuesVars const& getOutNonMaterializedIndVars() const noexcept {
+    return _outNonMaterializedIndVars;
+  }
+
+  IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs() const noexcept {
+    return _outNonMaterializedIndRegs;
+  }
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -126,30 +136,36 @@ class IndexExecutorInfos : public ExecutorInfos {
   /// a vector of RegisterId, used to execute the expression
   std::vector<std::vector<RegisterId>> _inRegs;
 
+  /// @brief the index sort order - this is the same order for all indexes
+  IndexIteratorOptions _options;
+
+  QueryContext& _query;
+  Collection const* _collection;
+  Variable const* _outVariable;
+  Expression* _filter;
+  std::vector<std::string> const& _projections;
+  std::vector<size_t> const& _coveringIndexAttributePositions;
+  std::vector<Variable const*> _expInVars;  // input variables for expresseion
+  std::vector<RegisterId> _expInRegs;       // input registers for expression
+
+  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
+
+  RegisterId _outputRegisterId;
+
+  IndexNode::IndexValuesVars const& _outNonMaterializedIndVars;
+  IndexNode::IndexValuesRegisters _outNonMaterializedIndRegs;
+
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
   bool _hasMultipleExpansions;
 
-  /// @brief the index sort order - this is the same order for all indexes
-  IndexIteratorOptions _options;
-
-  RegisterId _outputRegisterId;
-  ExecutionEngine* _engine;
-  Collection const* _collection;
-  Variable const* _outVariable;
-  std::vector<std::string> const& _projections;
-  transaction::Methods* _trxPtr;
-  std::vector<Variable const*> _expInVars;  // input variables for expresseion
-  std::vector<RegisterId> _expInRegs;       // input registers for expression
-
-  std::vector<size_t> const& _coveringIndexAttributePositions;
-  bool _useRawDocumentPointers;
-  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
   bool _produceResult;
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   bool _hasV8Expression;
+
+  bool _count;
 };
 
 /**
@@ -159,8 +175,9 @@ class IndexExecutor {
  private:
   struct CursorReader {
    public:
-    CursorReader(IndexExecutorInfos const& infos, AstNode const* condition,
-                 transaction::Methods::IndexHandle const& index,
+    CursorReader(transaction::Methods& trx,
+                 IndexExecutorInfos const& infos, AstNode const* condition,
+                 std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
@@ -168,35 +185,36 @@ class IndexExecutor {
 
     bool hasMore() const;
 
-    bool isCovering() const { return _type == Type::Covering; }
+    bool isCovering() const;
 
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
     CursorReader(CursorReader&& other) noexcept;
 
    private:
-    enum Type { NoResult, Covering, Document };
+    enum Type { NoResult, Covering, Document, LateMaterialized, Count };
 
+    transaction::Methods& _trx;
     IndexExecutorInfos const& _infos;
     AstNode const* _condition;
-    transaction::Methods::IndexHandle const& _index;
-    std::unique_ptr<OperationCursor> _cursor;
+    std::shared_ptr<Index> const& _index;
+    std::unique_ptr<IndexIterator> _cursor;
+    DocumentProducingFunctionContext& _context;
     Type const _type;
 
-    union CallbackMethod {
-      IndexIterator::LocalDocumentIdCallback noProduce;
-      DocumentProducingFunction produce;
-
-      CallbackMethod() : noProduce(nullptr) {}
-      ~CallbackMethod() {}
-    } _callback;
+    // Only one of _documentProducer and _documentNonProducer is set at a time,
+    // depending on _type. As std::function is not trivially destructible, it's
+    // safer not to use a union.
+    IndexIterator::LocalDocumentIdCallback _documentNonProducer;
+    IndexIterator::DocumentCallback _documentProducer;
+    IndexIterator::DocumentCallback _documentSkipper;
   };
 
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -204,20 +222,23 @@ class IndexExecutor {
   using Stats = IndexStats;
 
   IndexExecutor() = delete;
-  IndexExecutor(IndexExecutor&&) = default;
+  IndexExecutor(IndexExecutor&&) = delete;
   IndexExecutor(IndexExecutor const&) = delete;
   IndexExecutor(Fetcher& fetcher, Infos&);
   ~IndexExecutor();
-
+  
   /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @brief This Executor in some cases knows how many rows it will produce and most by itself
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
- public:
+  auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
   void initializeCursor();
 
  private:
@@ -225,21 +246,19 @@ class IndexExecutor {
   void executeExpressions(InputAqlItemRow& input);
   void initIndexes(InputAqlItemRow& input);
 
-  inline CursorReader& getCursor() {
-    TRI_ASSERT(_currentIndex < _cursors.size());
-    return _cursors[_currentIndex];
-  }
+  CursorReader& getCursor();
 
-  inline bool needsUniquenessCheck() const {
-    return _infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions();
-  }
+  bool needsUniquenessCheck() const noexcept;
+
+  auto returnState() const noexcept -> ExecutorState;
 
  private:
-  Infos& _infos;
-  Fetcher& _fetcher;
-  DocumentProducingFunctionContext _documentProducingFunctionContext;
-  ExecutionState _state;
+  transaction::Methods _trx;
   InputAqlItemRow _input;
+  ExecutorState _state;
+
+  DocumentProducingFunctionContext _documentProducingFunctionContext;
+  Infos& _infos;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused

@@ -23,12 +23,15 @@
 #ifndef ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H
 #define ARANGODB_V8CLIENT_ARANGO_CLIENT_HELPER_H 1
 
+#include <memory>
+#include <string>
+
 #include "Basics/Common.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
 namespace httpclient {
 class GeneralClientConnection;
-class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
 

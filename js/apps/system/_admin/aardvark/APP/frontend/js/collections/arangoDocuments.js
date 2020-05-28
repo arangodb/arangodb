@@ -13,12 +13,31 @@
     MAX_SORT: 12000,
 
     lastQuery: {},
+    type: 'document',
     sortAttribute: '',
+    smartJoinAttribute: null,
+    smartGraphAttribute: null,
 
     url: arangoHelper.databaseUrl('/_api/documents'),
     model: window.arangoDocumentModel,
 
-    loadTotal: function (callback) {
+    setSmartJoinAttribute: function (stringValue) {
+      this.smartJoinAttribute = stringValue;
+    },
+
+    getSmartJoinAttribute: function () {
+      return this.smartJoinAttribute;
+    },
+
+    setSmartGraphAttribute: function (stringValue) {
+      this.smartGraphAttribute = stringValue;
+    },
+
+    getSmartGraphAttribute: function () {
+      return this.smartGraphAttribute;
+    },
+
+    loadCollectionConfig: function (callback) {
       var self = this;
       $.ajax({
         cache: false,
@@ -27,7 +46,22 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          self.setTotal(data.count);
+          if (data.count || data.count === 0) {
+            self.setTotal(data.count);
+          }
+
+          if (data.smartJoinAttribute) {
+            self.setSmartJoinAttribute(data.smartJoinAttribute);
+          } else {
+            self.setSmartJoinAttribute(null);
+          }
+
+          if (data.smartGraphAttribute) {
+            self.setSmartGraphAttribute(data.smartGraphAttribute);
+          } else {
+            self.setSmartGraphAttribute(null);
+          }
+
           callback(false);
         },
         error: function () {
@@ -49,7 +83,7 @@
       } else {
         this.setPage(1);
       }
-      this.loadTotal(callback);
+      this.loadCollectionConfig(callback);
     },
 
     setSort: function (key) {
@@ -326,9 +360,21 @@
     },
 
     uploadDocuments: function (file, callback) {
+      var analyzeResponse = function (data) {
+        if (data.hasOwnProperty('error')) {
+          delete data.error;
+        }
+
+        if (data.errors > 0) {
+          callback(true, 'Info: ' + JSON.stringify(data));
+        } else {
+          callback(false, 'Info: ' + JSON.stringify(data));
+        }
+      };
+
       $.ajax({
         type: 'POST',
-        url: arangoHelper.databaseUrl('/_api/import?type=auto&collection=' +
+        url: arangoHelper.databaseUrl('/_api/import?type=auto&details=true&collection=' +
           encodeURIComponent(this.collectionID) +
           '&createCollection=false'),
         data: file,
@@ -336,18 +382,8 @@
         contentType: 'json',
         dataType: 'json',
         complete: function (xhr) {
-          if (xhr.readyState === 4 && xhr.status === 201) {
-            callback(false);
-          } else {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              if (data.errors > 0) {
-                var result = 'At least one error occurred during upload';
-                callback(false, result);
-              }
-            } catch (err) {
-              console.log(err);
-            }
+          if (xhr.responseJSON) {
+            analyzeResponse(xhr.responseJSON);
           }
         },
         error: function (msg) {

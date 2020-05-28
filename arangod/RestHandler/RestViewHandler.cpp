@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
@@ -41,9 +42,7 @@ namespace {
 /// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
 bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
-  auto* execCtx = arangodb::ExecContext::CURRENT;
-
-  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
+  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
 }
 
 }  // namespace
@@ -52,8 +51,9 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-RestViewHandler::RestViewHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestViewHandler::RestViewHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   auto view = CollectionNameResolver(_vocbase).getView(nameOrId);
@@ -83,8 +83,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                 LogicalDataSource::Serialize::Detailed));
+    auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       generateError(res);
@@ -101,10 +100,9 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res =
-      view->properties(builder, LogicalDataSource::makeFlags(
-                                    detailed ? LogicalDataSource::Serialize::Detailed
-                                             : LogicalDataSource::Serialize::Basics));
+  auto const context = detailed ? LogicalDataSource::Serialization::Properties
+                                : LogicalDataSource::Serialization::List;
+  auto res = view->properties(builder, context);
 
   builder.close();
 
@@ -143,12 +141,6 @@ RestStatus RestViewHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::createView() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -166,25 +158,37 @@ void RestViewHandler::createView() {
     return;
   }
 
-  auto badParamError = [&]() -> void {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting body to be of the form {name: <string>, type: "
-                  "<string>, properties: <object>}");
-  };
-
   if (!body.isObject()) {
-    badParamError();
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "request body is not an object");
     events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
+    return;
+  }
+
+
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
 
-  if (!nameSlice.isString() || !typeSlice.isString()) {
-    badParamError();
+  if (!nameSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting name parameter to be of the form of \"name: "
+                  "<string>\"");
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  if (!typeSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting type parameter to be of the form of \"type: "
+                  "<string>\"");
     events::CreateView(_vocbase.name(),
-                       (nameSlice.isString() ? nameSlice.copyString() : ""),
+                       nameSlice.copyString(),
                        TRI_ERROR_BAD_PARAMETER);
     return;
   }
@@ -201,8 +205,18 @@ void RestViewHandler::createView() {
   }
 
   try {
+    // First refresh our analyzers cache to see all latest changes in analyzers
+    auto res = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                       .loadAvailableAnalyzers(_vocbase.name());
+
+    if (res.fail()) {
+      generateError(res);
+      events::CreateView(_vocbase.name(), nameSlice.copyString(), res.errorNumber());
+      return;
+    }
+
     LogicalView::ptr view;
-    auto res = LogicalView::create(view, _vocbase, body);
+    res = LogicalView::create(view, _vocbase, body);
 
     if (!res.ok()) {
       generateError(res);
@@ -220,8 +234,7 @@ void RestViewHandler::createView() {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = view->properties(builder, LogicalDataSource::makeFlags(
-                                        LogicalDataSource::Serialize::Detailed));
+    res = view->properties(builder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       generateError(res);
@@ -272,6 +285,14 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
+    // First refresh our analyzers cache to see all latest changes in analyzers
+    auto const analyzersRes = server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+                                      .loadAvailableAnalyzers(_vocbase.name());
+    if (analyzersRes.fail()) {
+      generateError(analyzersRes);
+      return;
+    }
+
     // handle rename functionality
     if (suffixes[1] == "rename") {
       VPackSlice newName = body.get("name");
@@ -301,8 +322,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                     LogicalDataSource::Serialize::Detailed));
+        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
         if (!res.ok()) {
           generateError(res);
@@ -343,9 +363,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent =
-          view->properties(builderCurrent, LogicalDataSource::makeFlags(
-                                               LogicalDataSource::Serialize::Detailed));
+      auto resCurrent = view->properties(builderCurrent,
+                                         LogicalDataSource::Serialization::Properties);
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -374,8 +393,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->properties(updated, LogicalDataSource::makeFlags(
-                                             LogicalDataSource::Serialize::Detailed));
+    auto res = view->properties(updated, LogicalDataSource::Serialization::Properties);
 
     updated.close();
 
@@ -408,7 +426,7 @@ void RestViewHandler::deleteView() {
   }
 
   auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
-  auto allowDropSystem = _request->parsedValue("isSystem", false);
+  auto allowDropSystem = _request->parsedValue(StaticStrings::DataSourceSystem, false);
   auto view = CollectionNameResolver(_vocbase).getView(name);
 
   if (!view) {
@@ -518,9 +536,7 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                               LogicalDataSource::Serialize::Detailed))
-                 .ok()) {
+        if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties).ok()) {
           continue;  // skip view
         }
       } catch (...) {
@@ -532,7 +548,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags());
+        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::List);
 
         if (!res.ok()) {
           generateError(res);

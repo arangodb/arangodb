@@ -1,0 +1,236 @@
+#  Copyright (C) 2016-2019, Antony Polukhin.
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+#
+
+lib dl : : <link>shared ;
+lib gcc_s ;
+lib rt ;
+lib Dbgeng ;
+lib ole32 ;
+
+local LIBBACKTRACE_PATH = [ modules.peek : LIBBACKTRACE_PATH ] ;
+lib backtrace
+  :
+  : <search>$(LIBBACKTRACE_PATH)/lib <link>static
+  :
+  : <include>$(LIBBACKTRACE_PATH)/include
+  ;
+
+
+project
+  : requirements
+    <toolset>msvc:<asynch-exceptions>on
+    <toolset>intel:<cxxflags>-wd2196
+    <target-os>linux:<linkflags>-lpthread
+    <warnings>all
+    <test-info>always_show_run_output
+    <visibility>hidden
+  ;
+
+local FORCE_SYMBOL_EXPORT = <target-os>freebsd:<linkflags>"-rdynamic" <target-os>solaris:<linkflags>"-Bdynamic" <target-os>aix:<linkflags>"-rdynamic"
+    <target-os>qnxnto,<toolset>qcc:<linkflags>"-Bdynamic" <target-os>qnxnto,<toolset>gcc:<linkflags>"-rdynamic"
+    <target-os>android:<linkflags>"-rdynamic" <target-os>linux:<linkflags>"-rdynamic" <target-os>darwin,<toolset>gcc:<linkflags>"-dynamic"
+    <target-os>darwin,<toolset>clang:<linkflags>"-rdynamic" <target-os>iphone:<linkflags>"-rdynamic"
+    <define>BOOST_STACKTRACE_TEST_EXPORTS_TABLE_USAGE ;
+
+local BT_DEPS   = <target-os>linux:<library>dl <library>backtrace [ check-target-builds ../build//libbacktrace : : <build>no ] ;
+local AD2L_DEPS = <target-os>linux:<library>dl  [ check-target-builds ../build//addr2line : : <build>no ] ;
+local WIND_DEPS = <library>Dbgeng <library>ole32 [ check-target-builds ../build//WinDbg : : <build>no ] ;
+local WICA_DEPS = <library>Dbgeng <library>ole32 [ check-target-builds ../build//WinDbgCached : : <build>no ] ;
+local NOOP_DEPS = ;
+local BASIC_DEPS = <target-os>linux:<library>dl [ check-target-builds ../build//WinDbg : <build>no ] ;
+
+local LINKSHARED_BT           = <link>shared <define>BOOST_STACKTRACE_DYN_LINK <library>/boost/stacktrace//boost_stacktrace_backtrace     $(BT_DEPS)   ;
+local LINKSHARED_AD2L         = <link>shared <define>BOOST_STACKTRACE_DYN_LINK <library>/boost/stacktrace//boost_stacktrace_addr2line     $(AD2L_DEPS) ;
+local LINKSHARED_WIND         = <link>shared <define>BOOST_STACKTRACE_DYN_LINK <library>/boost/stacktrace//boost_stacktrace_windbg        $(WIND_DEPS) ;
+local LINKSHARED_WIND_CACHED  = <link>shared <define>BOOST_STACKTRACE_DYN_LINK <library>/boost/stacktrace//boost_stacktrace_windbg_cached $(WICA_DEPS) ;
+local LINKSHARED_NOOP         = <link>shared <define>BOOST_STACKTRACE_DYN_LINK <library>/boost/stacktrace//boost_stacktrace_noop          $(NOOP_DEPS) ;
+local LINKSHARED_BASIC        = <link>shared <define>BOOST_STACKTRACE_DYN_LINK <library>/boost/stacktrace//boost_stacktrace_basic         $(BASIC_DEPS) $(FORCE_SYMBOL_EXPORT) ;
+
+# Libs with debug symbols
+lib test_impl_lib_backtrace         : test_impl.cpp : <debug-symbols>on $(LINKSHARED_BT) ;
+lib test_impl_lib_addr2line         : test_impl.cpp : <debug-symbols>on $(LINKSHARED_AD2L) ;
+lib test_impl_lib_windbg            : test_impl.cpp : <debug-symbols>on $(LINKSHARED_WIND) ;
+lib test_impl_lib_windbg_cached     : test_impl.cpp : <debug-symbols>on $(LINKSHARED_WIND_CACHED) ;
+lib test_impl_lib_noop              : test_impl.cpp : <debug-symbols>on $(LINKSHARED_NOOP) ;
+
+obj test_impl_nohide-obj : test_impl.cpp : <debug-symbols>on $(LINKSHARED_BASIC) ;
+lib test_impl_lib_basic  : test_impl_nohide-obj : <debug-symbols>on $(LINKSHARED_BASIC) ;
+
+
+# Libs without debug symbols
+lib test_impl_lib_backtrace_no_dbg      : test_impl.cpp : <debug-symbols>off $(LINKSHARED_BT) ;
+lib test_impl_lib_addr2line_no_dbg      : test_impl.cpp : <debug-symbols>off $(LINKSHARED_AD2L) ;
+lib test_impl_lib_windbg_no_dbg         : test_impl.cpp : <debug-symbols>off $(LINKSHARED_WIND) ;
+lib test_impl_lib_windbg_cached_no_dbg  : test_impl.cpp : <debug-symbols>off $(LINKSHARED_WIND_CACHED) ;
+lib test_impl_lib_noop_no_dbg           : test_impl.cpp : <debug-symbols>off $(LINKSHARED_NOOP) ;
+
+obj test_impl_nohide_no_dbg-obj : test_impl.cpp : <debug-symbols>off $(LINKSHARED_BASIC) ;
+lib test_impl_lib_basic_no_dbg  : test_impl_nohide_no_dbg-obj : <debug-symbols>off $(LINKSHARED_BASIC) ;
+
+
+test-suite stacktrace_tests
+  :
+
+    # Header only tests with debug symbols
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_BACKTRACE        $(BT_DEPS)    : backtrace_ho ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_ADDR2LINE        $(AD2L_DEPS)  : addr2line_ho ]
+    [ run test_noop.cpp test_impl.cpp   : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_NOOP             $(NOOP_DEPS)  : noop_ho ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>on                                               $(WIND_DEPS)  : windbg_ho ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_WINDBG_CACHED    $(WICA_DEPS)  : windbg_cached_ho ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>on                        $(FORCE_SYMBOL_EXPORT) $(BASIC_DEPS) : basic_ho ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>on <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL $(BASIC_DEPS) : basic_ho_empty ]
+
+    # Test with shared linked implementations with debug symbols
+    [ run test.cpp      : : : <debug-symbols>on <library>.//test_impl_lib_backtrace     $(LINKSHARED_BT)            : backtrace_lib ]
+    [ run test.cpp      : : : <debug-symbols>on <library>.//test_impl_lib_addr2line     $(LINKSHARED_AD2L)          : addr2line_lib ]
+    [ run test.cpp      : : : <debug-symbols>on <library>.//test_impl_lib_windbg        $(LINKSHARED_WIND)          : windbg_lib ]
+    [ run test.cpp      : : : <debug-symbols>on <library>.//test_impl_lib_windbg_cached $(LINKSHARED_WIND_CACHED)   : windbg_cached_lib ]
+    [ run test_noop.cpp : : : <debug-symbols>on <library>.//test_impl_lib_noop          $(LINKSHARED_NOOP)          : noop_lib ]
+    [ run test.cpp      : : : <debug-symbols>on <library>.//test_impl_lib_basic         $(LINKSHARED_BASIC)         : basic_lib ]
+
+    # Thread safety with debug symbols
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>on <library>/boost/thread//boost_thread <library>/boost/timer//boost_timer <library>.//test_impl_lib_backtrace       $(LINKSHARED_BT)
+        : backtrace_lib_threaded ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>on <library>/boost/thread//boost_thread <library>/boost/timer//boost_timer <library>.//test_impl_lib_windbg          $(LINKSHARED_WIND)
+        : windbg_lib_threaded ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>on <library>/boost/thread//boost_thread <library>/boost/timer//boost_timer <library>.//test_impl_lib_windbg_cached   $(LINKSHARED_WIND_CACHED)
+        : windbg_cached_lib_threaded ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>on <library>/boost/thread//boost_thread <library>/boost/timer//boost_timer <library>.//test_impl_lib_basic           $(LINKSHARED_BASIC)
+        : basic_lib_threaded ]
+
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>on <library>/boost/thread//boost_thread <library>/boost/timer//boost_timer <library>.//test_impl_lib_windbg
+            $(LINKSHARED_WIND) <define>BOOST_STACKTRACE_TEST_COM_PREINIT_MT
+        : windbg_lib_threaded_com_mt ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>on <library>/boost/thread//boost_thread <library>/boost/timer//boost_timer <library>.//test_impl_lib_windbg_cached
+            $(LINKSHARED_WIND_CACHED) <define>BOOST_STACKTRACE_TEST_COM_PREINIT_ST
+        : windbg_cached_lib_threaded_com_st ]
+
+    ##### Tests with disabled debug symbols #####
+
+    # Header only tests without debug symbols
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>off <define>BOOST_STACKTRACE_USE_BACKTRACE                            $(FORCE_SYMBOL_EXPORT)  $(BT_DEPS)       : backtrace_ho_no_dbg ]
+    [ run test_noop.cpp test_impl.cpp   : : : <debug-symbols>off <define>BOOST_STACKTRACE_USE_NOOP                                                         $(NOOP_DEPS)     : noop_ho_no_dbg ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>off                                            <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL  $(WIND_DEPS)     : windbg_ho_no_dbg ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>off <define>BOOST_STACKTRACE_USE_WINDBG_CACHED <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL  $(WICA_DEPS)     : windbg_cached_ho_no_dbg ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>off                                                                    $(FORCE_SYMBOL_EXPORT) $(BASIC_DEPS)    : basic_ho_no_dbg ]
+    [ run test.cpp test_impl.cpp        : : : <debug-symbols>off                                            <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL  $(BASIC_DEPS)    : basic_ho_no_dbg_empty ]
+    [ run test.cpp test_impl.cpp
+        : : : <debug-symbols>off <define>BOOST_STACKTRACE_USE_ADDR2LINE <define>BOOST_STACKTRACE_ADDR2LINE_LOCATION="/usr/bin/addr2line"                   $(AD2L_DEPS)
+        : addr2line_ho_no_dbg ]
+
+    # Test with shared linked implementations without debug symbols
+    [ run test.cpp      : : : <debug-symbols>off <library>.//test_impl_lib_backtrace_no_dbg     $(LINKSHARED_BT)                             $(FORCE_SYMBOL_EXPORT)     : backtrace_lib_no_dbg ]
+    [ run test.cpp      : : : <debug-symbols>off <library>.//test_impl_lib_addr2line_no_dbg     $(LINKSHARED_AD2L)                                                      : addr2line_lib_no_dbg ]
+    [ run test.cpp      : : : <debug-symbols>off <library>.//test_impl_lib_windbg_no_dbg        $(LINKSHARED_WIND)        <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL : windbg_lib_no_dbg ]
+    [ run test.cpp      : : : <debug-symbols>off <library>.//test_impl_lib_windbg_cached_no_dbg $(LINKSHARED_WIND_CACHED) <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL : windbg_cached_lib_no_dbg ]
+    [ run test_noop.cpp : : : <debug-symbols>off <library>.//test_impl_lib_noop_no_dbg          $(LINKSHARED_NOOP)                                                      : noop_lib_no_dbg ]
+    [ run test.cpp      : : : <debug-symbols>off <library>.//test_impl_lib_basic_no_dbg         $(LINKSHARED_BASIC)                                                     : basic_lib_no_dbg ]
+
+    # Thread safety without debug symbols
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>off
+            <library>/boost/thread//boost_thread
+            <library>/boost/timer//boost_timer
+            <library>.//test_impl_lib_backtrace_no_dbg
+            $(LINKSHARED_BT)
+        : backtrace_lib_no_dbg_threaded ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>off
+            <library>/boost/thread//boost_thread
+            <library>/boost/timer//boost_timer
+            <library>.//test_impl_lib_windbg_no_dbg
+            $(LINKSHARED_WIND)
+        : windbg_lib_no_dbg_threaded ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>off
+            <library>/boost/thread//boost_thread
+            <library>/boost/timer//boost_timer
+            <library>.//test_impl_lib_windbg_cached_no_dbg
+            $(LINKSHARED_WIND_CACHED)
+        : windbg_cached_lib_no_dbg_threaded ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>off
+            <library>/boost/thread//boost_thread
+            <library>/boost/timer//boost_timer
+            <library>.//test_impl_lib_basic_no_dbg
+            $(LINKSHARED_BASIC)
+        : basic_lib_no_dbg_threaded ]
+
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>off
+            <library>/boost/thread//boost_thread
+            <library>/boost/timer//boost_timer
+            <library>.//test_impl_lib_windbg
+            $(LINKSHARED_WIND)
+            <define>BOOST_STACKTRACE_TEST_COM_PREINIT_MT
+        : windbg_lib_threaded_com_mt ]
+    [ run thread_safety_checking.cpp
+        : : : <debug-symbols>off
+            <library>/boost/thread//boost_thread
+            <library>/boost/timer//boost_timer
+            <library>.//test_impl_lib_windbg_cached
+            $(LINKSHARED_WIND_CACHED)
+            <define>BOOST_STACKTRACE_TEST_COM_PREINIT_ST
+        : windbg_cached_lib_threaded_com_st ]
+
+    [ run test_void_ptr_cast.cpp ]
+    [ run test_num_conv.cpp ]
+  ;
+
+# Assuring that examples compile and run. Adding sources from `examples` directory to the `type_index` test suite.
+for local p in [ glob ../example/*.cpp ]
+{
+    local target_name = $(p[1]:B) ;
+    local additional_dependency = ;
+    if $(target_name) = "terminate_handler"
+    {
+        additional_dependency = <library>/boost/filesystem//boost_filesystem <library>/boost/system//boost_system <target-os>linux:<library>rt ;
+    }
+
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>on $(LINKSHARED_BT)           $(additional_dependency)    : backtrace_$(p2[1]:B) ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>on $(LINKSHARED_AD2L)         $(additional_dependency)    : addr2line_$(p[1]:B) ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>on $(LINKSHARED_WIND)         $(additional_dependency)    : windbg_$(p[1]:B) ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>on $(LINKSHARED_WIND_CACHED)  $(additional_dependency)    : windbg_cached_$(p[1]:B) ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>on $(LINKSHARED_NOOP)         $(additional_dependency)    : noop_$(p[1]:B) ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>on $(LINKSHARED_BASIC)        $(additional_dependency)    : basic_$(p[1]:B) ] ;
+
+
+    ##### Tests with disabled debug symbols #####
+
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>off $(LINKSHARED_BT)          $(additional_dependency)    : backtrace_$(p[1]:B)_no_dbg ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>off $(LINKSHARED_AD2L)        $(additional_dependency)    : addr2line_$(p[1]:B)_no_dbg ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>off $(LINKSHARED_WIND)        $(additional_dependency)    : windbg_$(p[1]:B)_no_dbg ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>off $(LINKSHARED_WIND_CACHED) $(additional_dependency)    : windbg_cached_$(p[1]:B)_no_dbg ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>off $(LINKSHARED_NOOP)        $(additional_dependency)    : noop_$(p[1]:B)_no_dbg ] ;
+    stacktrace_tests += [ run $(p) : : : <debug-symbols>off $(LINKSHARED_BASIC)       $(additional_dependency)    : basic_$(p[1]:B)_no_dbg ] ;
+
+}
+
+# Very long tests for detecting memory leaks and corruptions
+test-suite stacktrace_torture
+  :
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_BACKTRACE        $(BT_DEPS)    : torture_backtrace_ho ]
+    #[ run torture.cpp test_impl.cpp : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_ADDR2LINE        $(AD2L_DEPS)  : torture_addr2line_ho ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on                                               $(WIND_DEPS)  : torture_windbg_ho ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <define>BOOST_STACKTRACE_USE_WINDBG_CACHED    $(WICA_DEPS)  : torture_windbg_cached_ho ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on                        $(FORCE_SYMBOL_EXPORT) $(BASIC_DEPS) : torture_basic_ho ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <define>BOOST_STACKTRACE_TEST_NO_DEBUG_AT_ALL $(BASIC_DEPS) : torture_basic_ho_empty ]
+
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <library>.//test_impl_lib_backtrace     $(LINKSHARED_BT)            : torture_backtrace_lib ]
+    #[ run torture.cpp test_impl.cpp : : : <debug-symbols>on <library>.//test_impl_lib_addr2line     $(LINKSHARED_AD2L)          : torture_addr2line_lib ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <library>.//test_impl_lib_windbg        $(LINKSHARED_WIND)          : torture_windbg_lib ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <library>.//test_impl_lib_windbg_cached $(LINKSHARED_WIND_CACHED)   : torture_windbg_cached_lib ]
+    [ run torture.cpp test_impl.cpp : : : <debug-symbols>on <library>.//test_impl_lib_basic         $(LINKSHARED_BASIC)         : torture_basic_lib ]
+  ;
+explicit stacktrace_torture ;
+

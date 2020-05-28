@@ -24,9 +24,11 @@
 #ifndef ARANGODB_V8_V8__UTILS_H
 #define ARANGODB_V8_V8__UTILS_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <cstdint>
+#include <string>
 
-#include "V8/v8-globals.h"
+#include <v8.h>
 
 namespace arangodb {
 class Result;
@@ -116,13 +118,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all files from a directory into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all files from a directory in a local context
@@ -134,7 +130,7 @@ bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const*);
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*, bool);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string within a V8 context, optionally print the result
@@ -188,8 +184,10 @@ void TRI_ClearObjectCacheV8(v8::Isolate*);
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context>,
-                     std::string const& startupPath, std::string const& modules);
+void TRI_InitV8Utils(v8::Isolate* isolate,
+                     v8::Handle<v8::Context>,
+                     std::string const& startupPath,
+                     std::string const& modules);
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args);
 

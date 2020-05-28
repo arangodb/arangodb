@@ -90,10 +90,10 @@ void Push(MutableFst<Arc> *fst, ReweightType type, float delta = kDelta,
   }
 }
 
-FST_CONSTEXPR const uint32 kPushWeights = 0x0001;
-FST_CONSTEXPR const uint32 kPushLabels = 0x0002;
-FST_CONSTEXPR const uint32 kPushRemoveTotalWeight = 0x0004;
-FST_CONSTEXPR const uint32 kPushRemoveCommonAffix = 0x0008;
+constexpr uint32 kPushWeights = 0x0001;
+constexpr uint32 kPushLabels = 0x0002;
+constexpr uint32 kPushRemoveTotalWeight = 0x0004;
+constexpr uint32 kPushRemoveCommonAffix = 0x0008;
 
 // Pushes the weights and/or labels of the input FST into the output
 // mutable FST by pushing weights and/or labels (as determined by the
@@ -132,7 +132,7 @@ void Push(const Fst<Arc> &ifst, MutableFst<Arc> *ofst, uint32 ptype,
       total_weight = GallicWeight(
           ptype & kPushRemoveCommonAffix
               ? total_weight.Value1()
-              : StringWeight<Label, GALLIC_STRING_TYPE(gtype)>::One(),
+              : StringWeight<Label, GallicStringType(gtype)>::One(),
           ptype & kPushRemoveTotalWeight ? total_weight.Value2()
                                          : Weight::One());
     }
