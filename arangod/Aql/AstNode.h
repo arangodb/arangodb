@@ -594,7 +594,7 @@ struct AstNode {
   uint8_t mutable* _computedValue;
 
   /// @brief the node's sub nodes
-  std::vector<AstNode*> members;
+  std::vector<AstNode*> members{};
 };
 
 int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
