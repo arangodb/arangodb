@@ -119,7 +119,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
       _cacheIndexAndFilterBlocksWithHighPriority(
         rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
-      _pinl0FilterNIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
+      _pinl0FilterAndIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
