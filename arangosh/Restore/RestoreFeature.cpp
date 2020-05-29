@@ -817,8 +817,9 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       // note that we have to store the uncompressed offset here, because we
       // potentially have consumed more data than we have sent.
       datafileReadOffset += length;
-      jobData.progressTracker.updateStatus(cname, {arangodb::RestoreFeature::RESTORING,
-                                                   datafileReadOffset});
+      jobData.progressTracker.updateStatus(
+          cname, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING,
+                                                            datafileReadOffset});
 
       buffer.erase_front(length);
 
@@ -849,7 +850,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
     }
   }
 
-  jobData.progressTracker.updateStatus(cname, {arangodb::RestoreFeature::RESTORED, 0});
+  jobData.progressTracker.updateStatus(cname, arangodb::RestoreFeature::CollectionStatus{
+                                                  arangodb::RestoreFeature::RESTORED, 0});
 
   return result;
 }
@@ -1098,7 +1100,9 @@ arangodb::Result processInputDirectory(
           return result;
         }
 
-        progressTracker.updateStatus(name.copyString(), {arangodb::RestoreFeature::CREATED});
+        progressTracker.updateStatus(name.copyString(),
+                                     arangodb::RestoreFeature::CollectionStatus{
+                                         arangodb::RestoreFeature::CREATED});
       }
 
       if (name.isString() && name.stringRef() == "_users") {
