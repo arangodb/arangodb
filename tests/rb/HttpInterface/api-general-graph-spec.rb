@@ -1210,7 +1210,7 @@ describe ArangoDB do
             def check404CRUD (doc)
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1203)
-              doc.parsed_response['errorMessage'].should start_with("collection or View not found: ")
+              doc.parsed_response['errorMessage'].should start_with("collection or view not found: ")
             end
 
             def check400CRUD (doc)
@@ -1295,7 +1295,7 @@ describe ArangoDB do
               doc.parsed_response['error'].should eq(true)
               doc.parsed_response['code'].should eq(404)
               doc.parsed_response['errorNum'].should eq(1203)
-              doc.parsed_response['errorMessage'].should include("collection or View not found")
+              doc.parsed_response['errorMessage'].should include("collection or view not found")
             end
 
             def check400Collection (doc)

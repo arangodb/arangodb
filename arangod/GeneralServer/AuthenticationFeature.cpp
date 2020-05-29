@@ -123,7 +123,7 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "--server.jwt-secret-folder",
       "folder containing one or more jwt secret files to use for jwt "
       "authentication. Files are sorted alphabetically: First secret "
-      "is used for signing + verifying jwt tokens. The latter secrets "
+      "is used for signing + verifying JWT tokens. The latter secrets "
       "are only used for verifying.",
       new StringParameter(&_jwtSecretFolderProgramOption),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise))

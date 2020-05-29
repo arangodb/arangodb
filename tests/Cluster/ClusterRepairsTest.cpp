@@ -263,7 +263,7 @@ TEST_F(ClusterRepairsTestBrokenDistribution,
 
   ASSERT_EQ(collectionResult.errorNumber(), TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
   ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                          "not enough (healthy) DB-Servers"));
+                          "not enough (healthy) db servers"));
   ASSERT_TRUE(collectionResult.fail());
 }
 
@@ -286,7 +286,7 @@ TEST_F(ClusterRepairsTestBrokenDistribution,
 
   ASSERT_EQ(collectionResult.errorNumber(), TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
   ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                          "not enough (healthy) DB-Servers"));
+                          "not enough (healthy) db servers"));
   ASSERT_TRUE(collectionResult.fail());
 }
 
