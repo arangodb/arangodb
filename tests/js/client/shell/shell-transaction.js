@@ -34,6 +34,7 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var testHelper = require('@arangodb/test-helper').Helper;
 var analyzers = require("@arangodb/analyzers");
+const isCluster = internal.isCluster();
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -1502,6 +1503,9 @@ function transactionCollectionsSuite () {
     // / @brief test: trx with analyzers usage
     // //////////////////////////////////////////////////////////////////////////////
     testAnalyzersRevisionReadSubstitutedAnalyzer: function () {
+      if (!isCluster) {
+        return; // we don`t have revisions for single server. Nothing to check
+      }
       let analyzerName = "my_analyzer";
       let obj = {
         collections: {
