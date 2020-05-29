@@ -128,7 +128,9 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     ManagedDirectory& directory;
     std::shared_mutex _collectionStatesMutex;
+    std::mutex _writeFileMutex;
     std::unordered_map<std::string, CollectionStatus> _collectionStates;
+    std::atomic<bool> _writeQueued{false};
   };
 
 

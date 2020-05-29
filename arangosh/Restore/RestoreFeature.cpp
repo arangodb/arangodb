@@ -1826,24 +1826,36 @@ Result RestoreFeature::getFirstError() const {
 
 void RestoreFeature::ProgressTracker::updateStauts(const std::string& filename,
                                                    const RestoreFeature::CollectionStatus& status) {
-  std::unique_lock guard(_collectionStatesMutex);
-  _collectionStates[filename] = status;
-
-  // TODO currently every change is immediately written to disk
-  // maybe we can collect multiple changes and write only once.
-  VPackBuilder builder;
   {
-    VPackObjectBuilder object(&builder);
+    std::unique_lock guard(_collectionStatesMutex);
+    _collectionStates[filename] = status;
 
-    for (auto const& [filename, state] : _collectionStates) {
-      builder.add(VPackValue(filename));
-      state.toVelocyPack(builder);
+    if (_writeQueued) {
+      return;
     }
-  }
-  LOG_DEVEL << "Continuation file = " << builder.toJson();
 
-  auto file = directory.writableFile("continue.json", true, 0, false);
-  file->spit(builder.toJson());
+    _writeQueued = true;
+  }
+
+  {
+    std::unique_lock guard(_writeFileMutex);
+    VPackBuilder builder;
+    {
+      std::unique_lock guardState(_collectionStatesMutex);
+      _writeQueued = false;
+      VPackObjectBuilder object(&builder);
+
+      for (auto const& [filename, state] : _collectionStates) {
+        builder.add(VPackValue(filename));
+        state.toVelocyPack(builder);
+      }
+    }
+
+
+    LOG_DEVEL << "Continuation file = " << builder.toJson();
+    auto file = directory.writableFile("continue.json", true, 0, false);
+    file->spit(builder.toJson());
+  }
 }
 
 RestoreFeature::CollectionStatus RestoreFeature::ProgressTracker::getStatus(const std::string& filename) {
