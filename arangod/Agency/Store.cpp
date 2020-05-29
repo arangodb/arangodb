@@ -373,6 +373,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
               }
 
             });
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("c4612", DEBUG, Logger::AGENCY)
+            << "Failed to deliver callback to endpoint " << endpoint << ": " << ex.what();
         } catch (...) {
           LOG_TOPIC("e931c", DEBUG, Logger::AGENCY)
             << "Failed to deliver callback to endpoint " << endpoint;
