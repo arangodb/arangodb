@@ -1,7 +1,7 @@
 devel
 -----
 
-* Catch exceptions in agency callbacks
+* Catch exceptions in agency callbacks.
 
 * Fixed bad behavior when dropping followers. A follower should be dropped
   immediately when it is officially FAILED, not only after a longish timeout.
