@@ -21,18 +21,13 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   fetch: function (options) {
-    var basePath = frontendConfig.basePath;
-    if (frontendConfig.react) {
-      basePath = '';
-    }
-
     if (options.fetchAllUsers) {
       // flag to load all user profiles, this only works within _system database and needs at least read access
-      this.url = arangoHelper.databaseUrl(basePath + '/_api/user/');
+      this.url = arangoHelper.databaseUrl('/_api/user/');
     } else if (frontendConfig.authenticationEnabled && window.App.currentUser) {
-      this.url = arangoHelper.databaseUrl(basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
+      this.url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(window.App.currentUser));
     } else {
-      this.url = arangoHelper.databaseUrl(basePath + '/_api/user/');
+      this.url = arangoHelper.databaseUrl('/_api/user/');
     }
     return Backbone.Collection.prototype.fetch.call(this, options);
   },
