@@ -507,9 +507,9 @@ void RocksDBOptionFeature::start() {
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", ck_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
       << ", cache_index_and_filter_blocks: " << _cacheIndexAndFilterBlocks
-      << ", cache_index_and_filter_blocks_with_high_priority: " << _cacheIndexNFilterBlocksWithHighPriority
-      << ", pin_l0_filter_and_index_blocks_in_cache: " << _pinTopLevelIndexAndFilter
-      << ", pin_top_level_index_and_filter: " << _pinTopLevelIndexAndFilter
+      << ", cache_index_and_filter_blocks_with_high_priority: " << std::boolalpha << _cacheIndexAndFilterBlocksWithHighPriority
+      << ", pin_l0_filter_and_index_blocks_in_cache: " << std::boolalpha << _pinl0FilterAndIndexBlocksInCache
+      << ", pin_top_level_index_and_filter: " << std::boolalpha << _pinTopLevelIndexAndFilter
       << ", table_block_size: " << _tableBlockSize
       << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
