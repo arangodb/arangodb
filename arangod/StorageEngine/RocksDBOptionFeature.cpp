@@ -364,10 +364,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption(
       "--rocksdb.pin-top-level-index-and-filter",
-      "If cache_index_and_filter_blocks is true and the below is true, "
-      "then the top-level index of partitioned filter and index blocks are stored in the cache, "
-      "but a reference is held in the 'table reader' object so the blocks are pinned "
-      "and only evicted from cache when the table reader is freed. This is not limited to l0 in LSM tree.",
+      "If true and `--rocksdb.cache-index-and-filter-blocks` is also true, "
+      "the top-level index of partitioned filter and index blocks are pinned and only evicted from cache when the table reader is freed",
       new BooleanParameter(&_pinTopLevelIndexAndFilter),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
