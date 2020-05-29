@@ -2882,15 +2882,19 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           // expression types (V8 vs. non-V8) do not match. give up
           continue;
         }
-        
-        if (rootNode->callsFunction() && other->isInInnerLoop()) {
-          if (n->getLoop() != other->getLoop()) {
+       
+        auto otherLoop = other->getLoop();
+
+        if (otherLoop != nullptr && rootNode->callsFunction()) {
+          auto nLoop = n->getLoop();
+
+          if (nLoop != otherLoop) {
             // original expression calls a function and is not contained in a loop.
             // we're about to move this expression into a loop, but we don't want
             // to move (expensive) function calls into loops
             continue;
           }
-          VarSet outer = n->getLoop()->getVarsValid();
+          VarSet outer = nLoop->getVarsValid();
           VarSet used;
           Ast::getReferencedVariables(rootNode, used);
           bool doOptimize = true;
