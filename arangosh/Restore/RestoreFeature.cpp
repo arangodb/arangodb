@@ -699,12 +699,17 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
                                                                       "type", 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
-  if (jobData.progressTracker.getStatus(cname).state >= arangodb::RestoreFeature::RESTORED) {
+  auto&& currentStatus = jobData.progressTracker.getStatus(cname);
+
+  if (currentStatus.state >= arangodb::RestoreFeature::RESTORED) {
     LOG_TOPIC("94913", INFO, Logger::RESTORE)
         << "# Loading data into " << collectionType << " collection '" << cname
         << "was restored previously.";
     return result;
   }
+
+  TRI_ASSERT(currentStatus.state == arangodb::RestoreFeature::CREATED ||
+             currentStatus.state == arangodb::RestoreFeature::RESTORING);
 
   // import data. check if we have a datafile
   //  ... there are 4 possible names
@@ -738,7 +743,11 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
-  jobData.progressTracker.updateStauts(cname, {arangodb::RestoreFeature::RESTORING, 0});
+  size_t datafileReadOffset = 0;
+  if (currentStatus.state == arangodb::RestoreFeature::RESTORING) {
+    datafileReadOffset = currentStatus.bytes_acked;
+    // datafile->seek(datafileReadOffset);
+  }
 
   buffer.clear();
   while (true) {
@@ -797,6 +806,12 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
         }
         return result;
       }
+
+      // bytes successfully sent
+      // note that we have to store the uncompressed offset here, because we
+      // potentially have consumed more data than we have sent.
+      datafileReadOffset += length;
+      jobData.progressTracker.updateStauts(cname, {arangodb::RestoreFeature::RESTORING, datafileReadOffset});
 
       buffer.erase_front(length);
 
