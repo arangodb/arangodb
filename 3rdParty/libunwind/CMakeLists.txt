@@ -25,6 +25,9 @@ if (LINUX)
   set(LIBUNWIND_CXX_TMP "${CMAKE_CXX_COMPILER}")
 
   set(LIBUNWIND_LIB "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}/src/.libs/libunwind.a")
+  # note: in the following configure, turning on cxx exceptions will cause duplicate
+  # symbols (_Unwind_Resume and such) when linking, as some libc++ implementations
+  # also use it internally
   ExternalProject_Add(
     libunwind_build
     SOURCE_DIR
