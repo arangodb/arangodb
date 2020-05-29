@@ -113,14 +113,11 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 
 /// @brief whether or not the value is a shadow row depth entry
 bool AqlValue::isShadowRowDepthValue() const noexcept {
-  if (ADB_LIKELY(type() == VPACK_INLINE)) {
-    /// this is a performance-optimized version of the check
-    /// isUInt() || isSmallInt()
-    /// VelocyPack UInts are in the range 0x28 - 0x2f, and
-    /// VelocyPack SmallInts are in the range 0x30 - 0x39
-    return _data.internal[0] >= 0x28 && _data.internal[0] <= 0x39;
-  }
-  return false;
+  /// this is a performance-optimized version of the check
+  /// isUInt() || isSmallInt()
+  /// VelocyPack UInts are in the range 0x28 - 0x2f, and
+  /// VelocyPack SmallInts are in the range 0x30 - 0x39
+  return _data.internal[0] >= 0x28 && _data.internal[0] <= 0x39 && ADB_LIKELY(type() == VPACK_INLINE);
 }
 
 /// @brief whether or not the value contains a none value

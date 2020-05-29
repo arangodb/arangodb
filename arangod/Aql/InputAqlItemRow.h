@@ -64,7 +64,7 @@ class InputAqlItemRow {
   constexpr explicit InputAqlItemRow(CreateInvalidInputRowHint)
       : _block(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex);
+  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex) noexcept;
 
   InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept;
 

@@ -420,8 +420,10 @@ void AqlItemBlock::rescale(size_t nrItems, RegisterCount nrRegs) {
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
 void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
+  bool const checkShadowRows = hasShadowRows();
+
   for (size_t i = 0; i < _nrItems; i++) {
-    if (isShadowRow(i)) {
+    if (checkShadowRows && isShadowRow(i)) {
       // Do not clear shadow rows:
       // 1) our toClear set is only valid for data rows
       // 2) there will never be anything to clear for shadow rows
