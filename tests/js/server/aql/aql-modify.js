@@ -1160,6 +1160,47 @@ function aqlUpsertOptionsSuite() {
       assertEqual(NEW.value2, {});
     },
 
+    testUpsertSkipAndHardLimit: function () {
+      const countBefore = col.count();
+      let q = `
+        FOR value IN 1..10
+        UPSERT {value} INSERT {value} UPDATE {value} INTO ${collectionName}
+        LIMIT 5,0 /* We skip 5, and ignore the remaining 5 */
+        RETURN $NEW
+      `;
+      const res = db._query(q);
+      const { writesExecuted, writesIgnored } = res.getExtra().stats;
+      assertEqual(0, writesIgnored);
+      assertEqual(10, writesExecuted);
+      assertEqual(0, res.toArray().length);
+      assertEqual(10, col.count()- countBefore, `Did not insert enough documents, we need to insert all 10, but just report the first 5`);
+    },
+
+    testUpsertSkipAndHardLimitInSubquery: function () {
+      const countBefore = col.count();
+      let q = `
+        FOR fv0 IN 1..10
+        LET sq1 = (
+          FOR fv2 IN ${collectionName} 
+          UPSERT {value: fv2.value  }  INSERT {value: 98 }  UPDATE {value: 51, updated: true} IN ${collectionName}
+          LIMIT 5,0
+          RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")}
+        )
+        FILTER fv0 < 8
+        LIMIT 14,13
+        RETURN {fv0, sq1}
+      `;
+
+      const res = db._query(q);
+      const { writesExecuted, writesIgnored } = res.getExtra().stats;
+      require("internal").print({ writesIgnored, writesExecuted, results: res.toArray().length, countBefore, countAfter: col.count() });
+      assertEqual(0, writesIgnored);
+      assertEqual(10, writesExecuted);
+      assertEqual(0, res.toArray().length);
+      assertEqual(10, col.count()- countBefore, `Did not insert enough documents, we need to insert all 10, but just report the first 5`);
+
+    }
+
     /* We cannot yet solve this. If you need to ensure _rev value checks put them in the UPDATE {} clause
     testUpsertSingleWithInvalidRevInMatch : function () {
       const invalid = genInvalidValue();
