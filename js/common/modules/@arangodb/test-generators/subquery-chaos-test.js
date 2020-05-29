@@ -152,6 +152,7 @@ function randomUpsert(generator, indent, bias, variables, collectionName) {
       indent +
       " UPSERT {value: " +
       pickRandomElement(generator, variables) +
+      ".value " +
       " } " +
       " INSERT {value: " +
       randomInt(generator, 100) +
@@ -330,7 +331,7 @@ function runQuery(query, queryOptions, testOptions) {
   for (cn of query.collectionNames) {
     db._drop(cn);
     db._createDocumentCollection(cn);
-    db._query(`FOR i IN 1..100 INSERT { value: i } INTO ${cn}`);
+    db._query(`FOR i IN 1..10 INSERT { value: i } INTO ${cn}`);
   }
 
   if (testOptions.explainQuery) {
@@ -355,7 +356,7 @@ function testQuery(query, testOptions) {
   }
 
   /* Run query with all optimizations */
-  const result1 = runQuery(query, {}, testOptions);
+  const result1 = runQuery(query, { }, testOptions);
 
   /* Run query without subquery splicing */
   const result2 = runQuery(
@@ -400,7 +401,7 @@ function testQueryWithSeed(testOptions) {
 function testModifyingQueryWithSeed(testOptions) {
   if (testOptions.showReproduce) {
     print(
-      `require("@arangodb/test-generators/subquery-chaos-test").testQueryWithSeed(${JSON.stringify(
+      `require("@arangodb/test-generators/subquery-chaos-test").testModifyingQueryWithSeed(${JSON.stringify(
         testOptions
       )});`
     );
