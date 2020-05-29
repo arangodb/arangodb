@@ -342,21 +342,25 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
       if (endpointPathFromUrl(url, endpoint, path)) {
 
         Agent* agent = _agent;
-        network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
-                             *buffer, reqOpts).thenValue([=](network::Response r) {
-          if (r.fail() || r.response->statusCode() >= 400) {
-            LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-              << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
-              << "): " << r.slice().toJson();
+        try {
+          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts).thenValue(
+            [=](network::Response r) {
+              if (r.fail() || r.response->statusCode() >= 400) {
+                LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
+                  << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
+                  << "): " << r.slice().toJson();
 
-            if (r.ok() && r.response->statusCode() == 404 && _agent != nullptr) {
-              LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << url;
-              agent->trashStoreCallback(url, VPackSlice(buffer->data()));
-            }
-          }
+                if (r.ok() && r.response->statusCode() == 404 && _agent != nullptr) {
+                  LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << url;
+                  agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                }
+              }
 
-        });
-
+            });
+        } catch (...) {
+          LOG_TOPIC("e931c", DEBUG, Logger::AGENCY)
+            << "Failed to deliver callback to endpoint " << endpoint;
+        }
       } else {
         LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
       }
