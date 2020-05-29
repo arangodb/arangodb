@@ -108,8 +108,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     size_t bytes_acked{0};
 
     CollectionStatus();
-    CollectionStatus(CollectionState state, size_t bytes_acked = 0u);
-    CollectionStatus(VPackSlice slice);
+    explicit CollectionStatus(CollectionState state, size_t bytes_acked = 0u);
+    explicit CollectionStatus(VPackSlice slice);
 
     void toVelocyPack(VPackBuilder& builder) const;
   };
