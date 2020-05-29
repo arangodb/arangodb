@@ -554,7 +554,7 @@ void RocksDBEngine::start() {
   }
   tableOptions.cache_index_and_filter_blocks = opts._cacheIndexAndFilterBlocks;
   tableOptions.cache_index_and_filter_blocks_with_high_priority = opts._cacheIndexAndFilterBlocksWithHighPriority;
-  tableOptions.pin_l0_filter_and_index_blocks_in_cache = opts._pinTopLevelIndexAndFilter;
+  tableOptions.pin_l0_filter_and_index_blocks_in_cache = opts._pinl0FilterAndIndexBlocksInCache;
   tableOptions.pin_top_level_index_and_filter = opts._pinTopLevelIndexAndFilter;
 
   tableOptions.block_size = opts._tableBlockSize;
