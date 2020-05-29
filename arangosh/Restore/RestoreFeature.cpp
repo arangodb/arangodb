@@ -703,8 +703,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   if (currentStatus.state >= arangodb::RestoreFeature::RESTORED) {
     LOG_TOPIC("94913", INFO, Logger::RESTORE)
-        << "# " << collectionType << " collection '" << cname
-        << "' was restored previously.";
+        << "# skipping restoring " << collectionType << " collection '" << cname
+        << "', as it was restored previously";
     return result;
   }
 
@@ -746,8 +746,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   size_t datafileReadOffset = 0;
   if (currentStatus.state == arangodb::RestoreFeature::RESTORING) {
     LOG_TOPIC("94913", INFO, Logger::RESTORE)
-      << "# Continue " << collectionType << " collection '" << cname
-      << ". Already " << currentStatus.bytes_acked << " byte(s) restored.";
+      << "# continuing restoring " << collectionType << " collection '" << cname
+      << "' from offset " << currentStatus.bytes_acked;
     datafileReadOffset = currentStatus.bytes_acked;
     datafile->skip(datafileReadOffset);
   }
