@@ -82,6 +82,7 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   int64_t _level0StopTrigger;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
+  bool _cacheIndexAndFilterBlocks;
   bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
   bool _optimizeFiltersForHits;

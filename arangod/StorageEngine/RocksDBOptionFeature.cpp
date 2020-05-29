@@ -116,6 +116,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
+      _cacheIndexAndFilterBlocks(false),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
@@ -334,6 +335,17 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
                      "if true, strictly enforces the block cache size limit",
                      new BooleanParameter(&_enforceBlockCacheSizeLimit));
+
+  options->addOption(
+      "--rocksdb.cache-index-and-filter-blocks",
+      "In most cases, actually used blocks in block cache are just a small "
+      "percentage than data cached in block cache, so when users enable this "
+      "feature, the block cache capacity will cover the memory usage for both "
+      "of block cache and memtable. "
+      "If users also enable cache_index_and_filter_blocks, then the three major "
+      "uses of memory of RocksDB will be capped by the single cap",
+      new BooleanParameter(&_cacheIndexAndFilterBlocks),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--rocksdb.table-block-size",

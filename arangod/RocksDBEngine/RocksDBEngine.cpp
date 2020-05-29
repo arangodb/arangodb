@@ -552,6 +552,7 @@ void RocksDBEngine::start() {
   } else {
     tableOptions.no_block_cache = true;
   }
+  tableOptions.cache_index_and_filter_blocks = opts._cacheIndexAndFilterBlocks ;
   tableOptions.block_size = opts._tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   // use slightly space-optimized format version 3
