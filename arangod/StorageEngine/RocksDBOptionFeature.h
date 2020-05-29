@@ -83,8 +83,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
-  bool _cacheIndexNFilterBlocksWithHighPriority;
-  bool _pinl0FilterNIndexBlocksInCache;
+  bool _cacheIndexAndFilterBlocksWithHighPriority;
+  bool _pinl0FilterAndIndexBlocksInCache;
   bool _pinTopLevelIndexAndFilter;
   bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
