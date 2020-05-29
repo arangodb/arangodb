@@ -750,6 +750,9 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       << ". Already " << currentStatus.bytes_acked << " byte(s) restored.";
     datafileReadOffset = currentStatus.bytes_acked;
     datafile->skip(datafileReadOffset);
+    if (datafile->status().fail()) {
+      return datafile->status();
+    }
   }
 
   buffer.clear();
@@ -814,7 +817,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       // note that we have to store the uncompressed offset here, because we
       // potentially have consumed more data than we have sent.
       datafileReadOffset += length;
-      jobData.progressTracker.updateStauts(cname, {arangodb::RestoreFeature::RESTORING, datafileReadOffset});
+      jobData.progressTracker.updateStatus(cname, {arangodb::RestoreFeature::RESTORING,
+                                                   datafileReadOffset});
 
       buffer.erase_front(length);
 
@@ -845,7 +849,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
     }
   }
 
-  jobData.progressTracker.updateStauts(cname, {arangodb::RestoreFeature::RESTORED, 0});
+  jobData.progressTracker.updateStatus(cname, {arangodb::RestoreFeature::RESTORED, 0});
 
   return result;
 }
@@ -1094,7 +1098,7 @@ arangodb::Result processInputDirectory(
           return result;
         }
 
-        progressTracker.updateStauts(name.copyString(), {arangodb::RestoreFeature::CREATED});
+        progressTracker.updateStatus(name.copyString(), {arangodb::RestoreFeature::CREATED});
       }
 
       if (name.isString() && name.stringRef() == "_users") {
@@ -1824,7 +1828,7 @@ Result RestoreFeature::getFirstError() const {
   return {TRI_ERROR_NO_ERROR};
 }
 
-void RestoreFeature::ProgressTracker::updateStauts(const std::string& filename,
+void RestoreFeature::ProgressTracker::updateStatus(const std::string& filename,
                                                    const RestoreFeature::CollectionStatus& status) {
   {
     std::unique_lock guard(_collectionStatesMutex);
@@ -1860,7 +1864,7 @@ void RestoreFeature::ProgressTracker::updateStauts(const std::string& filename,
 
 RestoreFeature::CollectionStatus RestoreFeature::ProgressTracker::getStatus(const std::string& filename) {
   std::shared_lock guard(_collectionStatesMutex);
-  return _collectionStates[filename];
+  return _collectionStates[filename]; // intentionally default construct
 }
 
 RestoreFeature::ProgressTracker::ProgressTracker(ManagedDirectory& directory)

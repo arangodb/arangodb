@@ -124,7 +124,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     CollectionStatus getStatus(std::string const& filename);
 
-    void updateStauts(std::string const& filename, CollectionStatus const& status);
+    void updateStatus(std::string const& filename, CollectionStatus const& status);
 
     ManagedDirectory& directory;
     std::shared_mutex _collectionStatesMutex;

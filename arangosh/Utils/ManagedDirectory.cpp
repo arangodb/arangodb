@@ -641,12 +641,12 @@ void ManagedDirectory::File::skip(size_t count) {
   // TODO is there a better implementation than just read count bytes?
   // how does this work with gzip?
   size_t const bufferSize = 4 * 1024;
-  char buffer[bufferSize]; // alloc on the heap?
+  char buffer[bufferSize];
 
   while (count > 0) {
     TRI_read_return_t bytesRead = read(buffer, std::min(bufferSize, count));
-    if (bytesRead == 0) {
-      break; // eof
+    if (bytesRead <= 0) {
+      break; // eof or error (_status will be set)
     }
 
     count -= bytesRead;
