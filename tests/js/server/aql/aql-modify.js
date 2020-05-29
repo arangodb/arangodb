@@ -1197,7 +1197,7 @@ function aqlUpsertOptionsSuite() {
       // We update every document once per subquery execution
       assertEqual(3 * countBefore, writesExecuted);
       assertEqual(0, res.toArray().length);
-      assertEqual(0, col.count()- countBefore, `Only updates no inserts`);
+      assertEqual(countBefore, col.count(), `Only updates no inserts`);
     }
 
     /* We cannot yet solve this. If you need to ensure _rev value checks put them in the UPDATE {} clause
