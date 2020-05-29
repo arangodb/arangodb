@@ -37,6 +37,42 @@ const jsunity = require("jsunity");
 const ct = require("@arangodb/test-generators/subquery-chaos-test");
 const helper = require("@arangodb/aql-helper");
 
+const numberOfQueriesGenerated = 100;
+const randomDepth = () => {
+  const val = Math.random();
+  if (val < 0.3) {
+    // 30% depth 2
+    return 2;
+  }
+  if (val < 0.5) {
+    // 20% depth 3
+    return 3;
+  }
+  if (val < 0.7) {
+    // 20% depth 4
+    return 4;
+  }
+  if (val < 0.8) {
+    // 10% depth 5
+    return 5;
+  }
+  if (val < 0.9) {
+    // 10% depth 6
+    return 6;
+  }
+  return 7;
+}
+
+const randomModificationDepth = () => {
+  const val = Math.random();
+  if (val < 0.7) {
+    // 70% depth 2
+    return 2;
+  }
+  // 30% depth 3
+  return 3;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for cross-collection queries
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,9 +169,9 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryChaos: function () {
-      for (var i = 0; i < 1000; i++) {
+      for (var i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testQueryWithSeed({
-          numberSubqueries: 7,
+          numberSubqueries: randomDepth(),
           seed: Math.trunc(Math.random() * 10000),
           showReproduce: true,
           throwOnMismatch: true,
@@ -144,9 +180,9 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryModificationChaos: function () {
-      for (var i = 0; i < 1000; i++) {
+      for (var i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testModifyingQueryWithSeed({
-          numberSubqueries: 7,
+          numberSubqueries: randomModificationDepth(),
           seed: Math.trunc(Math.random() * 10000),
           showReproduce: true,
           throwOnMismatch: true,
