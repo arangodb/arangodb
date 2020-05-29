@@ -359,7 +359,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "then filter and index blocks are stored in the cache, "
       "but a reference is held in the 'table reader' object "
       "so the blocks are pinned and only evicted from cache when the table reader is freed.",
-      new BooleanParameter(&_pinTopLevelIndexAndFilter),
+      new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
