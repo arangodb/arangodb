@@ -249,7 +249,21 @@ template <typename FetcherType, typename ModifierType>
         stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
         stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
       }
-      call.didSkip(_modifier.nrOfOperations());
+
+      if (call.needsFullCount()) {
+        // If we need to do full count the nr of writes we did
+        // in this batch is always correct.
+        // If we are in offset phase and need to produce data
+        // after the toSkip is limited to offset().
+        // otherwise we need to report everything we write
+        call.didSkip(_modifier.nrOfWritesExecuted());
+      } else {
+        // If we do not need to report fullcount.
+        // we cannot report more than offset
+        // but also not more than the operations we
+        // have successfully executed
+        call.didSkip((std::min)(call.getOffset(), _modifier.nrOfWritesExecuted()));
+      }
     }
   }
 
