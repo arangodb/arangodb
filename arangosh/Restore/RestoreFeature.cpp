@@ -1832,11 +1832,11 @@ Result RestoreFeature::getFirstError() const {
   return {TRI_ERROR_NO_ERROR};
 }
 
-void RestoreFeature::ProgressTracker::updateStatus(const std::string& filename,
+void RestoreFeature::ProgressTracker::updateStatus(const std::string& collectionName,
                                                    const RestoreFeature::CollectionStatus& status) {
   {
     std::unique_lock guard(_collectionStatesMutex);
-    _collectionStates[filename] = status;
+    _collectionStates[collectionName] = status;
 
     if (_writeQueued) {
       return;
@@ -1865,9 +1865,9 @@ void RestoreFeature::ProgressTracker::updateStatus(const std::string& filename,
   }
 }
 
-RestoreFeature::CollectionStatus RestoreFeature::ProgressTracker::getStatus(const std::string& filename) {
+RestoreFeature::CollectionStatus RestoreFeature::ProgressTracker::getStatus(const std::string& collectionName) {
   std::shared_lock guard(_collectionStatesMutex);
-  return _collectionStates[filename]; // intentionally default construct
+  return _collectionStates[collectionName]; // intentionally default construct
 }
 
 RestoreFeature::ProgressTracker::ProgressTracker(ManagedDirectory& directory)

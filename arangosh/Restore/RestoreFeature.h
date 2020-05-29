@@ -122,9 +122,9 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     ProgressTracker& operator=(ProgressTracker const&) = delete;
     ProgressTracker& operator=(ProgressTracker &&) noexcept = delete;
 
-    CollectionStatus getStatus(std::string const& filename);
+    CollectionStatus getStatus(std::string const& collectionName);
 
-    void updateStatus(std::string const& filename, CollectionStatus const& status);
+    void updateStatus(std::string const& collectionName, CollectionStatus const& status);
 
     ManagedDirectory& directory;
     std::shared_mutex _collectionStatesMutex;
