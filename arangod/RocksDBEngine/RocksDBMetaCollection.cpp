@@ -369,6 +369,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  if (!_revisionTree) {
+    return nullptr;
+  }
+
   applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
@@ -412,6 +416,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  if (!_revisionTree) {
+    return nullptr;
+  }
+
   applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
@@ -504,6 +512,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq) {
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
   if (_logicalCollection.useSyncByRevision()) {
+    if (!_revisionTree) {
+      // should only occur temporarily during upgrade, just return last number
+      return _revisionTreeSerializedSeq;
+    }
     applyUpdates(commitSeq);  // always apply updates...
     bool neverDone = _revisionTreeSerializedSeq == 0;
     bool coinFlip = RandomGenerator::interval(static_cast<uint32_t>(5)) == 0;
@@ -605,12 +617,13 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
   if (!_logicalCollection.useSyncByRevision()) {
     return;
   }
-  TRI_ASSERT(_revisionTree);
 
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  VPackObjectBuilder obj(&builder);
-  obj->add(StaticStrings::RevisionTreeCount, VPackValue(_revisionTree->count()));
-  obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
+  if (_revisionTree) {
+    VPackObjectBuilder obj(&builder);
+    obj->add(StaticStrings::RevisionTreeCount, VPackValue(_revisionTree->count()));
+    obj->add(StaticStrings::RevisionTreeHash, VPackValue(_revisionTree->rootValue()));
+  }
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {

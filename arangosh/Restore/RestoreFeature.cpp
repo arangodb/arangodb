@@ -880,10 +880,30 @@ arangodb::Result processInputDirectory(
   using arangodb::basics::VelocyPackHelper;
   using arangodb::basics::FileUtils::listFiles;
 
-  // create a lookup table for collections
-  std::set<std::string> restrictColls, restrictViews;
-  restrictColls.insert(options.collections.begin(), options.collections.end());
-  restrictViews.insert(options.views.begin(), options.views.end());
+  auto fill = [](std::unordered_map<std::string, bool>& map, std::vector<std::string> const& requested) {
+    for (auto const& name : requested) {
+      map.emplace(name, false);
+    }
+  };
+
+  auto checkRequested = [](std::unordered_map<std::string, bool>& map, std::string const& name) {
+    if (map.empty()) {
+      // no restrictions, so restore everything
+      return true;
+    }
+    auto it = map.find(name);
+    if (it == map.end()) {
+      return false;
+    }
+    // mark collection as seen
+    (*it).second = true;
+    return true;
+  };
+
+  // create a lookup table for collections and views
+  std::unordered_map<std::string, bool> restrictColls, restrictViews;
+  fill(restrictColls, options.collections);
+  fill(restrictViews, options.views);
 
   try {
     std::vector<std::string> const files = listFiles(directory.path());
@@ -910,14 +930,13 @@ arangodb::Result processInputDirectory(
             return {TRI_ERROR_INTERNAL, "could not read view file '" +
                                             directory.pathToFile(file) + "'"};
           }
-
-          if (!restrictViews.empty()) {
-            std::string const name =
-                VelocyPackHelper::getStringValue(fileContent, StaticStrings::DataSourceName,
-                                                 "");
-            if (restrictViews.find(name) == restrictViews.end()) {
-              continue;
-            }
+        
+          std::string const name =
+              VelocyPackHelper::getStringValue(fileContent, StaticStrings::DataSourceName,
+                                               "");
+          if (!checkRequested(restrictViews, name)) {
+            // view name not in list
+            continue;
           }
 
           views.emplace_back(std::move(contentBuilder));
@@ -976,8 +995,9 @@ arangodb::Result processInputDirectory(
           }
         }
 
-        if (!restrictColls.empty() && restrictColls.find(cname) == restrictColls.end()) {
-          continue;  // collection name not in list
+        if (!checkRequested(restrictColls, cname)) {
+          // collection name not in list
+          continue;
         }
 
         if (overwriteName) {
@@ -986,6 +1006,19 @@ arangodb::Result processInputDirectory(
         } else {
           collections.emplace_back(std::move(fileContentBuilder));
         }
+      }
+    }
+
+    for (auto const& it : restrictColls) {
+      if (!it.second) {
+        LOG_TOPIC("5163e", WARN, Logger::RESTORE)
+          << "Requested collection '" << it.first << "' not found in dump";
+      }
+    }
+    for (auto const& it : restrictViews) {
+      if (!it.second) {
+        LOG_TOPIC("810df", WARN, Logger::RESTORE)
+          << "Requested view '" << it.first << "' not found in dump";
       }
     }
 

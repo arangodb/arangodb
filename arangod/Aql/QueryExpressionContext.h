@@ -27,27 +27,30 @@
 #include "ExpressionContext.h"
 
 namespace arangodb {
+struct ValidatorBase;
 namespace aql {
 class QueryContext;
-class RegexCache;
+class AqlFunctionsInternalCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
   explicit QueryExpressionContext(transaction::Methods& trx,
                                   QueryContext& query,
-                                  RegexCache& cache)
+                                  AqlFunctionsInternalCache& cache)
       : ExpressionContext(),
-        _trx(trx), _query(query), _regexCache(cache) {}
+        _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 
   void registerWarning(int errorCode, char const* msg) override final;
   void registerError(int errorCode, char const* msg) override final;
-  
+
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
+
+  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
@@ -57,7 +60,7 @@ class QueryExpressionContext : public ExpressionContext {
  private:
   transaction::Methods& _trx;
   QueryContext& _query;
-  RegexCache& _regexCache;
+  AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
 };
 }  // namespace aql
 }  // namespace arangodb

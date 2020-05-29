@@ -42,7 +42,9 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/Maintenance/MaintenanceStrings.h"
 #include "Futures/Utilities.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -1914,22 +1916,30 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 ///        the lake is cleared.
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             std::unordered_map<ServerID, aql::EngineId> const* engines,
-                             VPackSlice const vertexId, size_t depth,
-                             std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache,
-                             std::vector<VPackSlice>& result,
-                             std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
-                             size_t& filtered, size_t& read) {
+                             graph::ClusterTraverserCache& travCache,
+                             traverser::TraverserOptions const* opts,
+                             arangodb::velocypack::StringRef vertexId,
+                             size_t depth,
+                             std::vector<VPackSlice>& result) {
+  auto const* engines = travCache.engines();
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache =
+      travCache.cache();
+  auto& datalake = travCache.datalake();
+  size_t& filtered = travCache.filteredDocuments();
+  size_t& read = travCache.insertedDocuments();
+
   // TODO map id => ServerID if possible
   // And go fast-path
-
-  // This function works for one specific vertex
-  // or for a list of vertices.
-  TRI_ASSERT(vertexId.isString() || vertexId.isArray());
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
   leased->add("depth", VPackValue(depth));
-  leased->add("keys", vertexId);
+  leased->add("keys", VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+  leased->add(VPackValue("variables"));
+  {
+    leased->openArray();
+    opts->serializeVariables(*(leased.get()));
+    leased->close();
+  }
   leased->close();
 
   std::string const url = "/_internal/traverser/edge/";

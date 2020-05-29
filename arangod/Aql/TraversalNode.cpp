@@ -75,10 +75,9 @@ TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
     TraversalNode const* tn, TraversalEdgeConditionBuilder const* other)
-    : EdgeConditionBuilder(other->_modCondition), _tn(tn) {
+   : EdgeConditionBuilder(tn->_plan->getAst(), *other), _tn(tn) {
   _fromCondition = other->_fromCondition;
   _toCondition = other->_toCondition;
-  _containsCondition = other->_containsCondition;
 }
 
 void TraversalNode::TraversalEdgeConditionBuilder::buildFromCondition() {
@@ -93,7 +92,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::buildToCondition() {
 
 void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(VPackBuilder& builder,
                                                                 bool verbose) {
-  if (_containsCondition) {
+
+  if(_containsCondition) {
     _modCondition->removeMemberUnchecked(_modCondition->numMembers() - 1);
     _containsCondition = false;
   }
@@ -575,7 +575,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto* oldOpts = options();
-  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, true);
+  std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts, /*allowAlreadyBuiltCopy*/true);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                            _inVariable, _vertexId, _defaultDirection,
                                            _directions, std::move(tmp), _graphObj);

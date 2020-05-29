@@ -106,7 +106,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // object was created, we believe it. Otherwise, we do not accept
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
-        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
         if (theLeader.empty() && theLeaderTouched) {
