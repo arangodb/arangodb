@@ -116,7 +116,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
-      _cacheIndexAndFilterBlocks(false),
+      _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
+      _cacheIndexNFilterBlocksWithHighPriority(
+        rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
+      _pinl0FilterNIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
+      _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
@@ -340,6 +344,32 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "--rocksdb.cache-index-and-filter-blocks",
       "if turned on, the RocksDB block cache quota will also include RocksDB memtable sizes",
       new BooleanParameter(&_cacheIndexAndFilterBlocks),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
+      "If cache_index_and_filter_blocks is enabled, cache index and filter blocks with high priority. "
+      "If set to true, depending on implementation of block cache, "
+      "index and filter blocks may be less likely to be evicted than data blocks.",
+      new BooleanParameter(&_cacheIndexNFilterBlocksWithHighPriority),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
+      "if cache_index_and_filter_blocks is true and the below is true, "
+      "then filter and index blocks are stored in the cache, "
+      "but a reference is held in the 'table reader' object "
+      "so the blocks are pinned and only evicted from cache when the table reader is freed.",
+      new BooleanParameter(&_pinTopLevelIndexAndFilter),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--rocksdb.pin-top-level-index-and-filter",
+      "If cache_index_and_filter_blocks is true and the below is true, "
+      "then the top-level index of partitioned filter and index blocks are stored in the cache, "
+      "but a reference is held in the 'table reader' object so the blocks are pinned "
+      "and only evicted from cache when the table reader is freed. This is not limited to l0 in LSM tree.",
+      new BooleanParameter(&_pinTopLevelIndexAndFilter),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
