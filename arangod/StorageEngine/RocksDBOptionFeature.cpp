@@ -348,9 +348,8 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption(
       "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
-      "If cache_index_and_filter_blocks is enabled, cache index and filter blocks with high priority. "
-      "If set to true, depending on implementation of block cache, "
-      "index and filter blocks may be less likely to be evicted than data blocks.",
+      "if true and `--rocksdb.cache-index-and-filter-blocks` is also true, cache index and filter blocks with high priority, "
+      "making index and filter blocks be less likely to be evicted than data blocks",
       new BooleanParameter(&_cacheIndexNFilterBlocksWithHighPriority),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
