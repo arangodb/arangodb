@@ -338,12 +338,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption(
       "--rocksdb.cache-index-and-filter-blocks",
-      "In most cases, actually used blocks in block cache are just a small "
-      "percentage than data cached in block cache, so when users enable this "
-      "feature, the block cache capacity will cover the memory usage for both "
-      "of block cache and memtable. "
-      "If users also enable cache_index_and_filter_blocks, then the three major "
-      "uses of memory of RocksDB will be capped by the single cap",
+      "if turned on, the RocksDB block cache quota will also include RocksDB memtable sizes",
       new BooleanParameter(&_cacheIndexAndFilterBlocks),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
