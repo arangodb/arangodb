@@ -1388,6 +1388,41 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(require("internal").errors.ERROR_NOT_IMPLEMENTED.code,
                       err.errorNum);
       }
+    },
+    testDisjunctionWithExclude : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      try {
+        let col = db._create(colName);
+        col.save({field:"value"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['identity']}}});
+        assertEqual(1, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != 'nothing', 'identity') OR true == false " + 
+                                 "OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        assertEqual(1, db._query("FOR d IN @@v  " + 
+                                 "SEARCH ANALYZER(d.field != 'nothing', 'identity') OR ANALYZER(EXISTS(d.field) " + 
+                                 " && true == false, 'identity')  OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        let actual1 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' " + 
+                                                     "OR  true == false, 'identity') RETURN s.field" });
+        assertEqual(1, actual1.execute().toArray().length);
+        let actual2 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' "+ 
+                                                     " OR (EXISTS(s.field) && true == false), 'identity') RETURN s.field" });
+        assertEqual(1, actual2.execute().toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     }
   };
 }
