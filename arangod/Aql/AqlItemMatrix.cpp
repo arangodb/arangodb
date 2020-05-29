@@ -37,13 +37,21 @@ static constexpr size_t InvalidRowIndex = std::numeric_limits<size_t>::max();
 
 size_t AqlItemMatrix::numberOfBlocks() const noexcept { return _blocks.size(); }
 
-SharedAqlItemBlockPtr AqlItemMatrix::getBlock(size_t index) const noexcept {
+std::pair<SharedAqlItemBlockPtr, size_t> AqlItemMatrix::getBlock(size_t index) const noexcept {
   TRI_ASSERT(index < numberOfBlocks());
-  return _blocks[index];
+  if (index == 0) {
+    // The first block could contain a shadowRow
+    // and the first unused data row, could be after the
+    // shadowRow.
+    return  {_blocks[index], _startIndexInFirstBlock};
+  }
+  // All other blocks start with the first row as data row
+  return {_blocks[index], 0};
 }
 
 InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexcept {
-  auto const& block = getBlock(index.first);
+  auto const& [block, unused] = getBlock(index.first);
+  TRI_ASSERT(index.second >= unused);
   return InputAqlItemRow{block, index.second};
 }
 
