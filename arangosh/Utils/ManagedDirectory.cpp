@@ -183,7 +183,7 @@ arangodb::Result readEncryptionFile(std::string const& directory, std::string& t
                                     arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
-    
+
   std::string newType = ::EncryptionTypeNone;
 #ifdef USE_ENTERPRISE
   if (nullptr != encryptionFeature) {
@@ -198,11 +198,11 @@ arangodb::Result readEncryptionFile(std::string const& directory, std::string& t
   } else {
     type = newType;
   }
-    
+
   if (type != newType) {
-    return {TRI_ERROR_BAD_PARAMETER, 
-            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type + 
-              ") does not match requested encryption type (" + newType + ")"}; 
+    return {TRI_ERROR_BAD_PARAMETER,
+            std::string("encryption type in existing ENCRYPTION file '") + filename + "' (" + type +
+              ") does not match requested encryption type (" + newType + ")"};
   }
   return {};
 }
@@ -268,7 +268,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       _status.reset(::readEncryptionFile(_path, _encryptionType, _encryptionFeature));
       if (::EncryptionTypeNone != _encryptionType) {
         _writeGzip = false;
-      }  
+      }
       return;
     }
     // fall through to write encryption file
@@ -302,7 +302,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
   // currently gzip and encryption are mutually exclusive, encryption wins
   if (::EncryptionTypeNone != _encryptionType) {
     _writeGzip = false;
-  }  
+  }
 }
 
 ManagedDirectory::~ManagedDirectory() = default;
@@ -370,7 +370,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(int fileD
   return file;
 }
 
-  
+
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   std::string const& filename, bool overwrite, int flags, bool gzipOk) {
   std::unique_ptr<File> file;

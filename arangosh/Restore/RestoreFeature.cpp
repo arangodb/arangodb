@@ -746,8 +746,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   size_t datafileReadOffset = 0;
   if (currentStatus.state == arangodb::RestoreFeature::RESTORING) {
     LOG_TOPIC("94913", INFO, Logger::RESTORE)
-    << "# Continue " << collectionType << " collection '" << cname
-    << ". Already " << currentStatus.bytes_acked << " byte(s) restored.";
+      << "# Continue " << collectionType << " collection '" << cname
+      << ". Already " << currentStatus.bytes_acked << " byte(s) restored.";
     datafileReadOffset = currentStatus.bytes_acked;
     datafile->skip(datafileReadOffset);
   }
@@ -961,7 +961,7 @@ arangodb::Result processInputDirectory(
             return {TRI_ERROR_INTERNAL, "could not read view file '" +
                                             directory.pathToFile(file) + "'"};
           }
-        
+
           std::string const name =
               VelocyPackHelper::getStringValue(fileContent, StaticStrings::DataSourceName,
                                                "");
@@ -1757,7 +1757,7 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    // TODO load from file
+    // TODO load file only when options `--continue` is set
     ProgressTracker pt(*_directory);
 
     // run the actual restore
@@ -1829,6 +1829,8 @@ void RestoreFeature::ProgressTracker::updateStauts(const std::string& filename,
   std::unique_lock guard(_collectionStatesMutex);
   _collectionStates[filename] = status;
 
+  // TODO currently every change is immediately written to disk
+  // maybe we can collect multiple changes and write only once.
   VPackBuilder builder;
   {
     VPackObjectBuilder object(&builder);
