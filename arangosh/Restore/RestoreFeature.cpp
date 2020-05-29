@@ -1859,10 +1859,9 @@ void RestoreFeature::ProgressTracker::updateStatus(const std::string& filename,
       }
     }
 
-
     LOG_DEVEL << "Continuation file = " << builder.toJson();
-    auto file = directory.writableFile("continue.json", true, 0, false);
-    file->spit(builder.toJson());
+    arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
+                                                         builder.slice(), true);
   }
 }
 
@@ -1881,6 +1880,7 @@ RestoreFeature::ProgressTracker::ProgressTracker(ManagedDirectory& directory)
   }
 
   // TODO add error checking
+  std::unique_lock guardState(_collectionStatesMutex);
   for (auto&& [key, value] : VPackObjectIterator(progress)) {
     _collectionStates[key.copyString()] = CollectionStatus(value);
   }
