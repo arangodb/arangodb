@@ -117,7 +117,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
-      _cacheIndexNFilterBlocksWithHighPriority(
+      _cacheIndexAndFilterBlocksWithHighPriority(
         rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
       _pinl0FilterNIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
       _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
