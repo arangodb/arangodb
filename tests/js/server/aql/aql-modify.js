@@ -1330,7 +1330,6 @@ function aqlUpsertOptionsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);
 jsunity.run(aqlUpdateWithRevOptionsSuite);
@@ -1338,6 +1337,5 @@ jsunity.run(aqlReplaceOptionsSuite);
 jsunity.run(aqlReplaceWithOptionsSuite);
 jsunity.run(aqlReplaceWithRevOptionsSuite);
 jsunity.run(aqlRemoveOptionsSuite);
-*/
 jsunity.run(aqlUpsertOptionsSuite);
 return jsunity.done();
