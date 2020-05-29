@@ -74,18 +74,9 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   explicit boolean_filter(const type_info& type) noexcept;
   virtual bool equals(const filter& rhs) const noexcept override;
 
-  virtual void optimize(
-      std::vector<const filter*>& /*incl*/,
-      std::vector<const filter*>& /*excl*/,
-      const order::prepared& /*ord*/,
-      boost_t& /*boost*/,
-      filters_t& /*aux_filters*/) const{
-    // noop
-  }
-
   virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
@@ -117,17 +108,9 @@ class IRESEARCH_API And: public boolean_filter {
   using filter::prepare;
 
  protected:
-  virtual void optimize(
+  virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    const order::prepared& ord,
-    boost_t& boost,
-    filters_t& aux_filters
-  ) const override;
-
-  virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
@@ -163,16 +146,9 @@ class IRESEARCH_API Or : public boolean_filter {
   }
 
  protected:
-  virtual void optimize(
+  virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    const order::prepared& ord,
-    boost_t& boost,
-    filters_t& aux_filters) const override;
-
-  virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
@@ -180,7 +156,6 @@ class IRESEARCH_API Or : public boolean_filter {
 
  private:
   size_t min_match_count_;
-  mutable size_t optimized_match_count_{0}; // count of always matched filters optimized away
 }; // Or
 
 //////////////////////////////////////////////////////////////////////////////
