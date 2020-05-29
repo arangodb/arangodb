@@ -625,7 +625,7 @@ Result const& ManagedDirectory::File::close() {
 }
 
 
-ssize_t ManagedDirectory::File::offset() const {
+TRI_read_return_t ManagedDirectory::File::offset() const {
   TRI_read_return_t fileBytesRead = -1;
 
   if (isGzip()) {
@@ -635,6 +635,22 @@ ssize_t ManagedDirectory::File::offset() const {
   } // else
 
   return fileBytesRead;
+}
+
+void ManagedDirectory::File::skip(size_t count) {
+  // TODO is there a better implementation than just read count bytes?
+  // how does this work with gzip?
+  size_t const bufferSize = 4 * 1024;
+  char buffer[bufferSize]; // alloc on the heap?
+
+  while (count > 0) {
+    TRI_read_return_t bytesRead = read(buffer, std::min(bufferSize, count));
+    if (bytesRead == 0) {
+      break; // eof
+    }
+
+    count -= bytesRead;
+  }
 }
 
 }  // namespace arangodb

@@ -703,8 +703,8 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   if (currentStatus.state >= arangodb::RestoreFeature::RESTORED) {
     LOG_TOPIC("94913", INFO, Logger::RESTORE)
-        << "# Loading data into " << collectionType << " collection '" << cname
-        << "was restored previously.";
+        << "# " << collectionType << " collection '" << cname
+        << "' was restored previously.";
     return result;
   }
 
@@ -745,8 +745,11 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   size_t datafileReadOffset = 0;
   if (currentStatus.state == arangodb::RestoreFeature::RESTORING) {
+    LOG_TOPIC("94913", INFO, Logger::RESTORE)
+    << "# Continue " << collectionType << " collection '" << cname
+    << ". Already " << currentStatus.bytes_acked << " byte(s) restored.";
     datafileReadOffset = currentStatus.bytes_acked;
-    // datafile->seek(datafileReadOffset);
+    datafile->skip(datafileReadOffset);
   }
 
   buffer.clear();
@@ -1861,5 +1864,26 @@ RestoreFeature::ProgressTracker::ProgressTracker(ManagedDirectory& directory)
   }
 }
 
+RestoreFeature::CollectionStatus::CollectionStatus(VPackSlice slice) {
+  using arangodb::basics::VelocyPackHelper;
+  state = VelocyPackHelper::getNumericValue<CollectionState>(slice, "state", CollectionState::UNKNOWN);
+  bytes_acked = VelocyPackHelper::getNumericValue<size_t>(slice, "bytes-acked", 0);
+}
+
+void RestoreFeature::CollectionStatus::toVelocyPack(VPackBuilder& builder) const {
+  {
+    VPackObjectBuilder object(&builder);
+    builder.add("state", VPackValue(state));
+    if (bytes_acked != 0) {
+      builder.add("bytes-acked", VPackValue(bytes_acked));
+    }
+  }
+}
+
+RestoreFeature::CollectionStatus::CollectionStatus(RestoreFeature::CollectionState state,
+                                                   size_t bytes_acked)
+    : state(state), bytes_acked(bytes_acked) {}
+
+RestoreFeature::CollectionStatus::CollectionStatus() = default;
 
 }  // namespace arangodb

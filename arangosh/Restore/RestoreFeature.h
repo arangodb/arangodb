@@ -104,23 +104,14 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   };
 
   struct CollectionStatus {
-    CollectionState state = UNKNOWN;
-    size_t bytes_acked = 0;
+    CollectionState state{UNKNOWN};
+    size_t bytes_acked{0};
 
-    CollectionStatus() = default;
-    CollectionStatus(CollectionState state, size_t bytes_acked = 0u) : state(state), bytes_acked(bytes_acked) {}
-    CollectionStatus(VPackSlice slice) {
-        state = slice.get("state").getNumericValue<CollectionState>();
-        bytes_acked = slice.get("bytes-acked").getNumericValue<size_t>();
-    };
+    CollectionStatus();
+    CollectionStatus(CollectionState state, size_t bytes_acked = 0u);
+    CollectionStatus(VPackSlice slice);
 
-    void toVelocyPack(VPackBuilder &builder) const {
-      {
-        VPackObjectBuilder object(&builder);
-        builder.add("state", VPackValue(state));
-        builder.add("bytes-acked", VPackValue(bytes_acked));
-      }
-    }
+    void toVelocyPack(VPackBuilder& builder) const;
   };
 
   struct ProgressTracker {
