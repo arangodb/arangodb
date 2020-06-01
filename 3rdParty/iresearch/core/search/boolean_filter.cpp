@@ -170,7 +170,7 @@ class boolean_query : public filter::prepared {
   virtual void prepare(
       const index_reader& rdr,
       const order::prepared& ord,
-      boost::boost_t boost,
+      boost_t boost,
       const attribute_view& ctx,
       const std::vector<const filter*>& incl,
       const std::vector<const filter*>& excl) {
