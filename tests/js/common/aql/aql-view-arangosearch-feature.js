@@ -275,6 +275,7 @@ function iResearchFeatureAqlTestSuite () {
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
+      }
     }
   };
 }
