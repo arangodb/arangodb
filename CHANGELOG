@@ -1,5 +1,6 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
+* Fixed issue #11104 for case with complex condition on second branch of OR operator
 
 * Web UI is now using pre-compiled templates.
 
