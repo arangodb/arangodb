@@ -1,5 +1,6 @@
 v3.4.11 (XXXX-XX-XX)
 --------------------
+* Fixed issue #11104 for case with complex condition on second branch of OR operator
 
 * Update OpenLDAP to 2.4.50.
 
