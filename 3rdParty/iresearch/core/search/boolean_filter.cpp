@@ -73,7 +73,7 @@ irs::doc_iterator::ptr make_disjunction(
     auto docs = begin->execute(rdr, ord, ctx);
 
     // filter out empty iterators
-    if (!irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
+    if (!irs::doc_limits::eof(docs->value())) {
       itrs.emplace_back(std::move(docs));
     }
   }
@@ -112,7 +112,7 @@ irs::doc_iterator::ptr make_conjunction(
     auto docs = begin->execute(rdr, ord, ctx);
 
     // filter out empty iterators
-    if (irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
+    if (irs::doc_limits::eof(docs->value())) {
       return irs::doc_iterator::empty();
     }
 
@@ -158,7 +158,7 @@ class boolean_query : public filter::prepared {
                                    begin() + excl_, end());
 
     // got empty iterator for excluded
-    if (type_limits<type_t::doc_id_t>::eof(excl->value())) {
+    if (doc_limits::eof(excl->value())) {
       // pure conjunction/disjunction
       return incl;
     }
@@ -178,7 +178,7 @@ class boolean_query : public filter::prepared {
     queries.reserve(incl.size() + excl.size());
 
     // apply boost to the current node
-    boost::apply(this->attributes(), boost);
+    this->boost(boost);
 
     // prepare included
     for (const auto* filter : incl) {
@@ -189,7 +189,7 @@ class boolean_query : public filter::prepared {
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
       queries.emplace_back(filter->prepare(
-        rdr, order::prepared::unordered(), boost::no_boost(), ctx));
+        rdr, order::prepared::unordered(), irs::no_boost(), ctx));
     }
 
     // nothrow block
@@ -296,7 +296,7 @@ class min_match_query final : public boolean_query {
       auto docs = begin->execute(rdr, ord, ctx);
 
       // filter out empty iterators
-      if (!type_limits<type_t::doc_id_t>::eof(docs->value())) {
+      if (!doc_limits::eof(docs->value())) {
         itrs.emplace_back(std::move(docs));
       }
     }
