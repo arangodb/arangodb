@@ -18,15 +18,16 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BOOLEAN_FILTER_H
 #define IRESEARCH_BOOLEAN_FILTER_H
 
-#include "filter.hpp"
-#include "utils/iterator.hpp"
 #include <vector>
+
+#include "filter.hpp"
+#include "all_filter.hpp"
+#include "utils/iterator.hpp"
 
 NS_ROOT
 
@@ -67,34 +68,24 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override final;
+    const attribute_view& ctx) const override final;
 
  protected:
-  boolean_filter(const type_id& type) NOEXCEPT;
+  explicit boolean_filter(const type_id& type) NOEXCEPT;
   virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
-  virtual void remove_excess(
-      std::vector<const filter*>& /*incl*/,
-      std::vector<const filter*>& /*excl*/,
-      boost_t& /*boost*/) const {
-    // noop
-  }
-
   virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const = 0;
+    const attribute_view& ctx) const = 0;
 
  private:
   void group_filters(
     std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl
-  ) const;
+    std::vector<const filter*>& excl) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
@@ -114,20 +105,13 @@ class IRESEARCH_API And: public boolean_filter {
   using filter::prepare;
 
  protected:
-  virtual void remove_excess(
+  virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    boost_t& boost
-  ) const override;
-
-  virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 }; // And
 
 //////////////////////////////////////////////////////////////////////////////
@@ -136,6 +120,7 @@ class IRESEARCH_API And: public boolean_filter {
 class IRESEARCH_API Or : public boolean_filter {
  public:
   DECLARE_FILTER_TYPE();
+
   DECLARE_FACTORY();
 
   Or() NOEXCEPT;
@@ -156,20 +141,13 @@ class IRESEARCH_API Or : public boolean_filter {
   }
 
  protected:
-  virtual void remove_excess(
+  virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    boost_t& boost
-  ) const override;
-
-  virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 
  private:
   size_t min_match_count_;
@@ -217,8 +195,7 @@ class IRESEARCH_API Not: public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_view& ctx) const override;
 
   virtual size_t hash() const NOEXCEPT override;
 
