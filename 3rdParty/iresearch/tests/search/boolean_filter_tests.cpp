@@ -37,7 +37,6 @@
 #include "search/term_filter.hpp"
 #include "search/term_query.hpp"
 #include "utils/singleton.hpp"
-
 #include <functional>
 
 // ----------------------------------------------------------------------------
@@ -297,6 +296,7 @@ struct boosted: public iresearch::filter {
       const iresearch::order::prepared& ord,
       const iresearch::attribute_view& /*ctx*/
     ) const override {
+      boosted::execute_count++;
       return iresearch::doc_iterator::make<basic_doc_iterator>(
         docs.begin(), docs.end(), this->attributes(), ord
       );
@@ -317,9 +317,11 @@ struct boosted: public iresearch::filter {
 
   DECLARE_FILTER_TYPE();
   boosted(): filter(boosted::type()) { }
-
+  static unsigned execute_count;
   basic_doc_iterator::docids_t docs;
 }; // boosted
+
+unsigned boosted::execute_count{0};
 
 DEFINE_FILTER_TYPE(boosted);
 DEFINE_FACTORY_DEFAULT(boosted);
@@ -1452,10 +1454,12 @@ TEST( boolean_query_estimation, and ) {
     root.add<detail::estimated>().est = 1;
     root.add<detail::estimated>().est = 100;
 
-    auto prep = root.prepare(
-      irs::sub_reader::empty(),
-      iresearch::order::prepared::unordered()
-    );
+    // we need order to suppress optimization
+    // which will clean include group and leave only 'all' filter
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prep = root.prepare(irs::sub_reader::empty(), pord);
     
     auto docs = prep->execute(irs::sub_reader::empty());
 
@@ -6073,7 +6077,10 @@ protected:
         iresearch::Or root;
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+        check_query(root, docs_t{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+                                 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+                                 26, 27, 28, 29, 30, 31, 32},
+                    rdr);
       }
     }
 
@@ -6092,7 +6099,10 @@ protected:
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
-        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+        check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                 24, 25, 26, 27, 28, 29, 30, 31, 32},
+                    rdr);
       }
     }
 
@@ -6111,8 +6121,49 @@ protected:
         root.add<iresearch::by_term>().field("duplicated").term("abcd");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
         root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("E");
-        check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
+        check_query(root, docs_t{2,  3,  4,  6,  7,  8,  9,  10, 11, 12,
+                                 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                                 24, 25, 26, 27, 28, 29, 30, 31, 32},
+                    rdr);
       }
+      {
+        iresearch::Or root;
+        root.add<iresearch::by_term>().field("duplicated").term("abcd");
+        root.add<iresearch::Not>().filter<iresearch::by_term>().field("name").term("A");
+        root.add<iresearch::Not>().filter<iresearch::by_term>().field("prefix").term("abcd");
+        check_query(root, docs_t{ 2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+                                 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                 23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+                    rdr);
+      }
+    }
+    // check 'all' filter added for Not nodes does not affects score
+    {
+      irs::Or root;
+      auto& left_branch = root.add<irs::And>();
+      // this three filters fire at same doc so it will get score = 3
+      left_branch.add<irs::by_term>().field("name").term("A").boost(2);
+      left_branch.add<irs::by_term>().field("duplicated").term("abcd").boost(2);
+      left_branch.add<irs::by_term>().field("same").term("xyz").boost(2);
+
+      auto& right_branch = root.add<irs::And>();
+      right_branch.add<irs::by_term>().field("name").term("B").boost(2);  // +1 score
+      auto& sub = right_branch.add<irs::Or>();  // this OR we actually test
+      sub.add<irs::by_term>().field("name").term("B").boost(2);  // +1 score
+      // will exclude some docs (but A will stay) and produce 'all'
+      sub.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field("prefix").term("abcde").boost(2);
+      // will exclude some docs (but A will stay) and produce another 'all'
+      sub.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field("duplicated")
+          .term("abcd")
+          .boost(2);
+      // if 'all' will add at least 1 to score totals score will be 3 and expected order will break
+      irs::order ord;
+      ord.add<tests::sort::boost>(false);
+      check_query(root, ord, docs_t{2, 1}, rdr);
     }
   }
 
@@ -6552,6 +6603,108 @@ protected:
       docs_t{},
       rdr
     );
+
+      // name=A OR false
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A");  // 1
+      root.add<irs::empty>();
+
+      check_query(root, docs_t{1}, rdr);
+    }
+
+    // name!=A OR false
+    {
+      irs::Or root;
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");  // 1
+      root.add<irs::empty>();
+
+      check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                               13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                               24, 25, 26, 27, 28, 29, 30, 31, 32},
+                  rdr);
+    }
+
+    // Not with impossible name!=A OR same="NOT POSSIBLE"
+    {
+      irs::Or root;
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");  // 1
+      root.add<irs::by_term>().field("same").term("NOT POSSIBLE");
+      check_query(root, docs_t{2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                               13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                               24, 25, 26, 27, 28, 29, 30, 31, 32},
+                  rdr);
+    }
+
+    // optimization should adjust min_match
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A");
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.min_match_count(5);
+      check_query(root, docs_t{1}, rdr);
+    }
+
+    // optimization should adjust min_match same but with score to check scored optimization
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A");
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.min_match_count(5);
+      irs::order ord;
+      ord.add<sort::custom_sort>(false);
+      check_query(root, ord, docs_t{1}, rdr);
+    }
+
+    // optimization should adjust min_match
+    // case where it should be dropped to 1
+    // as optimized more filters than min_match
+    // unscored
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A");
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.min_match_count(3);
+      check_query(root, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+                               12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                               23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+                  rdr);
+    }
+    // scored
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("name").term("A");
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::all>();
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.min_match_count(3);
+      irs::order ord;
+      ord.add<sort::custom_sort>(false);
+      check_query(root, ord, docs_t{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11,
+                                    12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
+                                    23, 24, 25, 26, 27, 28, 29, 30, 31, 32},
+                  rdr);
+    }
   }
 };
 
@@ -6715,20 +6868,23 @@ TEST(And_test, optimize_all_filters) {
 
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_EQ(typeid(irs::all().prepare(irs::sub_reader::empty()).get()), typeid(prepared.get()));
-    ASSERT_EQ(30.f, irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(10.f, irs::boost::extract(prepared->attributes()));
   }
 
   // multiple `all` filters + term filter
   {
     irs::And root;
     auto& term = root.add<irs::by_term>();
-    term.field("test_field").term("test_term");
     root.add<irs::all>().boost(5.f);
     root.add<irs::all>().boost(2.f);
+    term.field("test_field").term("test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
-    ASSERT_EQ(10.f, irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(8.f, irs::boost::extract(prepared->attributes()));
   }
 
   // `all` filter + term filter
@@ -6738,10 +6894,42 @@ TEST(And_test, optimize_all_filters) {
     term.field("test_field").term("test_term");
     root.add<irs::all>().boost(5.f);
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    irs::order ord;
+    ord.add<tests::sort::boost>(false);
+    auto pord = ord.prepare();
+    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
-    ASSERT_EQ(5.f, irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(6.f, irs::boost::extract(prepared->attributes()));
   }
+}
+
+TEST(And_test, not_boosted) {
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  irs::And root;
+  {
+    auto& neg = root.add<irs::Not>();
+    auto& node = neg.filter<detail::boosted>();
+    node.docs = {5, 6};
+    node.boost(4);
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {1};
+    node.boost(5);
+  }
+  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+  auto docs = prep->execute(irs::sub_reader::empty(), pord);
+  auto scr = docs->attributes().get<irs::score>();
+  ASSERT_FALSE(!scr);
+  ASSERT_TRUE(docs->next());
+  scr->evaluate();
+  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+  ASSERT_EQ(5., doc_boost);  // FIXME: should be 9 if we will boost negation
+  ASSERT_EQ(1, docs->value());
+
+  ASSERT_FALSE(docs->next());
 }
 
 #endif // IRESEARCH_DLL
@@ -6840,6 +7028,103 @@ TEST(Or_test, optimize_single_node) {
     auto prepared = root.prepare(irs::sub_reader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::term_query*>(prepared.get()));
   }
+}
+
+TEST(Or_test, optimize_all_unscored) {
+  irs::Or root;
+  detail::boosted::execute_count = 0;
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {1};
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {2};
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {3};
+  }
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
+
+  auto prep = root.prepare(irs::sub_reader::empty(), irs::order::prepared::unordered());
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(0, detail::boosted::execute_count);  // specific filters should be opt out
+}
+
+TEST(Or_test, optimize_all_scored) {
+  irs::Or root;
+  detail::boosted::execute_count = 0;
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {1};
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {2};
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {3};
+  }
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  root.add<irs::all>();
+  root.add<irs::empty>();
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(3, detail::boosted::execute_count);  // specific filters should executed as score needs them
+}
+
+TEST(Or_test, optimize_only_all_boosted) {
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  irs::Or root;
+  root.boost(2);
+  root.add<irs::all>().boost(3);
+  root.add<irs::all>().boost(5);
+
+  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+
+  prep->execute(irs::sub_reader::empty());
+  ASSERT_EQ(16, irs::boost::extract(prep->attributes()));
+}
+
+TEST(Or_test, boosted_not) {
+  irs::order ord;
+  ord.add<tests::sort::boost>(false);
+  auto pord = ord.prepare();
+  irs::Or root;
+  {
+    auto& neg = root.add<irs::Not>();
+    auto& node = neg.filter<detail::boosted>();
+    node.docs = {5, 6};
+    node.boost(4);
+  }
+  {
+    auto& node = root.add<detail::boosted>();
+    node.docs = {1};
+    node.boost(5);
+  }
+  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+  auto docs = prep->execute(irs::sub_reader::empty(), pord);
+  auto scr = docs->attributes().get<irs::score>();
+  ASSERT_FALSE(!scr);
+  ASSERT_TRUE(docs->next());
+  scr->evaluate();
+  auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
+  ASSERT_EQ(5., doc_boost);  // FIXME: should be 9 if we will boost negation
+  ASSERT_EQ(1, docs->value());
+  ASSERT_FALSE(docs->next());
 }
 
 #endif // IRESEARCH_DLL
