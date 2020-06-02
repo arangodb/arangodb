@@ -62,7 +62,7 @@ C = {
 CXX = {
   "name": "C++",
   "suffix": "cc",
-  "cflags": "-std=c++11",
+  "cflags": "-std=c++17",
 }
 
 MIN_ARGS = 3  # Script, outdir, tempdir

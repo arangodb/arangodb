@@ -1080,7 +1080,7 @@
           ['clang==1', {
             'xcode_settings': {
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
-              'CLANG_CXX_LANGUAGE_STANDARD': 'c++11',  # -std=c++11
+              'CLANG_CXX_LANGUAGE_STANDARD': 'c++17',  # -std=c++17
             },
             'conditions': [
               ['clang_xcode==0', {

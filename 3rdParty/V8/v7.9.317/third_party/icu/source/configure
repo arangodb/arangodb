@@ -6055,13 +6055,13 @@ $as_echo "no" >&6; }
 fi
 
 if [ "$GXX" = yes ]; then
-    # if CXXFLAGS does not have a "-std=" setting, set it now to -std=c++11,
+    # if CXXFLAGS does not have a "-std=" setting, set it now to -std=c++17,
     # and check that the compiler still works.
     if ! echo "$CXXFLAGS" | grep '\-std=' >/dev/null 2>&1; then
         OLD_CXXFLAGS="${CXXFLAGS}"
-        CXXFLAGS="$CXXFLAGS -std=c++11"
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking if we have a C++11 compiler" >&5
-$as_echo_n "checking if we have a C++11 compiler... " >&6; }
+        CXXFLAGS="$CXXFLAGS -std=c++17"
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking if we have a C++17 compiler" >&5
+$as_echo_n "checking if we have a C++17 compiler... " >&6; }
         cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -6074,17 +6074,17 @@ main ()
 }
 _ACEOF
 if ac_fn_cxx_try_compile "$LINENO"; then :
-  cxx11_okay=yes
+  cxx17_okay=yes
 else
-  cxx11_okay=no
+  cxx17_okay=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $cxx11_okay" >&5
-$as_echo "$cxx11_okay" >&6; }
-        if [ $cxx11_okay = yes ]; then
-            { $as_echo "$as_me:${as_lineno-$LINENO}: Adding CXXFLAGS option -std=c++11" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $cxx17_okay" >&5
+$as_echo "$cxx17_okay" >&6; }
+        if [ $cxx17_okay = yes ]; then
+            { $as_echo "$as_me:${as_lineno-$LINENO}: Adding CXXFLAGS option -std=c++17" >&5
 $as_echo "$as_me: Adding CXXFLAGS option -std=c++11" >&6;}
-            UCONFIG_CXXFLAGS="${UCONFIG_CXXFLAGS} -std=c++11"
+            UCONFIG_CXXFLAGS="${UCONFIG_CXXFLAGS} -std=c++17"
         else
             CXXFLAGS="$OLD_CXXFLAGS"
         fi

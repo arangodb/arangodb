@@ -6,7 +6,7 @@
 ## others. All Rights Reserved.
 
 ## Flags for ICU 59+
-CXXFLAGS += -std=c++11
+CXXFLAGS += -std=c++17
 CFLAGS   += -std=c11
 
 ## Flags for position independent code
