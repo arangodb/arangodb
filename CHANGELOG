@@ -1,4 +1,13 @@
-v3.6.4 (XXXX-XX-XX)
+v3.6.5 (XXXX-XX-XX)
+-------------------
+
+* Include all requests to the web interface at endpoint `/_admin/aardvark` in
+  a node's requests statistics. Previously, requests going to `/_admin/aardvark`
+  were excluded from the request statistics if and only if the requested
+  database was the `_system` database.
+
+
+v3.6.4 (2020-05-26)
 -------------------
 
 * Fixed issue ES-564: Opening a VST connection would leave an extra HttpCommTask
