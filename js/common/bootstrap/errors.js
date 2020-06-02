@@ -348,19 +348,19 @@
     "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
     "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
     "ERROR_NO_SUCH_ACTION"         : { "code" : 6004, "message" : "no such maintenance action" },
-    "ERROR_HOT_BACKUP_INTERNAL"    : { "code" :  7001, "message" : " \"internal hot backup error\"" },
-    "ERROR_HOT_RESTORE_INTERNAL"   : { "code" :  7002, "message" : " \"internal hot restore error\"" },
-    "ERROR_BACKUP_TOPOLOGY"        : { "code" :  7003, "message" : " \"backup does not match this topology\"" },
-    "ERROR_NO_SPACE_LEFT_ON_DEVICE" : { "code" :  7004, "message" : " \"no space left on device\"" },
-    "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" :  7005, "message" : " \"failed to upload hot backup set to remote target\"" },
-    "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" :  7006, "message" : " \"failed to download hot backup set from remote source\"" },
-    "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" :  7007, "message" : " \"no such hot backup set can be found" },
-    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
-    "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
-    "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" },
-    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" },
-    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" :  7012, "message" : " \"hot backup not all db servers reachable\"" },
-    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" :  7021, "message" : " \"analyzers in plan could not be modified\"" }
+    "ERROR_HOT_BACKUP_INTERNAL"    : { "code" : 7001, "message" : "internal hot backup error" },
+    "ERROR_HOT_RESTORE_INTERNAL"   : { "code" : 7002, "message" : "internal hot restore error" },
+    "ERROR_BACKUP_TOPOLOGY"        : { "code" : 7003, "message" : "backup does not match this topology" },
+    "ERROR_NO_SPACE_LEFT_ON_DEVICE" : { "code" : 7004, "message" : "no space left on device" },
+    "ERROR_FAILED_TO_UPLOAD_BACKUP" : { "code" : 7005, "message" : "failed to upload hot backup set to remote target" },
+    "ERROR_FAILED_TO_DOWNLOAD_BACKUP" : { "code" : 7006, "message" : "failed to download hot backup set from remote source" },
+    "ERROR_NO_SUCH_HOT_BACKUP"     : { "code" : 7007, "message" : "no such hot backup set can be found" },
+    "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" : 7008, "message" : "remote hotback repository configuration error" },
+    "ERROR_LOCAL_LOCK_FAILED"      : { "code" : 7009, "message" : "some db servers cannot be reached for transaction locks" },
+    "ERROR_LOCAL_LOCK_RETRY"       : { "code" : 7010, "message" : "some db servers cannot be reached for transaction locks" },
+    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" : 7011, "message" : "hot backup conflict" },
+    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" : 7012, "message" : "hot backup not all db servers reachable" },
+    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" }
   };
 
   // For compatibility with <= 3.3

@@ -208,11 +208,11 @@ bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
 bool Collection::isDisjoint() const { return getCollection()->isDisjoint(); }
 
-/// @brief check if collection is a satellite collection
+/// @brief check if collection is a SatelliteCollection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
 
-/// @brief return the name of the smart join attribute (empty string
-/// if no smart join attribute is present)
+/// @brief return the name of the SmartJoin attribute (empty string
+/// if no SmartJoin attribute is present)
 std::string const& Collection::smartJoinAttribute() const {
   return getCollection()->smartJoinAttribute();
 }

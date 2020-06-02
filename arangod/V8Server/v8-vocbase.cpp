@@ -1821,7 +1821,7 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& ldap = v8g->_server.getFeature<LdapFeature>();
   TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
-  // LDAP only enabled in enterprise mode
+  // LDAP only enabled in Enterprise Edition
   TRI_V8_RETURN(v8::False(isolate));
 #endif
 

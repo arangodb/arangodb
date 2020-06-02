@@ -248,8 +248,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     }
   }
 #else
-  // whatever we got passed in, in a non-enterprise build, we just ignore
-  // any specification for the smartJoinAttribute
+  // whatever we got passed in, in a non-Enterprise Edition build, we just
+  // ignore any specification for the smartJoinAttribute
   _smartJoinAttribute.clear();
 #endif
 
@@ -803,7 +803,7 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::strin
 }
 
 void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
-  // We ain't no enterprise
+  // We ain't no Enterprise Edition
 }
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
@@ -874,7 +874,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "cannot change replicationFactor of a satellite collection");
+                        "cannot change replicationFactor of a SatelliteCollection");
         }
       }
     } else if (replicationFactorSlice.isString()) {
@@ -885,13 +885,13 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
       if (!isSatellite()) {
-        // but the collection is not a satellite collection!
+        // but the collection is not a SatelliteCollection!
         return Result(TRI_ERROR_FORBIDDEN,
-                      "cannot change satellite collection status");
+                      "cannot change SatelliteCollection status");
       }
 #else
       return Result(TRI_ERROR_FORBIDDEN,
-                    "cannot use satellite collection status");
+                    "cannot use SatelliteCollection status");
 #endif
       // fallthrough here if we set the string "satellite" for a satellite
       // collection
@@ -928,7 +928,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice, b
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Satellite collection, "
+                        "SatelliteCollection, "
                         "cannot change writeConcern");
         }
       }
@@ -1140,7 +1140,7 @@ bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
 }
 
 /// @brief a method to skip certain documents in AQL write operations,
-/// this is only used in the enterprise edition for smart graphs
+/// this is only used in the Enterprise Edition for SmartGraphs
 #ifndef USE_ENTERPRISE
 bool LogicalCollection::skipForAqlWrite(arangodb::velocypack::Slice document,
                                         std::string const& key) const {
