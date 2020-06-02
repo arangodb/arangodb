@@ -281,7 +281,7 @@ void RestGraphHandler::vertexActionRead(Graph& graph, std::string const& collect
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::READ);
   GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
@@ -544,7 +544,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::READ);
   GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
@@ -586,7 +586,7 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph, const std::string& defin
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result =
@@ -684,7 +684,8 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph, EdgeDefinitio
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections = _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
-  auto ctx = createTransactionContext();
+  // simon: why is this part of el-cheapo ??
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result;
 
@@ -734,7 +735,7 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
   bool createCollection =
       _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
   OperationResult result;
 
@@ -793,7 +794,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph, const std::string& 
   std::unique_ptr<VPackBuilder> builder;
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result;
@@ -847,7 +848,7 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph, std::string const& 
   bool waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result;
@@ -889,7 +890,7 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result =

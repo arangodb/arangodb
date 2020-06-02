@@ -239,8 +239,11 @@ void RestAqlHandler::setupClusterQuery() {
   }
   collectionBuilder.close();
 
+  // simon: making this write breaks queries where DOCUMENT function
+  // is used in a coordinator-snippet above a DBServer-snippet
+  const AccessMode::Type access = AccessMode::Type::READ;
   // creates a StandaloneContext or a leased context
-  auto ctx = createTransactionContext();
+  auto ctx = createTransactionContext(access);
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
