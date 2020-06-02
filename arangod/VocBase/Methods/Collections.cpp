@@ -323,8 +323,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           // force one shard, and force distributeShardsLike to be "_graphs"
           helper.add(StaticStrings::NumberOfShards, VPackValue(1));
           if (!isSatellite) {
-            // satellite collections must not be sharded like a non-satellite
-            // collection.
+            // SatelliteCollections must not be sharded like a
+            // non-SatelliteCollection.
             helper.add(StaticStrings::DistributeShardsLike,
                        VPackValue(vocbase.shardingPrototypeName()));
           }

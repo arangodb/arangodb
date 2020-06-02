@@ -1,6 +1,31 @@
 devel
 -----
 
+* Don't move potentially expensive AQL function calls into loops in the 
+  `remove-unnecessary-calculations-rule`.
+
+  For example, in the query
+  
+      LET x = NOOPT(1..100)
+      LET values = SORTED(x)
+      FOR j IN 1..100 
+        FILTER j IN values
+        RETURN j
+
+  there is only one use of the `values` variable. So the optimizer can remove 
+  that variable and replace the filter condition with `FILTER j IN SORTED(x)`. 
+  However, that would move the potentially expensive function call into the 
+  inner loop, which could be a pessimization.
+
+  Now the optimizer will not move the calculation of values into the loop when 
+  it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
+
+* Fixed modification executors inside of a subquery, where the subquery decided to
+  fetch all rows from upstream first and the amount of rows is higher then the batch size.
+
+* Fixed reporting of skipped number of documents if we have a LIMIT x, 0
+  right after the modification.
+
 * Catch exceptions in agency callbacks.
 
 * Fixed issue #11104 case with complex condition on second branch of OR
@@ -110,12 +135,12 @@ devel
   to abort search was too eager and hence missed the shortest path between two
   vertices and returned a longer one.
 
-* Added feature: DisjointSmartGraphs
+* Added feature: Disjoint SmartGraphs
 
-  SmartGraphs have been extended to a new subtype, called **DisjointSmartGraphs**.
-  A DisjointSmartGraph prohibits edges between different SmartGraph components. 
+  SmartGraphs have been extended to a new subtype, called **Disjoint SmartGraphs**.
+  A Disjoint SmartGraph prohibits edges between different SmartGraph components. 
   In case the graph schema can be represented without the need of connected 
-  SmartGraph components, a DisjointSmartGraph should be used as this knowledge 
+  SmartGraph components, a Disjoint SmartGraph should be used as this knowledge 
   can be used by the internal optimizer to gain even better query traversal 
   execution times.
 
@@ -128,7 +153,7 @@ devel
   one DISTRIBUTE/GATHER pair and only access at most one collection.
 
   This proves particularly useful for traversals, shortest path, and k-shortest
-  paths queries on disjoint smart graphs where the entire traversal is executed
+  paths queries on Disjoint SmartGraphs where the entire traversal is executed
   on the DB Server without involvement of a coordinator.
 
 * ClusterInfo does its own updating of plan / current caches.
@@ -230,10 +255,10 @@ devel
   For these systems the default value were presumably too high and needed manual
   adjustment.
 
-* Allow to override the detected number of avaiable CPU cores via an environment
+* Allow to override the detected number of available CPU cores via an environment
   variable ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES.
 
-* Fix a bug in the optimizer which handled combinations of smart joins with
+* Fix a bug in the optimizer which handled combinations of SmartJoins with
   query components that had to run on a coordinator wrong.
 
 * Remove the scatter-arangosearch-view-in-cluster optimizer rule; it was
@@ -265,7 +290,7 @@ devel
   deployments that are known to already contain invalid UTF-8 data and to keep
   them operational until the wrong string encoding is fixed in the data.
 
-* Fixed a bug which occurred if a dbserver was shut down exactly
+* Fixed a bug which occurred if a DB-Server was shut down exactly
   when it was supposed to resign from its leadership for a shard.
 
 * Improve continuation behavior of AQL queries. We post the continuation
@@ -474,7 +499,7 @@ devel
   server keys and certificate chains and the system dynamically uses
   the right one depending on the value of the TLS servername extension.
   This allows to use different TLS setups for the same server which is
-  reachable behind different DNS names, for example (enterprise only).
+  reachable behind different DNS names, for example (Enterprise Edition only).
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
 
@@ -732,7 +757,7 @@ devel
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
-* Added JWT secret rotation (Enterprise only).
+* Added JWT secret rotation (Enterprise Edition only).
 
 * The `--dump-options` command for arangod now also provides the "components"
   attribute that shows for which components (agent, coordinator, db server,
@@ -852,7 +877,7 @@ devel
 
 * Fixed uptime in _admin/statistics.
 
-* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+* Fixed a bug in SmartGraph bfs traversals that might violate path uniqueness
   requirements in rare cases.
 
 * Add acquisition of system report to arangod instances.
@@ -1309,7 +1334,7 @@ v3.5.0-rc.5 (2019-07-22)
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
-* Fixed a query abort error with smart joins if both collections were restricted to a
+* Fixed a query abort error with SmartJoins if both collections were restricted to a
   single shard using the "restrict-to-single-shard" optimizer rule.
 
 * Fixed a performance regression of COLLECT WITH COUNT INTO.
@@ -1411,7 +1436,7 @@ v3.5.0-rc.3 (2019-05-31)
 
 * The system collection '_jobs' will from now on be created with non-unique, non-sparse indexes.
 
-* Bugfix for smart graph traversals with uniqueVertices: path, which could
+* Bugfix for SmartGraph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results.
 
 * Pregel algorithms can be run with the option "useMemoryMaps: true" to be
@@ -1426,7 +1451,7 @@ v3.5.0-rc.3 (2019-05-31)
 v3.5.0-rc.2 (2019-05-23)
 ------------------------
 
-* Fixed "collection not found" exception during setup of 3-way smart join queries in the
+* Fixed "collection not found" exception during setup of 3-way SmartJoin queries in the
   cluster.
 
 * Fixed an edge case of handling `null` values in the AQL function `MIN` for input
@@ -1561,12 +1586,12 @@ v3.5.0-rc.1 (2019-05-14)
   `--log.use-localtime`, because the functionality provided by these options
   is covered by `--log.time-format` too.
 
-* Added "smart joins" to the ArangoDB Enterprise Edition that allows running cluster
+* Added "SmartJoins" to the ArangoDB Enterprise Edition that allows running cluster
   joins between two certain sharded collections with performance close to that of a
   local join operation.
 
 * Fixed internal issue #3815: fixed the removal of connected edges when
-  removing a vertex graph node in a smart graph environment.
+  removing a vertex graph node in a SmartGraph environment.
 
 * Show startup warning in case kernel setting `vm.overcommit_memory` is set
   to a value of 2 and the jemalloc memory allocator is in use. This combination
@@ -1682,7 +1707,7 @@ v3.5.0-rc.1 (2019-05-14)
 
 * Allowed MoveShard from leader to a follower, thus swapping the two.
 
-* Supervision fix: Satellite collections, various fixes.
+* Supervision fix: SatelliteCollections, various fixes.
 
 * Added coordinator route for agency dump.
 
@@ -2058,7 +2083,7 @@ v3.4.7 (2019-07-02)
 * Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
   on data that is bigger than the available RAM.
 
-* Bugfix for smart graph traversals with uniqueVertices: path, which could
+* Bugfix for SmartGraph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
 * The system-collection '_jobs' will from now on use non-unique, non-sparse indexes.
@@ -2069,7 +2094,7 @@ v3.4.7 (2019-07-02)
   case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
   to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
 
-* fixed "collection not found" exception during setup of 3-way smart join queries in the
+* fixed "collection not found" exception during setup of 3-way SmartJoin queries in the
   cluster
 
 * fixed an edge case of handling `null` values in the AQL function `MIN` for input
@@ -2142,7 +2167,7 @@ v3.4.6 (2019-05-21)
 * removed bug during start up with a single agent, that leads to dbserver crash.
 
 * fix the creation of debug packages (in the web interface) for queries that
-  involve smart graphs and/or multiple edge collections from a traversal
+  involve SmartGraphs and/or multiple edge collections from a traversal
 
 * add --compress-output flag to arangodump. Activates gzip compression for
   collection data. Metadata files, such as .structure.json and .view.json,
@@ -2179,7 +2204,7 @@ v3.4.5 (2019-03-27)
   active Pregel jobs executing
 
 * fixed internal issue #3815: fixed the removal of connected edges when
-  removing a vertex graph node in a smart graph environment.
+  removing a vertex graph node in a SmartGraph environment.
 
 * added AQL functions CRC32 and FNV64 for hashing data
 
@@ -2208,7 +2233,7 @@ v3.4.5 (2019-03-27)
   double resync was made
 
 * don't check for the presence of ArangoDB upgrades available when firing up an
-  arangosh enterprise edition build
+  arangosh Enterprise Edition build
 
 * added startup option `--rocksdb.allow-fallocate`
 
@@ -2397,7 +2422,7 @@ v3.4.4 (2019-03-12)
 
 * Allow MoveShard from leader to a follower, thus swapping the two
 
-* Supervision fix: Satellite collections, various fixes
+* Supervision fix: SatellitCollections, various fixes
 
 * Add coordinator route for agency dump
 
@@ -2636,7 +2661,7 @@ v3.4.1 (2018-12-19)
 v3.4.0 (2018-12-06)
 -------------------
 
-* Add license key checking to enterprise version in Docker containers.
+* Add license key checking to Enterprise Edition in Docker containers.
 
 
 v3.4.0-rc.5 (2018-11-29)
@@ -2851,7 +2876,7 @@ v3.4.0-rc.3 (2018-10-23)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
-* fix internal issue #2764: the waitForSync property of a satellite collection
+* fix internal issue #2764: the waitForSync property of a SatelliteCollection
   could not be changed via the Web UI
 
 * dynamically manage libcurl's number of open connections to increase performance
@@ -3736,7 +3761,7 @@ v3.3.19 (2018-10-20)
 * fix internal issue #2785: web ui's sort dialog sometimes got rendered, even
   if it should not.
 
-* fix internal issue #2764: the waitForSync property of a satellite collection
+* fix internal issue #2764: the waitForSync property of a SatelliteCollection
   could not be changed via the Web UI
 
 * improved logging in case of replication errors
@@ -4301,11 +4326,11 @@ v3.3.8 (2018-04-24)
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object
 
-* fixed: (Enterprise only) If you restore a SmartGraph where the collections
+* fixed: (Enterprise Edition only) If you restore a SmartGraph where the collections
   are still existing and are supposed to be dropped on restore we ended up in
   duplicate name error. This is now gone and the SmartGraph is correctly restored.
 
-* fix lookups by `_id` in smart graph edge collections
+* fix lookups by `_id` in SmartGraph edge collections
 
 * improve startup resilience in case there are datafile errors (MMFiles)
 
@@ -4346,10 +4371,10 @@ v3.3.7 (2018-04-11)
 * fixed internal issue #2237: AQL queries on collections with replicationFactor:
   "satellite" crashed arangod in single server mode
 
-* fixed restore of satellite collections: replicationFactor was set to 1 during
+* fixed restore of SatelliteCollections: replicationFactor was set to 1 during
   restore
 
-* fixed dump and restore of smart graphs:
+* fixed dump and restore of SmartGraphs:
   a) The dump will not include the hidden shadow collections anymore, they were dumped
      accidentially and only contain duplicated data.
   b) Restore will now ignore hidden shadow collections as all data is contained
@@ -4805,7 +4830,7 @@ v3.3.rc1 (2017-11-17)
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine
 
-* added `--rocksdb.encryption-key-generator` for enterprise
+* added `--rocksdb.encryption-key-generator` to Enterprise Edition
 
 * removed `--compat28` parameter from arangodump and replication API
 
@@ -5170,7 +5195,7 @@ v3.2.7 (2017-11-13)
 
   these changes speed up arangodump in cluster context
 
-* smart graphs now return a proper inventory in response to replication inventory
+* SmartGraphs now return a proper inventory in response to replication inventory
   requests
 
 * fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
@@ -5375,7 +5400,7 @@ v3.2.4 (2017-09-26)
   from the early ArangoDB days and did not provide any value in the current
   implementation.
 
-* (Enterprise only) added `skipInaccessibleCollections` option for AQL queries:
+* (Enterprise Edition only) added `skipInaccessibleCollections` option for AQL queries:
   if set, AQL queries (especially graph traversals) will treat collections to
   which a user has no access rights to as if these collections were empty.
 
@@ -5840,7 +5865,7 @@ v3.2.beta1 (2017-06-12)
 * `--server.maximal-queue-size` is now an absolute maximum. If the queue is
   full, then 503 is returned. Setting it to 0 means "no limit".
 
-* (Enterprise only) added authentication against an LDAP server
+* (Enterprise Edition only) added authentication against an LDAP server
 
 * fixed issue #2083: Foxx services aren't distributed to all coordinators
 
@@ -6211,7 +6236,7 @@ v3.1.18 (2017-04-18)
   rare cases if the computation on one DBServer could be completed much earlier
   than the other server. It could also be restricted to SmartGraphs only.
 
-* (Enterprise only) Fixed a bug in SmartGraph DepthFirstSearch. In some
+* (Enterprise Edition only) Fixed a bug in SmartGraph DepthFirstSearch. In some
   more complicated queries, the maxDepth limit of 1 was not considered strictly
   enough, causing the traverser to do unlimited depth searches.
 
@@ -6225,14 +6250,14 @@ v3.1.18 (2017-04-18)
 v3.1.17 (2017-04-04)
 --------------------
 
-* (Enterprise only) fixed a bug where replicationFactor was not correctly
+* (Enterprise Edition only) fixed a bug where replicationFactor was not correctly
   forwarded in SmartGraph creation.
 
 * fixed issue #2404
 
 * fixed issue #2397
 
-* ui - fixed smart graph option not appearing
+* ui - fixed SmartGraph option not appearing
 
 * fixed issue #2389
 
@@ -6357,7 +6382,7 @@ v3.1.11 (2017-02-17)
 * fixed a race between connection closing and sending out last chunks of data to clients
   when the "Connection: close" HTTP header was set in requests
 
-* ui: optimized smart graph creation usability
+* ui: optimized SmartGraph creation usability
 
 * ui: fixed #2308
 
@@ -6612,7 +6637,7 @@ v3.1.2 (2016-11-24)
 
 * added support for descriptions field in Foxx dependencies
 
-* (Enterprise only) fixed a bug in the statistic report for SmartGraph traversals.
+* (Enterprise Edition only) fixed a bug in the statistic report for SmartGraph traversals.
 Now they state correctly how many documents were fetched from the index and how many
 have been filtered.
 
@@ -6699,7 +6724,7 @@ v3.1.1 (2016-11-15)
   search values were used on different attribute names. in this case, the search always
   produced an empty result
 
-* disallow updating `_from` and `_to` values of edges in Smart Graphs. Updating these
+* disallow updating `_from` and `_to` values of edges in SmartGraphs. Updating these
   attributes would lead to potential redistribution of edges to other shards, which must be
   avoided.
 
