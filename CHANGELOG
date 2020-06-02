@@ -6,14 +6,14 @@ v3.6.5 (XXXX-XX-XX)
   were excluded from the request statistics if and only if the requested
   database was the `_system` database.
 
-
-v3.6.4 (2020-05-26)
--------------------
-
 * Fixed issue ES-564: Opening a VST connection would leave an extra HttpCommTask
   object lying around for the life of the server. This accumulation was
   effectively a memory leak. Additionally, it led to inaccurate reporting of
   the number of open HTTP connections in the dashboard.
+
+
+v3.6.4 (2020-05-26)
+-------------------
 
 * Web UI is now using pre-compiled templates.
 
