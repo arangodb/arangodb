@@ -1,7 +1,7 @@
 devel
 -----
 
-* added multiple rocksdb configuration options to arangodb:
+* Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
     also include RocksDB memtable sizes
   * `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to use cache index
