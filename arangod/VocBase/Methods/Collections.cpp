@@ -884,11 +884,17 @@ std::pair<Result, std::shared_ptr<velocypack::Builder>> Collections::upgrade(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return upgradeOnCoordinator(vocbase, coll, timeout);
+    return std::make_pair(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "upgrade in cluster not supported yet"),
+                          nullptr);
+    // return upgradeOnCoordinator(vocbase, coll, timeout);
   }
 
   if (ServerState::instance()->isDBServer()) {
-    return std::make_pair(upgradeOnDBServer(vocbase, coll, phase, isSmartChild), nullptr);
+    return std::make_pair(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "upgrade in cluster not supported yet"),
+                          nullptr);
+    // return std::make_pair(upgradeOnDBServer(vocbase, coll, phase, isSmartChild), nullptr);
   }
 
   TRI_ASSERT(ServerState::instance()->isSingleServer() && !isSmartChild);
