@@ -1,8 +1,6 @@
 v3.6.4 (XXXX-XX-XX)
 -------------------
 
-* Build issue fixed adding c++-17 for visual studio.
-
 * Web UI is now using pre-compiled templates.
 
 * Fixed an issue with truncate of a collection after a dbserver was restarted
