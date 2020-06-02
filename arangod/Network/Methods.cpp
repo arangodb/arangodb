@@ -392,7 +392,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            Headers headers) noexcept {
 
   // WARNING this method shall never throw - anything!
-  
+
   try {
 
     if (!pool || !pool->config().clusterInfo) {
@@ -421,7 +421,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
   }
 
   return futures::makeFuture(Response{std::move(destination), Error::Canceled, nullptr});
-  
+
 }
 
 }  // namespace network
