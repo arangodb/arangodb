@@ -333,8 +333,6 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::retryTryDeleteServe
           return tryDeleteServer(std::move(ctx));
         });
   } else {
-    // TODO #1: Discuss timeout of 60 seconds
-    // TODO #2: Discuss error (early aborts) handling here
     generateError(rest::ResponseCode::PRECONDITION_FAILED, TRI_ERROR_HTTP_PRECONDITION_FAILED,
                   "server may not be deleted");
     return futures::makeFuture();
