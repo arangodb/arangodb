@@ -34,7 +34,7 @@ using namespace arangodb::aql;
 DistributeClientBlock::QueueEntry::QueueEntry(SkipResult const& skipped,
                                               SharedAqlItemBlockPtr block,
                                               std::vector<size_t> choosen)
-    : _skip(skipped), _block(block), _choosen(std::move(choosen)) {
+    : _skip(skipped), _block(std::move(block)), _choosen(std::move(choosen)) {
   TRI_ASSERT(_block != nullptr || choosen.empty());
 }
 
@@ -80,7 +80,7 @@ auto DistributeClientBlock::clear() -> void {
 auto DistributeClientBlock::addBlock(SkipResult const& skipResult, SharedAqlItemBlockPtr block,
                                      std::vector<size_t> usedIndexes) -> void {
   TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
-  _queue.emplace_back(skipResult, block, std::move(usedIndexes));
+  _queue.emplace_back(skipResult, std::move(block), std::move(usedIndexes));
 }
 
 auto DistributeClientBlock::hasDataFor(AqlCall const& call) -> bool {

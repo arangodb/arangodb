@@ -87,6 +87,7 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
 
+  // TODO: find out why capacity() is called so often
   size_t const targetSize = block->capacity();
   uint32_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < numBuckets);

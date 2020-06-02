@@ -1694,7 +1694,8 @@ AqlValueHintDouble::AqlValueHintDouble(double v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int64_t v) noexcept : value(v) {}
 AqlValueHintInt::AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
 AqlValueHintUInt::AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
-AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy)
+
+AqlValueGuard::AqlValueGuard(AqlValue& value, bool destroy) noexcept
     : _value(value), _destroy(destroy) {}
 AqlValueGuard::~AqlValueGuard() {
   if (_destroy) {
@@ -1702,9 +1703,9 @@ AqlValueGuard::~AqlValueGuard() {
   }
 }
 
-void AqlValueGuard::steal() { _destroy = false; }
+void AqlValueGuard::steal() noexcept { _destroy = false; }
 
-AqlValue& AqlValueGuard::value() { return _value; }
+AqlValue& AqlValueGuard::value() noexcept { return _value; }
 
 size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& x) const
     noexcept {

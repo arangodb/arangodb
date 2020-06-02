@@ -456,14 +456,15 @@ void AqlItemBlock::clearRegisters(RegIdFlatSet const& toClear) {
 
 SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
   auto const numRows = size();
+  auto const numRegs = getNrRegs();
 
   std::unordered_set<AqlValue> cache;
   cache.reserve(_valueCount.size());
-  SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, getNrRegs())};
+  SharedAqlItemBlockPtr res{aqlItemBlockManager().requestBlock(numRows, numRegs)};
 
   for (size_t row = 0; row < numRows; row++) {
-    for (RegisterId col = 0; col < getNrRegs(); col++) {
-      if (isShadowRow(row)) {
+    if (isShadowRow(row)) {
+      for (RegisterId col = 0; col < numRegs; col++) {
         AqlValue a = stealAndEraseValue(row, col);
         AqlValueGuard guard{a, true};
         auto [it, inserted] = cache.emplace(a);
@@ -473,7 +474,9 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           // otherwise, destroy this; we used a cached value.
           guard.steal();
         }
-      } else {
+      } 
+    } else {
+      for (RegisterId col = 0; col < numRegs; col++) {
         AqlValue a = getValue(row, col);
         ::CopyValueOver(cache, a, row, col, res);
       }

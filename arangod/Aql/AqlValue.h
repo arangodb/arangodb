@@ -393,11 +393,11 @@ class AqlValueGuard {
   AqlValueGuard(AqlValueGuard&&) = delete;
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
-  AqlValueGuard(AqlValue& value, bool destroy);
+  AqlValueGuard(AqlValue& value, bool destroy) noexcept;
   ~AqlValueGuard();
-  void steal();
-
-  AqlValue& value();
+  
+  void steal() noexcept;
+  AqlValue& value() noexcept;
 
  private:
   AqlValue& _value;

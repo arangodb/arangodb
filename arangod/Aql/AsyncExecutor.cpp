@@ -54,7 +54,6 @@ std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl
 }
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(AqlCallStack const& stack) {
-  
 //  if (getQuery().killed()) {
 //    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
 //  }
