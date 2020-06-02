@@ -47,6 +47,15 @@ function recoverySuite () {
 
   return {
     testLogOutput: function () {
+      // check if crash handler is turned off
+      let envVariable = internal.env["ARANGODB_OVERRIDE_CRASH_HANDLER"];
+      if (typeof envVariable === 'string') {
+        envVariable = envVariable.trim().toLowerCase();
+        if (!(envVariable === 'true' || envVariable === 'yes' || envVariable === 'on' || envVariable === 'y')) {
+          return;
+        }
+      }
+
       let fs = require("fs");
       let crashFile = internal.env["crash-log"];
 
