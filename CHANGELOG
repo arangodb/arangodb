@@ -1,6 +1,8 @@
 devel
 -----
 
+* Catch exceptions in agency callbacks.
+
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.
 
