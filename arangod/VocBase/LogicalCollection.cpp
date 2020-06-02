@@ -314,20 +314,17 @@ LogicalCollection::UpgradeStatus::Map const& LogicalCollection::UpgradeStatus::m
 }
 
 void LogicalCollection::UpgradeStatus::set(Map::key_type const& key, Map::mapped_type const& value) {
-  LOG_DEVEL << this << ") SET " << key << " to " << static_cast<unsigned>(value);
   _map[key] = value;
 }
 
 void LogicalCollection::UpgradeStatus::remove(Map::key_type const& key) {
   decltype(_map)::iterator it = _map.find(key);
   if (it != _map.end()) {
-    LOG_DEVEL << this << ") REMOVE " << key;
     _map.erase(it);
   }
 }
 
 void LogicalCollection::UpgradeStatus::clear() {
-  LOG_DEVEL << this << ") CLEAR";
   _map.clear();
 }
 

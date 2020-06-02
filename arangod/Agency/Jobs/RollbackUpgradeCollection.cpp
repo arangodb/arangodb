@@ -241,7 +241,6 @@ std::pair<bool, bool> haveFinalizedInShard(arangodb::consensus::Node const& snap
   auto [garbage, found] = snapshot.hasAsBuilder(statusPath, builder);
   if (found && !builder.slice().isObject()) {
     haveError = true;
-    LOG_DEVEL << "D";
   } else if (!found || builder.slice().isNone()) {
     haveFinalized = false;
   } else {
@@ -256,8 +255,6 @@ std::pair<bool, bool> haveFinalizedInShard(arangodb::consensus::Node const& snap
           break;
         }
       }
-    } else {
-      LOG_DEVEL << "F";
     }
   }
 
@@ -278,12 +275,10 @@ std::pair<bool, bool> haveAnyFinalized(arangodb::consensus::Node const& snapshot
   auto [garbage, found] = snapshot.hasAsBuilder(shardsPath, builder);
   if (!found || !builder.slice().isObject()) {
     haveError = true;
-    LOG_DEVEL << "A";
   } else {
     for (ObjectIteratorPair shardPair : ObjectIterator(builder.slice())) {
       if (!shardPair.key.isString() || !shardPair.value.isArray()) {
         haveError = true;
-        LOG_DEVEL << "B";
         break;
       }
       std::string shard = shardPair.key.copyString();
@@ -293,7 +288,6 @@ std::pair<bool, bool> haveAnyFinalized(arangodb::consensus::Node const& snapshot
           plannedServers.emplace(server.copyString());
         } else {
           haveError = true;
-          LOG_DEVEL << "C";
           break;
         }
       }
