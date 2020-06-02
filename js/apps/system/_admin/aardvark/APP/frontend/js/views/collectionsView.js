@@ -711,19 +711,28 @@
           });
 
           if (window.App.isCluster && frontendConfig.isEnterprise) {
+            var handleSatelliteIds = [
+              '#new-replication-factor',
+              '#new-write-concern',
+              '#new-collection-shards',
+              '#smart-join-attribute'
+            ];
+
             $('#is-satellite-collection').on('change', function (element) {
               if ($('#is-satellite-collection').val() === 'true') {
-                $('#new-replication-factor').prop('disabled', true);
-                $('#new-write-concern').prop('disabled', true);
-                $('#new-collection-shards').prop('disabled', true);
+                _.each(handleSatelliteIds, function(id) {
+                  $(id).prop('disabled', true);
+                });
+                $('#s2id_new-collection-shardKeys').select2('disable');
               } else {
-                $('#new-replication-factor').prop('disabled', false);
-                $('#new-write-concern').prop('disabled', false);
-                $('#new-collection-shards').prop('disabled', false);
+                _.each(handleSatelliteIds, function(id) {
+                  $(id).prop('disabled', false);
+                });
+                $('#s2id_new-collection-shardKeys').select2('enable');
               }
-              $('#new-replication-factor').val('').focus().focusout();
-              $('#new-write-concern').val('').focus().focusout();
-              $('#new-collection-shards').val('').focus().focusout();
+              _.each(handleSatelliteIds, function(id) {
+                $(id).val('').focus().focusout();
+              });
             });
           }
         }
