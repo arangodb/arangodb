@@ -37,7 +37,7 @@ devel
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
   right after the modification.
 
-* Catch exceptions in agency callbacks.
+* Added exceptions catching in agency callbacks.
 
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.
