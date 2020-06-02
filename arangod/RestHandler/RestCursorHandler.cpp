@@ -219,6 +219,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl",
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  
+  // simon: access mode can always be write on the coordinator
+  const AccessMode::Type mode = AccessMode::Type::WRITE;
 
   if (stream) {
     if (count) {
@@ -231,7 +234,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
       _cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
                                            _options, batchSize, ttl,
                                            /*contextOwnedByExt*/ false,
-                                           createTransactionContext());
+                                           createTransactionContext(mode));
       _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
       
       return generateCursorResult(rest::ResponseCode::CREATED);
@@ -247,7 +250,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   auto query = std::make_unique<aql::Query>(
       false, _vocbase, arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
       bindVarsBuilder, _options, arangodb::aql::PART_MAIN);
-  query->setTransactionContext(createTransactionContext());
+  query->setTransactionContext(createTransactionContext(mode));
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
   ss->setWakeupHandler([self = shared_from_this()] {

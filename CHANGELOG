@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-609: "Transaction already in use" error when running
+  transaction.
+
 * Fixed bad behaviour when dropping followers. A follower should be dropped
   immediately when it is officially FAILED, not only after a longish timeout.
 
