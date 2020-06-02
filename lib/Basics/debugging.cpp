@@ -310,12 +310,6 @@ void TRI_LogBacktrace() {
 #endif
 }
 
-/// @brief logs an assertion failure, flushes the logger, shuts it down
-/// and terminates the program
-void TRI_AssertAndAbort(char const* file, int line, char const* message) {
-  CrashHandler::assertionFailure(file, line, message);
-}
-
 template<> char const conpar<true>::open = '{';
 template<> char const conpar<true>::close = '}';
 template<> char const conpar<false>::open = '[';
