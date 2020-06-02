@@ -18,8 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <set>
@@ -30,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -130,10 +130,18 @@ bool getSmartChild(arangodb::application_features::ApplicationServer& server,
   return isSmartChild;
 }
 
+bool haveError(arangodb::LogicalCollection& collection, std::unique_lock<std::mutex>& lock) {
+  TRI_ASSERT(lock.owns_lock());
+  arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
+  if (!status.errorMessage().empty()) {
+    LOG_DEVEL << "FOUND ERROR '" << status.errorMessage() << "'";
+  }
+  return !status.errorMessage().empty();
+}
+
 bool haveError(arangodb::LogicalCollection& collection) {
   std::unique_lock<std::mutex> lock(collection.upgradeStatusLock());
-  arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
-  return !status.errorMessage().empty();
+  return ::haveError(collection, lock);
 }
 
 std::pair<arangodb::Result, bool> updateStatusFromCurrent(
@@ -169,7 +177,30 @@ std::pair<arangodb::Result, bool> updateStatusFromCurrent(
     }
   }
 
+  arangodb::velocypack::Builder builder;
+  {
+    arangodb::velocypack::ObjectBuilder obj(&builder);
+    status.toVelocyPack(builder, false);
+  }
+  LOG_DEVEL << "status for '" << collection.name() << "' from Current: '"
+            << builder.slice().toJson() << "'";
+
   return std::make_pair(res, localChanges);
+}
+
+arangodb::consensus::index_t extractIndexFromTransactionResult(arangodb::AgencyCommResult const& result) {
+  arangodb::consensus::index_t index = 0;
+  arangodb::velocypack::Slice slice = result.slice();
+  if (slice.isObject()) {
+    arangodb::velocypack::Slice resultSlice = slice.get("results");
+    if (resultSlice.isArray() && resultSlice.length() >= 1) {
+      arangodb::velocypack::Slice indexSlice = resultSlice.at(0);
+      if (indexSlice.isNumber()) {
+        index = indexSlice.getNumber<arangodb::consensus::index_t>();
+      }
+    }
+  }
+  return index;
 }
 
 void writeStatusToCurrent(arangodb::LogicalCollection& collection,
@@ -203,9 +234,15 @@ void writeStatusToCurrent(arangodb::LogicalCollection& collection,
     throw std::runtime_error(
         "failed to send and execute transaction to set shard upgrade status");
   } else {
+    LOG_DEVEL << "wrote status for '" << collection.name() << "' to Current: '"
+              << statusBuilder.slice().toJson() << "'";
     auto& feature = collection.vocbase().server().getFeature<arangodb::ClusterFeature>();
     auto& ci = feature.clusterInfo();
-    ci.invalidateCurrent();
+    auto& cache = feature.agencyCache();
+    std::uint64_t index = ::extractIndexFromTransactionResult(result);
+    LOG_DEVEL << "waiting for " << index;
+    cache.waitFor(index).wait();
+    ci.loadCurrent();
   }
 }
 
@@ -232,7 +269,7 @@ void removeStatusFromCurrent(arangodb::LogicalCollection& collection,
   } else {
     auto& feature = collection.vocbase().server().getFeature<arangodb::ClusterFeature>();
     auto& ci = feature.clusterInfo();
-    ci.invalidateCurrent();
+    ci.loadCurrent();
   }
 }
 
@@ -251,9 +288,13 @@ std::unordered_map<::UpgradeState, std::vector<std::string>> serversByStatus(
 
 void setStatusesForRollback(arangodb::LogicalCollection& collection,
                             std::unique_lock<std::mutex>& lock) {
+  LOG_DEVEL
+      << "################################################################";
+
   TRI_ASSERT(lock.owns_lock());
   arangodb::LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
   status.setError("");
+  LOG_DEVEL << "set error to ''";
 
   auto& map = status.map();
   for (auto const& [server, state] : map) {
@@ -320,6 +361,7 @@ bool UpgradeCollection::first() {
 
       bool ok = refreshPlanStatus();
       if (!ok) {
+        LOG_DEVEL << "REMOVING FROM CURRENT";
         // no upgrade status in Plan, clean status out of Current
         {
           std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
@@ -335,14 +377,38 @@ bool UpgradeCollection::first() {
           transaction::StandaloneContext::Create(config.vocbase);
       _trx = std::make_unique<SingleCollectionTransaction>(context, *config.collection,
                                                            AccessMode::Type::EXCLUSIVE);
-      _result = _trx->begin();
+      Result res = _trx->begin();
       TRI_IF_FAILURE("UpgradeCollectionDBServer::StartTransaction") {
-        _result.reset(TRI_ERROR_INTERNAL, "could not start transaction");
+        res.reset(TRI_ERROR_INTERNAL, "could not start transaction");
       }
-      if (_result.fail()) {
-        setError(*config.collection, _result.errorMessage());
-        setState(FAILED);
-        return false;
+      if (res.fail()) {
+        ::Config config(_description);
+        if (config.collection) {
+          auto const& shard = _description.get(SHARD);
+
+          bool localChanges = false;
+          auto& feature = config.vocbase.server().getFeature<ClusterFeature>();
+          auto& ci = feature.clusterInfo();
+          std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+          std::tie(res, localChanges) =
+              ::updateStatusFromCurrent(ci, *config.collection, shard, lock);
+          TRI_IF_FAILURE(
+              "UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
+            res.reset(TRI_ERROR_INTERNAL,
+                      "could not update status from current");
+          }
+          if (res.fail()) {
+            setError(*config.collection, res.errorMessage());
+            return true;
+          }
+          if (localChanges) {
+            // make sure it's written back out to Current with up-to-date server list
+            ::writeStatusToCurrent(*config.collection, _description, lock);
+          }
+        }
+        setError(*config.collection, res.errorMessage());
+        // setState(FAILED);
+        // return false;
       }
 
       return next();
@@ -379,14 +445,9 @@ bool UpgradeCollection::next() {
     }
   });
 
-  bool ok = refreshPlanStatus();
-  if (!ok) {
-    LOG_TOPIC("61544", DEBUG, Logger::MAINTENANCE)
-        << "Upgrading local collection " << shard << "; plan status may be outdated";
-  }
+  // fill with initial, possibly outdated value, will update later
   ::UpgradeState targetPhase =
       LogicalCollection::UpgradeStatus::stateFromSlice(_planStatus.slice());
-
   try {
     ::Config config(_description);
     if (config.collection) {
@@ -395,11 +456,31 @@ bool UpgradeCollection::next() {
 
       Result res;
 
+      bool ok = refreshPlanStatus();
+      if (!ok) {
+        LOG_DEVEL << "REMOVING FROM CURRENT";
+        // no upgrade status in Plan, clean status out of Current
+        {
+          std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+          LogicalCollection::UpgradeStatus& status = config.collection->upgradeStatus();
+          status.clear();
+        }
+        ::removeStatusFromCurrent(*config.collection, _description);
+        return false;
+      }
+
+      targetPhase =
+          LogicalCollection::UpgradeStatus::stateFromSlice(_planStatus.slice());
+      LOG_DEVEL << "TARGET " << config.collection->name() << " IS "
+                << static_cast<unsigned>(targetPhase);
+
       {
         std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
         if (targetPhase == ::UpgradeState::Rollback && !_inRollback) {
+          LOG_DEVEL << "ENTERING ROLLBACK " << config.collection->name();
           ::setStatusesForRollback(*config.collection, lock);
           ::writeStatusToCurrent(*config.collection, _description, lock);
+          _result.reset();
           _inRollback = true;
         }
       }
@@ -417,10 +498,9 @@ bool UpgradeCollection::next() {
       auto& ci = feature.clusterInfo();
       {
         std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
-        {
-          std::tie(res, localChanges) =
-              ::updateStatusFromCurrent(ci, *config.collection, shard, lock);
-        }
+        LOG_DEVEL << "BEGIN LOOP " << config.collection->name();
+        std::tie(res, localChanges) =
+            ::updateStatusFromCurrent(ci, *config.collection, shard, lock);
         TRI_IF_FAILURE("UpgradeCollectionDBServer::UpgradeStatusFromCurrent") {
           res.reset(TRI_ERROR_INTERNAL, "could not update status from current");
         }
@@ -451,7 +531,7 @@ bool UpgradeCollection::next() {
                 processPhase(servers, ::UpgradeState::ToDo,
                              ::UpgradeState::Prepare, *config.collection, lock);
             // if everything was already prepared, proceed to finalize
-            if (!haveServers && !::haveError(*config.collection)) {
+            if (!haveServers && !::haveError(*config.collection, lock)) {
               haveServers = processPhase(servers, ::UpgradeState::Prepare,
                                          targetPhase, *config.collection, lock);
             }
@@ -481,6 +561,7 @@ bool UpgradeCollection::next() {
           default:
             break;
         }
+        LOG_DEVEL << "END LOOP " << config.collection->name();
       }
     } else {
       std::stringstream error;
@@ -554,16 +635,20 @@ std::function<Result(network::Response&&)> UpgradeCollection::handleResponse(
       ::Config config(self->_description);
       if (config.collection) {
         if (result.fail()) {
+          LOG_DEVEL << "failure phase " << static_cast<unsigned>(phase) << " "
+                    << config.collection->name() << " for " << server;
           return result;
         }
 
         // okay, we executed this operation successfully, let everyone know
         {
-          LOG_DEVEL << "success " << config.collection->name() << " for " << server;
           std::unique_lock<std::mutex> lock(config.collection->upgradeStatusLock());
+          LOG_DEVEL << "success phase " << static_cast<unsigned>(phase) << " "
+                    << config.collection->name() << " for " << server;
           if (!self->_inRollback || phase == ::UpgradeState::Rollback ||
               phase == ::UpgradeState::Cleanup) {
-            LOG_DEVEL << "report " << config.collection->name() << " for " << server;
+            LOG_DEVEL << "report phase " << static_cast<unsigned>(phase) << " "
+                      << config.collection->name() << " for " << server << " to Current";
             arangodb::LogicalCollection::UpgradeStatus& status =
                 config.collection->upgradeStatus();
             status.set(server, phase);
@@ -603,8 +688,9 @@ bool UpgradeCollection::processPhase(
       decltype(_futures)::iterator f = _futures.find(server);
       bool mustSendRequest = false;
       if (f == _futures.end()) {
-        LOG_DEVEL << "marking " << collection.name() << " must send to "
-                  << server << " as missing";
+        LOG_DEVEL << "marking " << collection.name() << " must send phase "
+                  << static_cast<unsigned>(targetPhase) << " to " << server
+                  << " as missing";
         mustSendRequest = true;
       } else {
         auto& [phase, future] = f->second;
@@ -618,7 +704,8 @@ bool UpgradeCollection::processPhase(
               } else {
                 // this future is from a previous phase, go ahead and mark to
                 // send so we don't have a missed update
-                LOG_DEVEL << "marking " << collection.name() << " must send to "
+                LOG_DEVEL << "marking " << collection.name() << " must send phase "
+                          << static_cast<unsigned>(targetPhase) << " to "
                           << server << " as previous round";
                 mustSendRequest = true;
               }
@@ -648,7 +735,8 @@ bool UpgradeCollection::processPhase(
         }
       }
       if (mustSendRequest) {
-        LOG_DEVEL << "sending request " << collection.name() << " for " << server;
+        LOG_DEVEL << "sending request phase " << static_cast<unsigned>(targetPhase)
+                  << " " << collection.name() << " for " << server;
         futures::Future<Result> future = sendRequest(collection, server, targetPhase);
         _futures.emplace(server, std::make_pair(targetPhase, std::move(future)));
       }
@@ -703,6 +791,7 @@ void UpgradeCollection::setError(LogicalCollection& collection, std::string cons
       << "UpgradeCollection '" << _description.get(SHARD) << "': " << message;
   LogicalCollection::UpgradeStatus& status = collection.upgradeStatus();
   status.setError(message);
+  LOG_DEVEL << "set error to '" << message << "'";
   ::writeStatusToCurrent(collection, _description, lock);
 }
 

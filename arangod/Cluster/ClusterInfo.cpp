@@ -1176,7 +1176,6 @@ void ClusterInfo::loadPlan() {
 static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
-
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newCurrentVersion = 0;

@@ -1816,11 +1816,6 @@ void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t
 
 Result RocksDBCollection::prepareUpgrade(bool isSmartChild) {
   Result res{};
-  LOG_DEVEL << "begining prepare for " << _logicalCollection.name();
-  auto guard = scopeGuard([this, &res]() -> void {
-    LOG_DEVEL << "returning from prepare for " << _logicalCollection.name()
-              << " with '" << res.errorMessage() << "'";
-  });
   if (_logicalCollection.version() >= LogicalCollection::Version::v37 ||
       _logicalCollection.syncByRevision() ||
       _logicalCollection.usesRevisionsAsDocumentIds()) {

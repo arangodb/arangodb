@@ -818,8 +818,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
       {
         std::unique_lock<std::mutex> lock(collection->upgradeStatusLock());
         auto& upgradeStatus = collection->upgradeStatus();
-        upgradeStatus = LogicalCollection::UpgradeStatus::fetch(*collection);
-        if (!upgradeStatus.map().empty()) {
+        if (!upgradeStatus.map().empty() || !upgradeStatus.errorMessage().empty()) {
           upgradeStatus.toVelocyPack(ret, true);
         }
       }

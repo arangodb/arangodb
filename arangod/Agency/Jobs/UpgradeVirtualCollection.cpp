@@ -150,12 +150,14 @@ void prepareSetUpgradedPropertiesTransaction(arangodb::velocypack::Builder& trx,
                                              std::string const& jobId) {
   using namespace arangodb::velocypack;
 
-  std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
-  std::string collectionSyncByRevision =
+  std::string const collectionPath = "/Plan/Collections/" + database + "/" + collection;
+  std::string const collectionSyncByRevision =
       collectionPath + "/" + arangodb::StaticStrings::SyncByRevision;
-  std::string collectionUsesRevisionsAsDocumentIds =
+  std::string const collectionUsesRevisionsAsDocumentIds =
       collectionPath + "/" + arangodb::StaticStrings::UsesRevisionsAsDocumentIds;
-  std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
+  std::string const collectionUpgradeStatus =
+      collectionPath + "/" + arangodb::maintenance::UPGRADE_STATUS;
+  std::string const collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
   {
     ArrayBuilder listofTransactions(&trx);
     {
@@ -164,6 +166,12 @@ void prepareSetUpgradedPropertiesTransaction(arangodb::velocypack::Builder& trx,
       // and add the upgrade flag
       trx.add(collectionSyncByRevision, Value(true));
       trx.add(collectionUsesRevisionsAsDocumentIds, Value(true));
+
+      trx.add(Value(collectionUpgradeStatus));
+      {
+        ObjectBuilder status(&trx);
+        trx.add("op", Value("delete"));
+      }
 
       trx.add(Value(collectionLock));
       {
@@ -246,8 +254,10 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx, std::string c
                                std::string const& collection, std::string const& jobId) {
   using namespace arangodb::velocypack;
 
-  std::string collectionPath = "/Plan/Collections/" + database + "/" + collection;
-  std::string collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
+  std::string const collectionPath = "/Plan/Collections/" + database + "/" + collection;
+  std::string const collectionUpgradeStatus =
+      collectionPath + "/" + arangodb::maintenance::UPGRADE_STATUS;
+  std::string const collectionLock = collectionPath + "/" + arangodb::maintenance::LOCK;
   {
     ArrayBuilder listofTransactions(&trx);
     {
@@ -261,7 +271,7 @@ void prepareReleaseTransaction(arangodb::velocypack::Builder& trx, std::string c
       }
 
       // remove the upgrade flag
-      trx.add(Value(collectionPath + "/" + arangodb::maintenance::UPGRADE_STATUS));
+      trx.add(Value(collectionUpgradeStatus));
       {
         ObjectBuilder status(&trx);
         trx.add("op", Value("delete"));
@@ -411,11 +421,6 @@ JOB_STATUS UpgradeVirtualCollection::status() {
   }
 
   if (haveFailure) {
-    velocypack::Builder trx;
-    ::prepareReleaseTransaction(trx, _database, _collection, _jobId);
-    std::string const messageIfError =
-        "could not clean up after failed virtual collection upgrade";
-    [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
     abort("one or more child jobs failed");
   }
 
@@ -445,6 +450,12 @@ arangodb::Result UpgradeVirtualCollection::abort(std::string const& reason) {
     finish("", "", false, "job aborted: " + reason);
     return Result{};
   }
+
+  velocypack::Builder trx;
+  ::prepareReleaseTransaction(trx, _database, _collection, _jobId);
+  std::string const messageIfError =
+      "could not clean up after failed virtual collection upgrade";
+  [[maybe_unused]] bool ok = writeTransaction(trx, messageIfError);
 
   finish("", "", false, "job aborted: " + reason);
   return Result{};
