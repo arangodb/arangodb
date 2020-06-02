@@ -2396,7 +2396,7 @@ function explainQuerysRegisters(plan) {
     keepRegister: '↓',
     writeRegister: '→',
     readRegister: '←',
-    unusedRegister: '-',//'Ø',
+    unusedRegister: '-',
     subqueryBegin: '↘',
     subqueryEnd: '↙',
   };
