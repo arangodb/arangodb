@@ -1,6 +1,13 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed bad behaviour when dropping followers. A follower should be dropped
+  immediately when it is officially FAILED, not only after a longish timeout.
+
+* Fixed a bug in CollectionNameResolver which could lead to an extended busy
+  spin on a core when a collection was dropped, but documents of it still
+  remained in the WAL.
+
 * Removed external file loading in a used 3rd party library (Web UI).
 
 * Include all requests to the web interface at endpoint `/_admin/aardvark` in
