@@ -1,6 +1,25 @@
 devel
 -----
 
+* Don't move potentially expensive AQL function calls into loops in the 
+  `remove-unnecessary-calculations-rule`.
+
+  For example, in the query
+  
+      LET x = NOOPT(1..100)
+      LET values = SORTED(x)
+      FOR j IN 1..100 
+        FILTER j IN values
+        RETURN j
+
+  there is only one use of the `values` variable. So the optimizer can remove 
+  that variable and replace the filter condition with `FILTER j IN SORTED(x)`. 
+  However, that would move the potentially expensive function call into the 
+  inner loop, which could be a pessimization.
+
+  Now the optimizer will not move the calculation of values into the loop when 
+  it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
+
 * Fixed modification executors inside of a subquery, where the subquery decided to
   fetch all rows from upstream first and the amount of rows is higher then the batch size.
 

@@ -872,7 +872,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       continue;
     }
 
-    // filter variable was introduced a CalculationNode. now check the
+    // filter variable was introduced by a CalculationNode. now check the
     // expression
     auto s = ExecutionNode::castTo<CalculationNode*>(setter);
     auto filterExpression = s->expression();
@@ -962,6 +962,21 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       if (testNode->type == NODE_TYPE_ARRAY &&
           testNode->numMembers() < AstNode::SortNumberThreshold) {
         // number of values is below threshold
+        continue;
+      }
+      
+      if (testNode->type == NODE_TYPE_FCALL && 
+          (static_cast<Function const*>(testNode->getData())->name == "SORTED_UNIQUE" ||
+           static_cast<Function const*>(testNode->getData())->name == "SORTED")) {
+        // we don't need to sort results of a function that already returns sorted
+        // results
+    
+        AstNode* clone = ast->shallowCopyForModify(inNode);
+        TRI_DEFER(FINALIZE_SUBTREE(clone));
+        // set sortedness bit for the IN operator
+        clone->setBoolValue(true);
+        // finally adjust the variable inside the IN calculation
+        filterExpression->replaceNode(clone);
         continue;
       }
 
@@ -2867,14 +2882,33 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           // expression types (V8 vs. non-V8) do not match. give up
           continue;
         }
+       
+        auto otherLoop = other->getLoop();
 
-        if (!n->isInInnerLoop() && rootNode->callsFunction() && other->isInInnerLoop()) {
-          // original expression calls a function and is not contained in a loop
-          // we're about to move this expression into a loop, but we don't want
-          // to move (expensive) function calls into loops
-          continue;
+        if (otherLoop != nullptr && rootNode->callsFunction()) {
+          auto nLoop = n->getLoop();
+
+          if (nLoop != otherLoop) {
+            // original expression calls a function and is not contained in a loop.
+            // we're about to move this expression into a loop, but we don't want
+            // to move (expensive) function calls into loops
+            continue;
+          }
+          VarSet outer = nLoop->getVarsValid();
+          VarSet used;
+          Ast::getReferencedVariables(rootNode, used);
+          bool doOptimize = true;
+          for (auto& it : used) {
+            if (outer.find(it) == outer.end()) {
+              doOptimize = false;
+              break;
+            }
+          }
+          if (!doOptimize) {
+            continue;
+          }
         }
-
+        
         TRI_ASSERT(other != nullptr);
         otherExpression->replaceVariableReference(outVariable, rootNode);
 
