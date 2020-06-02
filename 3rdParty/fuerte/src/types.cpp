@@ -23,6 +23,7 @@
 #include <fuerte/types.h>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 

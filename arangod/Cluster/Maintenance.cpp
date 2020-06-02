@@ -193,7 +193,9 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
     auto const lcol = ldb.get(shname);
-    bool leading = lcol.get(THE_LEADER).copyString().empty();
+    StringRef const localLeader = lcol.get(THE_LEADER).stringRef();
+    bool const leaderTouched = localLeader != LEADER_NOT_YET_KNOWN;
+    bool leading = localLeader.empty();
     auto const properties = compareRelevantProps(cprops, lcol);
 
     auto fullShardLabel = dbname + "/" + colname + "/" + shname;
@@ -257,7 +259,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     // be the leader and now somebody else is the leader. However, it does
     // not handle the case of a controlled leadership resignation, see below
     // in handleLocalShard for this.
-    if (leading != shouldBeLeading && !shouldResign) {
+    if ((leading != shouldBeLeading && !shouldResign) || !leaderTouched) {
       LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
         << "Triggering TakeoverShardLeadership job for shard "
         << dbname << "/" << colname << "/" << shname
@@ -271,7 +273,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {COLLECTION, colname},
                 {SHARD, shname},
                 {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
-                {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
+                {LOCAL_LEADER, localLeader.toString()},
                 {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
                 LEADER_PRIORITY));
     }
@@ -286,7 +288,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       // Index errors are checked in `compareIndexes`. THe loop below only
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
-        for (auto const& index : VPackArrayIterator(difference.slice())) {
+        for (auto && index : VPackArrayIterator(difference.slice())) {
           actions.emplace_back(ActionDescription(
               {{NAME, "EnsureIndex"},
                {DATABASE, dbname},

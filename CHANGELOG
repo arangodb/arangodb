@@ -4,6 +4,9 @@ v3.5.6 (XXXX-XX-XX)
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.
 
+* Fixed bug during startup for follower shards. Follower will be set correctly
+  resulting in less resynchronization.
+
 * Update OpenLDAP to 2.4.50.
 
 * Fix edge cases in RocksDB primary index range lookups for operators >= and <.
