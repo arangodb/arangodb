@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed modification executors inside of a subquery, where the subquery decided to
+  fetch all rows from upstream first and the amount of rows is higher then the batch size.
+
+* Fixed reporting of skipped number of documents if we have a LIMIT x, 0
+  right after the modification.
+
 * Catch exceptions in agency callbacks.
 
 * Fixed issue #11104 case with complex condition on second branch of OR
