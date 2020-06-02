@@ -1,6 +1,8 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Added exceptions catching in agency callbacks.
+
 * Usability improvements for arangodump and arangorestore:
   - when a dump is restricted to one or multiple collections using the 
     `--collection` option of arangodump, warnings are issued for all specified
