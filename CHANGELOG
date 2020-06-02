@@ -1,6 +1,28 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Usability improvements for arangodump and arangorestore:
+  - when a dump is restricted to one or multiple collections using the 
+    `--collection` option of arangodump, warnings are issued for all specified
+    collections that are not present in the database. Previously there were no
+    warnings, so missing a collection by misspelling its name could easily go
+    unnoticed.
+  - when a restore is restricted to one or multiple collections using the
+    `--collection` option of arangorestore, warnings are issued for all
+    specified collections that are not present in the dump. Previously there
+    were no warnings, so missing a collection by misspelling its name could
+    easily go unnoticed.
+  - when a dump was taken using the `--overwrite` option, there was no check
+    that validated whether the encryption mode used in the existing dump
+    directory was the same as the requested encryption mode. This could have led
+    to dump directories with both encrypted and unencrypted files. This was only
+    the case when using `--overwrite true`, which is not the default.
+  - when a restore was performed using the `--encryption.keyfile` option, there
+    was no check whether the to-be-restored files were actually encrypted. Now
+    this check is enforced and arangorestore will bail out with an error if the
+    requested encryption mode for restore is not the same as for the stored dump
+    files.
+
 * Fixed issue ES-609: "Transaction already in use" error when running
   transaction.
 
