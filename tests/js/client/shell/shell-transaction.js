@@ -33,6 +33,8 @@ var internal = require('internal');
 var arangodb = require('@arangodb');
 var db = arangodb.db;
 var testHelper = require('@arangodb/test-helper').Helper;
+var analyzers = require("@arangodb/analyzers");
+const isCluster = internal.isCluster();
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -1496,8 +1498,66 @@ function transactionCollectionsSuite () {
 
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
+    },
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with analyzers usage
+    // //////////////////////////////////////////////////////////////////////////////
+    testAnalyzersRevisionReadSubstitutedAnalyzer: function () {
+      if (!isCluster) {
+        return; // we don`t have revisions for single server. Nothing to check
+      }
+      let analyzerName = "my_analyzer";
+      let obj = {
+        collections: {
+          read: [ cn1 ]
+        }
+      };
+      let trx;
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      analyzers.save(analyzerName,"identity", {});
+      let col = db._collection(cn1);
+      let test_doc = col.save({"test_field":"some"});
+      try {
+        trx = db._createTransaction(obj);
+        // recreating analyzer with same name but different properties
+        analyzers.remove(analyzerName, true);
+        analyzers.save(analyzerName,"ngram", {min:2, max:2, preserveOriginal:true}); 
+        let res = trx.query("FOR d IN @@cn1 FILTER TOKENS(d.test_field, @an)[0] == 'some' RETURN d",
+                   { '@cn1': cn1, 'an':analyzerName });  // query should fail due to substituted analyzer
+        fail();      
+      } catch(err) {
+        assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+        col.remove(test_doc);
+      }
+    },
+    testAnalyzersRevisionRead: function () {
+      let analyzerName = "my_analyzer";
+      let obj = {
+        collections: {
+          read: [ cn1 ]
+        }
+      };
+      let trx;
+      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      analyzers.save(analyzerName,"identity", {});
+      let col = db._collection(cn1);
+      let test_doc = col.save({"test_field":"some"});
+      try {
+        trx = db._createTransaction(obj);
+        let res = trx.query("FOR d IN @@cn1 FILTER TOKENS(d.test_field, @an)[0] == 'some' RETURN d",
+                   { '@cn1': cn1, 'an':analyzerName });  
+        assertEqual(1, res.toArray().length);
+      } finally {
+        if (trx) {
+          trx.commit();
+        }
+        col.remove(test_doc);
+      }
     }
-
   };
 }
 
