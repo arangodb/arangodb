@@ -1561,7 +1561,7 @@ class PropagateConstantAttributesHelper {
 
     if (constantValue != nullptr) {
       // first check if we would optimize away a join condition that uses a smartJoinAttribute...
-      // we must not do that, because that would otherwise disable smart join functionality
+      // we must not do that, because that would otherwise disable SmartJoin functionality
       if (arangodb::ServerState::instance()->isCoordinator() &&
           parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         AstNode const* current = parentNode->getMember(accessIndex == 0 ? 1 : 0);
@@ -1578,7 +1578,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() == nameAttribute->getString()) {
-                  // don't remove a smart join attribute access!
+                  // don't remove a SmartJoin attribute access!
                   return;
                 } else {
                   std::vector<std::string> shardKeys = collection->shardKeys(true);
@@ -3831,8 +3831,8 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
   // an earlier iteration in scatterInClusterRule.
   // We remove that block, effectively moving the SCATTER/REMOTE past the
   // current node
-  // The effect is that in a smart join we get joined up nodes that are
-  // all executed on the DBServer
+  // The effect is that in a SmartJoin we get joined up nodes that are
+  // all executed on the DB-Server
   auto found = false;
   auto* current = at->getFirstParent();
   while (current != nullptr) {
@@ -4159,7 +4159,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
     isSmart = graphNode->isSmart();
     isDisjoint = graphNode->isDisjoint();
 
-    // Note that here we are in the disjoint smart graph case and "collection()" will
+    // Note that here we are in the Disjoint SmartGraph case and "collection()" will
     // give us any collection in the graph, but they're all sharded the same way.
     collection = graphNode->collection();
 
@@ -4964,7 +4964,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   std::map<Collection const*, std::unordered_set<std::string>> modificationRestrictions;
 
   // forward a shard key restriction from one collection to the other if the two collections
-  // are used in a smart join (and use distributeShardsLike on each other)
+  // are used in a SmartJoin (and use distributeShardsLike on each other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current,
                                                std::string const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);
