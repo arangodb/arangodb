@@ -165,11 +165,11 @@ ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
                                                           bool& wasModified);
 
-/// @brief remove scatter/gather and remote nodes for satellite collections
+/// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
 
-/// @brief remove scatter/gather and remote nodes for satellite collections
+/// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
