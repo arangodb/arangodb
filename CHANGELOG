@@ -1,8 +1,10 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Pimped up network send request robustness. 
+
 * Usability improvements for arangodump and arangorestore:
-  - when a dump is restricted to one or multiple collections using the 
+  - when a dump is restricted to one or multiple collections using the
     `--collection` option of arangodump, warnings are issued for all specified
     collections that are not present in the database. Previously there were no
     warnings, so missing a collection by misspelling its name could easily go
