@@ -126,7 +126,9 @@ set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
-
+if (USE_GOOGLE_TESTS)
+  set(USE_TESTS ON)
+endif ()
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)

@@ -624,6 +624,7 @@ if (MSVC)
       ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
   endforeach()
+  #string(REPLACE "debug" "" IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES}") # remove build types (debug, optimized)
 
   set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "lib.exe \"/OUT:${IResearch_STATIC_LIBRARIES_OUT}\" \"$<TARGET_FILE:${IResearch_TARGET_NAME}-static>\" ${IResearch_STATIC_LIBRARIES}")
@@ -632,6 +633,7 @@ if (MSVC)
     OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"
     DEPENDS ${IResearch_TARGET_NAME}-static
     COMMAND ${IResearch_STATIC_LIBRARIES_CMD}
+    COMMENT ${IResearch_STATIC_LIBRARIES}
     #VERBATIM - this causes error: "The input line is too long."
   )
 
@@ -690,7 +692,7 @@ if (MSVC)
 
   set_target_properties(${IResearch_TARGET_NAME}-static-scrt-allinone
     PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-srct,INTERFACE_INCLUDE_DIRECTORIES>"
+    INTERFACE_INCLUDE_DIRECTORIES "$<TARGET_PROPERTY:${IResearch_TARGET_NAME}-static-scrt,INTERFACE_INCLUDE_DIRECTORIES>"
     IMPORTED_LOCATION "${IResearch_STATIC_SCRT_LIBRARIES_OUT}"
   )
 

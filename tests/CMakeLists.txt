@@ -267,6 +267,18 @@ add_executable(
   ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
+if (USE_3RDPARTY_TESTS)
+#target will reference all needed 3rdparty tests
+add_custom_target(arango_3rdparty_tests ALL)
+
+#add iresearch tests
+if(MSVC)
+add_dependencies(arango_3rdparty_tests iresearch-tests-static-scrt)
+else()
+add_dependencies(arango_3rdparty_tests iresearch-tests-static)
+endif()
+
+endif()
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)

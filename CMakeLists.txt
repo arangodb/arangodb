@@ -1123,6 +1123,7 @@ endif ()
 
 add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
+option(USE_3RDPARTY_TESTS "Compile 3rd-party libraries tests" OFF)
 add_subdirectory(3rdParty)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
