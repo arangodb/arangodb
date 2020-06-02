@@ -1,6 +1,11 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-564: Opening a VST connection would leave an extra HttpCommTask
+  object lying around for the life of the server. This accumulation was
+  effectively a memory leak. Additionally, it led to inaccurate reporting of the
+  number of open HTTP connections in the dashboard.
+
 * Added exceptions catching in agency callbacks.
 
 * Usability improvements for arangodump and arangorestore:
