@@ -46,6 +46,11 @@ This contains statically generated files for the IResearch folder, and replaces 
 
 Only used on Linux/Mac, still uses autofoo.
 
+## libunwind
+
+Only used on Linux, still uses autofoo. The "aux" directory has been removed from the
+libtool source because there must not be directories named "aux" on Windows.
+
 ## linenoise-ng
 
 Our maintained fork of linenoise
