@@ -62,6 +62,7 @@ class EdgeConditionBuilder {
   /// _modCondition
   bool _containsCondition;
 
+  EdgeConditionBuilder(Ast*, EdgeConditionBuilder const&);
   explicit EdgeConditionBuilder(AstNode*);
 
   // Create the _fromCondition for the first time.

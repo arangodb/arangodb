@@ -173,7 +173,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
                                          "Edge collection needs to be sharded "
                                          "after shardKeyAttribute parameter ('"
                                          + shardKeyAttribute
-                                         + "'), or use smart graphs. The current shardKey is: "
+                                         + "'), or use SmartGraphs. The current shardKey is: "
                                          + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
 
                                          },

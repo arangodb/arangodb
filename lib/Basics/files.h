@@ -388,18 +388,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetNullBufferFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetNullBufferSizeFiles();
-
 /// @brief creates a new datafile
 /// returns the file descriptor or -1 if the file cannot be created
 int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
@@ -411,13 +399,8 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 bool TRI_PathIsAbsolute(std::string const& path);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the files subsystem
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitializeFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if which is found, value is overwriten, true returned.
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);

@@ -164,7 +164,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node, ExecutionNode* clone
         if (graphNode->isDisjoint()) {
           TRI_ASSERT(graphNode != nullptr);
           TRI_ASSERT(graphNode->isDisjoint());
-          // we've found a disjoint smart graph node, now add the `i` th shard for used collections
+          // we've found a Disjoint SmartGraph node, now add the `i` th shard for used collections
           for (auto const& myExp : permuter->second) {
             std::string const& cName = myExp.first;
             graphNode->addCollectionToShard(cName, *std::next(myExp.second.begin(), _shardId));
@@ -642,8 +642,8 @@ auto QuerySnippet::prepareFirstBranch(
         return {TRI_ERROR_CLUSTER_NOT_LEADER};
       }
 
-      // This is either one shard or a single satellite graph which is not used
-      // as satellite graph or a disjoint smart graph.
+      // This is either one shard or a single SatelliteGraph which is not used
+      // as SatelliteGraph or a Disjoint SmartGraph.
       uint64_t numShards = 0;
       for (auto* aqlCollection : localGraphNode->collections()) {
         // It is of utmost importance that this is an ordered set of Shards.
@@ -656,10 +656,10 @@ auto QuerySnippet::prepareFirstBranch(
         for (auto const& shard : shards) {
           auto found = shardMapping.find(shard);
           TRI_ASSERT(found != shardMapping.end());
-          // We should never have shards on other servers, except for satellite
-          // graphs which are used that way, or satellite collections (in a
-          // OneShard case) because local graphs (on DBServers) only ever occur
-          // in either OneShard, SatelliteGraphs or DisjointSmartGraphs.
+          // We should never have shards on other servers, except for
+          // SatelliteGraphs which are used that way, or SatelliteCollections
+          // (in a OneShard case) because local graphs (on DB-Servers) only ever
+          // occur in either OneShard, SatelliteGraphs or Disjoint SmartGraphs.
           TRI_ASSERT(found->second == server || localGraphNode->isUsedAsSatellite() ||
                      aqlCollection->isSatellite() || localGraphNode->isDisjoint());
           // provide a correct translation from collection to shard
@@ -685,7 +685,7 @@ auto QuerySnippet::prepareFirstBranch(
       }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // additional verification checks for disjoint smart graphs
+      // additional verification checks for Disjoint SmartGraphs
       if (localGraphNode->isDisjoint()) {
         if (!myExpFinal.empty()) {
           size_t numberOfShards = myExpFinal.begin()->second.size();
