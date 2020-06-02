@@ -33,6 +33,11 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
+  let platform = internal.platform;
+  if (platform !== 'linux') {
+    // crash handler only available on Linux
+    return;
+  }
   // produces an assertion failure in the server
   internal.debugTerminate('CRASH-HANDLER-TEST-ASSERT');
 }
