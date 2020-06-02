@@ -909,7 +909,7 @@ arangodb::Result processInputDirectory(
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
     arangodb::RestoreFeature& feature, arangodb::RestoreFeature::Options const& options,
     arangodb::ManagedDirectory& directory,
-    arangodb::RestoreFeature::ProgressTracker& progressTracker,
+    arangodb::RestoreFeature::RestoreProgressTracker& progressTracker,
     arangodb::RestoreFeature::Stats& stats) {
   using arangodb::Logger;
   using arangodb::Result;
@@ -1302,10 +1302,10 @@ void handleJobResult(std::unique_ptr<arangodb::RestoreFeature::JobData>&& jobDat
 namespace arangodb {
 
 RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
-                                 ProgressTracker& progressTracker,
+                                 RestoreProgressTracker& progressTracker,
                                  RestoreFeature::Options const& o,
                                  RestoreFeature::Stats& s, VPackSlice const& c)
-    : directory{d}, feature{f}, progressTracker(progressTracker), options{o}, stats{s}, collection{c} {}
+    : directory{d}, feature{f}, progressTracker{progressTracker}, options{o}, stats{s}, collection{c} {}
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, RestoreFeature::featureName()),
@@ -1766,7 +1766,7 @@ void RestoreFeature::start() {
     }
 
     // TODO load file only when options `--continue` is set
-    ProgressTracker pt(*_directory);
+    RestoreProgressTracker pt(*_directory);
 
     // run the actual restore
     try {
@@ -1830,60 +1830,6 @@ Result RestoreFeature::getFirstError() const {
     }
   }
   return {TRI_ERROR_NO_ERROR};
-}
-
-void RestoreFeature::ProgressTracker::updateStatus(const std::string& collectionName,
-                                                   const RestoreFeature::CollectionStatus& status) {
-  {
-    std::unique_lock guard(_collectionStatesMutex);
-    _collectionStates[collectionName] = status;
-
-    if (_writeQueued) {
-      return;
-    }
-
-    _writeQueued = true;
-  }
-
-  {
-    std::unique_lock guard(_writeFileMutex);
-    VPackBuilder builder;
-    {
-      std::unique_lock guardState(_collectionStatesMutex);
-      _writeQueued = false;
-      VPackObjectBuilder object(&builder);
-
-      for (auto const& [filename, state] : _collectionStates) {
-        builder.add(VPackValue(filename));
-        state.toVelocyPack(builder);
-      }
-    }
-
-    LOG_DEVEL << "Continuation file = " << builder.toJson();
-    arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
-                                                         builder.slice(), true);
-  }
-}
-
-RestoreFeature::CollectionStatus RestoreFeature::ProgressTracker::getStatus(const std::string& collectionName) {
-  std::shared_lock guard(_collectionStatesMutex);
-  return _collectionStates[collectionName]; // intentionally default construct
-}
-
-RestoreFeature::ProgressTracker::ProgressTracker(ManagedDirectory& directory)
-    : directory(directory) {
-  VPackBuilder progressBuilder = directory.vpackFromJsonFile("continue.json");
-  VPackSlice progress = progressBuilder.slice();
-
-  if (progress.isNone()) {
-    return ;
-  }
-
-  // TODO add error checking
-  std::unique_lock guardState(_collectionStatesMutex);
-  for (auto&& [key, value] : VPackObjectIterator(progress)) {
-    _collectionStates[key.copyString()] = CollectionStatus(value);
-  }
 }
 
 RestoreFeature::CollectionStatus::CollectionStatus(VPackSlice slice) {

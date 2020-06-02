@@ -32,6 +32,7 @@
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
+#include "Utils/ProgressTracker.h"
 
 namespace arangodb {
 
@@ -114,25 +115,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     void toVelocyPack(VPackBuilder& builder) const;
   };
 
-  struct ProgressTracker {
-    ProgressTracker(ManagedDirectory& directory);
-
-    ProgressTracker(ProgressTracker const&) = delete;
-    ProgressTracker(ProgressTracker &&) noexcept = delete;
-    ProgressTracker& operator=(ProgressTracker const&) = delete;
-    ProgressTracker& operator=(ProgressTracker &&) noexcept = delete;
-
-    CollectionStatus getStatus(std::string const& collectionName);
-
-    void updateStatus(std::string const& collectionName, CollectionStatus const& status);
-
-    ManagedDirectory& directory;
-    std::shared_mutex _collectionStatesMutex;
-    std::mutex _writeFileMutex;
-    std::unordered_map<std::string, CollectionStatus> _collectionStates;
-    std::atomic<bool> _writeQueued{false};
-  };
-
+  using RestoreProgressTracker = ProgressTracker<CollectionStatus>;
 
   /// @brief Stores stats about the overall restore progress
   struct Stats {
@@ -147,13 +130,13 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   struct JobData {
     ManagedDirectory& directory;
     RestoreFeature& feature;
-    ProgressTracker& progressTracker;
+    RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
 
     VPackSlice collection;
 
-    JobData(ManagedDirectory&, RestoreFeature&, ProgressTracker& progressTracker,
+    JobData(ManagedDirectory&, RestoreFeature&, RestoreProgressTracker& progressTracker,
             Options const&, Stats&, VPackSlice const&);
   };
 
@@ -161,7 +144,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   ClientManager _clientManager;
   ClientTaskQueue<JobData> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
-  std::unique_ptr<ProgressTracker> _progressTracker;
+  std::unique_ptr<RestoreProgressTracker> _progressTracker;
   int& _exitCode;
   Options _options;
   Stats _stats;
