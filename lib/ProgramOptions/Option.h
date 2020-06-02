@@ -39,7 +39,7 @@ enum class Flags : uint16_t {
                                           // --help-all or --help-.
   Obsolete = 2,                           // the option is obsolete. setting it does not influence the
                                           // program behavior
-  Enterprise = 4,                         // the option is only available in the Enterprise edition
+  Enterprise = 4,                         // the option is only available in the Enterprise Edition
   Command = 8,                            // the option executes a special command, e.g. --version,
                                           // --check-configuration, --dump-options
   Dynamic = 16,                           // the option's default value is dynamic and depends on the

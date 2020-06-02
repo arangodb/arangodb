@@ -5489,7 +5489,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we are in the enterprise edition
+/// @brief check if we are in the Enterprise Edition
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -5504,7 +5504,7 @@ static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert errror number to httpCode
+/// @brief convert error number to httpCode
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& args) {
