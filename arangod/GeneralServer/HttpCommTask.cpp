@@ -348,6 +348,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                            std::move(thisPtr->_protocol),
                                            fuerte::vst::VST1_0);
       thisPtr->_server.registerTask(std::move(commTask));
+      thisPtr->close();
       return;  // vst 1.0
 
     } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
@@ -357,6 +358,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                            std::move(thisPtr->_protocol),
                                            fuerte::vst::VST1_1);
       thisPtr->_server.registerTask(std::move(commTask));
+      thisPtr->close();
       return;  // vst 1.1
     }
 
