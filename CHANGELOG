@@ -1,6 +1,12 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue ES-600: log out of LDAP automatically.
+
+  Option `--ldap.allow-offline` was added with `false` value by default to let
+  server use cached offline credentials in case of LDAP server communication was
+  lost and ArangoDB can't prolong cache online.
+
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.
 
