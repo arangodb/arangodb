@@ -534,7 +534,7 @@ public:
 private:
     void insert( broker_type* child );
     void erase( broker_type* child, Integral by );
-    std::mutex serializer_;
+    mutable std::mutex serializer_;
     typedef std::unordered_set< broker_type* > set_type;
     set_type children_;
 };
@@ -640,7 +640,7 @@ public:
 private:
     void insert( broker_type* child );
     void erase( broker_type* child, Integral by );
-    std::mutex serializer_;
+    mutable std::mutex serializer_;
     typedef std::unordered_set< broker_type* > set_type;
     set_type children_;
 };

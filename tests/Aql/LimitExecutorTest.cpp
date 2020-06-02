@@ -526,7 +526,7 @@ class LimitExecutorWaitingFullCountTest
 
 void removeWaiting(std::vector<ExecutorStepResult>& results) {
   std::vector<ExecutorStepResult> tmp;
-  for (auto const result : results) {
+  for (auto const& result : results) {
     if (std::get<ExecutionState>(result) != ExecutionState::WAITING) {
       tmp.emplace_back(result);
     }
