@@ -2264,7 +2264,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     compactionWrite = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
     userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
     builder.add("rocksdbengine.write.amplification.x100",
-                VPackValue( (0 != userWrite) ? ((walWrite+flushWrite+compactionWrite)*100)/userWrite : 100));
+                VPackValue( (0 != userWrite) ? ((walWrite + flushWrite + compactionWrite) * 100) / userWrite : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;

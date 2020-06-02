@@ -237,10 +237,13 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
   collectionBuilder.close();
-
+  
+  // simon: making this write breaks queries where DOCUMENT function
+  // is used in a coordinator-snippet above a DBServer-snippet
+  AccessMode::Type access = AccessMode::Type::READ;
   // creates a StandaloneContext or a leased context
-  auto ctx = createTransactionContext();
-  auto query = std::make_unique<ClusterQuery>(ctx, std::move(options));
+  auto q = std::make_unique<ClusterQuery>(createTransactionContext(access),
+                                          std::move(options));
   
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
@@ -249,19 +252,18 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
 
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
-  
-  answerBuilder.add("queryId", VPackValue(query->id()));
+  answerBuilder.add("queryId", VPackValue(q->id()));
   auto analyzersRevision = VelocyPackHelper::getNumericValue<AnalyzersRevision::Revision>(
       querySlice, StaticStrings::ArangoSearchAnalyzersRevision,
       AnalyzersRevision::MIN);
-  query->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
-                             variablesSlice, snippetsSlice,
-                             traverserSlice, answerBuilder, analyzersRevision);
+  q->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
+                         variablesSlice, snippetsSlice,
+                         traverserSlice, answerBuilder, analyzersRevision);
 
   answerBuilder.close(); // result
   answerBuilder.close();
   
-  _queryRegistry->insertQuery(std::move(query), ttl);
+  _queryRegistry->insertQuery(std::move(q), ttl);
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }

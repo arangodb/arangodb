@@ -1315,7 +1315,7 @@ void ClusterQuery::prepareClusterQuery(SerializationFormat format,
                                        VPackBuilder& answerBuilder,
                                        arangodb::AnalyzersRevision::Revision analyzersRevision) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                             << "Query::prepareQuerySnippets"
+                                             << "ClusterQuery::prepareClusterQuery"
                                              << " this: " << (uintptr_t)this;
 
   init();
@@ -1425,10 +1425,9 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
-       << TRI_microtime() - _startTime << " "
-       << "Query::finalizeSnippets: before _trx->commit"
-       << " this: " << (uintptr_t)this;
-
+      << TRI_microtime() - _startTime << " "
+      << "Query::finalizeSnippets: before _trx->commit, errorCode: " << errorCode
+      << ", this: " << (uintptr_t)this;
   for (auto& [eId, engine] : _snippets) {
     engine->setShutdown(); // no need to pass through shutdown
 
@@ -1460,6 +1459,15 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
 
   _snippets.clear();
   _traversers.clear();
+<<<<<<< HEAD
 
+=======
+
+  LOG_TOPIC("5fde0", DEBUG, Logger::QUERIES)
+      << TRI_microtime() - _startTime << " "
+      << "ClusterQuery::finalizeClusterQuery: done"
+      << " this: " << (uintptr_t)this;
+
+>>>>>>> origin/devel
   return finishResult;
 }

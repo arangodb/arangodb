@@ -23,6 +23,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -32,16 +33,37 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+EdgeConditionBuilder::EdgeConditionBuilder(Ast* ast, EdgeConditionBuilder const& other)
+    : _fromCondition(nullptr),
+      _toCondition(nullptr),
+      _modCondition(nullptr),
+      _containsCondition(false) {
+  if (other._modCondition != nullptr) {
+    TRI_ASSERT(other._modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+    _modCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    TRI_ASSERT(_modCondition != nullptr);
+
+    size_t n = other._modCondition->numMembers();
+    if (other._containsCondition) {
+      TRI_ASSERT(n > 0);
+      n = n - 1;
+    }
+    _modCondition->reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+      _modCondition->addMember(other._modCondition->getMember(i));
+    }
+  }
+}
+
 EdgeConditionBuilder::EdgeConditionBuilder(AstNode* modCondition)
     : _fromCondition(nullptr),
       _toCondition(nullptr),
       _modCondition(modCondition),
       _containsCondition(false) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_modCondition != nullptr) {
     TRI_ASSERT(_modCondition->type == NODE_TYPE_OPERATOR_NARY_AND);
   }
-#endif
 }
 
 void EdgeConditionBuilder::addConditionPart(AstNode const* part) {
