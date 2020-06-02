@@ -606,7 +606,7 @@ function doOnePathInner (path) {
 }
 
 function scanTestPaths (paths, options) {
-  // add enterprise tests
+  // add Enterprise Edition tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;

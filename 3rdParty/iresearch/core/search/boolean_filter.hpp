@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "filter.hpp"
+#include "all_filter.hpp"
 #include "utils/iterator.hpp"
 
 NS_ROOT
@@ -73,16 +74,9 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
   explicit boolean_filter(const type_info& type) noexcept;
   virtual bool equals(const filter& rhs) const noexcept override;
 
-  virtual void remove_excess(
-      std::vector<const filter*>& /*incl*/,
-      std::vector<const filter*>& /*excl*/,
-      boost_t& /*boost*/) const {
-    // noop
-  }
-
   virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
+    std::vector<const filter*>& incl,
+    std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
@@ -91,8 +85,7 @@ class IRESEARCH_API boolean_filter : public filter, private util::noncopyable {
  private:
   void group_filters(
     std::vector<const filter*>& incl,
-    std::vector<const filter*>& excl
-  ) const;
+    std::vector<const filter*>& excl) const;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   filters_t filters_;
@@ -115,15 +108,9 @@ class IRESEARCH_API And: public boolean_filter {
   using filter::prepare;
 
  protected:
-  virtual void remove_excess(
+  virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    boost_t& boost
-  ) const override;
-
-  virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
@@ -159,14 +146,9 @@ class IRESEARCH_API Or : public boolean_filter {
   }
 
  protected:
-  virtual void remove_excess(
+  virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& excl,
-    boost_t& boost) const override;
-
-  virtual filter::prepared::ptr prepare(
-    const std::vector<const filter*>& incl,
-    const std::vector<const filter*>& excl,
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,

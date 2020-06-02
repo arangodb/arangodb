@@ -552,6 +552,11 @@ void RocksDBEngine::start() {
   } else {
     tableOptions.no_block_cache = true;
   }
+  tableOptions.cache_index_and_filter_blocks = opts._cacheIndexAndFilterBlocks;
+  tableOptions.cache_index_and_filter_blocks_with_high_priority = opts._cacheIndexAndFilterBlocksWithHighPriority;
+  tableOptions.pin_l0_filter_and_index_blocks_in_cache = opts._pinl0FilterAndIndexBlocksInCache;
+  tableOptions.pin_top_level_index_and_filter = opts._pinTopLevelIndexAndFilter;
+
   tableOptions.block_size = opts._tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   // use slightly space-optimized format version 3
@@ -2142,7 +2147,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
       if (name.front() != 'r') {
-        name = EngineName + "_" + name ; 
+        name = EngineName + "_" + name; 
       }
       result += "#TYPE " + name +
         " counter\n" + "#HELP " + name + " " + name + "\n" +

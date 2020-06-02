@@ -641,7 +641,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     std::shuffle(dbServers.begin(), dbServers.end(), g);
   }
 
-  // mop: distribute satellite collections on all servers
+  // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
     replicationFactor = dbServers.size();
   }
@@ -3146,7 +3146,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
 #ifdef USE_ENTERPRISE
-    // Will never be called in community
+    // Will never be called in Community Edition
     bool autoUpgradeNeeded;   // not actually used
     if (!RocksDBHotBackup::versionTestRestore(meta._version, autoUpgradeNeeded)) {
       events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);

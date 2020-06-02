@@ -154,7 +154,7 @@ make sure the global (mocked) version is used instead.
 
 ### Temporary files and temp directories
 
-Depending on the native way ArangoDB tries to locate the temporary directory.
+Depending on the platform, ArangoDB tries to locate the temporary directory:
 
 - Linux/Mac: the environment variable `TMPDIR` is evaluated.
 - Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
@@ -184,7 +184,7 @@ Mode:
 ### Runtime
 
 - start arangod with `--console` to get a debug console
-- Cheapen startup for valgrind: `--server.rest-server false --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1`
+- Cheapen startup for valgrind: `--server.rest-server false`
 - to have backtraces output set this on the prompt: `ENABLE_NATIVE_BACKTRACES(true)`
 
 ### Startup
@@ -218,45 +218,46 @@ You now will get log entries with the contents being passed between the blocks.
 
 ### Crashes
 
-The Linux and MacOS builds of the arangod execuable contain a built-in crash handler. 
-The crash handler is supposed to log basic crash information to the ArangoDB logfile in 
-case the arangod process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or 
-SIGABRT. 
+The Linux builds of the arangod execuable contain a built-in crash handler
+(introduced in v3.7.0).
+The crash handler is supposed to log basic crash information to the ArangoDB logfile in
+case the arangod process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or
+SIGABRT. SIGKILL signals, which the operating system can send to a process in case of OOM
+(out of memory), are not interceptable and thus cannot be intercepted by the crash handler,
 
-By design, it cannot kick in in case the operating system sends a SIGKILL signal to the 
-arangod process in case of OOM (out of memory).
+In case the crash handler receives one of the mentioned interceptable signals, it will
+write basic crash information to the logfile and a backtrace of the call site.
+The backtrace can be provided to the ArangoDB support for further inspection. Note that
+backtaces are only usable if debug symbols for ArangoDB have been installed as well.
 
-If possible, the crash handler will also write a backtrace to the logfile, so the crash 
-location can be found later. This however will only work if there is no heap corruption.
+After logging the crash information, the crash handler will execute the default action for
+the signal it has caught. If core dumps are enabled, the default action for these signals
+is to generate a core file. If core dumps are not enabled, the crash handler will simply
+terminate the program with a non-zero exit code.
 
-An example log entry from the crash handler looks like this:
+The crash handler can be disabled at server start by setting the environment variable
+`ARANGODB_OVERRIDE_CRASH_HANDLER` to `0` or `off`. 
+
+An example log output from the crash handler looks like this:
 ```
-2020-02-17T11:31:53Z [24539] ERROR [a7902] {crash} ArangoDB 3.7.0-devel enterprise [linux], thread 0, tid 24539 [main] caught unexpected signal 11 (SIGSEGV) accessing address 0x000003e800005fd4. displaying 8 stack frame(s). use addr2line to resolve addresses!
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #2: /lib/x86_64-linux-gnu/libpthread.so.0(pthread_cond_timedwait+0x250) [0x7fb2260096e0]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #3: build/bin/arangod(+0x2036398) [0x55eefeaad398]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #4: build/bin/arangod(+0x1f24509) [0x55eefe99b509]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #5: build/bin/arangod(+0x1f2b24e) [0x55eefe9a224e]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #6: build/bin/arangod(+0x518042) [0x55eefcf8f042]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #7: build/bin/arangod(+0x4b00d7) [0x55eefcf270d7]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #8: /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf3) [0x7fb2257061e3]
-2020-02-17T11:31:53Z [24539] INFO [308c2] {crash} - frame #9: build/bin/arangod(+0x5175de) [0x55eefcf8e5de]
-2020-02-17T11:31:53Z [24539] INFO [ded81] {crash} available physical memory: 41721982976, rss usage: 301981696, vsz usage: 1245282304, threads: 46
+2020-05-26T23:26:10Z [16657] FATAL [a7902] {crash} ArangoDB 3.7.1-devel enterprise [linux], thread 22 [Console] caught unexpected signal 11 (SIGSEGV) accessing address 0x0000000000000000: signal handler invoked
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 1 [0x00007f9124e93ece]: _ZN12_GLOBAL__N_112crashHandlerEiP9siginfo_tPv (+0x000000000000002e)
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 2 [0x00007f912687bfb2]: sigprocmask (+0x0000000000000021)
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 3 [0x00007f9123e08024]: _ZN8arangodb3aql10Expression23executeSimpleExpressionEPKNS0_7AstNodeEPNS_11transaction7MethodsERbb (+0x00000000000001c4)
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 4 [0x00007f9123e08314]: _ZN8arangodb3aql10Expression7executeEPNS0_17ExpressionContextERb (+0x0000000000000064)
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 5 [0x00007f9123feaab2]: _ZN8arangodb3aql19CalculationExecutorILNS0_15CalculationTypeE0EE12doEvaluationERNS0_15InputAqlItemRowERNS0_16OutputAqlItemRowE (+0x0000000000000062)
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 6 [0x00007f9123feae85]: _ZN8arangodb3aql19CalculationExecutorILNS0_15CalculationTypeE0EE11produceRowsERNS0_22AqlItemBlockInputRangeERNS0_16OutputAqlItemRowE (+0x00000000000000f5)
+...
+2020-05-26T23:26:10Z [16657] INFO [308c3] {crash} frame 31 [0x000018820ffc6d91]: *no symbol name available for this frame
+2020-05-26T23:26:10Z [16657] INFO [ded81] {crash} available physical memory: 41721995264, rss usage: 294256640, vsz usage: 1217839104, threads: 46
 Segmentation fault (core dumped)
 ```
-The stack trace contains some offsets into the executable, which can be resolved to
-source code locations by invoking the `addr2line` utility using the offset from the
-stack trace and the very same arangod executable.
-
-For example, to resolve the offset `+0x2036398` from frame 3, addr2line can be used
-as follows:
-```
-addr2line -e /path/to/arangod +0x2036398
-```
-When invoking addr2line, it is absolutely necessary to use the exact same executable
-as when the crash happened. Otherwise the offsets will not match and invoking addr2line
-will only produce garbage.
-In case a release build is used, it will be useful to install debug symbols first.
-Otherwise, addr2line will likely resolve offsets to just `??:?`, which will not help.
+The first line of the crash output will contain the cause of the crash (SIGSEGV in
+this case). The following lines contain information about the stack frames. The 
+hexadecimal value presented for each frame is the instruction pointer, and if debug 
+symbols are installed, there will be name information about the called procedures (in
+mangled format) plus the offsets into the procedures. If no debug symbols are
+installed, symbol names and offsets cannot be shown for the stack frames.
 
 ### Core Dumps
 
@@ -370,7 +371,7 @@ using gdb:
 ##### Installing GDB 8 on RedHat7 or Centos7
 
 RedHat7 and Centos7 have a package called `devtoolset-7` which contains a
-complete set of relative modern development tools. It can be installed by doing
+complete set of relative modern development tools. It can be installed by running
 
 ```
 sudo yum install devtoolset-7
@@ -397,7 +398,7 @@ information. We may now start GDB and inspect whats going on:
 
     gdb /usr/sbin/arangod /var/tmp/*25216*
 
-These commands give usefull information about the incident:
+These commands give useful information about the incident:
 
     backtrace full
     thread apply all bt
