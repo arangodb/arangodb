@@ -1,7 +1,87 @@
 devel
 -----
 
-* Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6 
+* Catch exceptions in agency callbacks.
+
+* Fixed issue #11104 case with complex condition on second branch of OR
+  operator.
+
+* Fixed bad behavior when dropping followers. A follower should be dropped
+  immediately when it is officially FAILED, not only after a longish timeout.
+
+* Fixed a bug in CollectionNameResolver which could lead to an extended
+  busy spin on a core when a collection was dropped, but documents of it
+  still remained in the WAL.
+
+* Fixed return value of fuerte::H1Connection in case of timeout.
+
+* Usability improvements for arangodump and arangorestore:
+  - when a dump is restricted to one or multiple collections using the 
+    `--collection` option of arangodump, warnings are issued for all specified
+    collections that are not present in the database. Previously there were
+    no warnings, so missing a collection by misspelling its name could easily
+    go unnoticed.
+  - when a restore is restricted to one or multiple collections using the 
+    `--collection` option of arangorestore, warnings are issued for all specified
+    collections that are not present in the dump. Previously there were
+    no warnings, so missing a collection by misspelling its name could easily
+    go unnoticed.
+  - when a dump was taken using the `--overwrite` option, there was no check
+    that validated whether the encryption mode used in the existing dump
+    directory was the same as the requested encryption mode. This could have
+    led to dump directories with both encrypted and unencrypted files. This
+    was only the case when using `--overwrite true`, which is not the default.
+  - when a restore was performed using the `--encryption.keyfile` option, 
+    there was no check whether the to-be-restored files were actually encrypted.
+    Now this check is enforced and arangorestore will bail out with an error
+    if the requested encryption mode for restore is not the same as for the
+    stored dump files.
+
+* Fixed traversal issue: If you have a traversal with different minDepth and maxDepth
+  values and filter on path elements that are larger then minDepth, in a way that a
+  shorter path would match the condition, the shorter paths would in some cases
+  not be returned, even if they are valid. e.g.
+
+  FOR v, e, p IN 1..3 OUTBOUND @start Graph "myGraph"
+    FILTER p.vertices[2].label != "foo"
+    RETURN p
+
+  In the above query, a path of length 1 would be valid. There p.vertices[2]
+  does not exist => Evaluated to `null`. `null`.label is again evaluated to `null`
+  => `null != "foo"` is true, so the path is valid.
+
+* Fixed traversal issue: If you have a filter on the path that is based on a
+  variable value, which could not be deduced as constant during runtime, in
+  a sharded GeneralGraph the filter was not applied correctly.
+  SmartGraphs and SingleServer traversals are not effected by this issue.
+  Also OneShard traversals are not effected.
+
+* Added `securityScheme`, `securityScope` and `security` methods to Foxx
+  endpoints to allow defining Swagger security schemes.
+
+* Foxx routes now always have a Swagger `operationId`. If the route is unnamed,
+  a distinct operationId will be generated based on the HTTP method and URL.
+
+* Fixed, if you have a collection access within a Subquery, where the main query is fully skipped
+  and the "splice-subqueries" rule is active. The information of the skip was not transported
+  correctly. This could cause incorrect counting reports.
+  If splice-subqueries are disabled, or the main-query is only partly skipped, everything worked
+  as expected.
+
+* Expanded -std=c++17 flag to all compilers.
+
+* Include all requests to the web interface at endpoint `/_admin/aardvark` in 
+  a node's requests statistics. Previously, requests going to `/_admin/aardvark`
+  were excluded from the request statistics if and only if the requested
+  database was the `_system` database.
+
+* Fixed an issue with truncate of a collection after a dbserver was restarted
+  very quickly. This could block arangosync from making progress because the
+  _jobs collection could no longer be truncated.
+
+* Web UI is now using pre-compiled templates.
+
+* Fixed issue #11652: Error: AQL: missing variable #2 (1) for node #6
   (FilterNode) while planning registers.
 
 * Fixed internal issue #650: Added analyzer cache update before ArangoSearch

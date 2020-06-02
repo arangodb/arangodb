@@ -1,0 +1,53 @@
+
+  <div id="scaleContent" class="innerContent">
+
+  <% var genClass = "pure-u-1-5";%>
+
+    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
+      <div class="pure-table-row">
+        <div class="<%= genClass %> left">Type</div>
+        <div class="<%= genClass %> mid">Running</div>
+        <div class="<%= genClass %> mid">Planned</div>
+        <div class="<%= genClass %> mid">Status</div>
+        <div class="<%= genClass %> right"></div>
+      </div>
+    </div>
+
+    <div class="pure-g cluster-nodes pure-table pure-table-body">
+
+        <div class="pure-table-row noHover">
+          <div class="<%= genClass %> left">Coordinators</div>
+          <div class="<%= genClass %> mid" id="runningCoords"><%= runningCoords %></div>
+          <% if (initialized === true) { %>
+            <div class="<%= genClass %> mid" id="plannedCoords"></div>
+            <div class="<%= genClass %> mid" id="statusCoords"></div>
+          <% } else { %>
+            <div class="<%= genClass %> mid" id="plannedCoords"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+            <div class="<%= genClass %> mid" id="statusCoords"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+          <% } %>
+          <div class="<%= genClass %> actions right">
+            <i class="fa fa-minus-circle" aria-hidden="true" id="removeCoord"></i>
+            <i class="fa fa-plus-circle" aria-hidden="true" id="addCoord"></i>
+          </div>
+        </div>
+
+        <div class="pure-table-row noHover">
+          <div class="<%= genClass %> left">DBServers</div>
+          <div class="<%= genClass %> mid" id="runningDBs"><%= runningDBs %></div>
+          <% if (initialized === true) { %>
+            <div class="<%= genClass %> mid" id="plannedDBs"></div>
+            <div class="<%= genClass %> mid" id="statusDBs"></div>
+          <% } else { %>
+            <div class="<%= genClass %> mid" id="plannedDBs"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+            <div class="<%= genClass %> mid" id="statusDBs"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+          <% } %>
+          <div class="<%= genClass %> actions right">
+            <i class="fa fa-minus-circle" aria-hidden="true" id="removeDBs"></i>
+            <i class="fa fa-plus-circle" aria-hidden="true" id="addDBs"></i>
+          </div>
+        </div>
+
+    </div>
+
+  </div>
+

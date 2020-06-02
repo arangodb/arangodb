@@ -1,0 +1,32 @@
+<div class="loginFixedWindow">
+
+  <div id="loginWindow" class="login-window">
+    <div class="login-logo-round">
+      <img id="ArangoDBLogoVersion"src="img/arangodb-edition-login-optimized.png" />
+    </div>
+    <p class="wrong-credentials" style="display:none">Login failed!</p>
+    <p id="noAccess" class="no-access" style="display:none">Database not found!</p>
+    <p class="checking-password" style="display:none">
+      <i class="fa fa-circle-o-notch fa-spin fa-fw"></i>
+      <span class="sr-only">Loading...</span>
+    </p>
+    <form id="loginForm">
+      <input class="login-input" placeholder="username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
+      <input class="login-input" placeholder="password" id="loginPassword" type="password" name="password" autocomplete="off"><i class="fa fa-lock"></i>
+
+
+      <button id="submitLogin" class="button-success pull-right">Login</button>
+    </form>
+
+    <div id="databases" style="display: none">
+      <form id="dbForm">
+          <i class="fa fa-database"></i>
+          <select id="loginDatabase">
+            <option>database</option>
+          </select>
+          <button id="goToDatabase" class="button-success pull-right">Select</button>
+      </form>
+      <button id="logout" class="button-danger pull-right">Logout</button>
+    </div>
+  </div>
+</div>

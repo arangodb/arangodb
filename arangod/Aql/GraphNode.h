@@ -68,7 +68,7 @@ class GraphNode : public ExecutionNode {
 
  public:
   bool isUsedAsSatellite() const;
-  bool isSatelliteNode() const;
+  bool isLocalGraphNode() const;
   void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
 
   bool isEligibleAsSatelliteTraversal() const;

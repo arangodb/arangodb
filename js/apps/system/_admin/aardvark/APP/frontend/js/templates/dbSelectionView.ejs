@@ -1,0 +1,35 @@
+<a href="#" class="tab disabled" id="dbselection"><div class="dbselection"><i class="fa fa-database"></i><span class="db-name">DB: </span> <%=current%>
+<!-- <i class="fa fa-caret-square-o-down"></i> -->
+</div>
+<!-- <b class="caret"></b> -->
+</a>
+
+<!--
+<ul class="link-dropdown-menu" id="dbs_dropdown">
+<%
+if (list.length > 0) {
+%>
+    <li class="dropdown-header">Databases</li>
+  <%
+    _.each(list, function(i) {
+  %>
+    <li class="dropdown-item">
+        <a id=<%=i%> class="dbSelectionLink tab" href="#"><%=i%></a>
+    </li>
+  <%
+    });
+  %>
+<%
+}
+%>
+    <% if (current === "_system") { %>
+    <% if (list.length >= 2) { %>
+      <li class="divider"></li>
+    <% } %>
+    <li class="dropdown-header">Manager</li>
+    <li id="databaseNavi" class="dropdown-item">
+      <a id="databases" class="tab" href="#databases">Manage Databases</a>
+    </li>
+    <% } %>
+</ul>
+-->

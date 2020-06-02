@@ -1,0 +1,28 @@
+  <tr class="tableRow" id="row_newEdgeDefinitions<%= number%>">
+    <th class="collectionTh">Edge definitions*:</th>
+    <th class="collectionTh">
+      <input type="hidden" id="newEdgeDefinitions<%= number%>" value="" placeholder="Edge definitions" tabindex="-1" class="select2-offscreen">
+      <button id="remove_newEdgeDefinitions<%= number%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+    </th><th>
+    <span class="modalTooltips arangoicon icon_arangodb_info" title="An edge definition defines a relation of the graph">
+    </span>
+    </th>
+  </tr>
+  <tr class="tableRow" id="row_fromCollections<%= number%>">
+    <th class="collectionTh">fromCollections*:</th>
+    <th class="collectionTh">
+      <input type="hidden" id="fromCollections<%= number%>" value="" placeholder="fromCollections" tabindex="-1" class="select2-offscreen">
+    </th><th>
+    <span class="modalTooltips arangoicon icon_arangodb_info" title="The collection that contain the start vertices of the relation.">
+    </span>
+  </th>
+  </tr>
+  <tr class="tableRow" id="row_toCollections<%= number%>">
+    <th class="collectionTh">toCollections*:</th>
+    <th class="collectionTh">
+      <input type="hidden" id="toCollections<%= number%>" value="" placeholder="toCollections" tabindex="-1" class="select2-offscreen">
+    </th><th>
+    <span class="modalTooltips arangoicon icon_arangodb_info" title="The collection that contain the end vertices of the relation.">
+    </span>
+  </th>
+  </tr>

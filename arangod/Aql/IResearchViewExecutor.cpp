@@ -396,7 +396,7 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size()),
-      _ctx(_trx, infos.getQuery(), _regexCache,
+      _ctx(_trx, infos.getQuery(), _aqlFunctionsInternalCache,
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _filterCtx(_ctx),  // arangodb::iresearch::ExpressionExecutionContext
       _reader(infos.getReader()),

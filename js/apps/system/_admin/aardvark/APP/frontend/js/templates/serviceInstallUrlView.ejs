@@ -1,0 +1,36 @@
+
+  <div class="arangoToolbar arangoToolbarTop arangoFoxxToolbarTop">
+    <div class="pull-left">
+    </div>
+
+    <div class="pull-right">
+    </div>
+  </div>
+
+  <div class="contentDiv createModalDialog">
+    <div id="urlFoxx" class="foxxesInner modal-body" style="min-height: 150px;">
+        <div>
+          <p>
+            Download a Foxx service from a public available url. Access using credentials in the URL is allowed (https://username:password@www.example.com/). 
+          </p>
+          <table>
+            <tr class="tableRow">
+              <th class="collectionInfoTh">
+                URL*:
+              </th>
+              <th class="collectionInfoTh">
+                <input type="text" id="repository" value="" placeholder="https://www.example.com/foxx.zip">
+              </th>
+            </tr>
+          </table>
+        </div>
+    </div>
+    <div class="modal-footer">
+      <% if (upgrade) { %>
+        <button id="installUrlService" class="button-success" style="float:right" disabled>Replace</button>
+      <% } else { %>
+        <button id="installUrlService" class="button-success" style="float:right" disabled>Install</button>
+      <% } %>
+    </div>
+  </div>
+

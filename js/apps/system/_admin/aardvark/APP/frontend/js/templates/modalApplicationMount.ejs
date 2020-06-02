@@ -1,0 +1,173 @@
+  <table>
+    <tr class="tableRow">
+      <% if (content === true) { %>
+        <th class="collectionInfoTh">
+          Run teardown:
+        </th>
+        <th class="collectionInfoTh">
+          <input type="checkbox" id="new-app-teardown"></input>
+        </th>
+      <% } else { %>
+        <th class="collectionInfoTh">
+          Mount*:
+        </th>
+        <th class="collectionInfoTh">
+          <input type="text" id="new-app-mount" value="" placeholder="/my/foxx"></input>
+        </th>
+        <th>
+          <span class="modalTooltips arangoicon icon_arangodb_info" title="The path the app will be mounted. Has to start with /. Is not allowed to start with /_">
+          </span>
+        </th>
+      <% } %>
+    </tr>
+  </table>
+
+  <ul id="infoTab" class="nav nav-tabs">
+    <li><a href="#newApp" data-toggle="tab" id="tab-new">New Service</a></li>
+    <li class="active"><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodb_logo_small.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
+    <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
+    <li><a href="#zip" data-toggle="tab" id="tab-zip">Upload</a></li>
+  </ul>
+
+  <div class="tab-content" id="tab-content-application-info">
+
+    <div class="tab-pane" id="newApp">
+      <table id="new-app-information">
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Author*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-author" value="" placeholder="Your Name">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Name*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-name" value="" placeholder="Name of the Service">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Description*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-description" value="" placeholder="Please describe your Service here">
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            License*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="text" id="new-app-license" value="" placeholder="Apache 2"></input>
+          </th>
+        </tr>
+        <!--
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Authentication*:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="checkbox" id="new-app-authenticate" checked></input>
+          </th>
+        </tr>
+        -->
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Document Collections:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="hidden" id="new-app-document-collections" value="" placeholder="Document Collections"></input>
+          </th>
+          <th>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="A list of document collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+            </span>
+          </th>
+        </tr>
+        <tr class="tableRow">
+          <th class="collectionInfoTh">
+            Edge Collections:
+          </th>
+          <th class="collectionInfoTh">
+            <input type="hidden" id="new-app-edge-collections" value="" placeholder="Edge Collections"></input>
+          </th>
+          <th>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="A list of edge collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+            </span>
+          </th>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tab-pane active" id="appstore">
+      <table id="appstore-content">
+        <tr>
+          <td>Fetching data...</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tab-pane" id="github">
+      <div>
+        <p>
+          Download a Foxx service from a public <a href="https://www.github.com">github.com</a> repository. In order to define a version please add a <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">git tag</a> to your repository using the following format: "v1.2.3". To connect to github your username and the name of the repository are sufficient.
+        </p>
+        <table>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Repository*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="repository" value="" placeholder="username/repository">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Version*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="tag" value="" placeholder="master">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Enable Legacy Mode:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="checkbox" id="github-app-islegacy" value="true">
+            </th>
+          <th>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
+            </span>
+          </th>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="zip">
+      <div>
+        <p>
+Upload a Foxx service bundle. The Foxx service bundle should be a zip archive containing all service files as a directory structure, including the manifest and any required <code style="padding: 0px 2px; font-weight: 10pt;">node_modules</code> dependencies. If your service doesn't have any dependencies, configuration or scripts you can also upload a single JavaScript file that will act as the service's entry point or "main" file.
+        </p>
+        <table>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Enable Legacy Mode:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="checkbox" id="zip-app-islegacy" value="true">
+            </th>
+          <th>
+            <span class="modalTooltips arangoicon icon_arangodb_info" title="Legacy Compatibility Mode allows mounting some Foxx services written for ArangoDB 2.8 or older. This overrides the ArangoDB version specified in the service manifest. See the Foxx documentation for more information on running legacy services in ArangoDB 3.">
+            </span>
+          </th>
+          </tr>
+        </table>
+      </div>
+      <div id="upload-foxx-zip">Upload File</div>
+    </div>
+  </div>

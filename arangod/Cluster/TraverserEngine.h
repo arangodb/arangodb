@@ -44,6 +44,7 @@ class Context;
 namespace aql {
 class Collections;
 class QueryContext;
+class VariableGenerator;
 }  // namespace aql
 
 namespace graph {
@@ -85,7 +86,7 @@ class BaseEngine {
   virtual EngineType getType() const = 0;
 
   virtual bool produceVertices() const { return true; }
-
+  
  protected:
   arangodb::aql::QueryContext& _query;
   transaction::Methods* _trx;
@@ -121,9 +122,15 @@ class BaseTraverserEngine : public BaseEngine {
   
   bool produceVertices() const override;
  
+  // Inject all variables from VPack information
+  void injectVariables(arangodb::velocypack::Slice variables);
+
+  aql::VariableGenerator const* variables() const;
+
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
+  aql::VariableGenerator const* _variables;
 };
 
 class ShortestPathEngine : public BaseEngine {
