@@ -138,6 +138,7 @@ set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
 if (USE_GOOGLE_TESTS)
+  set(GTEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/6.8/gtest-1.8.1/fused-src/gtest/")
   set(USE_TESTS ON)
 endif ()
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
