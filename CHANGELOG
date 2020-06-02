@@ -1,6 +1,17 @@
 devel
 -----
 
+* Added multiple RocksDB configuration options to arangod:
+  * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
+    also include RocksDB memtable sizes
+  * `--rocksdb.cache-index-and-filter-blocks-with-high-priority` to use cache index
+    and filter blocks with high priority making index and filter blocks be less
+    likely to be evicted than data blocks
+  * `--rocksdb.pin-l0-filter-and-index-blocks-in-cache` make filter and index blocks
+    be pinned and only evicted from cache when the table reader is freed
+  * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
+    filter and index blocks pinned and only be evicted from cache when the table reader is freed
+
 * Don't move potentially expensive AQL function calls into loops in the 
   `remove-unnecessary-calculations-rule`.
 
@@ -26,7 +37,7 @@ devel
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
   right after the modification.
 
-* Catch exceptions in agency callbacks.
+* Added exceptions catching in agency callbacks.
 
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.

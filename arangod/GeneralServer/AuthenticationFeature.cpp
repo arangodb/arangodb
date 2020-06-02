@@ -282,6 +282,24 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
       << "loading JWT secrets from folder " << _jwtSecretFolderProgramOption;
 
   auto list = basics::FileUtils::listFiles(_jwtSecretFolderProgramOption);
+
+  // filter out empty filenames, hidden files, tmp files and symlinks
+  list.erase(std::remove_if(list.begin(), list.end(),
+      [this](std::string const& file) {
+        if (file.empty() || file[0] == '.') {
+          return true;
+        }
+        if (file.size() >= 4 && file.substr(file.size() - 4, 4) == ".tmp") {
+          return true;
+        }
+        auto p = basics::FileUtils::buildFilename(_jwtSecretFolderProgramOption, file);
+        if (basics::FileUtils::isSymbolicLink(p)) {
+          return true;
+        }
+        return false;
+      }),
+      list.end());
+
   if (list.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "empty JWT secrets directory");
   }

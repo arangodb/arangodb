@@ -116,6 +116,11 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _level0StopTrigger(rocksDBDefaults.level0_stop_writes_trigger),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(false),
+      _cacheIndexAndFilterBlocks(rocksDBTableOptionsDefaults.cache_index_and_filter_blocks),
+      _cacheIndexAndFilterBlocksWithHighPriority(
+        rocksDBTableOptionsDefaults.cache_index_and_filter_blocks_with_high_priority),
+      _pinl0FilterAndIndexBlocksInCache(rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache),
+      _pinTopLevelIndexAndFilter(rocksDBTableOptionsDefaults.pin_top_level_index_and_filter),
       _blockAlignDataBlocks(rocksDBTableOptionsDefaults.block_align),
       _enablePipelinedWrite(rocksDBDefaults.enable_pipelined_write),
       _optimizeFiltersForHits(rocksDBDefaults.optimize_filters_for_hits),
@@ -336,6 +341,33 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new BooleanParameter(&_enforceBlockCacheSizeLimit));
 
   options->addOption(
+      "--rocksdb.cache-index-and-filter-blocks",
+      "if turned on, the RocksDB block cache quota will also include RocksDB memtable sizes",
+      new BooleanParameter(&_cacheIndexAndFilterBlocks),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
+      "if true and `--rocksdb.cache-index-and-filter-blocks` is also true, cache index and filter blocks with high priority, "
+      "making index and filter blocks be less likely to be evicted than data blocks",
+      new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
+      "if true and `--rocksdb.cache-index-and-filter-blocks is also true, "
+      "filter and index blocks are pinned and only evicted from cache when the table reader is freed",
+      new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
+      "--rocksdb.pin-top-level-index-and-filter",
+      "If true and `--rocksdb.cache-index-and-filter-blocks` is also true, "
+      "the top-level index of partitioned filter and index blocks are pinned and only evicted from cache when the table reader is freed",
+      new BooleanParameter(&_pinTopLevelIndexAndFilter),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+
+  options->addOption(
       "--rocksdb.table-block-size",
       "approximate size (in bytes) of user data packed per block",
       new UInt64Parameter(&_tableBlockSize));
@@ -471,7 +503,11 @@ void RocksDBOptionFeature::start() {
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
-      << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
+      << ", block_cache_strict_capacity_limit: " << std::boolalpha << _enforceBlockCacheSizeLimit
+      << ", cache_index_and_filter_blocks: " << std::boolalpha << _cacheIndexAndFilterBlocks
+      << ", cache_index_and_filter_blocks_with_high_priority: " << std::boolalpha << _cacheIndexAndFilterBlocksWithHighPriority
+      << ", pin_l0_filter_and_index_blocks_in_cache: " << std::boolalpha << _pinl0FilterAndIndexBlocksInCache
+      << ", pin_top_level_index_and_filter: " << std::boolalpha << _pinTopLevelIndexAndFilter
       << ", table_block_size: " << _tableBlockSize
       << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
