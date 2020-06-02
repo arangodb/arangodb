@@ -268,7 +268,23 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
           tryAgainAfter = std::chrono::seconds(3);
         }
 
-        if ((now + tryAgainAfter) >= _endTime) { // cancel out
+        // Now check if the request was directed to an explicit server and see if that
+        // server is failed, if so, we should no longer retry, regardless of the timeout:
+        bool found = false;
+        if (_destination.size() > 7 && _destination.compare(0, 7, "server:") == 0) {
+          auto failedServers = _pool->config().clusterInfo->getFailedServers();
+          for (auto const& f : failedServers) {
+            if (_destination.compare(7, _destination.size() - 7, f) == 0) {
+              found = true;
+              LOG_TOPIC("feade", DEBUG, Logger::COMMUNICATION)
+                  << "Found destination "
+                  << _destination << " to be in failed servers list, will no longer retry, aborting operation";
+              break;
+            }
+          }
+        }
+
+        if (found || (now + tryAgainAfter) >= _endTime) { // cancel out
           callResponse(err, std::move(res), std::move(req));
         } else {
           retryLater(tryAgainAfter);

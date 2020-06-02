@@ -286,6 +286,10 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
     std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
+    for (auto const& pair : _infos.filterConditionVariables()) {
+      opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
+    }
+
     if (opts->usesPrune()) {
       auto* evaluator = opts->getPruneEvaluator();
       // Replace by inputRow

@@ -402,7 +402,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
 
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), _computedValue(nullptr) {
+    : type(type), flags(0), _computedValue(nullptr), members{} {
   // properly zero-initialize all members
   value.value._int = 0;
   value.length = 0;
@@ -415,7 +415,8 @@ AstNode::AstNode(AstNodeValue const& value)
       flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE,
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
       value(value),
-      _computedValue(nullptr) {}
+      _computedValue(nullptr),
+      members{} {}
 
 /// @brief create the node from VPack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
@@ -2779,6 +2780,7 @@ void AstNode::changeMember(size_t i, AstNode* node) {
 }
 
 void AstNode::removeMemberUnchecked(size_t i) {
+  TRI_ASSERT(members.size() > 0);
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   members.erase(members.begin() + i);
 }

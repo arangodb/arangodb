@@ -70,7 +70,11 @@ auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
   // is empty. If another peer-calculation has written to this value
   // this assertion does not hold true anymore.
   // Hence we are required to do an indepth cloning here.
-  _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
+  if (block == nullptr) {
+    _queue.emplace_back(block, skipped);
+  } else {
+    _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
+  }
 }
 
 auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
