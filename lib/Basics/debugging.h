@@ -98,9 +98,9 @@ void TRI_PrintBacktrace();
 /// @brief logs a backtrace in log level warning
 void TRI_LogBacktrace();
 
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging();
-void TRI_FlushDebugging(char const* file, int line, char const* message);
+/// @brief logs an assertion failure, flushes the logger, shuts it down
+/// and terminates the program
+void TRI_AssertAndAbort(char const* file, int line, char const* message);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
@@ -224,9 +224,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 #define TRI_ASSERT(expr)                             \
   do {                                               \
     if (!(ADB_LIKELY(expr))) {                       \
-      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
-      TRI_PrintBacktrace();                          \
-      std::abort();                                  \
+      TRI_AssertAndAbort(__FILE__, __LINE__, #expr); \
     }                                                \
   } while (0)
 

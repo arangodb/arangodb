@@ -233,6 +233,12 @@ void Version::initialize() {
 
   Values["iresearch-version"] = getIResearchVersion();
 
+#ifdef ARANGODB_HAVE_LIBUNWIND
+  Values["libunwind"] = "true";
+#else
+  Values["libunwind"] = "false";
+#endif
+
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
   }
