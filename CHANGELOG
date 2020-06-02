@@ -1,6 +1,9 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #11104 case with complex condition on second branch of OR
+  operator.
+
 * Fixed issue ES-564: Opening a VST connection would leave an extra HttpCommTask
   object lying around for the life of the server. This accumulation was
   effectively a memory leak. Additionally, it led to inaccurate reporting of the
