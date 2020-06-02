@@ -1459,15 +1459,9 @@ Result ClusterQuery::finalizeClusterQuery(ExecutionStats& stats, int errorCode) 
 
   _snippets.clear();
   _traversers.clear();
-<<<<<<< HEAD
-
-=======
-
   LOG_TOPIC("5fde0", DEBUG, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "ClusterQuery::finalizeClusterQuery: done"
       << " this: " << (uintptr_t)this;
-
->>>>>>> origin/devel
   return finishResult;
 }
