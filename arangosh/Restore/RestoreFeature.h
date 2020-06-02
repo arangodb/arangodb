@@ -92,6 +92,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
+    bool continueRestore{false};
     bool cleanupDuplicateAttributes{false};
     bool progress{true};
     bool preserveRevisionIds{false};

@@ -27,7 +27,7 @@
 namespace arangodb {
 template <typename T>
 struct ProgressTracker {
-  ProgressTracker(ManagedDirectory& directory);
+  ProgressTracker(ManagedDirectory& directory, bool ignoreExisting);
 
   ProgressTracker(ProgressTracker const&) = delete;
   ProgressTracker(ProgressTracker&&) noexcept = delete;
@@ -85,8 +85,12 @@ T ProgressTracker<T>::getStatus(const std::string& collectionName) {
 }
 
 template <typename T>
-ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory)
+ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExisting)
     : directory(directory) {
+  if (ignoreExisting) {
+    return ;
+  }
+
   VPackBuilder progressBuilder = directory.vpackFromJsonFile("continue.json");
   VPackSlice progress = progressBuilder.slice();
 

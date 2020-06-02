@@ -1393,6 +1393,9 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--overwrite", "overwrite collections if they exist",
                      new BooleanParameter(&_options.overwrite));
 
+  options->addOption("--continue", "continue restore operation",
+                     new BooleanParameter(&_options.continueRestore));
+
   options
       ->addOption(
           "--number-of-shards",
@@ -1765,13 +1768,12 @@ void RestoreFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    // TODO load file only when options `--continue` is set
-    RestoreProgressTracker pt(*_directory);
+    _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, _options.continueRestore);
 
     // run the actual restore
     try {
       result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
-                                      _options, *_directory, pt, _stats);
+                                      _options, *_directory, *_progressTracker, _stats);
     } catch (basics::Exception const& ex) {
       LOG_TOPIC("52b22", ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
       result = {ex.code(), ex.what()};
