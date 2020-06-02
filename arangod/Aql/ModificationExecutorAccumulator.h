@@ -41,7 +41,7 @@ namespace aql {
 //
 class ModificationExecutorAccumulator {
  public:
-  ModificationExecutorAccumulator() { _accumulator.openArray(); }
+  ModificationExecutorAccumulator() { reset(); }
 
   VPackSlice closeAndGetContents() {
     _accumulator.close();
@@ -51,6 +51,11 @@ class ModificationExecutorAccumulator {
   void add(VPackSlice const& doc) {
     TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.add(doc);
+  }
+
+  void reset() {
+    _accumulator.clear();
+    _accumulator.openArray();
   }
 
   size_t nrOfDocuments() const { return _accumulator.slice().length(); }
