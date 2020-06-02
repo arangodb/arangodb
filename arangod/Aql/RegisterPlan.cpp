@@ -86,7 +86,8 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     auto const& varsSetHere = en->getVariablesSetHere();
     for (Variable const* v : varsSetHere) {
       TRI_ASSERT(v != nullptr);
-      plan->registerVariable(v, unusedRegisters.back());
+      RegisterId regId = plan->registerVariable(v, unusedRegisters.back());
+      regVarMappingStack.back().operator[](regId) = v; // overwrite if existing, create if not
     }
   };
 
@@ -152,6 +153,17 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     return regsToClear;
   };
 
+  auto const calculateRegistersToReuse = [](VarSet const& varsUsedLater, RegVarMap const& regVarMap) -> RegIdSet {
+    RegIdSet regsToReuse;
+    for (auto& [regId, variable] : regVarMap) {
+      if (!varsUsedLater.contains(variable)) {
+        regsToReuse.emplace(regId);
+      }
+    }
+
+    return regsToReuse;
+  };
+
   if (!mayReuseRegisterImmediately) {
     planRegistersForCurrentNode(en);
   }
@@ -159,21 +171,38 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   switch (en->getType()) {
     case ExecutionNode::SUBQUERY_START: {
       previousSubqueryNrRegs.emplace(plan->nrRegs.back());
-      auto topUnused = unusedRegisters.back();
-      unusedRegisters.emplace_back(std::move(topUnused));
 
       auto const& varsValid = en->getVarsValidStack();
       auto const& varsUsedLater = en->getVarsUsedLaterStack();
 
+      auto varMap = regVarMappingStack.back();
+      regVarMappingStack.push_back(std::move(varMap));
+
+      size_t const stack_size = varsUsedLater.size();
+      TRI_ASSERT(varsValid.size() == stack_size);
+      TRI_ASSERT(regVarMappingStack.size() == stack_size);
+
       TRI_ASSERT(varsValid.size() > 1);
       TRI_ASSERT(varsUsedLater.size() > 1);
+      auto reuseOuter = calculateRegistersToReuse(varsUsedLater[stack_size - 2], regVarMappingStack[stack_size - 2]);
+      auto reuseInner = calculateRegistersToReuse(varsUsedLater[stack_size - 1], regVarMappingStack[stack_size - 1]);
+
+      auto topUnused = unusedRegisters.back();
+      unusedRegisters.emplace_back(std::move(topUnused));
+
+      TRI_ASSERT(unusedRegisters.size() == stack_size);
+      unusedRegisters[stack_size - 1].insert(reuseInner.begin(), reuseInner.end());
+      unusedRegisters[stack_size - 2].insert(reuseOuter.begin(), reuseOuter.end());
+
       updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
                        varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
       regsToKeepStack.emplace_back();
+
     } break;
     case ExecutionNode::SUBQUERY_END: {
       unusedRegisters.pop_back();
       regsToKeepStack.pop_back();
+      regVarMappingStack.pop_back();
       // This must have added a section, otherwise we would decrease the
       // number of registers available inside the subquery.
       TRI_ASSERT(en->isIncreaseDepth());
@@ -190,6 +219,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       // because regsToClear is only ever used in passthrough-blocks, but
       // nodes that can create those may *not* reuse registers immediately.
       auto regsToClear = calculateRegistersToClear(en);
+      for (auto const& reg : regsToClear) {
+        regVarMappingStack.back().erase(reg);
+      }
+
       unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
       // We need to delete those variables that have been used here but are not
       // used any more later:
@@ -200,6 +233,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   // we can reuse all registers that belong to variables that are not in varsUsedLater and varsUsedHere
   if (mayReuseRegisterImmediately) {
     planRegistersForCurrentNode(en);
+  }
+
+  if (explain) {
+    plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
   }
 
   updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
@@ -307,7 +344,7 @@ RegisterId RegisterPlanT<T>::addRegister() {
 }
 
 template <typename T>
-void RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
+RegisterId RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
 
   if (unusedRegisters.empty()) {
@@ -327,6 +364,8 @@ void RegisterPlanT<T>::registerVariable(Variable const* v, std::set<RegisterId>&
         std::string("duplicate register assignment for variable " + v->name + " #") +
             std::to_string(v->id) + " while planning registers");
   }
+
+  return regId;
 }
 
 template <typename T>

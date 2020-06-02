@@ -60,6 +60,10 @@ struct VarInfo {
 template <typename T>
 struct RegisterPlanT;
 
+
+using RegVarMap = std::unordered_map<RegisterId, Variable const*>;
+using RegVarMapStack = std::vector<RegVarMap>;
+
 /// There are still some improvements that can be done to the RegisterPlanWalker
 /// to produce better plans.
 /// The most important point is that registersToClear are currently used to find
@@ -97,6 +101,8 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T> {
   std::shared_ptr<RegisterPlan> plan;
   bool explain = false;
   RegCountStack previousSubqueryNrRegs{};
+
+  RegVarMapStack regVarMappingStack{{}};
 };
 
 template <typename T>
@@ -123,6 +129,8 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
+  /// @brief Only used when the reister plan is being explained
+  std::map<ExecutionNodeId, RegVarMapStack> regVarMapStackByNode;
 
  public:
   RegisterPlanT();
@@ -133,7 +141,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
 
   std::shared_ptr<RegisterPlanT> clone();
 
-  void registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
+  RegisterId registerVariable(Variable const* v, std::set<RegisterId>& unusedRegisters);
   void increaseDepth();
   auto addRegister() -> RegisterId;
   void addSubqueryNode(T* subquery);

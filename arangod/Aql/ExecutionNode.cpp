@@ -904,6 +904,21 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         }
       }
 
+      nodes.add(VPackValue("regVarMapStack"));
+      auto const& regVarMapStack = _registerPlan->regVarMapStackByNode.at(id());
+      {
+        VPackArrayBuilder guard(&nodes);
+        TRI_ASSERT(!regVarMapStack.empty());
+        for (auto const& stackEntry : regVarMapStack) {
+          VPackObjectBuilder stackEntryGuard(&nodes);
+          for (auto const& reg : stackEntry) {
+            using std::to_string;
+            nodes.add(VPackValue(to_string(reg.first)));
+            reg.second->toVelocyPack(nodes);
+          }
+        }
+      }
+
       nodes.add(VPackValue("varsSetHere"));
       {
         VPackArrayBuilder guard(&nodes);

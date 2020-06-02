@@ -2396,7 +2396,7 @@ function explainQuerysRegisters(plan) {
     keepRegister: '↓',
     writeRegister: '→',
     readRegister: '←',
-    unusedRegister: 'Ø',
+    unusedRegister: '-',
     subqueryBegin: '↘',
     subqueryEnd: '↙',
   };
@@ -2483,7 +2483,7 @@ function explainQuerysRegisters(plan) {
     const {
       node: {
         depth, id, nrRegs: nrRegsArray, regsToClear, regsToKeepStack, type,
-        unusedRegsStack, varInfoList, varsSetHere, varsUsedHere
+        unusedRegsStack, varInfoList, varsSetHere, varsUsedHere, regVarMapStack
       },
       direction
     } = data;
@@ -2507,11 +2507,18 @@ function explainQuerysRegisters(plan) {
     const regIdToVarNameUsedHere = Object.fromEntries(
       varsUsedHere.map(variable => [regIdByVarId[variable.id], varName(variable)]));
 
+    const regIdToVarNameMapStack = regVarMapStack.map(rvmap =>
+        Object.fromEntries(_.toPairsIn(rvmap).map(
+            (p) => [parseInt(p[0]), p[1].name]
+        )
+    ));
+
     /**
      * @param {number} nrRegs
      * @param { { regIdToVarNameSetHere: (undefined|!Object<number, string>),
      *            regIdToVarNameUsedHere: (undefined|!Object<number, string>),
-     *            unusedRegs: (undefined|!number[]) }
+     *            unusedRegs: (undefined|!number[]),
+     *            regVarMap: (undefined|!Object<number, string>)}
      *          | { regsToClear: (undefined|!number[]), regsToKeep: (undefined|!number[]) } } regInfo
      * @return { !Array<string> }
      */
@@ -2523,17 +2530,18 @@ function explainQuerysRegisters(plan) {
       const hasUnusedRegs = regInfo.hasOwnProperty('unusedRegs');
       const hasRegsToClear = regInfo.hasOwnProperty('regsToClear');
       const hasRegsToKeep = regInfo.hasOwnProperty('regsToKeep');
+      const hasRegVarMap = regInfo.hasOwnProperty('regVarMap');
 
       assert(!((hasRegIdToVarNameSetHere || hasRegIdToVarNameUsedHere || hasUnusedRegs) && (hasRegsToClear || hasRegsToKeep)));
 
       if (hasRegIdToVarNameUsedHere) {
         for (const [regId, varName] of Object.entries(regInfo.regIdToVarNameUsedHere)) {
-          registerFields[regId] += symbols.readRegister + varName;
+          registerFields[regId] += symbols.readRegister + varName + ' ';
         }
       }
       if (hasRegIdToVarNameSetHere) {
         for (const [regId, varName] of Object.entries(regInfo.regIdToVarNameSetHere)) {
-          registerFields[regId] += symbols.writeRegister + varName;
+          registerFields[regId] += symbols.writeRegister + varName + ' ';
         }
       }
       if (hasUnusedRegs) {
@@ -2551,6 +2559,14 @@ function explainQuerysRegisters(plan) {
           registerFields[regId] += symbols.keepRegister;
         }
       }
+      if (hasRegVarMap) {
+        for (const [regId, name] of Object.entries(regInfo.regVarMap)) {
+          if (registerFields[regId].length === 0) {
+            registerFields[regId] = name;
+          }
+        }
+      }
+
 
       return registerFields;
     };
@@ -2559,25 +2575,30 @@ function explainQuerysRegisters(plan) {
       case 'SubqueryStartNode': {
         assert(regsToKeepStack.length >= 2);
         let regsToKeep = regsToKeepStack[regsToKeepStack.length - 2];
+        let regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 2];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, unusedRegs})});
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, unusedRegs, regVarMap})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
         result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
         regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere})});
+        regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, regVarMap, unusedRegs})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToKeep})});
       }
         break;
       case 'SubqueryEndNode': {
+        const nrRegsInner = nrRegsArray[depth-1];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {unusedRegs, regIdToVarNameUsedHere})});
-        result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
+        result.push({meta, registerFields: createRegisterFields(nrRegsInner, {unusedRegs, regIdToVarNameUsedHere})});
+        result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegsInner)});
         const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere})});
+        const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, regVarMap})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
       }
         break;
       case 'SubqueryNode': {
+        const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
         switch (direction) {
           case 'open': {
             // We could print regIdToVarNameUsedHere here...
@@ -2588,7 +2609,7 @@ function explainQuerysRegisters(plan) {
             const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
             const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
             result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
-            result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs})});
+            result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs, regVarMap})});
             result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
           }
             break;
@@ -2598,7 +2619,8 @@ function explainQuerysRegisters(plan) {
       default: {
         const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, regIdToVarNameSetHere, unusedRegs})});
+        const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
+        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, regIdToVarNameSetHere, unusedRegs, regVarMap})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
       }
     }
