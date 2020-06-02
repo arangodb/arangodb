@@ -20,6 +20,11 @@ devel
   Now the optimizer will not move the calculation of values into the loop when 
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
+* Catch exceptions in agency callbacks.
+
+* Fixed issue #11104 case with complex condition on second branch of OR
+  operator.
+
 * Fixed bad behavior when dropping followers. A follower should be dropped
   immediately when it is officially FAILED, not only after a longish timeout.
 
