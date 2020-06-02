@@ -2509,7 +2509,7 @@ function explainQuerysRegisters(plan) {
 
     const regIdToVarNameMapStack = regVarMapStack.map(rvmap =>
         Object.fromEntries(_.toPairsIn(rvmap).map(
-            (p) => [parseInt(p[0]), p[1].name]
+            (p) => [parseInt(p[0]), varName(p[1])]
         )
     ));
 
