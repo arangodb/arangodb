@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped 
+
 * Removed external file loading in a used 3rd party library (Web UI). 
 
 * More substantial metrics in agency.
