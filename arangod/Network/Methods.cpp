@@ -421,9 +421,9 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
 
   } catch (std::exception const& e) {
     LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
-      << "failed to send request to destination " << destination << ": " << e.what();
+      << "failed to send request: " << e.what();
   } catch (...) {
-    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request to destination " << destination;
+    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request";
   }
 
   return futures::makeFuture(Response{std::move(destination), Error::Canceled, nullptr});
