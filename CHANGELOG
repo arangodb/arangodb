@@ -3,6 +3,18 @@ devel
 
 * Optimized Web UI styling for ArangoSearch Views when in read-only mode.
 
+* Removed external file loading in a used 3rd party library (Web UI). 
+
+* More substantial metrics in agency.
+
+* arangodump and arangorestore will now fail when using the `--collection`
+  option and none of the specified collections actually exist in the database
+  (on dump) or in the dump to restore (on restore). In case some of the specified
+  collections exist, arangodump/restore will issue warnings about the invalid
+  collections, but will continue to work for the valid collections.
+
+* Improved network send request for more robustness. 
+
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
     also include RocksDB memtable sizes
@@ -14,23 +26,23 @@ devel
   * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
     filter and index blocks pinned and only be evicted from cache when the table reader is freed
 
-* Don't move potentially expensive AQL function calls into loops in the 
+* Don't move potentially expensive AQL function calls into loops in the
   `remove-unnecessary-calculations-rule`.
 
   For example, in the query
-  
+
       LET x = NOOPT(1..100)
       LET values = SORTED(x)
-      FOR j IN 1..100 
+      FOR j IN 1..100
         FILTER j IN values
         RETURN j
 
-  there is only one use of the `values` variable. So the optimizer can remove 
-  that variable and replace the filter condition with `FILTER j IN SORTED(x)`. 
-  However, that would move the potentially expensive function call into the 
+  there is only one use of the `values` variable. So the optimizer can remove
+  that variable and replace the filter condition with `FILTER j IN SORTED(x)`.
+  However, that would move the potentially expensive function call into the
   inner loop, which could be a pessimization.
 
-  Now the optimizer will not move the calculation of values into the loop when 
+  Now the optimizer will not move the calculation of values into the loop when
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
 * Fixed modification executors inside of a subquery, where the subquery decided to
@@ -54,7 +66,7 @@ devel
 * Fixed return value of fuerte::H1Connection in case of timeout.
 
 * Usability improvements for arangodump and arangorestore:
-  - when a dump is restricted to one or multiple collections using the 
+  - when a dump is restricted to one or multiple collections using the
     `--collection` option of arangodump, warnings are issued for all specified
     collections that are not present in the database. Previously there were
     no warnings, so missing a collection by misspelling its name could easily
