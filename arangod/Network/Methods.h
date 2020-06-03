@@ -73,7 +73,7 @@ struct RequestOptions {
   Timeout timeout = Timeout(120.0);
   bool retryNotFound = false; // retry if answers is "datasource not found"
   bool skipScheduler = false; // do not use Scheduler queue
-  
+
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
     this->parameters.insert_or_assign(std::forward<K>(key), std::forward<V>(val));
@@ -82,6 +82,7 @@ struct RequestOptions {
 };
 
 /// @brief send a request to a given destination
+/// This method must not throw under penalty of ...
 FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
                       arangodb::fuerte::RestVerb type, std::string path,
                       velocypack::Buffer<uint8_t> payload = {},
@@ -91,6 +92,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
 /// @brief send a request to a given destination, retry under certain conditions
 /// a retry will be triggered if the connection was lost our could not be established
 /// optionally a retry will be performed in the case of until timeout is exceeded
+/// This method must not throw under penalty of ...
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},
