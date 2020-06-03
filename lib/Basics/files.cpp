@@ -64,7 +64,6 @@
 
 #include "files.h"
 
-#include "Basics/CrashHandler.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadWriteLock.h"
@@ -138,9 +137,6 @@ static LockfileRemover remover;
 
 /// @brief read buffer size (used for bulk file reading)
 #define READBUFFER_SIZE 8192
-
-/// @brief a static buffer of zeros, used to initialize files
-static char NullBuffer[4096];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the character is a directory separator
@@ -2366,7 +2362,6 @@ std::string TRI_GetTempPath() {
     }
 
     SystemTempPathSweeperInstance.init(SystemTempPath.get());
-    CrashHandler::setTempFilename();
   }
 
   return std::string(path);
@@ -2511,18 +2506,6 @@ std::string TRI_LocateConfigDirectory(char const*) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetNullBufferFiles() { return &NullBuffer[0]; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetNullBufferSizeFiles() { return sizeof(NullBuffer); }
-
 /// @brief creates a new datafile
 /// returns the file descriptor or -1 if the file cannot be created
 int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
@@ -2567,17 +2550,21 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   // cppcheck-suppress knownConditionTrueFalse
   if (res != TRI_ERROR_NO_ERROR) {
     // either fallocate failed or it is not there...
+    
+    // create a buffer filled with zeros
+    static constexpr size_t nullBufferSize = 4096;
+    char nullBuffer[nullBufferSize];
+    memset(&nullBuffer[0], 0, nullBufferSize);
 
-    // fill file with zeros from FileNullBuffer
-    size_t writeSize = TRI_GetNullBufferSizeFiles();
+    // fill file with zeros from buffer
+    size_t writeSize = nullBufferSize;
     size_t written = 0;
     while (written < maximalSize) {
       if (writeSize + written > maximalSize) {
         writeSize = maximalSize - written;
       }
 
-      ssize_t writeResult = TRI_WRITE(fd, TRI_GetNullBufferFiles(),
-                                      static_cast<TRI_write_t>(writeSize));
+      ssize_t writeResult = TRI_WRITE(fd, &nullBuffer[0], static_cast<TRI_write_t>(writeSize));
 
       TRI_IF_FAILURE("CreateDatafile2") {
         // intentionally fail
@@ -2635,16 +2622,8 @@ bool TRI_PathIsAbsolute(std::string const& path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the files subsystem
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitializeFiles() {
-  // fill buffer with 0 bytes
-  memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the files subsystem
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value) {

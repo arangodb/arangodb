@@ -327,7 +327,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   if (rcoll->needToPersistRevisionTree(maxCommitSeq)) {
     if (coll.useSyncByRevision()) {
       output.clear();
-      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
       appliedSeq = std::min(appliedSeq, seq);
       if (!output.empty()) {
         rocksutils::uint64ToPersistent(output, seq);
@@ -344,7 +345,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
       }
     } else {
       output.clear();
-      rocksdb::SequenceNumber seq = rcoll->serializeRevisionTree(output, maxCommitSeq);
+      rocksdb::SequenceNumber seq =
+          rcoll->serializeRevisionTree(output, maxCommitSeq, force);
       appliedSeq = std::min(appliedSeq, seq);
       TRI_ASSERT(output.empty());
       key.constructRevisionTreeValue(rcoll->objectId());

@@ -286,7 +286,7 @@ if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
 endif ()
 
-# enable enterprise features
+# enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
@@ -474,9 +474,20 @@ else ()
   )
 endif ()
 
+if (LINUX)
+  option(
+    USE_LIBUNWIND
+    "use libunwind for stack traces"
+    ON
+  )
+else ()
+  SET(USE_LIBUNWIND OFF)
+endif ()
+
 if (CROSS_COMPILING)
 # currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)
+  SET(USE_LIBUNWIND OFF)
 endif()
 
 ################################################################################
@@ -854,6 +865,10 @@ endfunction()
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+endif ()
+
+if (USE_LIBUNWIND)
+  add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
 endif ()
 
 # ------------------------------------------------------------------------------

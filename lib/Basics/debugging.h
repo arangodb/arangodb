@@ -33,6 +33,12 @@
 
 #include "Basics/system-compiler.h"
 
+#ifndef TRI_ASSERT
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include "Basics/CrashHandler.h"
+#endif
+#endif
+
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
 /// certain locations in the C code. The points at which a failure is actually
@@ -97,10 +103,6 @@ void TRI_PrintBacktrace();
 
 /// @brief logs a backtrace in log level warning
 void TRI_LogBacktrace();
-
-/// @brief flushes the logger and shuts it down
-void TRI_FlushDebugging();
-void TRI_FlushDebugging(char const* file, int line, char const* message);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
@@ -221,13 +223,11 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr)                             \
-  do {                                               \
-    if (!(ADB_LIKELY(expr))) {                       \
-      TRI_FlushDebugging(__FILE__, __LINE__, #expr); \
-      TRI_PrintBacktrace();                          \
-      std::abort();                                  \
-    }                                                \
+#define TRI_ASSERT(expr)                                                   \
+  do {                                                                     \
+    if (!(ADB_LIKELY(expr))) {                                             \
+      arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, #expr); \
+    }                                                                      \
   } while (0)
 
 #else
