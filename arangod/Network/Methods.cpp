@@ -169,7 +169,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   } catch (...) {
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
-  return futures::makeFuture(Response{std::move(std::string()), Error::Canceled, nullptr});
+  return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr, nullptr});
 }
 
 /// Handler class with enough information to keep retrying
@@ -424,8 +424,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
     LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
 
-  return futures::makeFuture(Response{std::move(std::string()), Error::Canceled, nullptr});
-
+  return futures::makeFuture(Response{std::string(), Error::Canceled, nullptr, nullptr});
 }
 
 }  // namespace network
