@@ -585,7 +585,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       try {
         RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
         _storeVertices(_config->globalShardIDs(), it);
-        // TODO can't just write edges with smart graphs
+        // TODO can't just write edges with SmartGraphs
       } catch (std::exception const& e) {
         LOG_TOPIC("e22c8", ERR, Logger::PREGEL) << "Storing vertex data failed: '" << e.what() << "'";
       } catch (...) {

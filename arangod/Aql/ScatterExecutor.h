@@ -38,7 +38,7 @@ class ScatterNode;
 class ScatterExecutorInfos : public ClientsExecutorInfos {
  public:
   explicit ScatterExecutorInfos(std::vector<std::string> clientIds);
-  ScatterExecutorInfos(ScatterExecutorInfos&&) noexcept = default;
+  ScatterExecutorInfos(ScatterExecutorInfos&&) = default;
 };
 
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,

@@ -243,7 +243,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   // turn off ldap tests by default.
   opts['skipLdap'] = true;
 
-  // only enable them in enterprise version
+  // only enable them in Enterprise Edition
   let version = {};
   if (global.ARANGODB_CLIENT_VERSION) {
     version = global.ARANGODB_CLIENT_VERSION(true);
