@@ -82,6 +82,12 @@
     setReadOnlyPermissions: function () {
       this.readOnly = true;
       $('.bottomButtonBar button').attr('disabled', true);
+      // editor read only mode
+      this.editor.setMode('view');
+      $('.jsoneditor-modes').hide();
+
+      // update breadcrumb
+      this.breadcrumb(true);
     },
 
     render: function () {
@@ -318,16 +324,20 @@
       });
     },
 
-    breadcrumb: function () {
+    breadcrumb: function (ro) {
       var self = this;
+      var title = self.name;
+      if (ro) {
+        title = title + ' (read-only)';
+      }
 
       if (window.App.naviView) {
         $('#subNavigationBar .breadcrumb').html(
-          'View: ' + arangoHelper.escapeHtml(self.name)
+          'View: ' + arangoHelper.escapeHtml(title)
         );
         window.setTimeout(function () {
           $('#subNavigationBar .breadcrumb').html(
-            'View: ' + arangoHelper.escapeHtml(self.name)
+            'View: ' + arangoHelper.escapeHtml(title)
           );
           self.checkIfInProgress();
         }, 100);
