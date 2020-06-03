@@ -165,6 +165,15 @@ exception from the GPL license:
     program.  This Exception is an additional permission under section 7
     of the GNU General Public License, version 3 ("GPLv3").
 
+### libunwind
+
+* Name: libunwind
+* Version: 1.4
+* Project Home: https://github.com/libunwind/libunwind
+* License: https://github.com/libunwind/libunwind/blob/master/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 ### linenoise-ng
 
 * Name: linenoise-ng
@@ -2308,7 +2317,7 @@ exception from the GPL license:
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.9.0
+* Version: 3.25.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://github.com/swagger-api/swagger-ui/blob/master/README.md

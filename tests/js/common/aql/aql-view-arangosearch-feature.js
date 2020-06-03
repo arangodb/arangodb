@@ -28,7 +28,8 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 const arango = require('@arangodb').arango;
-
+const internal = require('internal');
+const isCluster = internal.isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,11 +279,17 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(1, db._analyzers.count());
       let savedAnalyzer = db._analyzers.toArray()[0];
       assertTrue(null !== savedAnalyzer);
-      assertEqual(7, Object.keys(savedAnalyzer).length);
+      assertEqual(8, Object.keys(savedAnalyzer).length);
       assertEqual("_analyzers/testAnalyzer", savedAnalyzer._id);
       assertEqual("testAnalyzer", savedAnalyzer._key);
       assertEqual("testAnalyzer", savedAnalyzer.name);
       assertEqual("stem", savedAnalyzer.type);
+      assertTrue(undefined !== savedAnalyzer.revision);
+      if(isCluster) {
+        assertNotEqual(0, savedAnalyzer.revision); // we have added analyzer so revision should increment at least once
+      } else {
+        assertEqual(0, savedAnalyzer.revision); // for single server it is always 0
+      }
       assertEqual(analyzer.properties(), savedAnalyzer.properties);
       assertEqual(analyzer.features(), savedAnalyzer.features);
 
@@ -1380,6 +1387,41 @@ function iResearchFeatureAqlTestSuite () {
       } catch (err) {
           assertEqual(require("internal").errors.ERROR_NOT_IMPLEMENTED.code,
                       err.errorNum);
+      }
+    },
+    testDisjunctionWithExclude : function() {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try { db._dropDatabase(dbName); } catch(e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      try {
+        let col = db._create(colName);
+        col.save({field:"value"});
+        db._createView(viewName, "arangosearch", 
+                                  {links: 
+                                    {[colName]: 
+                                      {storeValues: 'id', 
+                                       includeAllFields:true, 
+                                       analyzers:['identity']}}});
+        assertEqual(1, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != 'nothing', 'identity') OR true == false " + 
+                                 "OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        assertEqual(1, db._query("FOR d IN @@v  " + 
+                                 "SEARCH ANALYZER(d.field != 'nothing', 'identity') OR ANALYZER(EXISTS(d.field) " + 
+                                 " && true == false, 'identity')  OPTIONS { waitForSync: true } RETURN d ",
+                                { '@v':viewName }).toArray().length);
+        let actual1 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' " + 
+                                                     "OR  true == false, 'identity') RETURN s.field" });
+        assertEqual(1, actual1.execute().toArray().length);
+        let actual2 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' "+ 
+                                                     " OR (EXISTS(s.field) && true == false), 'identity') RETURN s.field" });
+        assertEqual(1, actual2.execute().toArray().length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
     }
   };

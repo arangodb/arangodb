@@ -136,14 +136,11 @@ struct MockGraphDatabase {
   // Create a collection with name <name> and <n> vertices
   // with ids 0..n-1
   void addVertexCollection(std::string name, size_t n) {
-    std::shared_ptr<arangodb::LogicalCollection> vertices;
-
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 2 }");
-    vertices = vocbase.createCollection(createJson->slice());
+    std::shared_ptr<arangodb::LogicalCollection> vertices = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != vertices));
 
-    std::vector<velocypack::Builder> insertedDocs;
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
     for (size_t i = 0; i < n; i++) {
       docs.emplace_back(arangodb::velocypack::Parser::fromJson(
@@ -156,6 +153,7 @@ struct MockGraphDatabase {
                                               *vertices, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
+    std::vector<velocypack::Builder> insertedDocs;
     for (auto& entry : docs) {
       auto res = trx.insert(vertices->name(), entry->slice(), options);
       EXPECT_TRUE((res.ok()));
@@ -179,10 +177,9 @@ struct MockGraphDatabase {
   // Create a collection with name <name> of edges given by <edges>
   void addEdgeCollection(std::string name, std::string vertexCollection,
                          std::vector<EdgeDef> edgedef) {
-    std::shared_ptr<arangodb::LogicalCollection> edges;
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 3 }");
-    edges = vocbase.createCollection(createJson->slice());
+    std::shared_ptr<arangodb::LogicalCollection> edges = vocbase.createCollection(createJson->slice());
     ASSERT_TRUE((nullptr != edges));
 
     auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
@@ -191,7 +188,6 @@ struct MockGraphDatabase {
     EXPECT_TRUE(index);
     EXPECT_TRUE(created);
 
-    std::vector<velocypack::Builder> insertedDocs;
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
 
     for (auto& p : edgedef) {
@@ -219,6 +215,7 @@ struct MockGraphDatabase {
                                               *edges, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
 
+    std::vector<velocypack::Builder> insertedDocs;
     for (auto& entry : docs) {
       auto res = trx.insert(edges->name(), entry->slice(), options);
       EXPECT_TRUE((res.ok()));
@@ -237,7 +234,7 @@ struct MockGraphDatabase {
       std::make_unique<arangodb::aql::Query>(ctx, queryString, nullptr,
                                  arangodb::velocypack::Parser::fromJson("{}"));
     for (auto const& c : collections) {
-      query->collections().add(c, AccessMode::Type::READ);
+      query->collections().add(c, AccessMode::Type::READ, arangodb::aql::Collection::Hint::Collection);
     }
     query->prepareQuery(SerializationFormat::SHADOWROWS);
 

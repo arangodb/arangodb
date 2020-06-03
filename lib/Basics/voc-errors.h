@@ -147,9 +147,9 @@ constexpr int TRI_ERROR_DEADLOCK                                                
 constexpr int TRI_ERROR_SHUTTING_DOWN                                           = 30;
 
 /// 31: ERROR_ONLY_ENTERPRISE
-/// "only enterprise version"
-/// Will be raised when an enterprise-feature is requested from the community
-/// edition.
+/// "only Enterprise Edition"
+/// Will be raised when an Enterprise Edition feature is requested from the
+/// Community Edition.
 constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         = 31;
 
 /// 32: ERROR_RESOURCE_LIMIT
@@ -812,7 +812,7 @@ constexpr int TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             
 /// 1481: ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC
 /// "collection is out of sync"
 /// Will be raised if a collection needed during query execution is out of
-/// sync. This currently can only happen when using satellite collections
+/// sync. This currently can only happen when using SatelliteCollections
 constexpr int TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC                      = 1481;
 
 /// 1482: ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN
@@ -1644,8 +1644,8 @@ constexpr int TRI_ERROR_MODULE_FAILURE                                          
 constexpr int TRI_ERROR_NO_SMART_COLLECTION                                     = 4000;
 
 /// 4001: ERROR_NO_SMART_GRAPH_ATTRIBUTE
-/// "smart graph attribute not given"
-/// The given document does not have the smart graph attribute set.
+/// "SmartGraph attribute not given"
+/// The given document does not have the SmartGraph attribute set.
 constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                = 4001;
 
 /// 4002: ERROR_CANNOT_DROP_SMART_COLLECTION
@@ -1655,37 +1655,37 @@ constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            
 
 /// 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
 /// "in smart vertex collections _key must be prefixed with the value of the
-/// "smart graph attribute"
+/// "SmartGraph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
-/// smart graph attribute.
+/// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;
 
 /// 4004: ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE
-/// "attribute cannot be used as smart graph attribute"
+/// "attribute cannot be used as SmartGraph attribute"
 /// The given smartGraph attribute is illegal and connot be used for sharding.
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
 
 /// 4005: ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH
-/// "smart graph attribute mismatch"
-/// The smart graph attribute of the given collection does not match the smart
+/// "SmartGraph attribute mismatch"
+/// The SmartGraph attribute of the given collection does not match the smart
 /// graph attribute of the graph.
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
 
 /// 4006: ERROR_INVALID_SMART_JOIN_ATTRIBUTE
-/// "invalid smart join attribute declaration"
+/// "invalid SmartJoin attribute declaration"
 /// Will be raised when the smartJoinAttribute declaration is invalid.
 constexpr int TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE                            = 4006;
 
 /// 4007: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE
-/// "shard key value must be prefixed with the value of the smart join attribute"
+/// "shard key value must be prefixed with the value of the SmartJoin attribute"
 /// when using smartJoinAttribute for a collection, the shard key value must be
-/// prefixed with the value of the smart join attribute.
+/// prefixed with the value of the SmartJoin attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE          = 4007;
 
 /// 4008: ERROR_NO_SMART_JOIN_ATTRIBUTE
-/// "smart join attribute not given or invalid"
-/// The given document does not have the required smart join attribute set or
+/// "SmartJoin attribute not given or invalid"
+/// The given document does not have the required SmartJoin attribute set or
 /// it has an invalid value.
 constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 = 4008;
 
@@ -1900,6 +1900,11 @@ constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     
 /// " "hot backup not all db servers reachable""
 ///  "One or more db servers could not be reached for hot backup inquiry"
 constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
+
+///  7021: ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN
+/// " "analyzers in plan could not be modified""
+///  "Plan could not be modified while creating or deleting analyzers revision"
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              =  7021;
 
 
 /// register all errors for ArangoDB

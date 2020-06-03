@@ -51,6 +51,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -85,6 +86,10 @@ static inline arangodb::AgencyOperation IncreaseVersion() {
 static inline std::string collectionPath(std::string const& dbName,
                                          std::string const& collection) {
   return "Plan/Collections/" + dbName + "/" + collection;
+}
+
+inline std::string analyzersPath(std::string const& dbName) {
+  return "Plan/Analyzers/" + dbName;
 }
 
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
@@ -186,7 +191,7 @@ class PlanCollectionReader {
   Result _state;
   velocypack::Slice _collection;
 };
-}
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
@@ -255,7 +260,13 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _planVersion(0),
     _currentVersion(0),
     _planLoader(std::thread::id()),
-    _uniqid() {
+    _uniqid(),
+    _lpTimer(_server.getFeature<MetricsFeature>().histogram(
+               "load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "Plan loading runtimes [ms]")),
+    _lcTimer(_server.getFeature<MetricsFeature>().histogram(
+               "load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
+               "Current loading runtimes [ms]")) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -533,7 +544,6 @@ void ClusterInfo::loadClusterId() {
   if (slice.isString()) {
     _clusterId = slice.copyString();
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,14 +555,18 @@ static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
 
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
-  uint64_t newPlanVersion;
+  uint64_t newPlanVersion = 0;
 
-  newPlanVersion = 0;
-  DatabaseFeature& databaseFeature = _server.getFeature<DatabaseFeature>();
+  auto& clusterFeature = _server.getFeature<ClusterFeature>();
+  auto& databaseFeature = _server.getFeature<DatabaseFeature>();
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto start = clock::now();
+  auto& agencyCache = clusterFeature.agencyCache();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto tStart = TRI_microtime();
@@ -639,10 +653,11 @@ void ClusterInfo::loadPlan() {
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
   decltype(_shardToName) newShardToName;
-
+  decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
   bool swapDatabases = false;
   bool swapCollections = false;
   bool swapViews = false;
+  bool swapAnalyzers = false;
 
   auto planDatabasesSlice = planSlice.get("Databases");
 
@@ -818,7 +833,56 @@ void ClusterInfo::loadPlan() {
       }
     }
   }
+  // "Plan":{"Analyzers": {
+  //  "_system": {
+  //    "Revision": 0,
+  //    "BuildingRevision": 0,
+  //    "Coordinator": "",
+  //    "RebootID": 0
+  //  },...
+  // }}
+  // Now the same for analyzers:
+  auto planAnalyzersSlice = planSlice.get("Analyzers");  // format above
 
+  if (planAnalyzersSlice.isObject()) {
+    swapAnalyzers = true;  // mark for swap even if no databases present to ensure dangling datasources are removed
+
+    for (auto const databaseDataSlice : velocypack::ObjectIterator(planAnalyzersSlice)) {
+      auto const& analyzerSlice = databaseDataSlice.value;
+
+      auto const databaseName = databaseDataSlice.key.copyString();
+      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+
+      if (!vocbase) {
+        // No database with this name found.
+        // We have an invalid state here.
+        LOG_TOPIC("e5a6b", WARN, Logger::AGENCY)
+          << "No database '" << databaseName << "' found,"
+          << " corresponding analyzer will be ignored for now and the "
+          << "invalid information will be repaired. VelocyPack: "
+          << analyzerSlice.toJson();
+        planValid &= !analyzerSlice.length();  // cannot find vocbase for defined analyzers (allow empty analyzers for missing vocbase)
+
+        continue;
+      }
+
+      std::string revisionError;
+      auto revision = AnalyzersRevision::fromVelocyPack(analyzerSlice, revisionError);
+      if (revision) {
+        newDbAnalyzersRevision.emplace(databaseName, std::move(revision));
+      } else {
+        LOG_TOPIC("e3f08", WARN, Logger::AGENCY)
+          << "Invalid analyzer data for database '" << databaseName << "'"
+          << " Error:" << revisionError << ", "
+          << " corresponding analyzers revision will be ignored for now and the "
+          << "invalid information will be repaired. VelocyPack: "
+          << analyzerSlice.toJson();
+      }
+    }
+  }
+  TRI_IF_FAILURE("AlwaysSwapAnalyzersRevision") {
+    swapAnalyzers = true;
+  }
   // Immediate children of "Collections" are database names, then ids
   // of collections, then one JSON object with the description:
 
@@ -1089,9 +1153,12 @@ void ClusterInfo::loadPlan() {
     _shardToName.swap(newShardToName);
   }
 
-  if (swapViews) {
-    _plannedViews.swap(_newPlannedViews);
-  }
+    if (swapViews) {
+      _plannedViews.swap(_newPlannedViews);
+    }
+    if (swapAnalyzers) {
+      _dbAnalyzersRevision.swap(newDbAnalyzersRevision);
+    }
 
   if (planValid) {
     _planProt.isValid = true;
@@ -1100,12 +1167,15 @@ void ClusterInfo::loadPlan() {
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, idx);
-    auto heartbeatThread = _server.getFeature<ClusterFeature>().heartbeatThread();
+    auto heartbeatThread = clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeatthread, and we do not need to notify
       heartbeatThread->notify();
     }
   }
+
+  _lpTimer.count(duration<float,std::milli>(clock::now()-start).count());
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1117,9 +1187,14 @@ static std::string const prefixCurrent = "Current";
 
 void ClusterInfo::loadCurrent() {
 
+  using namespace std::chrono;
+  using clock = std::chrono::high_resolution_clock;
+
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newCurrentVersion = 0;
+
+  auto start = clock::now();
 
   // We need to update ServersKnown to notice rebootId changes for all servers.
   // To keep things simple and separate, we call loadServers here instead of
@@ -1276,13 +1351,15 @@ void ClusterInfo::loadCurrent() {
       heartbeatThread->notify();
     }
   }
+
+  _lcTimer.count(duration<float,std::milli>(clock::now()-start).count());
+
 }
 
 /// @brief ask about a collection
 /// If it is not found in the cache, the cache is reloaded once
 /// if the collection is not found afterwards, this method will throw an
 /// exception
-
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& databaseID,
                                                               CollectionID const& collectionID) {
   auto c = getCollectionNT(databaseID, collectionID);
@@ -1291,9 +1368,8 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(DatabaseID const& 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    getCollectionNotFoundMsg(databaseID, collectionID)  // message
     );
-  } else {
-    return c;
   }
+  return c;
 }
 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const& databaseID,
@@ -1569,6 +1645,38 @@ std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(DatabaseID
   return result;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief ask about analyzers revision
+//////////////////////////////////////////////////////////////////////////////
+
+AnalyzersRevision::Ptr ClusterInfo::getAnalyzersRevision(DatabaseID const& databaseID,
+                                                                     bool forceLoadPlan /* = false */) {
+  int tries = 0;
+
+  if (!_planProt.isValid || forceLoadPlan) {
+    loadPlan();
+    ++tries;
+  }
+  while (true) {  // left by break
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // look up database by id
+      auto it = _dbAnalyzersRevision.find(databaseID);
+
+      if (it != _dbAnalyzersRevision.cend()) {
+        return it->second;
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+
+    // must load outside the lock
+    loadPlan();
+  }
+  return nullptr;
+}
+
 // Build the VPackSlice that contains the `isBuilding` entry
 void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                        VPackBuilder& builder) {
@@ -1706,8 +1814,10 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
       {AgencyOperation("Plan/Databases/" + database.getName(),
                        AgencyValueOperationType::SET, builder.slice()),
        AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition("Plan/Databases/" + database.getName(),
-                         AgencyPrecondition::Type::EMPTY, true));
+      {AgencyPrecondition("Plan/Databases/" + database.getName(),
+                          AgencyPrecondition::Type::EMPTY, true),
+       AgencyPrecondition(analyzersPath(database.getName()),
+                          AgencyPrecondition::Type::EMPTY, true)});
 
   // TODO: Should this never timeout?
   res = ac.sendTransactionWithFailover(trx, 0.0);
@@ -1754,12 +1864,18 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
   VPackBuilder entryBuilder;
   buildFinalSlice(database, entryBuilder);
 
+  VPackBuilder analyzersBuilder;
+  AgencyComm::buildInitialAnalyzersSlice(analyzersBuilder);
+
   AgencyWriteTransaction trx(
       {AgencyOperation("Plan/Databases/" + database.getName(),
                        AgencyValueOperationType::SET, entryBuilder.slice()),
-       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)},
-      AgencyPrecondition("Plan/Databases/" + database.getName(),
-                         AgencyPrecondition::Type::VALUE, pcBuilder.slice()));
+       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
+       AgencyOperation(analyzersPath(database.getName()), AgencyValueOperationType::SET, analyzersBuilder.slice())},
+      {AgencyPrecondition("Plan/Databases/" + database.getName(),
+                          AgencyPrecondition::Type::VALUE, pcBuilder.slice()),
+       AgencyPrecondition(analyzersPath(database.getName()),
+                          AgencyPrecondition::Type::EMPTY, true)});
 
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
 
@@ -1880,11 +1996,12 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   AgencyOperation delPlanCollections("Plan/Collections/" + name,
                                      AgencySimpleOperationType::DELETE_OP);
   AgencyOperation delPlanViews("Plan/Views/" + name, AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation delPlanAnalyzers(analyzersPath(name), AgencySimpleOperationType::DELETE_OP);
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
   AgencyPrecondition databaseExists("Plan/Databases/" + name,
                                     AgencyPrecondition::Type::EMPTY, false);
-  AgencyWriteTransaction trans({delPlanDatabases, delPlanCollections, delPlanViews, incrementVersion},
-                               databaseExists);
+  AgencyWriteTransaction trans({delPlanDatabases, delPlanCollections, delPlanViews,
+                                delPlanAnalyzers, incrementVersion}, databaseExists);
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -2967,6 +3084,237 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
     loadPlan();   // this is only for the unittests, where no planSyncer thread runs
   }
   return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start creating or deleting an analyzer in coordinator,
+/// the return value is an ArangoDB error code
+/// and the errorMsg is set accordingly. One possible error
+/// is a timeout.
+////////////////////////////////////////////////////////////////////////////////
+std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyzerCoordinator(
+    DatabaseID const& databaseID) {
+  VPackBuilder serverIDBuilder;
+  serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
+
+  VPackBuilder rebootIDBuilder;
+  rebootIDBuilder.add(VPackValue(ServerState::instance()->getRebootId().value()));
+
+  AgencyComm ac(_server);
+
+  AnalyzersRevision::Revision revision;
+  auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
+
+  // do until precondition success or timeout
+  do {
+    {
+      // Get current revision for precondition
+      loadPlan();
+      READ_LOCKER(readLocker, _planProt.lock);
+      auto const it = _dbAnalyzersRevision.find(databaseID);
+      if (it == _dbAnalyzersRevision.cend()) {
+        if (TRI_microtime() > endTime) {
+          return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                       "start modifying analyzer: unknown database name '" + databaseID + "'"),
+                                AnalyzersRevision::LATEST);
+        }
+        // less possible case - we have just updated database so try to write EmptyRevision with preconditions 
+        {
+          VPackBuilder emptyRevision;
+          AnalyzersRevision::getEmptyRevision()->toVelocyPack(emptyRevision);
+          auto const anPath = analyzersPath(databaseID) + "/";
+          AgencyWriteTransaction const transaction{
+              {{anPath, AgencyValueOperationType::SET, emptyRevision.slice()},
+               {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+              {{anPath, AgencyPrecondition::Type::EMPTY, true}} };
+          auto const res = ac.sendTransactionWithFailover(transaction);
+          auto results = res.slice().get("results");
+          if (results.isArray() && results.length() > 0) {
+            readLocker.unlock(); // we want to wait for plan to load - release reader
+            waitForPlan(results[0].getNumber<uint64_t>()).get();
+          }
+        }
+        continue;
+      }
+      revision = it->second->getRevision();
+    }
+
+    VPackBuilder revisionBuilder;
+    revisionBuilder.add(VPackValue(revision));
+
+    auto const anPath = analyzersPath(databaseID) + "/";
+    AgencyWriteTransaction const transaction{
+        {{anPath + StaticStrings::AnalyzersBuildingRevision,
+              AgencySimpleOperationType::INCREMENT_OP},
+         {anPath + StaticStrings::AttrCoordinator,
+              AgencyValueOperationType::SET, serverIDBuilder.slice()},
+         {anPath + StaticStrings::AttrCoordinatorRebootId,
+              AgencyValueOperationType::SET, rebootIDBuilder.slice()},
+         {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+        {{anPath + StaticStrings::AnalyzersBuildingRevision,
+              AgencyPrecondition::Type::VALUE, revisionBuilder.slice()}}};
+
+    auto const res = ac.sendTransactionWithFailover(transaction);
+
+    // Only if not precondition failed
+    if (!res.successful()) {
+      if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+        if (TRI_microtime() > endTime) {
+          // Dump agency plan
+          logAgencyDump();
+          return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                       "start modifying analyzer precondition for database " + 
+                                        databaseID + ": Revision " + revisionBuilder.toString() + 
+                                       " is not equal to BuildingRevision. Cannot modify an analyzer."),
+                                AnalyzersRevision::LATEST);
+        }
+
+        if (_server.isStopping()) {
+          return std::make_pair(Result(TRI_ERROR_SHUTTING_DOWN), AnalyzersRevision::LATEST);
+        }
+
+        continue;
+      }
+
+      return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                   std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+                                   " HTTP code: " + std::to_string(res.httpCode()) +
+                                   " error message: " + res.errorMessage() +
+                                   " error details: " + res.errorDetails() + " body: " + res.body()),
+                            AnalyzersRevision::LATEST);
+    } else {
+      auto results = res.slice().get("results");
+      if (results.isArray() && results.length() > 0) {
+        waitForPlan(results[0].getNumber<uint64_t>()).get();
+      }
+    } 
+    break;
+  } while (true);
+
+  return std::make_pair(Result(TRI_ERROR_NO_ERROR), revision + 1); // as INCREMENT_OP succeeded
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finish creating or deleting an analyzer in coordinator,
+/// the return value is an ArangoDB error code
+/// and the errorMsg is set accordingly. One possible error
+/// is a timeout.
+////////////////////////////////////////////////////////////////////////////////
+Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore) {
+  TRI_IF_FAILURE("FinishModifyingAnalyzerCoordinator") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
+  VPackBuilder serverIDBuilder;
+  serverIDBuilder.add(VPackValue(ServerState::instance()->getId()));
+
+  VPackBuilder rebootIDBuilder;
+  rebootIDBuilder.add(VPackValue(ServerState::instance()->getRebootId().value()));
+
+  AgencyComm ac(_server);
+
+  AnalyzersRevision::Revision revision;
+  auto const endTime = TRI_microtime() + getTimeout(checkAnalyzersPreconditionTimeout);
+
+  // do until precondition success or timeout
+  do {
+    {
+      // Get current revision for precondition
+      loadPlan();
+      READ_LOCKER(readLocker, _planProt.lock);
+      auto const it = _dbAnalyzersRevision.find(databaseID);
+      if (it == _dbAnalyzersRevision.cend()) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                      "finish modifying analyzer: unknown database name '" + databaseID + "'");
+      }
+      revision = it->second->getRevision();
+    }
+
+    VPackBuilder revisionBuilder;
+    revisionBuilder.add(VPackValue(++revision));
+
+    auto const anPath = analyzersPath(databaseID) + "/";
+    AgencyWriteTransaction const transaction{
+        {
+          [restore, &anPath]{
+            if (restore) {
+              return AgencyOperation{anPath + StaticStrings::AnalyzersBuildingRevision,
+                    AgencySimpleOperationType::DECREMENT_OP};
+            }
+            return AgencyOperation{anPath + StaticStrings::AnalyzersRevision,
+                  AgencySimpleOperationType::INCREMENT_OP};
+         }(),
+         {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+        {{anPath + StaticStrings::AnalyzersBuildingRevision,
+              AgencyPrecondition::Type::VALUE, revisionBuilder.slice()},
+         {anPath + StaticStrings::AttrCoordinator,
+              AgencyPrecondition::Type::VALUE, serverIDBuilder.slice()},
+         {anPath + StaticStrings::AttrCoordinatorRebootId,
+              AgencyPrecondition::Type::VALUE, rebootIDBuilder.slice()}}};
+
+    auto const res = ac.sendTransactionWithFailover(transaction);
+
+    // Only if not precondition failed
+    if (!res.successful()) {
+      // if preconditions failed -> somebody already finished our revision record.
+      // That means agency maintanence already reverted our operation - we must abandon this operation.
+      // So it differs from what we do in startModifying.
+      if (res.httpCode() != static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+        if (TRI_microtime() > endTime) {
+          // Dump agency plan
+          logAgencyDump();
+
+          return Result(
+              TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+              "finish modifying analyzer precondition for database " + databaseID + ": Revision " +
+                revisionBuilder.toString() + (restore ? " - 1" : " + 1") + " is not equal to BuildingRevision " +
+                "or incorrect coordinator or rebootID. Cannot modify an analyzer.");
+        }
+
+        if (_server.isStopping()) {
+          return Result(TRI_ERROR_SHUTTING_DOWN);
+        }
+
+        continue;
+      } else if (restore) {
+        break; // failed precondition means our revert is indirectly successful!
+      }
+
+      return Result(
+          TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+          std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
+              " HTTP code: " + std::to_string(res.httpCode()) +
+              " error message: " + res.errorMessage() +
+              " error details: " + res.errorDetails() + " body: " + res.body());
+    } else {
+      auto results = res.slice().get("results");
+      if (results.isArray() && results.length() > 0) {
+        waitForPlan(results[0].getNumber<uint64_t>()).get();
+      }
+    }
+    break;
+  } while (true);
+
+  return Result(TRI_ERROR_NO_ERROR);
+}
+
+AnalyzerModificationTransaction::Ptr ClusterInfo::createAnalyzersCleanupTrans() {
+  if (AnalyzerModificationTransaction::getPendingCount() == 0) { // rough check, don`t care about sync much
+    READ_LOCKER(readLocker, _planProt.lock);
+    for (auto& it : _dbAnalyzersRevision) {
+      if (it.second->getRebootID() == ServerState::instance()->getRebootId() &&
+          it.second->getServerID() == ServerState::instance()->getId() &&
+          it.second->getRevision() != it.second->getBuildingRevision()) {
+        // this maybe dangling
+        if (AnalyzerModificationTransaction::getPendingCount() == 0) { // still nobody active
+          return std::make_unique<AnalyzerModificationTransaction>(it.first, this, true);
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4400,17 +4748,6 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate plan
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidatePlan() {
-/*  {
-    WRITE_LOCKER(writeLocker, _planProt.lock);
-    _planProt.isValid = false;
-    }*/
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current coordinators
 //////////////////////////////////////////////////////////////////////////////
 
@@ -4431,28 +4768,6 @@ void ClusterInfo::invalidateCurrentMappings() {
     _mappingsProt.isValid = false;
   }
 }
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate current
-//////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::invalidateCurrent() {
-/*  {
-    WRITE_LOCKER(writeLocker, _serversProt.lock);
-    _serversProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _DBServersProt.lock);
-    _DBServersProt.isValid = false;
-  }
-  {
-    WRITE_LOCKER(writeLocker, _currentProt.lock);
-    _currentProt.isValid = false;
-  }
-  invalidateCurrentCoordinators();
-  invalidateCurrentMappings();*/
-}
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief get current "Plan" structure
@@ -5001,7 +5316,7 @@ bool ClusterInfo::SyncerThread::notify(velocypack::Slice const& slice) {
 void ClusterInfo::SyncerThread::beginShutdown() {
 
   using namespace std::chrono_literals;
-  
+
   // set the shutdown state in parent class
   Thread::beginShutdown();
   {
@@ -5114,7 +5429,110 @@ void ClusterInfo::triggerWaiting(
 
 }
 
+AnalyzerModificationTransaction::AnalyzerModificationTransaction(
+    DatabaseID const& database, ClusterInfo* ci, bool cleanup)
+  : _clusterInfo(ci), _database(database), _cleanupTransaction(cleanup) {
+  TRI_ASSERT(_clusterInfo);
+}
 
+AnalyzerModificationTransaction::~AnalyzerModificationTransaction() {
+  try {
+    abort();
+  }
+  catch (...) {} // force no exceptions
+  TRI_ASSERT(!_rollbackCounter && !_rollbackRevision);
+}
+
+int32_t AnalyzerModificationTransaction::getPendingCount() noexcept {
+  return _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+}
+
+AnalyzersRevision::Revision AnalyzerModificationTransaction::buildingRevision() const noexcept {
+  TRI_ASSERT(_buildingRevision != AnalyzersRevision::LATEST); // unstarted transation access
+  return _buildingRevision;
+}
+
+Result AnalyzerModificationTransaction::start() {
+  auto const endTime = TRI_microtime() + 5.0; // arbitrary value.
+  int32_t count = _pendingAnalyzerOperationsCount.load(std::memory_order::memory_order_relaxed);
+  // locking stage
+  while (true) {
+    // Do not let break out of cleanup mode.
+    // Cleanup itself could start only from idle state.
+    if (count < 0 || _cleanupTransaction) {
+      count = 0;
+    }
+    if (_pendingAnalyzerOperationsCount.compare_exchange_weak(count,
+      _cleanupTransaction ? -1 : count + 1,
+      std::memory_order_acquire)) {
+      break;
+    }
+    if (TRI_microtime() > endTime) {
+      return Result(
+        TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+        "start modifying analyzer for database " + _database + ": failed to acquire operation counter");
+    }
+  }
+  _rollbackCounter = true; // from now on we must release our counter
+
+  if (_cleanupTransaction) {
+    _buildingRevision = _clusterInfo->getAnalyzersRevision(_database, false)->getRevision();
+    TRI_ASSERT(_clusterInfo->getAnalyzersRevision(_database, false)->getBuildingRevision() != _buildingRevision);
+    return {};
+  } else {
+    auto res = _clusterInfo->startModifyingAnalyzerCoordinator(_database);
+    _rollbackRevision = res.first.ok();
+    _buildingRevision = res.second;
+    return res.first;
+  }
+}
+
+Result AnalyzerModificationTransaction::commit() {
+  TRI_ASSERT(_rollbackCounter && (_rollbackRevision || _cleanupTransaction));
+  auto res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, _cleanupTransaction);
+  _rollbackRevision = res.fail() && !_cleanupTransaction;
+  // if succesful revert mark our transaction as completed (otherwise postpone it to abort call).
+  // for cleanup - always this attempt is completed (cleanup should not waste much time). Will try next time
+  if (res.ok() || _cleanupTransaction) {
+    revertCounter();
+  }
+  return res;
+}
+
+Result AnalyzerModificationTransaction::abort() {
+  if (!_rollbackCounter) {
+    TRI_ASSERT(!_rollbackRevision);
+    return Result();
+  }
+  Result res{};
+  try {
+    if (_rollbackRevision) {
+      TRI_ASSERT(!_cleanupTransaction); // cleanup transaction has nothing to rollback
+      _rollbackRevision = false; // ok, we tried. Even if failed -> recovery job will do the rest
+      res = _clusterInfo->finishModifyingAnalyzerCoordinator(_database, true);
+    }
+  }
+  catch (...) { // let`s be as safe as possible
+    revertCounter();
+    throw;
+  }
+  revertCounter();
+  return res;
+}
+
+void AnalyzerModificationTransaction::revertCounter() {
+  TRI_ASSERT(_rollbackCounter);
+  if (_cleanupTransaction) {
+    TRI_ASSERT(_pendingAnalyzerOperationsCount.load() == -1);
+    _pendingAnalyzerOperationsCount = 0;
+  } else {
+    TRI_ASSERT(_pendingAnalyzerOperationsCount.load() > 0);
+    _pendingAnalyzerOperationsCount.fetch_sub(1);
+  }
+  _rollbackCounter = false;
+}
+
+std::atomic<int32_t>  arangodb::AnalyzerModificationTransaction::_pendingAnalyzerOperationsCount{ 0 };
 
 
 // -----------------------------------------------------------------------------

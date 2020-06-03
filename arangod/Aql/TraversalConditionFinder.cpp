@@ -747,7 +747,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
     // Too complex, would require to figure out all
     // possible values for all others vars and play them through
     // Do not opt.
-    return false;
+    return true;
   }
   TRI_ASSERT(vars.size() == 1);
   TRI_ASSERT(vars.find(pathVar) != vars.end());
@@ -757,21 +757,12 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   bool mustDestroy = false;
   Expression tmpExp(_plan->getAst(), node);
 
-  RegexCache rcache;
+  AqlFunctionsInternalCache rcache;
   FixedVarExpressionContext ctxt(_plan->getAst()->query().trxForOptimization(),
                                  _plan->getAst()->query(),
                                  rcache);
   ctxt.setVariableValue(pathVar, {});
   AqlValue res = tmpExp.execute(&ctxt, mustDestroy);
-  TRI_ASSERT(res.isBoolean());
-
-  if (mustDestroy) {
-    // Slower case, first copy out the result, then destroy, then return copy.
-    bool result = res.toBoolean();
-    res.destroy();
-    return result;
-  }
-
-  // Opt Case directly return the outcome of the result.
+  AqlValueGuard guard(res, mustDestroy);
   return res.toBoolean();
 }

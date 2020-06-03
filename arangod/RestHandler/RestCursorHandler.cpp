@@ -221,7 +221,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
                                                          _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
   
-  auto query = std::make_unique<aql::Query>(createTransactionContext(),
+  // simon: access mode can always be write on the coordinator
+  const AccessMode::Type mode = AccessMode::Type::WRITE;
+  auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
       arangodb::aql::QueryString(querySlice.copyString()),
       bindVarsBuilder, _options);
 

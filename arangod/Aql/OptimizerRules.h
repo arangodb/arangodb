@@ -42,7 +42,7 @@ class SubqueryNode;
 class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert = true);
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -165,11 +165,11 @@ ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
                                                           bool& wasModified);
 
-/// @brief remove scatter/gather and remote nodes for satellite collections
+/// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                OptimizerRule const&);
 
-/// @brief remove scatter/gather and remote nodes for satellite collections
+/// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 

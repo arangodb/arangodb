@@ -27,7 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/RegexCache.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -382,7 +382,7 @@ class IResearchViewExecutorBase {
 
  protected:
   transaction::Methods _trx;
-  RegexCache _regexCache;
+  AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   Infos& _infos;
   InputAqlItemRow _inputRow;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;

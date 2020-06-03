@@ -386,10 +386,13 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls, VPackS
   }
 
   for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
-    colls.add(basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
+    colls.add(
+        basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
                                                                                           "type")
-                                   .c_str()));
+                                   .c_str()),
+        aql::Collection::Hint::Shard
+    );
   }
 }
 

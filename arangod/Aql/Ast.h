@@ -59,7 +59,7 @@ namespace aql {
 
 class BindParameters;
 class QueryContext;
-class RegexCache;
+class AqlFunctionsInternalCache;
 struct Variable;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
@@ -69,14 +69,15 @@ class Ast {
   friend class Condition;
 
  public:
+  Ast(Ast const&) = delete;
+  Ast& operator=(Ast const&) = delete;
+
   /// @brief create the AST
   explicit Ast(QueryContext&);
 
   /// @brief destroy the AST
   ~Ast();
 
- public:
-  
   /// @brief return the query
   QueryContext& query() const { return _query; }
   
@@ -292,10 +293,10 @@ class Ast {
   AstNode* createNodeIterator(char const*, size_t, AstNode const*);
 
   /// @brief create an AST null value node
-  static AstNode* createNodeValueNull();
+  AstNode* createNodeValueNull();
 
   /// @brief create an AST bool value node
-  static AstNode* createNodeValueBool(bool);
+  AstNode* createNodeValueBool(bool);
 
   /// @brief create an AST int value node
   AstNode* createNodeValueInt(int64_t);
@@ -368,9 +369,6 @@ class Ast {
 
   /// @brief create an AST nop node
   AstNode* createNodeNop();
-
-  /// @brief get the AST nop node
-  static AstNode* getNodeNop();
 
   /// @brief create an AST n-ary operator
   AstNode* createNodeNaryOperator(AstNodeType);
@@ -447,7 +445,13 @@ class Ast {
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool copyStringValues);
 
   /// @brief resolve an attribute access
-  static AstNode const* resolveConstAttributeAccess(AstNode const*);
+  AstNode const* resolveConstAttributeAccess(AstNode const*);
+
+  /// @brief resolve an attribute access, static version
+  /// if isValid is set to true, then the returned value is to be trusted. if 
+  /// isValid is set to false, then the returned value is not to be trued and the
+  /// the result is equivalent to an AQL `null` value
+  static AstNode const* resolveConstAttributeAccess(AstNode const*, bool& isValid);
 
  private:
   /// @brief make condition from example
@@ -475,7 +479,7 @@ class Ast {
 
   /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
   AstNode* optimizeBinaryOperatorRelational(transaction::Methods&,
-                                            RegexCache&, AstNode*);
+                                            AqlFunctionsInternalCache&, AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
   AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
@@ -489,7 +493,7 @@ class Ast {
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
-                                RegexCache&, AstNode*);
+                                AqlFunctionsInternalCache&, AstNode*);
 
   /// @brief optimizes a reference to a variable
   AstNode* optimizeReference(AstNode*);
@@ -601,24 +605,35 @@ class Ast {
   
   /// @brief query makes use of V8 function(s)
   bool _willUseV8;
-  
-  /// @brief a singleton no-op node instance
-  static AstNode const NopNode;
 
-  /// @brief a singleton null node instance
-  static AstNode const NullNode;
+  /// @brief special node types that are used often and for which no memory
+  /// allocation will be needed. The node types are singletons in an AST,
+  /// so they may be referenced from multiple places.
+  struct SpecialNodes {
+    SpecialNodes();
 
-  /// @brief a singleton false node instance
-  static AstNode const FalseNode;
+    ~SpecialNodes() = default;
 
-  /// @brief a singleton true node instance
-  static AstNode const TrueNode;
+    /// @brief a singleton no-op node instance
+    AstNode NopNode;
 
-  /// @brief a singleton zero node instance
-  static AstNode const ZeroNode;
+    /// @brief a singleton null node instance
+    AstNode NullNode;
 
-  /// @brief a singleton empty string node instance
-  static AstNode const EmptyStringNode;
+    /// @brief a singleton false node instance
+    AstNode FalseNode;
+
+    /// @brief a singleton true node instance
+    AstNode TrueNode;
+
+    /// @brief a singleton zero node instance
+    AstNode ZeroNode;
+
+    /// @brief a singleton empty string node instance
+    AstNode EmptyStringNode;
+  };
+
+  SpecialNodes const _specialNodes;
 };
 
 }  // namespace aql

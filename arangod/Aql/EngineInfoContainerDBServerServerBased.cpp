@@ -84,7 +84,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
 #ifdef USE_ENTERPRISE
-    if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
+    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
       _inaccessible.insert(std::to_string(col->id()));
     }
@@ -100,7 +100,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
   // Or if we guarantee to never read vertex data.
   for (auto const& col : vertices) {
 #ifdef USE_ENTERPRISE
-    if (query.trxForOptimization().isInaccessibleCollection(col->getPlanId())) {
+    if (query.trxForOptimization().isInaccessibleCollection(col->id())) {
       _inaccessible.insert(col->name());
       _inaccessible.insert(std::to_string(col->id()));
     }
@@ -325,6 +325,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     infoBuilder.add(StaticStrings::SerializationFormat,
                     VPackValue(static_cast<SerializationFormatType>(
                         aql::SerializationFormat::SHADOWROWS)));
+
+    infoBuilder.add(StaticStrings::ArangoSearchAnalyzersRevision, 
+                    VPackValue(trx.state()->analyzersRevision()));
+
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 
@@ -561,12 +565,11 @@ void EngineInfoContainerDBServerServerBased::addOptionsPart(arangodb::velocypack
     for (Collection const* coll : used) {
       TRI_ASSERT(coll != nullptr);
       // simon: add collection name, plan ID and shard IDs
-      if (_query.trxForOptimization().isInaccessibleCollection(coll->getPlanId())) {
+      if (_query.trxForOptimization().isInaccessibleCollection(coll->id())) {
         for (ShardID const& sid : _shardLocking.getShardsForCollection(server, coll)) {
           opts.inaccessibleCollections.insert(sid);
         }
-        opts.inaccessibleCollections.insert(std::to_string(coll->getPlanId()));
-//        opts.inaccessibleCollections.insert(coll->name());
+        opts.inaccessibleCollections.insert(std::to_string(coll->id()));
       }
     }
     opts.toVelocyPack(builder, true);

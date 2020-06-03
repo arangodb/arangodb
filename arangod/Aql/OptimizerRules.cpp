@@ -828,23 +828,23 @@ using EN = arangodb::aql::ExecutionNode;
 namespace arangodb {
 namespace aql {
 
-// TODO cleanup this f-ing aql::Collection(s) mess
-Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, bool assert) {
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context) {
   aql::Collection* coll = nullptr;
 
   if (!cname.empty()) {
-    coll = query.collections().add(cname, AccessMode::Type::READ);
+    coll = query.collections().add(cname, AccessMode::Type::READ, aql::Collection::Hint::Collection);
     // simon: code below is used for FULLTEXT(), WITHIN(), NEAR(), ..
     // could become unnecessary if the AST takes care of adding the collections
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      coll->setCollection(query.vocbase().lookupCollection(cname));
       query.trxForOptimization().addCollectionAtRuntime(cname, AccessMode::Type::READ);
     }
   }
 
-  if (assert) {
-    TRI_ASSERT(coll != nullptr);
+  if (coll == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        std::string("collection '") + cname + "' used in " + context + " not found");
   }
 
   return coll;
@@ -872,7 +872,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       continue;
     }
 
-    // filter variable was introduced a CalculationNode. now check the
+    // filter variable was introduced by a CalculationNode. now check the
     // expression
     auto s = ExecutionNode::castTo<CalculationNode*>(setter);
     auto filterExpression = s->expression();
@@ -962,6 +962,21 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       if (testNode->type == NODE_TYPE_ARRAY &&
           testNode->numMembers() < AstNode::SortNumberThreshold) {
         // number of values is below threshold
+        continue;
+      }
+      
+      if (testNode->type == NODE_TYPE_FCALL && 
+          (static_cast<Function const*>(testNode->getData())->name == "SORTED_UNIQUE" ||
+           static_cast<Function const*>(testNode->getData())->name == "SORTED")) {
+        // we don't need to sort results of a function that already returns sorted
+        // results
+    
+        AstNode* clone = ast->shallowCopyForModify(inNode);
+        TRI_DEFER(FINALIZE_SUBTREE(clone));
+        // set sortedness bit for the IN operator
+        clone->setBoolValue(true);
+        // finally adjust the variable inside the IN calculation
+        filterExpression->replaceNode(clone);
         continue;
       }
 
@@ -1546,7 +1561,7 @@ class PropagateConstantAttributesHelper {
 
     if (constantValue != nullptr) {
       // first check if we would optimize away a join condition that uses a smartJoinAttribute...
-      // we must not do that, because that would otherwise disable smart join functionality
+      // we must not do that, because that would otherwise disable SmartJoin functionality
       if (arangodb::ServerState::instance()->isCoordinator() &&
           parentNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         AstNode const* current = parentNode->getMember(accessIndex == 0 ? 1 : 0);
@@ -1563,7 +1578,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() == nameAttribute->getString()) {
-                  // don't remove a smart join attribute access!
+                  // don't remove a SmartJoin attribute access!
                   return;
                 } else {
                   std::vector<std::string> shardKeys = collection->shardKeys(true);
@@ -2345,7 +2360,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       }
     } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -2420,7 +2435,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
         // attribute not found
         if (!isDynamic) {
           modifiedNode = true;
-          return Ast::createNodeValueNull();
+          return p->getAst()->createNodeValueNull();
         }
       } else if (accessed->type == NODE_TYPE_ARRAY) {
         int64_t position;
@@ -2434,7 +2449,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
           if (!valid) {
             // invalid index
             modifiedNode = true;
-            return Ast::createNodeValueNull();
+            return p->getAst()->createNodeValueNull();
           }
         } else {
           // numeric index, e.g. [123]
@@ -2461,7 +2476,7 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
 
         // index out of bounds
         modifiedNode = true;
-        return Ast::createNodeValueNull();
+        return p->getAst()->createNodeValueNull();
       }
     }
 
@@ -2867,14 +2882,33 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           // expression types (V8 vs. non-V8) do not match. give up
           continue;
         }
+       
+        auto otherLoop = other->getLoop();
 
-        if (!n->isInInnerLoop() && rootNode->callsFunction() && other->isInInnerLoop()) {
-          // original expression calls a function and is not contained in a loop
-          // we're about to move this expression into a loop, but we don't want
-          // to move (expensive) function calls into loops
-          continue;
+        if (otherLoop != nullptr && rootNode->callsFunction()) {
+          auto nLoop = n->getLoop();
+
+          if (nLoop != otherLoop) {
+            // original expression calls a function and is not contained in a loop.
+            // we're about to move this expression into a loop, but we don't want
+            // to move (expensive) function calls into loops
+            continue;
+          }
+          VarSet outer = nLoop->getVarsValid();
+          VarSet used;
+          Ast::getReferencedVariables(rootNode, used);
+          bool doOptimize = true;
+          for (auto& it : used) {
+            if (outer.find(it) == outer.end()) {
+              doOptimize = false;
+              break;
+            }
+          }
+          if (!doOptimize) {
+            continue;
+          }
         }
-
+        
         TRI_ASSERT(other != nullptr);
         otherExpression->replaceVariableReference(outVariable, rootNode);
 
@@ -3797,8 +3831,8 @@ void moveScatterAbove(ExecutionPlan& plan, ExecutionNode* at) {
   // an earlier iteration in scatterInClusterRule.
   // We remove that block, effectively moving the SCATTER/REMOTE past the
   // current node
-  // The effect is that in a smart join we get joined up nodes that are
-  // all executed on the DBServer
+  // The effect is that in a SmartJoin we get joined up nodes that are
+  // all executed on the DB-Server
   auto found = false;
   auto* current = at->getFirstParent();
   while (current != nullptr) {
@@ -4125,7 +4159,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
     isSmart = graphNode->isSmart();
     isDisjoint = graphNode->isDisjoint();
 
-    // Note that here we are in the disjoint smart graph case and "collection()" will
+    // Note that here we are in the Disjoint SmartGraph case and "collection()" will
     // give us any collection in the graph, but they're all sharded the same way.
     collection = graphNode->collection();
 
@@ -4930,7 +4964,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
   std::map<Collection const*, std::unordered_set<std::string>> modificationRestrictions;
 
   // forward a shard key restriction from one collection to the other if the two collections
-  // are used in a smart join (and use distributeShardsLike on each other)
+  // are used in a SmartJoin (and use distributeShardsLike on each other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current,
                                                std::string const& shardId) {
     auto collectionNode = dynamic_cast<CollectionAccessingNode const*>(current);
@@ -7367,7 +7401,7 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       if (std::get<2>(sq)) {
         Ast* ast = plan->getAst();
         // generate a calculation node that only produces "true"
-        auto expr = std::make_unique<Expression>(ast, Ast::createNodeValueBool(true));
+        auto expr = std::make_unique<Expression>(ast, ast->createNodeValueBool(true));
         Variable* outVariable = ast->variables()->createTemporaryVariable();
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
@@ -7479,15 +7513,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt,
 
         current = filterParent;
         modified = true;
+        continue;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
         auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
         auto expr = calculationNode->expression();
         if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
-          break;
-        }
-
-        if (expr->node() == nullptr) {
           break;
         }
 
@@ -7535,7 +7566,7 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
-      if (!gn->isSatelliteNode()) {
+      if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
@@ -7903,7 +7934,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       plan->findNodesOfType(nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS}, true);
       bool const allSatellite = std::all_of(nodes.begin(), nodes.end(), [](auto n) {
         GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
-        return graphNode->isSatelliteNode();
+        return graphNode->isLocalGraphNode();
       });
 
       if (allSatellite) {

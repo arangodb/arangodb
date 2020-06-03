@@ -1563,6 +1563,10 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenCollections";
   checkBrokenCollections();
 
+  LOG_TOPIC("83402", TRACE, Logger::SUPERVISION)
+      << "Begin checkBrokenAnalyzers";
+  checkBrokenAnalyzers();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1772,6 +1776,12 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
           VPackObjectBuilder o(envelope.get(), _agencyPrefix + planColPrefix + database);
           envelope->add("op", VPackValue("delete"));
         }
+
+        // delete the database from Plan/Analyzers
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + planAnalyzersPrefix + database);
+          envelope->add("op", VPackValue("delete"));
+        }
       }
       {
         // precondition that this database is still in Plan and is building
@@ -1853,37 +1863,105 @@ void Supervision::deleteBrokenCollection(std::string const& database,
   }
 }
 
+void Supervision::restoreBrokenAnalyzersRevision(std::string const& database,
+                                                 AnalyzersRevision::Revision revision,
+                                                 AnalyzersRevision::Revision buildingRevision,
+                                                 std::string const& coordinatorID,
+                                                 uint64_t rebootID,
+                                                 bool coordinatorFound) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      std::string anPath = _agencyPrefix + planAnalyzersPrefix + database + "/";
+
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+        // restore the analyzers revision from Plan/Analyzers/<db>/
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AnalyzersBuildingRevision);
+          envelope->add("op", VPackValue("decrement"));
+        }
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AttrCoordinatorRebootId);
+          envelope->add("op", VPackValue("delete"));
+        }
+        {
+          VPackObjectBuilder o(envelope.get(), anPath + StaticStrings::AttrCoordinator);
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
+      {
+        // precondition that this analyzers revision is still in Plan and is building
+        VPackObjectBuilder preconditions(envelope.get());
+        envelope->add(anPath + StaticStrings::AnalyzersRevision,
+                      VPackValue(revision));
+        envelope->add(anPath + StaticStrings::AnalyzersBuildingRevision,
+                      VPackValue(buildingRevision));
+        envelope->add(anPath + StaticStrings::AttrCoordinatorRebootId,
+                      VPackValue(rebootID));
+        envelope->add(anPath + StaticStrings::AttrCoordinator,
+                      VPackValue(coordinatorID));
+        {
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix +
+                                          "/" + coordinatorID);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
+      }
+    }
+  }
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
+        << "failed to resore broken analyzers revision in agency. Will retry. "
+        << envelope->toJson();
+  }
+}
+
+void Supervision::resourceCreatorLost(
+    std::shared_ptr<Node> const& resource,
+    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+  //  check if the coordinator exists and its reboot is the same as specified
+  auto [rebootID, rebootIDExists] =
+      resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
+  auto [coordinatorID, coordinatorIDExists] =
+      resource->hasAsString(StaticStrings::AttrCoordinator);
+
+  bool keepResource = true;
+  bool coordinatorFound = false;
+
+  if (rebootIDExists && coordinatorIDExists) {
+    keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID,
+                                                          rebootID, coordinatorFound);
+    // incomplete data, should not happen
+  } else {
+    //          v---- Please note this awesome log-id
+    LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
+        << "resource has set `isBuilding` but is missing coordinatorID and "
+           "rebootID";
+  }
+
+  if (!keepResource) {
+    action(ResourceCreatorLostEvent{resource, coordinatorID,
+                                    rebootID, coordinatorFound});
+  }
+}
+
 void Supervision::ifResourceCreatorLost(
     std::shared_ptr<Node> const& resource,
     std::function<void(const ResourceCreatorLostEvent&)> const& action) {
   // check if isBuilding is set and it is true
-  std::pair<bool, bool> isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
+  auto isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
   if (isBuilding.first && isBuilding.second) {
-    // this database is currently being built
-    //  check if the coordinator exists and its reboot is the same as specified
-    std::pair<uint64_t, bool> rebootID =
-        resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
-    std::pair<std::string, bool> coordinatorID =
-        resource->hasAsString(StaticStrings::AttrCoordinator);
-
-    bool keepResource = true;
-    bool coordinatorFound = false;
-
-    if (rebootID.second && coordinatorID.second) {
-      keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID.first,
-                                                            rebootID.first, coordinatorFound);
-      // incomplete data, should not happen
-    } else {
-      //          v---- Please note this awesome log-id
-      LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
-          << "resource has set `isBuilding` but is missing coordinatorID and "
-             "rebootID";
-    }
-
-    if (!keepResource) {
-      action(ResourceCreatorLostEvent{resource, coordinatorID.first,
-                                      rebootID.first, coordinatorFound});
-    }
+    // this database or collection is currently being built
+    resourceCreatorLost(resource, action);
   }
 }
 
@@ -1944,6 +2022,31 @@ void Supervision::checkBrokenCollections() {
         // delete this database and all of its collections
         deleteBrokenCollection(dbpair.first, collectionPair.first, ev.coordinatorId,
                                ev.coordinatorRebootId, ev.coordinatorFound);
+      });
+    }
+  }
+}
+
+void Supervision::checkBrokenAnalyzers() {
+  _lock.assertLockedByCurrentThread();
+
+  // check if snapshot has analyzers
+  auto [node, exists] = snapshot().hasAsNode(planAnalyzersPrefix);
+  if (!exists) {
+    return;
+  }
+
+  for (auto const& dbData : node.children()) {
+    auto const& revisions = dbData.second;
+    auto const revision = revisions->hasAsUInt(StaticStrings::AnalyzersRevision);
+    auto const buildingRevision = revisions->hasAsUInt(StaticStrings::AnalyzersBuildingRevision);
+    if (revision.second && buildingRevision.second && revision.first != buildingRevision.first) {
+      resourceCreatorLost(revisions, [this, &dbData, &revision, &buildingRevision](ResourceCreatorLostEvent const& ev) {
+        LOG_TOPIC("ae5a3", INFO, Logger::SUPERVISION)
+            << "checkBrokenAnalyzers: fixing broken analyzers revision with database name "
+            << dbData.first;
+        restoreBrokenAnalyzersRevision(dbData.first, revision.first, buildingRevision.first,
+                                       ev.coordinatorId, ev.coordinatorRebootId, ev.coordinatorFound);
       });
     }
   }
@@ -2298,13 +2401,13 @@ void Supervision::shrinkCluster() {
             maxReplFact = replFact;
           }
         }
-        // Note that this could be a satellite collection, in any case, ignore:
+        // Note that this could be a SatelliteCollection, in any case, ignore:
       }
     }
 
     // mop: do not account any failedservers in this calculation..the ones
     // having
-    // a state of failed still have data of interest to us! We wait indefinately
+    // a state of failed still have data of interest to us! We wait indefinitely
     // for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
       // Clean out as long as number of available servers is bigger

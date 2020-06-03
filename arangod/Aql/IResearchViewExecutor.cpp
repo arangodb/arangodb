@@ -396,7 +396,7 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
       _indexReadBuffer(_infos.getScoreRegisters().size()),
-      _ctx(_trx, infos.getQuery(), _regexCache,
+      _ctx(_trx, infos.getQuery(), _aqlFunctionsInternalCache,
            infos.outVariable(), infos.varInfoMap(), infos.getDepth()),
       _filterCtx(_ctx),  // arangodb::iresearch::ExpressionExecutionContext
       _reader(infos.getReader()),
@@ -564,8 +564,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
   ExecutionPlan const* plan = &infos().plan();
-
-  iresearch::QueryContext const queryCtx = {&_trx, plan, plan->getAst(),
+  iresearch::QueryContext const queryCtx = { &_trx, plan, plan->getAst(),
                                             &_ctx, _reader.get(), &infos().outVariable()};
 
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`

@@ -290,6 +290,55 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
+class AnalyzerModificationTransaction {
+ public:
+  using Ptr = std::unique_ptr<AnalyzerModificationTransaction>;
+
+  AnalyzerModificationTransaction(DatabaseID const& database, ClusterInfo* ci, bool cleanup);
+
+  AnalyzerModificationTransaction(AnalyzerModificationTransaction const&) = delete;
+  AnalyzerModificationTransaction& operator=(AnalyzerModificationTransaction const&) = delete;
+
+  ~AnalyzerModificationTransaction();
+
+  static int32_t getPendingCount() noexcept;
+
+  AnalyzersRevision::Revision buildingRevision() const noexcept;
+
+  Result start();
+  Result commit();
+  Result abort();
+ private:
+  void revertCounter();
+
+  // our cluster info
+  ClusterInfo* _clusterInfo;
+
+  // database for operation
+  // need to copy as may be temp value provided to constructor
+  DatabaseID  _database;
+
+  // rollback operations counter
+  bool _rollbackCounter{ false };
+
+  // rollback revision in Plan
+  bool _rollbackRevision{ false };
+
+  // cleanup or normal analyzer insert/remove
+  bool _cleanupTransaction;
+
+  // revision this transaction is building
+  // e.g. revision will be current upon successful commit of
+  // this transaction. For cleanup transaction this equals to current revision
+  // as cleanup just cleans the mess and reverts revision back to normal
+  AnalyzersRevision::Revision _buildingRevision{ AnalyzersRevision::LATEST };
+
+  // pending operation sount. Positive number means some operations are ongoing
+  // zero means system idle
+  // negative value means recovery is ongoing
+  static std::atomic<int32_t> _pendingAnalyzerOperationsCount;
+};
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 class ClusterInfo  {
 #else
@@ -510,6 +559,14 @@ public:
   std::vector<std::shared_ptr<LogicalView>> const getViews(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about analyzers revision
+  /// @param databaseID database name
+  /// @param forceLoadPlan always reload plan
+  //////////////////////////////////////////////////////////////////////////////
+  AnalyzersRevision::Ptr getAnalyzersRevision(DatabaseID const& databaseID,
+                                                          bool forceLoadPlan = false);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
   /// If it is not found in the cache, the cache is reloaded once.
@@ -629,6 +686,34 @@ public:
 
   Result setViewPropertiesCoordinator(std::string const& databaseName,
                                       std::string const& viewID, VPackSlice const& json);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief start creating or deleting an analyzer in coordinator,
+  /// the return value is an ArangoDB error code and building revision number if succeeded,
+  /// AnalyzersRevision::LATEST on error
+  /// and the errorMsg is set accordingly. One possible error
+  /// is a timeout.
+  /// @note should not be called directly - use AnalyzerModificationTransaction
+  //////////////////////////////////////////////////////////////////////////////
+  std::pair<Result, AnalyzersRevision::Revision>  startModifyingAnalyzerCoordinator(
+      DatabaseID const& databaseID);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief finish creating or deleting an analyzer in coordinator,
+  /// the return value is an ArangoDB error code
+  /// and the errorMsg is set accordingly. One possible error
+  /// is a timeout.
+  /// @note should not be called directly - use AnalyzerModificationTransaction
+  //////////////////////////////////////////////////////////////////////////////
+
+  Result finishModifyingAnalyzerCoordinator(DatabaseID const& databaseID, bool restore);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Creates cleanup transaction for first found dangling operation
+  /// @return created transaction or nullptr if no cleanup needed
+  //////////////////////////////////////////////////////////////////////////////
+
+  AnalyzerModificationTransaction::Ptr createAnalyzersCleanupTrans();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
@@ -868,7 +953,7 @@ public:
 
   void loadCurrent();
 
-  
+
  private:
   void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                               VPackBuilder& builder);
@@ -1013,6 +1098,10 @@ public:
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
                               // execution
+
+  // database ID => analyzers revision
+  std::unordered_map<DatabaseID, AnalyzersRevision::Ptr> _dbAnalyzersRevision; // from Plan/Analyzers
+
   std::atomic<std::thread::id> _planLoader;  // thread id that is loading plan
 
   // The Current state:
@@ -1061,6 +1150,12 @@ public:
 
   static double const reloadServerListTimeout;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief check analyzers precondition timeout in seconds
+  //////////////////////////////////////////////////////////////////////////////
+
+  static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
+
   arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
 
@@ -1075,9 +1170,10 @@ public:
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
 
-
+  Histogram<log_scale_t<float>>& _lpTimer;
+  Histogram<log_scale_t<float>>& _lcTimer;
+    
 };
-
 }  // end namespace arangodb
 
 #endif

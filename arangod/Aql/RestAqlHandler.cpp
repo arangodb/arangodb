@@ -65,6 +65,29 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
+std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptionsWithTTL(
+    VPackSlice const& optionsSlice) const {
+  auto options = std::make_shared<VPackBuilder>();
+  double ttl = _queryRegistry->defaultTTL();
+  {
+    VPackObjectBuilder guard(options.get());
+    TRI_ASSERT(optionsSlice.isObject());
+    for (auto pair : VPackObjectIterator(optionsSlice)) {
+      if (pair.key.isEqualString("ttl")) {
+        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
+        ttl = _request->parsedValue<double>("ttl", ttl);
+        if (ttl <= 0) {
+          ttl = _queryRegistry->defaultTTL();
+        }
+        options->add("ttl", VPackValue(ttl));
+      } else {
+        options->add(pair.key.stringRef(), pair.value);
+      }
+    }
+  }
+  return std::make_pair(ttl, options);
+}
+
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
 // This route sets-up all the query engines required
@@ -90,30 +113,6 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
 //    traverserEngines: [ <infos for traverser engines> ],
 //    variables: [ <variables> ]
 //  }
-
-std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptionsWithTTL(
-    VPackSlice const& optionsSlice) const {
-  auto options = std::make_shared<VPackBuilder>();
-  double ttl = _queryRegistry->defaultTTL();
-  {
-    VPackObjectBuilder guard(options.get());
-    TRI_ASSERT(optionsSlice.isObject());
-    for (auto pair : VPackObjectIterator(optionsSlice)) {
-      if (pair.key.isEqualString("ttl")) {
-        ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
-        ttl = _request->parsedValue<double>("ttl", ttl);
-        if (ttl <= 0) {
-          ttl = _queryRegistry->defaultTTL();
-        }
-        options->add("ttl", VPackValue(ttl));
-      } else {
-        options->add(pair.key.stringRef(), pair.value);
-      }
-    }
-  }
-  return std::make_pair(ttl, options);
-}
-
 void RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
   // on the wrong server. So fail during maintanence.
@@ -238,10 +237,13 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
   collectionBuilder.close();
-
+  
+  // simon: making this write breaks queries where DOCUMENT function
+  // is used in a coordinator-snippet above a DBServer-snippet
+  AccessMode::Type access = AccessMode::Type::READ;
   // creates a StandaloneContext or a leased context
-  auto ctx = createTransactionContext();
-  auto query = std::make_unique<ClusterQuery>(ctx, std::move(options));
+  auto q = std::make_unique<ClusterQuery>(createTransactionContext(access),
+                                          std::move(options));
   
   VPackBufferUInt8 buffer;
   VPackBuilder answerBuilder(buffer);
@@ -250,16 +252,18 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
 
   answerBuilder.add(StaticStrings::AqlRemoteResult, VPackValue(VPackValueType::Object));
-  
-  answerBuilder.add("queryId", VPackValue(query->id()));
-  query->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
-                             variablesSlice, snippetsSlice,
-                             traverserSlice, answerBuilder);
+  answerBuilder.add("queryId", VPackValue(q->id()));
+  auto analyzersRevision = VelocyPackHelper::getNumericValue<AnalyzersRevision::Revision>(
+      querySlice, StaticStrings::ArangoSearchAnalyzersRevision,
+      AnalyzersRevision::MIN);
+  q->prepareClusterQuery(format, querySlice, collectionBuilder.slice(),
+                         variablesSlice, snippetsSlice,
+                         traverserSlice, answerBuilder, analyzersRevision);
 
   answerBuilder.close(); // result
   answerBuilder.close();
   
-  _queryRegistry->insertQuery(std::move(query), ttl);
+  _queryRegistry->insertQuery(std::move(q), ttl);
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
