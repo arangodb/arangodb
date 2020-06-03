@@ -58,7 +58,7 @@ One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 Whether the collection is used in a SmartGraph. _(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
-Attribute that is used in SmartGraphs. _(cluster only)_
+Attribute that is used in smart graphs. _(cluster only)_
 
 @RESTSTRUCT{smartJoinAttribute,collection_info,string,optional,}
 Determines an attribute of the collection that must contain the shard key value
