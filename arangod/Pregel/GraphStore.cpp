@@ -439,10 +439,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       
       VPackStringRef toValue(edgeSlice);
       size_t space = toValue.size();
-      
-      
-//      if constexpr
-      
       allocateSpace(space);
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
