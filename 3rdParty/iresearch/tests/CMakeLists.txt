@@ -314,9 +314,8 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
     ${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
     ${IResearch_TARGET_NAME}-format-1_0-static-scrt
-    gtest
-    gtest-main
-    boost_locale
+    ${GTEST_STATIC_LIBS}
+    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     ${PTHREAD_LIBRARY}
   )
   target_link_libraries(${IResearchTests_TARGET_NAME}-static-scrt

@@ -140,6 +140,11 @@ set(BFD_ROOT "invalid")
 if (USE_GOOGLE_TESTS)
   set(GTEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/6.8/gtest-1.8.1/fused-src/gtest/")
   set(USE_TESTS ON)
+  set(GTEST_FOUND TRUE)
+  set(GTEST_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/6.8/gtest-1.8.1/fused-src/gtest/")
+  set(GTEST_STATIC_LIBS gtest gtest_main)
+  set(Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG boost_locale)
+  set(Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE boost_locale)
 endif ()
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
