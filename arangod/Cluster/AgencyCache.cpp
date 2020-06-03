@@ -23,6 +23,7 @@
 #include "AgencyCache.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Node.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/RestHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -40,6 +41,8 @@ AgencyCache::AgencyCache(
 AgencyCache::~AgencyCache() {
   beginShutdown();
 }
+
+bool AgencyCache::isSystem() const { return true; }
 
 /// Start all agent thread
 bool AgencyCache::start() {
@@ -195,7 +198,7 @@ void AgencyCache::run() {
     //   {..., result:{commitIndex:X, firstIndex:0, readDB:{...}}}
     // * Incremental change to cache (firstIndex != 0)
     //   {..., result:{commitIndex:X, firstIndex:Y, log:[]}}
-
+    if (server().getFeature<NetworkFeature>().prepared()) {
     auto ret = sendTransaction()
       .thenValue(
         [&](AsyncAgencyCommResult&& rb) {
@@ -286,6 +289,13 @@ void AgencyCache::run() {
           }
         });
     ret.wait();
+    } else {
+      if (wait <= 1.9) {
+        wait += 0.1;
+      }
+      LOG_TOPIC("9393e", DEBUG, Logger::CLUSTER) <<
+        "Waiting for network feature to get ready";
+    }
 
   }
 

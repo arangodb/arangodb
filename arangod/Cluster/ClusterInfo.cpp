@@ -547,6 +547,9 @@ void ClusterInfo::loadClusterId() {
 static std::string const prefixPlan = "Plan";
 
 void ClusterInfo::loadPlan() {
+
+
+  
   std::shared_ptr<VPackBuilder> acb;
   consensus::index_t idx = 0;
   uint64_t newPlanVersion;
@@ -556,6 +559,14 @@ void ClusterInfo::loadPlan() {
 
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
 
+  // We need to wait for any cluster operation, which needs access to the
+  // agency cache for it to become ready. The essentials in the cluster, namely
+  // ClusterInfo etc, need to start after first poll result from the agency.
+  // This is of great importance to not accidentally delete data facing an
+  // empty agency. There are also other measures that guard against such a
+  // outcome. But there is also no point continuing with a first agency poll.  
+  agencyCache.waitFor(1).get();
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto tStart = TRI_microtime();
   auto longPlanWaitLogger = scopeGuard([&tStart]() {
