@@ -10,6 +10,7 @@ set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
 add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
+add_definitions("-DNPERF_CONTEXT")
 
 # jemalloc settings
 if (USE_JEMALLOC)
