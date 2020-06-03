@@ -15,7 +15,6 @@ devel
   collections, but will continue to work for the valid collections.
 
 * Improved network send request for more robustness.
->>>>>>> a75bc9dd72cfa79ff5dfc51ed3f57760f6e4a4f0
 
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
