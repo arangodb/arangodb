@@ -1097,10 +1097,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
                                                    arangodb::velocypack::Slice const& definition,
                                                    arangodb::IndexId id,
                                                    bool isClusterConstructor) const override {
-        auto& ci =
-            collection.vocbase().server().getFeature<arangodb::ClusterFeature>().clusterInfo();
         EXPECT_TRUE(collection.vocbase().server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
-        ci.invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
         return std::make_shared<TestIndex>(id, collection, definition);
       }
 
@@ -1161,7 +1158,6 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
       EXPECT_TRUE((arangodb::AgencyComm(server.server())
                        .setValue(versionPath, versionValue->slice(), 0.0)
                        .successful()));  // force loadPlan() update
-      ci.invalidateCurrent();            // force reload of 'Current'
     }
 
     arangodb::velocypack::Builder builder;

@@ -226,10 +226,10 @@ struct AqlValue final {
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
   /// explicit calls to destroy()
-  AqlValue(AqlValue const&) noexcept = default;
-  AqlValue& operator=(AqlValue const&) noexcept = default;
-  AqlValue(AqlValue&&) noexcept = default;
-  AqlValue& operator=(AqlValue&&) noexcept = default;
+  AqlValue(AqlValue const&) = default;
+  AqlValue& operator=(AqlValue const&) = default;
+  AqlValue(AqlValue&&) = default;
+  AqlValue& operator=(AqlValue&&) = default;
 
   ~AqlValue() = default;
 
@@ -379,6 +379,19 @@ struct AqlValue final {
   template <bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
 };
+
+// Check that the defaulted constructors, destructor and assignment
+// operators are all noexcept:
+// AqlValue(AqlValue&&)
+static_assert(noexcept(AqlValue(std::declval<AqlValue>())));
+// AqlValue(AqlValue const&)
+static_assert(noexcept(AqlValue(static_cast<AqlValue const&>(std::declval<AqlValue>()))));
+// AqlValue& operator=(AqlValue&&)
+static_assert(noexcept(std::declval<AqlValue>() = std::declval<AqlValue>()));
+// AqlValue& operator=(AqlValue const&)
+static_assert(noexcept(std::declval<AqlValue>() = static_cast<AqlValue const&>(std::declval<AqlValue>())));
+// ~AqlValue()
+static_assert(noexcept(std::declval<AqlValue>().~AqlValue()));
 
 class AqlValueGuard {
  public:

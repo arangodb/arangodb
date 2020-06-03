@@ -44,7 +44,7 @@ class SubqueryExecutorInfos {
   SubqueryExecutorInfos(ExecutionBlock& subQuery, RegisterId outReg, bool subqueryIsConst);
 
   SubqueryExecutorInfos() = delete;
-  SubqueryExecutorInfos(SubqueryExecutorInfos&&) noexcept = default;
+  SubqueryExecutorInfos(SubqueryExecutorInfos&&) = default;
   SubqueryExecutorInfos(SubqueryExecutorInfos const&) = delete;
   ~SubqueryExecutorInfos() = default;
 
