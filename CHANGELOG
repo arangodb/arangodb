@@ -1,6 +1,8 @@
 devel
 -----
 
+* Optimized Web UI styling for ArangoSearch Views when in read-only mode.
+
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
     also include RocksDB memtable sizes
