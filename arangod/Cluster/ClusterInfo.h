@@ -1170,7 +1170,9 @@ public:
   mutable std::mutex _waitCurrentLock;
   std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
 
-
+  Histogram<log_scale_t<float>>& _lpTimer;
+  Histogram<log_scale_t<float>>& _lcTimer;
+    
 };
 }  // end namespace arangodb
 

@@ -1,6 +1,8 @@
 devel
 -----
 
+* More substantial metrics in agency.
+
 * arangodump and arangorestore will now fail when using the `--collection`
   option and none of the specified collections actually exist in the database
   (on dump) or in the dump to restore (on restore). In case some of the specified
