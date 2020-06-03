@@ -63,6 +63,8 @@
 #include "utils/network_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/runtime_utils.hpp"
+#include "utils/mmap_utils.hpp"
+#include <unicode/udata.h>
 
 #ifdef _MSC_VER
   // +1 for \0 at end of string
@@ -321,6 +323,25 @@ void test_base::SetUp() {
 int main( int argc, char* argv[] ) {
   install_stack_trace_handler();
 
+#ifdef OVERRIDE_ICU_DATA
+  // icu initialize for data file
+  irs::utf8_path icu_data_file_path;
+  auto* icu_data_path_env = irs::getenv("ICU_DATA");
+  if (icu_data_path_env) {
+    icu_data_file_path = icu_data_path_env;
+  } else {
+    icu_data_file_path = irs::file_utils::path_parts(irs::utf8_path(argv[0]).c_str()).dirname;
+  }
+  icu_data_file_path /= OVERRIDE_ICU_DATA;
+  bool data_exists{false};
+  irs::mmap_utils::mmap_handle icu_data;
+  if (icu_data_file_path.exists(data_exists) && data_exists) {
+    if (icu_data.open(icu_data_file_path.c_str())) {
+      UErrorCode status = U_ZERO_ERROR;
+      udata_setCommonData(icu_data.addr(), &status);
+    }
+  }
+#endif
   const int code = test_env::initialize( argc, argv );
 
   std::cout << "Path to test result directory: " 
