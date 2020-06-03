@@ -1316,9 +1316,7 @@ void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
     aql::Ast::getReferencedVariables(scorer.node, vars);
   }
 
-  if (noMaterialization()) {
-    vars.erase(_outVariable);
-  }
+  vars.erase(_outVariable);
 }
 
 std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {

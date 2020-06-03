@@ -58,6 +58,23 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /*
+   * SubqueryEnd does indeed access a variable that is not valid. How can that be?
+   * The varsValid stack is already popped for SUBQUERY_END. But varsUsedHere includes
+   * the read of the return value from the subquery level.
+   */
+  if (en->getType() != ExecutionNode::SUBQUERY_END) {
+    VarSet varsUsedHere;
+    en->getVariablesUsedHere(varsUsedHere);
+
+    VarSet const& varsValid = en->getVarsValid();
+    for (auto&& var : varsUsedHere) {
+        TRI_ASSERT(varsValid.find(var) != varsValid.end());
+    }
+  }
+#endif
+
   bool const mayReuseRegisterImmediately = en->alwaysCopiesRows();
 
   if (en->isIncreaseDepth()) {
