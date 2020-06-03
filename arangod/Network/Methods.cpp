@@ -100,8 +100,6 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
   // FIXME build future.reset(..)
-  // WARNING, this method must under no circumstances throw an exception
-
   try {
 
     if (!pool || !pool->config().clusterInfo) {
@@ -160,13 +158,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       });
     return f;
   } catch (std::exception const& e) {
-    LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION)
-      << "failed to send request to destination " << dest << ": " << e.what();
+    LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION) << "failed to send request" << e.what();
   } catch (...) {
-    LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request to destination " << dest;
+    LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request";
   }
 
-  return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
+  return futures::makeFuture(Response{std::move(std::string()), Error::Canceled, nullptr});
 }
 
 /// Handler class with enough information to keep retrying
@@ -392,8 +389,6 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            RequestOptions const& options,
                            Headers headers) {
 
-  // WARNING this method shall never throw - anything!
-
   try {
 
     if (!pool || !pool->config().clusterInfo) {
@@ -415,13 +410,12 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
     return rs->future();
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
-      << "failed to send request to destination " << destination << ": " << e.what();
+    LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION) << "failed to send request: " << e.what();
   } catch (...) {
-    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request to destination " << destination;
+    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request";
   }
 
-  return futures::makeFuture(Response{std::move(destination), Error::Canceled, nullptr});
+  return futures::makeFuture(Response{std::move(std::string()), Error::Canceled, nullptr});
 
 }
 
