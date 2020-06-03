@@ -57,7 +57,7 @@ void ShardingFeature::prepare() {
     return std::make_unique<ShardingStrategyCommunityCompat>(sharding);
   });
   // note: enterprise-compat is always there so users can downgrade from
-  // enterprise edition to community edition
+  // Enterprise Edition to Community Edition
   registerFactory(ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) {
     return std::make_unique<ShardingStrategyEnterpriseCompat>(sharding);
   });
@@ -65,8 +65,8 @@ void ShardingFeature::prepare() {
     return std::make_unique<ShardingStrategyHash>(sharding);
   });
 #ifdef USE_ENTERPRISE
-  // the following sharding strategies are only available in the enterprise
-  // edition
+  // the following sharding strategies are only available in the
+  // Enterprise Edition
   registerFactory(ShardingStrategyEnterpriseSmartEdgeCompat::NAME, [](ShardingInfo* sharding) {
     return std::make_unique<ShardingStrategyEnterpriseSmartEdgeCompat>(sharding);
   });
@@ -74,11 +74,11 @@ void ShardingFeature::prepare() {
     return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(sharding);
   });
 #else
-  // in the community-version register some stand-ins for the sharding
-  // strategies only available in the enterprise edition
+  // in the Community Edition register some stand-ins for the sharding
+  // strategies only available in the Enterprise Edition
   // note: these standins will actually not do any sharding, but always
   // throw an exception telling the user that the selected sharding
-  // strategy is only available in the enterprise edition
+  // strategy is only available in the Enterprise Edition
   for (auto const& name :
        std::vector<std::string>{"enterprise-smart-edge-compat",
                                 "enterprise-hash-smart-edge"}) {

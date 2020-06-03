@@ -36,7 +36,7 @@ const {assertEqual, assertUndefined} = jsunity.jsUnity.assertions;
 
 /**
  * @brief Only if enterprise mode:
- *        Creates a smart graph sharded by `value`
+ *        Creates a SmartGraph sharded by `value`
  *        That has 100 vertices (value 0 -> 99)
  *        That has 100 orphans (value 0 -> 99)
  *        That has 300 edges, for each value i:
@@ -116,7 +116,7 @@ const setupSmartArangoSearch = function () {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates a satellite collection with 100 documents
+ *        Creates a SatelliteCollection with 100 documents
  */
 function setupSatelliteCollections() {
   if (!isEnterprise) {
@@ -136,7 +136,7 @@ function setupSatelliteCollections() {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates a satellite graph
+ *        Creates a SatelliteGraph
  */
 function setupSatelliteGraphs() {
   if (!isEnterprise) {
@@ -219,11 +219,11 @@ function setupSatelliteGraphs() {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates a smart graph and changes the value of the smart
+ *        Creates a SmartGraph and changes the value of the smart
  *        attribute to check that the graph can still be restored. 
  *
  *        This is a regression test for a bug in which a dumped
- *        database containing a smart graph with edited smart attribute
+ *        database containing a SmartGraph with edited smart attribute
  *        value could not be restored.
  */
 function setupSmartGraphRegressionTest() {

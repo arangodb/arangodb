@@ -839,6 +839,10 @@ function processQuery(query, explain, planIndex) {
 
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
+      if (name.match(/^[a-zA-Z]+$/)) {
+        // make it a keyword
+        name = keyword(name.toUpperCase());
+      }
       var lhs = buildExpression(node.subNodes[0]);
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
