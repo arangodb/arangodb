@@ -1,10 +1,10 @@
 devel
 -----
 
-<<<<<<< HEAD
+
 * Fix arangosearch failure when restarting db servers
-=======
-* Removed external file loading in a used 3rd party library (Web UI). 
+
+* Removed external file loading in a used 3rd party library (Web UI).
 
 * More substantial metrics in agency.
 
@@ -14,7 +14,7 @@ devel
   collections exist, arangodump/restore will issue warnings about the invalid
   collections, but will continue to work for the valid collections.
 
-* Improved network send request for more robustness. 
+* Improved network send request for more robustness.
 >>>>>>> a75bc9dd72cfa79ff5dfc51ed3f57760f6e4a4f0
 
 * Added multiple RocksDB configuration options to arangod:
