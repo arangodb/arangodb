@@ -144,7 +144,7 @@ set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
 if (USE_3RDPARTY_TESTS)
   # override ICU data for iresearch tests to same as used for arangodb
-  add_definitions("-DOVERRIDE_ICU_DATA=\"icudtl.dat\"")
+  add_definitions("-DOVERRIDE_ICU_DATA=\"${ICU_DT_DEST}\"")
   set(GTEST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/6.8/third-party/gtest-1.8.1/fused-src/gtest/")
   set(USE_TESTS ON CACHE BOOL "Enable IResearch tests generation" FORCE)
   set(GTEST_FOUND TRUE)
