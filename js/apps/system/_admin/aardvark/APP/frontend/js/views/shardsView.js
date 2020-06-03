@@ -344,13 +344,14 @@
 
           var pos = 0;
           _.each(toFetch, function (val, key) {
-            _.each(collections[toFetch[pos]].Current, function (shardVal, shardName) {
-              combined.Current[shardName] = shardVal;
-            });
-
-            _.each(collections[toFetch[pos]].Plan, function (shardVal, shardName) {
-              combined.Plan[shardName] = shardVal;
-            });
+            if (collections[toFetch[pos]]) {
+              _.each(collections[toFetch[pos]].Current, function (shardVal, shardName) {
+                combined.Current[shardName] = shardVal;
+              });
+              _.each(collections[toFetch[pos]].Plan, function (shardVal, shardName) {
+                combined.Plan[shardName] = shardVal;
+              });
+            }
 
             delete collections[toFetch[pos]];
             collections[cName] = combined;
@@ -362,7 +363,7 @@
       // order results
       var ordered = {};
       Object.keys(collections).sort(function(l, r) {
-        if (l[0] === '_' && r[0] !== '_') { 
+        if (l[0] === '_' && r[0] !== '_') {
           return 1;
         } else if (l[0] !== '_' && r[0] === '_') {
           return -1;
