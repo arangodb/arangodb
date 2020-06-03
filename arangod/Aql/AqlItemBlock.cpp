@@ -856,7 +856,7 @@ void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t const targetRow,
 }
 
 AqlItemBlock::~AqlItemBlock() {
-  TRI_ASSERT(_refCount.load(std::memory_order_relaxed) == 0);
+  TRI_ASSERT(_refCount == 0);
   destroy();
   decreaseMemoryUsage(sizeof(AqlValue) * _nrItems * internalNrRegs());
 }
@@ -1055,14 +1055,13 @@ AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
   return _manager;
 }
 
-size_t AqlItemBlock::getRefCount() const noexcept { return _refCount.load(std::memory_order_relaxed); }
+size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
 
-void AqlItemBlock::incrRefCount() const noexcept { _refCount.fetch_add(1, std::memory_order_relaxed); }
+void AqlItemBlock::incrRefCount() const noexcept { ++_refCount; }
 
 size_t AqlItemBlock::decrRefCount() const noexcept {
-  size_t value = _refCount.fetch_sub(1, std::memory_order_release);
-  TRI_ASSERT(value > 0);
-  return value - 1;
+  TRI_ASSERT(_refCount > 0);
+  return --_refCount;
 }
 
 RegisterCount AqlItemBlock::internalNrRegs() const noexcept {

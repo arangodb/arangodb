@@ -138,6 +138,7 @@ module.exports =
     }
 
     buildSwaggerPaths () {
+      let securitySchemes;
       const paths = {};
       const ids = new Set();
       for (const route of this.flatten()) {
@@ -172,33 +173,39 @@ module.exports =
           paths[path] = {};
         }
         const pathItem = paths[path];
-        const operation = swagger._buildOperation();
-        if (names.length) {
-          operation.operationId = names
-          .map((name, i) => (i ? ucFirst(name) : name))
-          .join('');
-        }
-        for (let method of swagger._methods) {
-          method = method.toLowerCase();
+        const {operation, meta} = swagger._buildOperation();
+        for (const METHOD of swagger._methods) {
+          const method = METHOD.toLowerCase();
           if (!pathItem[method]) {
-            if (operation.operationId && swagger._methods.length > 1) {
-              const op = Object.assign({}, operation);
-              pathItem[method] = op;
-              if (ids.has(op.operationId)) {
-                let i = 2;
-                while (ids.has(op.operationId + i)) {
-                  i++;
-                }
-                op.operationId += i;
-              }
-              ids.add(op.operationId);
+            const op = swagger._methods.length > 1 ? {...operation} : operation;
+            pathItem[method] = op;
+            if (names.length) {
+              op.operationId = names
+              .map((name, i) => (i ? ucFirst(name) : name.toLowerCase()))
+              .join('');
             } else {
-              pathItem[method] = operation;
+              op.operationId = `${METHOD}_${parts.join("_").replace(/[^_a-z]+/gi, "")}`;
             }
+            if (ids.has(op.operationId)) {
+              let i = 2;
+              while (ids.has(op.operationId + i)) {
+                i++;
+              }
+              op.operationId += i;
+            }
+            ids.add(op.operationId);
+          }
+        }
+        if (meta.securitySchemes) {
+          if (!securitySchemes) {
+            securitySchemes = {};
+          }
+          for (const [id, securityScheme] of meta.securitySchemes) {
+            securitySchemes[id] = securityScheme;
           }
         }
       }
-      return paths;
+      return {paths, securitySchemes};
     }
 
     reverse (route, routeName, params, suffix) {

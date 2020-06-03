@@ -59,7 +59,7 @@ namespace aql {
 
 class BindParameters;
 class QueryContext;
-class RegexCache;
+class AqlFunctionsInternalCache;
 struct Variable;
 
 typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
@@ -479,7 +479,7 @@ class Ast {
 
   /// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
   AstNode* optimizeBinaryOperatorRelational(transaction::Methods&,
-                                            RegexCache&, AstNode*);
+                                            AqlFunctionsInternalCache&, AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
   AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
@@ -493,7 +493,7 @@ class Ast {
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
-                                RegexCache&, AstNode*);
+                                AqlFunctionsInternalCache&, AstNode*);
 
   /// @brief optimizes a reference to a variable
   AstNode* optimizeReference(AstNode*);

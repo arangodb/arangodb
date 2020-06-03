@@ -593,7 +593,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
         _infos.getNonConstExpressions()[posInExpressions].get();
     auto exp = toReplace->expression.get();
 
-    auto& regex = _documentProducingFunctionContext.regexCache();
+    auto& regex = _documentProducingFunctionContext.aqlFunctionsInternalCache();
 
     ExecutorExpressionContext ctx(_trx, query, regex,
                                   input, _infos.getExpInVars(),

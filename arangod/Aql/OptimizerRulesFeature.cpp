@@ -342,7 +342,7 @@ void OptimizerRulesFeature::addRules() {
 
 #ifdef USE_ENTERPRISE
   // must run before distribute-in-cluster and must not be disabled, as it is necessary
-  // for distributing smart graph operations
+  // for distributing SmartGraph operations
   registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
                clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,

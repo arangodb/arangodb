@@ -514,7 +514,7 @@ function dumpAuthentication (options) {
 }
 
 function dumpEncrypted (options) {
-  // test is only meaningful in the enterprise version
+  // test is only meaningful in the Enterprise Edition
   let skip = true;
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
@@ -558,7 +558,7 @@ function dumpEncrypted (options) {
 }
 
 function dumpMaskings (options) {
-  // test is only meaningful in the enterprise version
+  // test is only meaningful in the Enterprise Edition
   let skip = true;
   if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);

@@ -272,7 +272,9 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
 
   // Waiting -> no block
   TRI_ASSERT(state != ExecutionState::WAITING || block == nullptr);
-  if (block != nullptr) {
+
+  if (state != ExecutionState::WAITING) {
+    // We need to report everything that is not waiting
     _executor.distributeBlock(block, skipped, _clientBlockData);
   }
 

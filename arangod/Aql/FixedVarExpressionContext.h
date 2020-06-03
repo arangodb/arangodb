@@ -41,7 +41,7 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
   explicit FixedVarExpressionContext(transaction::Methods& trx,
                                      QueryContext& query,
-                                     RegexCache& cache);
+                                     AqlFunctionsInternalCache& cache);
 
   ~FixedVarExpressionContext() override = default;
 
