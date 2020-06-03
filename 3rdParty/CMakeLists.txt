@@ -152,8 +152,8 @@ if (USE_3RDPARTY_TESTS)
   set(GTEST_STATIC_LIBS gtest gtest_main)
   set(Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG boost_locale)
   set(Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE boost_locale)
-  set(Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG "$<TARGET_FILE:boost_locale")
-  set(Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE "$<TARGET_FILE:boost_locale")
+  set(Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG "$<TARGET_FILE:boost_locale>")
+  set(Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE "$<TARGET_FILE:boost_locale>")
 endif ()
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
