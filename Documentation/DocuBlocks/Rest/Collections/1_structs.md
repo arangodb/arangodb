@@ -55,8 +55,8 @@ up-to-date copies will succeed at the same time however. The value of
 the sharding strategy selected for the collection.
 One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
-@RESTSTRUCT{isSmart,collection_info,boolean,required,}
-Whether the graph is a SmartGraph. _(cluster only)_
+@RESTSTRUCT{isSmart,collection_info,boolean,optional,}
+Whether the collection is used in a SmartGraph. _(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
 Attribute that is used in SmartGraphs. _(cluster only)_
