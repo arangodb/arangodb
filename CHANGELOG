@@ -1,6 +1,11 @@
 devel
 -----
 
+* Made modification subqueries non-passthrough. The passthrough logic only works
+  if exactly as many output rows are produced as input rows are injected.
+  If the subquery with modification is skipped however this API is violated,
+  we perform the subquery with the modification, but then discard the input if skipped)
+
 * Removed external file loading in a used 3rd party library (Web UI). 
 
 * More substantial metrics in agency.
