@@ -1,6 +1,12 @@
 devel
 -----
 
+* arangodump and arangorestore will now fail when using the `--collection`
+  option and none of the specified collections actually exist in the database
+  (on dump) or in the dump to restore (on restore). In case some of the specified
+  collections exist, arangodump/restore will issue warnings about the invalid
+  collections, but will continue to work for the valid collections.
+
 * Improved network send request for more robustness. 
 
 * Added multiple RocksDB configuration options to arangod:
