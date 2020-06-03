@@ -98,7 +98,7 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
 /// @brief send a request to a given destination
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
-                      RequestOptions const& options, Headers headers) noexcept {
+                      RequestOptions const& options, Headers headers) {
   // FIXME build future.reset(..)
   // WARNING, this method must under no circum stances through an exception
 
@@ -165,6 +165,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   } catch (...) {
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request to destination " << dest;
   }
+
   return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
 }
 
@@ -389,7 +390,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload,
                            RequestOptions const& options,
-                           Headers headers) noexcept {
+                           Headers headers) {
 
   // WARNING this method shall never throw - anything!
 
