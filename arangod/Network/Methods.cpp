@@ -100,13 +100,12 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
+
   LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
       << "request to '" << dest
       << "' '" << fuerte::to_string(type) << " " << path << "'";
 
   // FIXME build future.reset(..)
-  // WARNING, this method must under no circum stances through an exception
-
   try {
 
     auto req = prepareRequest(type, std::move(path), std::move(payload),
@@ -166,12 +165,11 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     return f;
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION)
-      << "failed to send request to destination " << dest << ": " << e.what();
+    LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION) << "failed to send request: " << e.what();
   } catch (...) {
-    LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request to destination " << dest;
+    LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
-  return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
+  return futures::makeFuture(Response{std::move(std::string()), Error::Canceled, nullptr});
 }
 
 /// Handler class with enough information to keep retrying
@@ -400,6 +398,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            velocypack::Buffer<uint8_t> payload,
                            RequestOptions const& options,
                            Headers headers) {
+
   try {
 
     if (!pool || !pool->config().clusterInfo) {
@@ -420,13 +419,13 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
     return rs->future();
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
-      << "failed to send request: " << e.what();
+    LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION) << "failed to send request: " << e.what();
   } catch (...) {
-    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request";
+    LOG_TOPIC("d7236", DEBUG, Logger::COMMUNICATION) << "failed to send request.";
   }
 
-  return futures::makeFuture(Response{std::move(destination), Error::Canceled, nullptr});
+  return futures::makeFuture(Response{std::move(std::string()), Error::Canceled, nullptr});
+
 }
 
 }  // namespace network
