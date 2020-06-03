@@ -166,6 +166,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION) << "failed to send request to destination " << dest;
   }
 
+  // note: makeFuture may throw an exception in case of OOM
   return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
 }
 
