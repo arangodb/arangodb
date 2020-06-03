@@ -95,7 +95,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId destination,
                       arangodb::fuerte::RestVerb type, std::string path,
                       velocypack::Buffer<uint8_t> payload = {},
                       RequestOptions const& options = {},
-                      Headers headers = {}) noexcept;
+                      Headers headers = {});
 
 /// @brief send a request to a given destination, retry under certain conditions
 /// a retry will be triggered if the connection was lost our could not be established
@@ -105,7 +105,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload = {},
                            RequestOptions const& options = {},
-                           Headers headers = {}) noexcept;
+                           Headers headers = {});
 
 using Sender =
     std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,

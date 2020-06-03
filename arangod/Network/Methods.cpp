@@ -99,7 +99,7 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
 /// @brief send a request to a given destination
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
-                      RequestOptions const& options, Headers headers) noexcept {
+                      RequestOptions const& options, Headers headers) {
   LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
       << "request to '" << dest
       << "' '" << fuerte::to_string(type) << " " << path << "'";
@@ -399,7 +399,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload,
                            RequestOptions const& options,
-                           Headers headers) noexcept {
+                           Headers headers) {
   try {
 
     if (!pool || !pool->config().clusterInfo) {
