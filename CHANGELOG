@@ -7,6 +7,8 @@ devel
   collections exist, arangodump/restore will issue warnings about the invalid
   collections, but will continue to work for the valid collections.
 
+* Improved network send request for more robustness. 
+
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
     also include RocksDB memtable sizes
@@ -18,23 +20,23 @@ devel
   * `--rocksdb.pin-top-level-index-and-filter` make the top-level index of partitioned
     filter and index blocks pinned and only be evicted from cache when the table reader is freed
 
-* Don't move potentially expensive AQL function calls into loops in the 
+* Don't move potentially expensive AQL function calls into loops in the
   `remove-unnecessary-calculations-rule`.
 
   For example, in the query
-  
+
       LET x = NOOPT(1..100)
       LET values = SORTED(x)
-      FOR j IN 1..100 
+      FOR j IN 1..100
         FILTER j IN values
         RETURN j
 
-  there is only one use of the `values` variable. So the optimizer can remove 
-  that variable and replace the filter condition with `FILTER j IN SORTED(x)`. 
-  However, that would move the potentially expensive function call into the 
+  there is only one use of the `values` variable. So the optimizer can remove
+  that variable and replace the filter condition with `FILTER j IN SORTED(x)`.
+  However, that would move the potentially expensive function call into the
   inner loop, which could be a pessimization.
 
-  Now the optimizer will not move the calculation of values into the loop when 
+  Now the optimizer will not move the calculation of values into the loop when
   it merges calculations in the `remove-unnecessary-calculations` optimizer rule.
 
 * Fixed modification executors inside of a subquery, where the subquery decided to
@@ -43,7 +45,7 @@ devel
 * Fixed reporting of skipped number of documents if we have a LIMIT x, 0
   right after the modification.
 
-* Catch exceptions in agency callbacks.
+* Added exceptions catching in agency callbacks.
 
 * Fixed issue #11104 case with complex condition on second branch of OR
   operator.
@@ -58,7 +60,7 @@ devel
 * Fixed return value of fuerte::H1Connection in case of timeout.
 
 * Usability improvements for arangodump and arangorestore:
-  - when a dump is restricted to one or multiple collections using the 
+  - when a dump is restricted to one or multiple collections using the
     `--collection` option of arangodump, warnings are issued for all specified
     collections that are not present in the database. Previously there were
     no warnings, so missing a collection by misspelling its name could easily
@@ -111,6 +113,12 @@ devel
   as expected.
 
 * Expanded -std=c++17 flag to all compilers.
+
+* Fixed issue ES-600: log out of LDAP automatically.
+
+  Option `--ldap.allow-offline` was added with `false` value by default to let
+  server use cached offline credentials in case of LDAP server communication was
+  lost and ArangoDB can't prolong cache online.
 
 * Include all requests to the web interface at endpoint `/_admin/aardvark` in 
   a node's requests statistics. Previously, requests going to `/_admin/aardvark`

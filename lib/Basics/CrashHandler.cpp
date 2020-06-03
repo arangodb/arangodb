@@ -409,8 +409,12 @@ void CrashHandler::assertionFailure(char const* file, int line, char const* cont
   appendNullTerminatedString(": ", p);
   appendNullTerminatedString(context, 256, p);
 
-  // call other crash function with our buffer
-  crash(&buffer[0]);
+  ::logBacktrace(&buffer[0], SIGABRT, nullptr);
+  Logger::flush();
+  Logger::shutdown();
+
+  // crash from here
+  ::killProcess(SIGABRT);
 }
 
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
