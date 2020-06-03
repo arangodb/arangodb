@@ -61,7 +61,7 @@ class SortedCollectExecutorInfos {
                              velocypack::Options const*, bool count);
 
   SortedCollectExecutorInfos() = delete;
-  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) noexcept = default;
+  SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos const&) = delete;
   ~SortedCollectExecutorInfos() = default;
 

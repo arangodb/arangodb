@@ -368,7 +368,7 @@
                       window.modalView.createReadOnlyEntry(
                         'change-write-concern',
                         'Write concern',
-                        data.writeConcern,
+                        JSON.stringify(data.writeConcern),
                         'This collection is a SatelliteCollection. The write concern is not changeable.',
                         '',
                         true
