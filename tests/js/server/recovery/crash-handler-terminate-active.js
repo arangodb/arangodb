@@ -33,6 +33,11 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
+  let platform = internal.platform;
+  if (platform !== 'linux') {
+    // crash handler only available on Linux
+    return;
+  }
   // calls std::terminate() in the server
   internal.debugTerminate('CRASH-HANDLER-TEST-TERMINATE-ACTIVE');
 }
