@@ -452,6 +452,12 @@ message(${V8_GYP_ARGS})
     CACHE INTERNAL
     "ICU: Libraries"
   )
+  
+  set(ICU_LIBS_FILES
+    "${ICU_LIBRARY_DIR}icui18n;${ICU_LIBRARY_DIR}icuuc"
+    CACHE INTERNAL
+    "ICU: Full path to libraries"
+  )
 
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
   set(V8_INCLUDE_DIR
