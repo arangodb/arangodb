@@ -841,6 +841,22 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
 
   // restrictList now contains all collections the user requested, or all collections
   // in case the user did not restrict the dump to any collections
+  
+  // now check if at least one of the specified collections was found
+  if (_options.collections.empty()) {
+    bool found = false;
+    for (auto const& [name, collection] : restrictList) {
+      if (!collection.isNone()) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      LOG_TOPIC("fdd87", FATAL, arangodb::Logger::DUMP)
+          << "None of the requested collections were found in the database";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   // Step 3. iterate over collections, queue dump jobs
   for (auto const& [name, collection] : restrictList) {

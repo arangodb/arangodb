@@ -36,7 +36,6 @@ let db = arangodb.db;
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
-  const prefix = "UnitTestsDump_4b80e603f9e6b0c22a37da945ed6a9c4"; 
   // detect the path of arangodump. quite hacky, but works
   const arangodump = fs.join(global.ARANGOSH_PATH, 'arangodump' + pu.executableExt);
 
@@ -59,8 +58,6 @@ function dumpIntegrationSuite () {
 
     args.push('--output-directory');
     args.push(path);
-    args.push('--collection');
-    args.push(cn);
     addConnectionArgs(args);
 
     let actualRc = internal.executeExternalAndWait(arangodump, args);
@@ -75,7 +72,8 @@ function dumpIntegrationSuite () {
     assertEqual(expected, data);
   };
 
-  let checkStructureFile = function(tree, path, readable) {
+  let checkStructureFile = function(tree, path, readable, cn) {
+    const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
     let structure = prefix + ".structure.json";
     if (!fs.isFile(fs.join(path, structure))) {
       // seems necessary in cluster
@@ -99,7 +97,8 @@ function dumpIntegrationSuite () {
     }
   };
 
-  let checkDataFile = function(tree, path, compressed, readable) {
+  let checkDataFile = function(tree, path, compressed, readable, cn) {
+    const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
     if (compressed) {
       assertTrue(readable);
 
@@ -150,10 +149,15 @@ function dumpIntegrationSuite () {
         docs.push({ _key: "test" + i });
       }
       c.insert(docs);
+      
+      db._drop(cn + "Other");
+      c = db._create(cn + "Other", { numberOfShards: 3 });
+      c.insert(docs);
     },
 
     tearDownAll: function () {
       db._drop(cn);
+      db._drop(cn + "Other");
     },
     
     testDumpCompressedEncrypted: function () {
@@ -167,11 +171,11 @@ function dumpIntegrationSuite () {
         // 32 bytes of garbage
         fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'true', '--encryption.keyfile', keyfile];
+        let args = ['--compress-output', 'true', '--encryption.keyfile', keyfile, '--collection', cn];
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false);
-        checkDataFile(tree, path, false, false);
+        checkStructureFile(tree, path, false, cn);
+        checkDataFile(tree, path, false, false, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -182,7 +186,7 @@ function dumpIntegrationSuite () {
     testDumpOverwriteDisabled: function () {
       let path = fs.getTempFile();
       try {
-        let args = [];
+        let args = ['--collection', cn];
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
        
@@ -199,18 +203,18 @@ function dumpIntegrationSuite () {
     testDumpOverwriteCompressed: function () {
       let path = fs.getTempFile();
       try {
-        let args = ['--compress-output', 'true'];
+        let args = ['--compress-output', 'true', '--collection', cn];
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true);
-        checkDataFile(tree, path, true, true);
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, true, true, cn);
         
         // second dump, which overwrites
-        args = ['--compress-output', 'true', '--overwrite', 'true'];
+        args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true);
-        checkDataFile(tree, path, true, true);
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, true, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -221,18 +225,18 @@ function dumpIntegrationSuite () {
     testDumpOverwriteUncompressed: function () {
       let path = fs.getTempFile();
       try {
-        let args = ['--compress-output', 'false'];
+        let args = ['--compress-output', 'false', '--collection', cn];
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true);
-        checkDataFile(tree, path, false, true);
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, false, true, cn);
         
         // second dump, which overwrites
-        args = ['--compress-output', 'false', '--overwrite', 'true'];
+        args = ['--compress-output', 'false', '--overwrite', 'true', '--collection', cn];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true);
-        checkDataFile(tree, path, false, true);
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, false, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -251,18 +255,18 @@ function dumpIntegrationSuite () {
         // 32 bytes of garbage
         fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'false', '--encryption.keyfile', keyfile];
+        let args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--collection', cn];
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false);
-        checkDataFile(tree, path, false, false);
+        checkStructureFile(tree, path, false, cn);
+        checkDataFile(tree, path, false, false, cn);
 
         // second dump, which overwrites
-        args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true'];
+        args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
         tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "aes-256-ctr");
-        checkStructureFile(tree, path, false);
-        checkDataFile(tree, path, false, false);
+        checkStructureFile(tree, path, false, cn);
+        checkDataFile(tree, path, false, false, cn);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -281,16 +285,89 @@ function dumpIntegrationSuite () {
         // 32 bytes of garbage
         fs.writeFileSync(keyfile, "01234567890123456789012345678901");
 
-        let args = ['--compress-output', 'true'];
+        let args = ['--compress-output', 'true', '--collection', cn];
         let tree = runDump(path, args, 0); 
         checkEncryption(tree, path, "none");
-        checkStructureFile(tree, path, true);
-        checkDataFile(tree, path, true, true);
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, true, true, cn);
         
         // second dump, which overwrites
         // this is expected to have an exit code of 1
-        args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true'];
+        args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
         runDump(path, args, 1 /*exit code*/);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpOverwriteOtherCompressed: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--compress-output', 'true', '--collection', cn];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, true, true, cn);
+        
+        // second dump, which overwrites
+        args = ['--compress-output', 'true', '--overwrite', 'true', '--collection', cn + "Other"];
+        tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, true, true, cn);
+        checkStructureFile(tree, path, true, cn + "Other");
+        checkDataFile(tree, path, true, true, cn + "Other");
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpJustOneInvalidCollection: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', 'foobarbaz'];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+       
+        // second dump, without overwrite
+        // this is expected to have an exit code of 1
+        runDump(path, args, 1 /*exit code*/);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpJustInvalidCollections: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--collection', 'foobarbaz', '--collection', 'knarzknarzknarz'];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+       
+        // second dump, without overwrite
+        // this is expected to have an exit code of 1
+        runDump(path, args, 1 /*exit code*/);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpOneValidCollection: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--compress-output', 'true', '--collection', cn, '--collection', 'knarzknarzknarz'];
+        let tree = runDump(path, args, 0); 
+        checkEncryption(tree, path, "none");
+        checkStructureFile(tree, path, true, cn);
+        checkDataFile(tree, path, true, true, cn);
       } finally {
         try {
           fs.removeDirectory(path);

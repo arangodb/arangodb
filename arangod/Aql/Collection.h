@@ -113,11 +113,11 @@ struct Collection {
   /// @brief check if collection is a disjoint (edge) collection
   bool isDisjoint() const;
 
-  /// @brief check if collection is a satellite collection
+  /// @brief check if collection is a SatelliteCollection
   bool isSatellite() const;
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const;
 
   /// @brief add a mapping of shard => server id

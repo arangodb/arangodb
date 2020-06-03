@@ -92,7 +92,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   // turn off test by default.
   opts['skipAudit'] = true;
 
-  // only enable them in enterprise version
+  // only enable them in Enterprise Edition
   let version = {};
   if (global.ARANGODB_CLIENT_VERSION) {
     version = global.ARANGODB_CLIENT_VERSION(true);

@@ -55,7 +55,7 @@ class MaterializerExecutorInfos {
                             RegisterId outDocRegId, aql::QueryContext& query);
 
   MaterializerExecutorInfos() = delete;
-  MaterializerExecutorInfos(MaterializerExecutorInfos&&) noexcept = default;
+  MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 

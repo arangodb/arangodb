@@ -2401,13 +2401,13 @@ void Supervision::shrinkCluster() {
             maxReplFact = replFact;
           }
         }
-        // Note that this could be a satellite collection, in any case, ignore:
+        // Note that this could be a SatelliteCollection, in any case, ignore:
       }
     }
 
     // mop: do not account any failedservers in this calculation..the ones
     // having
-    // a state of failed still have data of interest to us! We wait indefinately
+    // a state of failed still have data of interest to us! We wait indefinitely
     // for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
       // Clean out as long as number of available servers is bigger
