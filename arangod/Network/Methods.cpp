@@ -100,7 +100,10 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
   // FIXME build future.reset(..)
-  // WARNING, this method must under no circumstances throw an exception
+  // this method should not throw exceptions under normal cicrumstances,
+  // so don't add any exception-throwing code here.
+  // we can't make the method noexcept because it may still throw in out-of-memory
+  // situations, but this should be a rare case.
 
   try {
 
