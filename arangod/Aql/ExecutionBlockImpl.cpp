@@ -1474,7 +1474,31 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
         }
 
-        auto [state, stats, skippedLocal, call] = executeFastForward(_lastRange, callCopy);
+        ExecutorState state = ExecutorState::HASMORE;
+        typename Executor::Stats stats;
+        size_t skippedLocal = 0;
+        AqlCallType call{};
+
+        if constexpr (is_one_of_v<Executor, SubqueryExecutor<true>>) {
+          // NOTE: The subquery Executor will by itself call EXECUTE on it's
+          // subquery. This can return waiting => we can get a WAITING state
+          // here. We can only get the waiting state for Subquery executors.
+          ExecutionState subqueryState = ExecutionState::HASMORE;
+          std::tie(subqueryState, stats, skippedLocal, call) =
+              _executor.skipRowsRange(_lastRange, clientCall);
+          if (subqueryState == ExecutionState::WAITING) {
+            TRI_ASSERT(skippedLocal == 0);
+            return {subqueryState, SkipResult{}, nullptr};
+          } else if (subqueryState == ExecutionState::DONE) {
+            state = ExecutorState::DONE;
+          } else {
+            state = ExecutorState::HASMORE;
+          }
+        } else {
+          // Execute skipSome
+          std::tie(state, stats, skippedLocal, call) =
+              executeFastForward(_lastRange, callCopy);
+        }
 
         if constexpr (executorHasSideEffects<Executor>) {
           if (!stack.needToSkipSubquery()) {
