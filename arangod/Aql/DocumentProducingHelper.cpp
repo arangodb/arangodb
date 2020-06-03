@@ -86,22 +86,22 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       return true;
     }
 
-    transaction::BuilderLeaser b(context.getTrxPtr());
-    b->openObject(true);
+    // recycle our Builder object
+    VPackBuilder& objectBuilder = context.getBuilder();
+    objectBuilder.clear();
+    objectBuilder.openObject(true);
 
     handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                      *b.get());
+                      objectBuilder);
 
-    b->close();
+    objectBuilder.close();
     
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
 
-    AqlValue v(b->slice());
-    AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
+    output.copyValueInto(registerId, input, objectBuilder.slice());
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -136,13 +136,9 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
     RegisterId registerId = context.getOutputRegister();
-    uint8_t const* vpack = slice.begin();
 
-    // Here we do a clone, so clone once, then move into
-    AqlValue v{AqlValueHintCopy{vpack}};
-    AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto(registerId, input, guard);
+    output.copyValueInto(registerId, input, slice);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -254,6 +250,10 @@ std::vector<std::pair<ProjectionType, std::string>> const& DocumentProducingFunc
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr() const noexcept {
   return &_trx;
 }
+  
+arangodb::velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
+  return _objectBuilder;
+}
 
 std::vector<size_t> const& DocumentProducingFunctionContext::getCoveringIndexAttributePositions() const
     noexcept {
@@ -299,19 +299,18 @@ RegisterId DocumentProducingFunctionContext::getOutputRegister() const noexcept 
 }
 
 bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& token) {
-  if (_checkUniqueness) {
-    if (!_isLastIndex) {
-      // insert & check for duplicates in one go
-      if (!_alreadyReturned.insert(token.id()).second) {
-        // Document already in list. Skip this
-        return false;
-      }
-    } else {
-      // only check for duplicates
-      if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
-        // Document found, skip
-        return false;
-      }
+  TRI_ASSERT(_checkUniqueness);
+  if (!_isLastIndex) {
+    // insert & check for duplicates in one go
+    if (!_alreadyReturned.insert(token.id()).second) {
+      // Document already in list. Skip this
+      return false;
+    }
+  } else {
+    // only check for duplicates
+    if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
+      // Document found, skip
+      return false;
     }
   }
   return true;
@@ -375,8 +374,10 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       checkFilter = false;
     }
 
-    transaction::BuilderLeaser b(context.getTrxPtr());
-    b->openObject(true);
+    // recycle our Builder object
+    VPackBuilder& objectBuilder = context.getBuilder();
+    objectBuilder.clear();
+    objectBuilder.openObject(true);
 
     if (context.getAllowCoveringIndexOptimization()) {
       // a potential call by a covering index iterator...
@@ -400,20 +401,20 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
         }
         if (found.isNone()) {
           // attribute not found
-          b->add(it.second, VPackValue(VPackValueType::Null));
+          objectBuilder.add(it.second, VPackValue(VPackValueType::Null));
         } else {
-          b->add(it.second, found);
+          objectBuilder.add(it.second, found);
         }
       }
     } else {
       // projections from a "real" document
       handleProjections(context.getProjections(), context.getTrxPtr(), slice,
-                        *b.get());
+                        objectBuilder);
     }
 
-    b->close();
+    objectBuilder.close();
     
-    if (checkFilter && !context.checkFilter(b->slice())) {
+    if (checkFilter && !context.checkFilter(objectBuilder.slice())) {
       context.incrFiltered();
       return false;
     }
@@ -422,10 +423,8 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       InputAqlItemRow const& input = context.getInputRow();
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
-      AqlValue v(b->slice());
-      AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
-      output.moveValueInto(registerId, input, guard);
+      output.copyValueInto(registerId, input, objectBuilder.slice());
       TRI_ASSERT(output.produced());
       output.advanceRow();
     }

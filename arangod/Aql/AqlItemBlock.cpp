@@ -888,8 +888,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& valu
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
     if (++_valueCount[value] == 1) {
-      size_t mem = value.memoryUsage();
-      increaseMemoryUsage(mem);
+      increaseMemoryUsage(value.memoryUsage());
     }
   }
 
@@ -944,11 +943,13 @@ void AqlItemBlock::eraseAll() {
     }
   }
 
+  size_t totalUsed = 0;
   for (auto const& it : _valueCount) {
-    if (it.second > 0) {
-      decreaseMemoryUsage(it.first.memoryUsage());
+    if (ADB_LIKELY(it.second > 0)) {
+      totalUsed += it.first.memoryUsage();
     }
   }
+  decreaseMemoryUsage(totalUsed);
   _valueCount.clear();
 }
 

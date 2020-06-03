@@ -162,8 +162,8 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 
   // re-use an existing builder
   VPackBuilder* b = _builders.back();
-  b->clear();
   _builders.pop_back();
+  b->clear();
 
   return b;
 }

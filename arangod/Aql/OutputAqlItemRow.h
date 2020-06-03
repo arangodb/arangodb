@@ -79,6 +79,10 @@ class OutputAqlItemRow {
   template <class ItemRowType>
   void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                      AqlValueGuard& guard);
+  
+  // Copies the given VPackSlice, so that the data is owned by the block.
+  void copyValueInto(RegisterId registerId, InputAqlItemRow const& sourceRow,
+                     arangodb::velocypack::Slice value);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.

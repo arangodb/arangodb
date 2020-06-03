@@ -869,7 +869,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(transaction::M
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
-  fillInLookupValues(trx, *(keys.get()), valNode);
+  fillInLookupValues(trx, *keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx, this, std::move(keys), _cache);
 }
 

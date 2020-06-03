@@ -1534,6 +1534,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
 
 AqlValue::AqlValue(std::string const& value)
     : AqlValue(value.c_str(), value.size()) {}
+
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
   _data.internal[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);

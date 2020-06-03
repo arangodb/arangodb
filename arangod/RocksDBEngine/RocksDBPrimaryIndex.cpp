@@ -910,7 +910,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
 
-  fillInLookupValues(trx, *(keys.get()), valNode, ascending, isId);
+  fillInLookupValues(trx, *keys, valNode, ascending, isId);
   return std::make_unique<RocksDBPrimaryIndexInIterator>(&_collection, trx, this,
                                                          std::move(keys), !isId);
 }
