@@ -1131,6 +1131,10 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARGUMENTS"), p);
+ 
+  std::string const& binaryPath = ArangoGlobalContext::CONTEXT->getBinaryPath();
+  TRI_AddGlobalVariableVocbase(_isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGOSH_PATH"),
+                               TRI_V8_STD_STRING(_isolate, binaryPath));
 
   // set mode flags
   TRI_AddGlobalVariableVocbase(

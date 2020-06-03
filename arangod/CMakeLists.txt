@@ -262,6 +262,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/CountCollectExecutor.cpp
   Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeClientBlock.cpp
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp

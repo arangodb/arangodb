@@ -125,7 +125,7 @@ void SenderThread::run() {
         TRI_ASSERT(!_idle && !_url.empty());
 
         {
-          QuickHistogramTimer timer(_stats->_histogram);
+          QuickHistogramTimer timer(_stats->_histogram, (_highLineNumber - _lowLineNumber) +1);
           std::unique_ptr<httpclient::SimpleHttpResult> result(
               _client->request(rest::RequestType::POST, _url, _data.c_str(),
                                _data.length()));
@@ -211,7 +211,6 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       VPackSlice const errorMessage = body.get("errorMessage");
       if (errorMessage.isString()) {
         _errorMessage = errorMessage.copyString();
-
       }
 
       // will trigger the waiting ImportHelper thread to cancel the import

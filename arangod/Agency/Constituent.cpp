@@ -76,6 +76,8 @@ Constituent::Constituent(application_features::ApplicationServer& server)
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),
+      _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
+               "agency_term", _term, "Agency's term")),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
@@ -108,6 +110,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
   term_t tmp = _term;
   _term = t;
+  _gterm = t;
   std::string tmpVotedFor = _votedFor;
   _votedFor = votedFor;
 
@@ -556,7 +559,7 @@ void Constituent::callElection() {
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _termVoteLock);
   _term = t;
-
+  _gterm = t;
   if (_leaderID != leaderID) {
     LOG_TOPIC("fe299", INFO, Logger::AGENCY)
         << "Constituent::update: setting _leaderID to '" << leaderID
@@ -614,12 +617,10 @@ void Constituent::run() {
         auto ii = i.resolveExternals();
         try {
           MUTEX_LOCKER(locker, _termVoteLock);
-          _term = ii.get("term").getUInt();
-          _votedFor = ii.get("voted_for").copyString();
+          termNoLock(ii.get("term").getUInt(), ii.get("voted_for").copyString());
         } catch (std::exception const&) {
           LOG_TOPIC("404be", ERR, Logger::AGENCY)
-              << "Persisted election entries corrupt! Defaulting term,vote "
-                 "(0,0)";
+            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
         }
       }
     }
@@ -638,13 +639,12 @@ void Constituent::run() {
     MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC("66f72", INFO, Logger::AGENCY)
-        << "Set _leaderID to '" << _leaderID << "' in term " << _term;
+      << "Set _leaderID to '" << _leaderID << "' in term " << _term;
   } else {
     {
       MUTEX_LOCKER(guard, _termVoteLock);
-      LOG_TOPIC("29175", INFO, Logger::AGENCY) << "Setting role to follower"
-                                         " in term "
-                                      << _term;
+      LOG_TOPIC("29175", INFO, Logger::AGENCY)
+        << "Setting role to follower  in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {

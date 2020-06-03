@@ -37,13 +37,21 @@ static constexpr size_t InvalidRowIndex = std::numeric_limits<size_t>::max();
 
 size_t AqlItemMatrix::numberOfBlocks() const noexcept { return _blocks.size(); }
 
-SharedAqlItemBlockPtr AqlItemMatrix::getBlock(size_t index) const noexcept {
+std::pair<SharedAqlItemBlockPtr, size_t> AqlItemMatrix::getBlock(size_t index) const noexcept {
   TRI_ASSERT(index < numberOfBlocks());
-  return _blocks[index];
+  if (index == 0) {
+    // The first block could contain a shadowRow
+    // and the first unused data row, could be after the
+    // shadowRow.
+    return  {_blocks[index], _startIndexInFirstBlock};
+  }
+  // All other blocks start with the first row as data row
+  return {_blocks[index], 0};
 }
 
 InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexcept {
-  auto const& block = getBlock(index.first);
+  auto const& [block, unused] = getBlock(index.first);
+  TRI_ASSERT(index.second >= unused);
   return InputAqlItemRow{block, index.second};
 }
 
@@ -151,9 +159,15 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     TRI_ASSERT(blockPtr->size() >= _startIndexInFirstBlock);
     _size = blockPtr->size() - _startIndexInFirstBlock;
   }
-  // Remove all but the last block
-  _blocks.erase(_blocks.begin(), _blocks.end() - 1);
-  TRI_ASSERT(_blocks.size() == 1);
+  if (_startIndexInFirstBlock >= _blocks.back()->size()) {
+    // The last block is also fully used
+    _blocks.clear();
+    _startIndexInFirstBlock = 0;
+  } else {
+    // Remove all but the last block
+    _blocks.erase(_blocks.begin(), _blocks.end() - 1);
+    TRI_ASSERT(_blocks.size() == 1);
+  }
   return shadowRow;
 }
 
