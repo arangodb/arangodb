@@ -454,7 +454,7 @@ message(${V8_GYP_ARGS})
   )
   
   set(ICU_LIBS_FILES
-    "${ICU_LIBRARY_DIR}/icui18n;${ICU_LIBRARY_DIR}/icuuc"
+    "${ICU_LIBRARY_DIR}/libicui18n.a;${ICU_LIBRARY_DIR}/libicuuc.a"
     CACHE INTERNAL
     "ICU: Full path to libraries"
   )
