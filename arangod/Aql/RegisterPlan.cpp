@@ -118,41 +118,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   };
 
-  auto const calculateRegistersToClear = [this](T* en) -> RegIdSet {
-    auto const& varsUsedLater = en->getVarsUsedLaterStack().back();
-    VarSet varsUsedHere;
-    en->getVariablesUsedHere(varsUsedHere);
-    RegIdSet regsToClear;
-
-    // Now find out which registers ought to be erased after this node:
-    // ReturnNodes are special, since they return a single column anyway
-    if (en->getType() != ExecutionNode::RETURN) {
-      for (auto const& v : varsUsedHere) {
-        auto it = varsUsedLater.find(v);
-
-        if (it == varsUsedLater.end()) {
-          auto it2 = plan->varInfo.find(v->id);
-
-          if (it2 == plan->varInfo.end()) {
-            // report an error here to prevent crashing
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           std::string("missing variable #") +
-                                               std::to_string(v->id) + " (" +
-                                               v->name + ") for node #" +
-                                               std::to_string(en->id().id()) +
-                                               " (" + en->getTypeString() +
-                                               ") while planning registers");
-          }
-
-          TRI_ASSERT(it2 != plan->varInfo.end());
-          RegisterId r = it2->second.registerId;
-          regsToClear.insert(r);
-        }
-      }
-    }
-    return regsToClear;
-  };
-
   auto const calculateRegistersToReuse = [](VarSet const& varsUsedLater, RegVarMap const& regVarMap) -> RegIdSet {
     RegIdSet regsToReuse;
     for (auto& [regId, variable] : regVarMap) {
@@ -194,6 +159,17 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       unusedRegisters[stack_size - 1].insert(reuseInner.begin(), reuseInner.end());
       unusedRegisters[stack_size - 2].insert(reuseOuter.begin(), reuseOuter.end());
 
+      if (explain) {
+        plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
+      }
+
+      for (auto const& reg : reuseInner) {
+        regVarMappingStack[stack_size - 1].erase(reg);
+      }
+      for (auto const& reg : reuseOuter) {
+        regVarMappingStack[stack_size - 2].erase(reg);
+      }
+
       updateRegsToKeep(en, varsUsedLater[varsValid.size() - 2],
                        varsValid[varsValid.size() - 2]);  // subquery start has to update both levels of regs to keep
       regsToKeepStack.emplace_back();
@@ -211,6 +187,10 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       TRI_ASSERT(mayReuseRegisterImmediately);
       plan->nrRegs.back() = previousSubqueryNrRegs.top();
       previousSubqueryNrRegs.pop();
+
+      if (explain) {
+        plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
+      }
     } break;
     default: {
       // IMPORTANT NOTE:
@@ -218,15 +198,23 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       // be reused, but are *still* set in regsToClear! This is *only* okay
       // because regsToClear is only ever used in passthrough-blocks, but
       // nodes that can create those may *not* reuse registers immediately.
-      auto regsToClear = calculateRegistersToClear(en);
-      for (auto const& reg : regsToClear) {
-        regVarMappingStack.back().erase(reg);
+      if (en->getType() != ExecutionNode::RETURN) {
+        auto const& varsUsedLater = en->getVarsUsedLater();
+        auto regsToClear =
+            calculateRegistersToReuse(varsUsedLater, regVarMappingStack.back());
+        for (auto const& reg : regsToClear) {
+          regVarMappingStack.back().erase(reg);
+        }
+
+        unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
+        // We need to delete those variables that have been used here but are
+        // not used any more later:
+        en->setRegsToClear(std::move(regsToClear));
       }
 
-      unusedRegisters.back().insert(regsToClear.begin(), regsToClear.end());
-      // We need to delete those variables that have been used here but are not
-      // used any more later:
-      en->setRegsToClear(std::move(regsToClear));
+      if (explain) {
+        plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
+      }
     } break;
   }
 
@@ -235,9 +223,6 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     planRegistersForCurrentNode(en);
   }
 
-  if (explain) {
-    plan->regVarMapStackByNode.emplace(en->id(), regVarMappingStack);
-  }
 
   updateRegsToKeep(en, en->getVarsUsedLater(), en->getVarsValid());
 

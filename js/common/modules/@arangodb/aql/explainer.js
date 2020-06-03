@@ -2546,7 +2546,9 @@ function explainQuerysRegisters(plan) {
       }
       if (hasUnusedRegs) {
         for (const regId of regInfo.unusedRegs) {
-          registerFields[regId] += symbols.unusedRegister;
+          if (registerFields[regId].length === 0) {
+            registerFields[regId] += symbols.unusedRegister;
+          }
         }
       }
       if (hasRegsToClear) {
