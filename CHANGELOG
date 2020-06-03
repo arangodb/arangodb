@@ -1,7 +1,7 @@
 devel
 -----
 
-* Imnproved network send request for more robustness. 
+* Improved network send request for more robustness. 
 
 * Added multiple RocksDB configuration options to arangod:
   * `--rocksdb.cache-index-and-filter-blocks` to make the RocksDB block cache quota
