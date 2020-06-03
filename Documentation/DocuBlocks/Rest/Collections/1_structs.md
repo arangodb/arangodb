@@ -51,8 +51,15 @@ The shards will refuse to write, if we have less then these many copies in sync.
 the sharding strategy selected for the collection; *Cluster specific attribute.*
 One of 'hash' or 'enterprise-hash-smart-edge'
 
+@RESTSTRUCT{isSmart,collection_info,boolean,optional,}
+Whether the collection is used in a SmartGraph. _(cluster only)_
+
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
 Attribute that is used in smart graphs, *Cluster specific attribute.*
+
+@RESTSTRUCT{smartJoinAttribute,collection_info,string,optional,}
+Determines an attribute of the collection that must contain the shard key value
+of the referred-to SmartJoin collection. _(cluster only)_
 
 @RESTSTRUCT{indexBuckets,collection_info,integer,optional,}
 the number of index buckets
