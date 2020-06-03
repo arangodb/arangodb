@@ -65,7 +65,8 @@ class SubqueryExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        isModificationSubquery ? BlockPassthrough::Disable : BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
