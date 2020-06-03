@@ -1,6 +1,8 @@
 devel
 -----
 
+* Removed external file loading in a used 3rd party library (Web UI). 
+
 * More substantial metrics in agency.
 
 * arangodump and arangorestore will now fail when using the `--collection`
