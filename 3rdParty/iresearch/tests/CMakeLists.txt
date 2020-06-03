@@ -184,9 +184,12 @@ add_executable(${IResearchTests_TARGET_NAME}-static-scrt
 endif()
 
 set_ipo(${IResearchTests_TARGET_NAME}-static)
-set_ipo(${IResearchTests_TARGET_NAME}-static-scrt)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
+
+if (MSVC)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static-scrt)
+set_ipo(${IResearchTests_TARGET_NAME}-static-scrt)
+endif()
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
