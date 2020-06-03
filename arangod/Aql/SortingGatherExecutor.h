@@ -53,7 +53,7 @@ class SortingGatherExecutorInfos {
                              arangodb::aql::QueryContext& query, GatherNode::SortMode sortMode,
                              size_t limit, GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
-  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) noexcept = default;
+  SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) = default;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
   ~SortingGatherExecutorInfos() = default;
 
