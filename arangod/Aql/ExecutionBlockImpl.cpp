@@ -1247,6 +1247,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     // We can only have returned the following internal states
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
                _execState == ExecState::UPSTREAM);
+
+    // Skip can only be > 0 if we are in upstream cases, or if we got injected a block
+    TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM ||
+               (std::is_same_v<Executor, IdExecutor<ConstFetcher>>));
   }
 
   // In some executors we may write something into the output, but then return
@@ -1261,10 +1265,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       clientCall = _outputItemRow->getClientCall();
     }
   }
-
-  // Skip can only be > 0 if we are in upstream cases, or if we got injected a block
-  TRI_ASSERT(_skipped.nothingSkipped() || _execState == ExecState::UPSTREAM ||
-             (std::is_same_v<Executor, IdExecutor<ConstFetcher>>));
 
   if constexpr (executorHasSideEffects<Executor>) {
     if (!_skipped.nothingSkipped()) {
