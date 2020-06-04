@@ -71,6 +71,10 @@
   #define mkdtemp(templ) 0 == _mkdir(0 == _mktemp_s(templ, strlen(templ) + 1) ? templ : nullptr) ? templ : nullptr
 #endif
 
+namespace {
+/// @brief custom ICU data 
+irs::mmap_utils::mmap_handle icu_data;
+}
 /* -------------------------------------------------------------------
 * iteration_tracker
 * ------------------------------------------------------------------*/
@@ -95,6 +99,7 @@ const std::string IRES_LOG_STACK("ires_log_stack");
 const std::string IRES_OUTPUT("ires_output");
 const std::string IRES_OUTPUT_PATH("ires_output_path");
 const std::string IRES_RESOURCE_DIR("ires_resource_dir");
+const std::string IRES_ICU_DATA("icu-data");
 
 const std::string test_env::test_results("test_detail.xml");
 
@@ -122,9 +127,29 @@ std::string test_env::resource( const std::string& name ) {
   return path.utf8();
 }
 
-void test_env::prepare(const cmdline::parser& parser) {
+bool test_env::prepare(const cmdline::parser& parser) {
   if (parser.exist(IRES_HELP)) {
-    return;
+    return true;
+  }
+
+  if (parser.exist(IRES_ICU_DATA)) {
+    // icu initialize for data file
+    irs::utf8_path icu_data_file_path(parser.get<std::string>(IRES_ICU_DATA));
+    IR_FRMT_INFO("Loading custom ICU data file: " IR_FILEPATH_SPECIFIER, icu_data_file_path.c_str());
+    bool data_exists{ false };
+    if (icu_data_file_path.exists(data_exists) && data_exists) {
+      if (icu_data.open(icu_data_file_path.c_str())) {
+        UErrorCode status{ U_ZERO_ERROR };
+        udata_setCommonData(icu_data.addr(), &status);
+        if (!U_SUCCESS(status)) {
+          IR_FRMT_FATAL("Failed to set custom ICU data file with status: %d", status);
+          return false;
+        }
+      }
+    } else {
+      IR_FRMT_FATAL("Custom data file not found.");
+      return false;
+    }
   }
 
   make_directories();
@@ -149,6 +174,7 @@ void test_env::prepare(const cmdline::parser& parser) {
     argv[argc_] = nullptr;
     argv_ = argv.release();
   }
+  return true;
 }
 
 void test_env::make_directories() {
@@ -225,7 +251,7 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
   cmd.add(IRES_OUTPUT, 0, "generate an XML report");
   cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.utf8());
   cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, irs::utf8_path(IResearch_test_resource_dir).utf8());
-
+  cmd.add(IRES_ICU_DATA, 0, "custom icu data file", false, std::string());
   cmd.parse(argc_, argv_);
 
   if (cmd.exist(IRES_HELP)) {
@@ -243,7 +269,9 @@ int test_env::initialize(int argc, char* argv[]) {
 
   cmdline::parser cmd;
   parse_command_line(cmd);
-  prepare(cmd);
+  if (!prepare(cmd)) {
+    return -1;
+  }
 
   ::testing::AddGlobalTestEnvironment(new iteration_tracker());
   ::testing::InitGoogleTest(&argc_, argv_);
@@ -323,25 +351,6 @@ void test_base::SetUp() {
 int main( int argc, char* argv[] ) {
   install_stack_trace_handler();
 
-#ifdef OVERRIDE_ICU_DATA
-  // icu initialize for data file
-  irs::utf8_path icu_data_file_path;
-  auto* icu_data_path_env = irs::getenv("ICU_DATA");
-  if (icu_data_path_env) {
-    icu_data_file_path = icu_data_path_env;
-  } else {
-    icu_data_file_path = irs::file_utils::path_parts(irs::utf8_path(argv[0]).c_str()).dirname;
-  }
-  icu_data_file_path /= OVERRIDE_ICU_DATA;
-  bool data_exists{false};
-  irs::mmap_utils::mmap_handle icu_data;
-  if (icu_data_file_path.exists(data_exists) && data_exists) {
-    if (icu_data.open(icu_data_file_path.c_str())) {
-      UErrorCode status = U_ZERO_ERROR;
-      udata_setCommonData(icu_data.addr(), &status);
-    }
-  }
-#endif
   const int code = test_env::initialize( argc, argv );
 
   std::cout << "Path to test result directory: " 
