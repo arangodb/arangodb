@@ -56,7 +56,7 @@ auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
 auto SkipResult::getSkipOnSubqueryLevel(size_t depth) -> size_t {
   TRI_ASSERT(!_skipped.empty());
   TRI_ASSERT(_skipped.size() > depth);
-  return *(_skipped.rbegin() + depth);
+  return _skipped.at(_skipped.size() - 1 - depth);
 }
 
 auto SkipResult::nothingSkipped() const noexcept -> bool {
