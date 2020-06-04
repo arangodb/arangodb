@@ -308,29 +308,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    */
   void delShardVersion(std::string const& shardId);
 
-  /**
-   * @brief Get the number of loadCurrent operations.
-   *        NOTE: The Counter functions can be removed
-   *        as soon as we use a push based approach on Plan and Current
-   * @return The most recent count for getCurrent calls
-   */
-  uint64_t getCurrentCounter() const;
-
-  /**
-   * @brief increase the counter for loadCurrent operations triggered
-   *        during maintenance. This is used to delay some Actions, that
-   *        require a recent current to continue
-   */
-  void increaseCurrentCounter();
-
-  /**
-   * @brief wait until the current counter is larger then the given old one
-   *        the idea here is to first request the `getCurrentCounter`.
-   * @param old  The last number of getCurrentCounter(). This function will
-   *             return only of the recent counter is larger than old.
-   */
-  void waitForLargerCurrentCounter(uint64_t old);
-
  protected:
   void initializeMetrics();
 
