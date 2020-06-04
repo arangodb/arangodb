@@ -66,6 +66,11 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
 /// @brief drain all connections
 void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
+  for (auto& pair : _connections) {
+    Bucket& buck = *(pair.second);
+    std::lock_guard<std::mutex> lock(buck.mutex);
+    buck.list.clear();
+  }
   _connections.clear();
 }
 
