@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added missing mutex to ConnectionPool::cancelConnections().  
+
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
 
 * Fix crash in execution of non-spliced subqueries if remainder of subquery is
