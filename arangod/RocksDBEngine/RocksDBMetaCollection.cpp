@@ -288,12 +288,13 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     ++count;
   }
   
-  int64_t adjustment = snapNumberOfDocuments - count;
+  int64_t adjustment = count - snapNumberOfDocuments;
   if (adjustment != 0) {
+    auto seq = snapshot->GetSequenceNumber();
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
     << "inconsistent collection count detected, "
     << "an offet of " << adjustment << " will be applied";
-    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
   
   return _meta.numberDocuments();

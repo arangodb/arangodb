@@ -510,7 +510,7 @@ TEST_F(MaintenanceTestActionPhaseOne, in_sync_should_have_0_effects) {
   std::vector<ActionDescription> actions;
 
   for (auto const& node : localNodes) {
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -526,7 +526,7 @@ TEST_F(MaintenanceTestActionPhaseOne, local_databases_one_more_empty_database_sh
 
   localNodes.begin()->second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                        localNodes.begin()->second.toBuilder().slice(),
                                        localNodes.begin()->first, errors, *feature, actions);
 
@@ -543,7 +543,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   std::vector<ActionDescription> actions;
   localNodes.begin()->second("db3/col") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+  arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                        localNodes.begin()->second.toBuilder().slice(),
                                        localNodes.begin()->first, errors, *feature, actions);
 
@@ -565,7 +565,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -593,7 +593,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     node.second("db3") = arangodb::velocypack::Slice::emptyObjectSlice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -619,7 +619,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_an_index_to_queues) {
 
     auto local = node.second;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          local.toBuilder().slice(), node.first,
                                          errors, *feature, actions);
 
@@ -655,7 +655,7 @@ TEST_F(MaintenanceTestActionPhaseOne, remove_an_index_from_plan) {
 
     auto local = node.second;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          local.toBuilder().slice(), node.first,
                                          errors, *feature, actions);
 
@@ -683,7 +683,7 @@ TEST_F(MaintenanceTestActionPhaseOne, add_one_collection_to_local) {
     std::vector<ActionDescription> actions;
     createLocalCollection("_system", "1111111", node.second);
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -715,7 +715,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
 
     (*node.second(dbname).children().begin()->second)(prop) = v.slice();
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -752,7 +752,7 @@ TEST_F(MaintenanceTestActionPhaseOne, have_theleader_set_to_empty) {
       leader = v.slice();
     }
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -781,7 +781,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
     std::vector<ActionDescription> actions;
     node.second("db3") = node.second("_system");
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -826,7 +826,7 @@ TEST_F(MaintenanceTestActionPhaseOne, resign_leadership) {
       }
     }
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
@@ -856,7 +856,7 @@ TEST_F(MaintenanceTestActionPhaseOne, removed_follower_in_plan_must_be_dropped) 
   for (auto const& node : localNodes) {
     std::vector<ActionDescription> actions;
 
-    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(),
+    arangodb::maintenance::diffPlanLocal(plan.toBuilder().slice(), 0,
                                          node.second.toBuilder().slice(),
                                          node.first, errors, *feature, actions);
 
