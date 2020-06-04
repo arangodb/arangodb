@@ -1060,7 +1060,8 @@ describe('Foxx service', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
     const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
-    expect(resp).to.be.a("string");
+    expect(resp).to.be.instanceof(Buffer);
+    expect(resp.toString("utf-8").startsWith("<?xml")).to.equal(true);
   });
 
   it('non-idiomatic tests reporter should not return string', () => {
