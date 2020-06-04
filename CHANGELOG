@@ -1,6 +1,10 @@
 v3.6.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in the internal `recalculateCount()` method for adjusting
+  collection counts. The bug could have led to count adjustments being
+  applied with the wrong sign.
+
 * Pimped up network send request robustness.
 
 * Fixed issue ES-600: log out of LDAP automatically.

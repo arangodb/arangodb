@@ -210,6 +210,9 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 }
 
 void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
+  TRI_IF_FAILURE("DisableCommitCounts") {
+    return;
+  }
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
 
