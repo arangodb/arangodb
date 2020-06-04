@@ -1,9 +1,13 @@
 devel
 -----
 
-* Foxx API now respects "idiomatic" flag being explicitly set to false
+* Foxx API now respects "idiomatic" flag being explicitly set to false.
 
 * Fixed available flag for hotbackup.
+
+* Fixed a bug in the internal `recalculateCount()` method for adjusting
+  collection counts. The bug could have led to count adjustments being
+  applied with the wrong sign.
 
 * Removed external file loading in a used 3rd party library (Web UI). 
 

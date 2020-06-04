@@ -34,6 +34,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/MetricsFeature.h"
 
+#include <memory>
+#include <mutex>
 #include <queue>
 
 namespace arangodb {
@@ -422,15 +424,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   bool _resignLeadershipOnShutdown;
 
   std::atomic<std::chrono::steady_clock::duration> _pauseUntil;
-
-  /// @brief Mutex for the current counter condition variable
-  mutable std::mutex _currentCounterLock;
-
-  /// @brief Condition variable where Actions can wait on until _currentCounter increased
-  std::condition_variable _currentCounterCondition;
-
-  /// @brief  counter for load_current requests.
-  uint64_t _currentCounter;
 
  public:
   std::optional<std::reference_wrapper<Histogram<log_scale_t<uint64_t>>>> _phase1_runtime_msec;
