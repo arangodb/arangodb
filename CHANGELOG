@@ -1,6 +1,19 @@
 devel
 -----
 
+* Fixed missordering of skipped number of rows report. Only triggered if you do a modification
+  on a subquery nesting level 2 or more, e.g.:
+  ```
+    LET s1 = (
+      LET s2 = (
+        INSERT {} INTO collection
+      )
+      COLLECT WITH COUNT INTO c
+      RETURN c
+    )
+  ```
+  Here the c would be off, or a count on mainquery would be off.
+
 * Fix crash in execution of non-spliced subqueries if remainder of subquery is skipped.
 
 * Made modification subqueries non-passthrough. The passthrough logic only works
